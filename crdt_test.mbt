@@ -1,20 +1,16 @@
 ///|
-test "fib" {
-  let array = [1, 2, 3, 4, 5].map(fib)
-
-  // `inspect` is used to check the output of the function
-  // Just write `inspect(value)` and execute `moon test --update`
-  // to update the expected output, and verify them afterwards
-  inspect(array, content="[1, 2, 3, 5, 8]")
+/// Basic API test for the CRDT editor
+test "create editor and insert text" {
+  let editor = new_editor("alice")
+  insert(editor, "Hello")
+  inspect(get_text(editor), content="Hello")
+  inspect(get_cursor(editor), content="5")
 }
 
 ///|
-test "sum" {
-  let array = [1, 2, 3, 4, 5]
-  inspect(sum(data=array), content="15")
-  inspect(sum(data=array, start=1), content="14")
-  inspect(sum(data=array, length=3), content="6")
-  let length = None
-  // Use `?` for punning
-  inspect(sum(data=array, length?), content="15")
+/// Test document API
+test "create document" {
+  let doc = new_document("alice")
+  let _op = doc_insert(doc, 0, "World")
+  inspect(doc_to_text(doc), content="World")
 }

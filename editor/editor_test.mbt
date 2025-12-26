@@ -1,11 +1,12 @@
-///| Tests for Editor
-
+///|
+/// Tests for Editor
 test "create new editor" {
   let editor = Editor::new("alice")
   inspect(editor.get_text(), content="")
   inspect(editor.get_cursor(), content="0")
 }
 
+///|
 test "insert at cursor" {
   let editor = Editor::new("alice")
   editor.insert("Hello")
@@ -13,6 +14,7 @@ test "insert at cursor" {
   inspect(editor.get_cursor(), content="5")
 }
 
+///|
 test "multiple inserts" {
   let editor = Editor::new("alice")
   editor.insert("Hello")
@@ -22,6 +24,7 @@ test "multiple inserts" {
   inspect(editor.get_cursor(), content="11")
 }
 
+///|
 test "insert at specific position" {
   let editor = Editor::new("alice")
   editor.insert("Heo")
@@ -30,6 +33,7 @@ test "insert at specific position" {
   inspect(editor.get_text(), content="Heoll")
 }
 
+///|
 test "move cursor" {
   let editor = Editor::new("alice")
   editor.insert("Hello")
@@ -39,6 +43,7 @@ test "move cursor" {
   inspect(editor.get_text(), content="HelloX")
 }
 
+///|
 test "delete at cursor" {
   let editor = Editor::new("alice")
   editor.insert("Hello")
@@ -48,6 +53,7 @@ test "delete at cursor" {
   inspect(editor.get_text(), content="Hello")
 }
 
+///|
 test "backspace" {
   let editor = Editor::new("alice")
   editor.insert("Hello")
@@ -57,6 +63,7 @@ test "backspace" {
   inspect(editor.get_cursor(), content="5")
 }
 
+///|
 test "backspace at start" {
   let editor = Editor::new("alice")
   editor.insert("H")
@@ -66,6 +73,7 @@ test "backspace at start" {
   inspect(editor.get_text(), content="H")
 }
 
+///|
 test "delete beyond end" {
   let editor = Editor::new("alice")
   editor.insert("Hi")
@@ -75,6 +83,7 @@ test "delete beyond end" {
   inspect(editor.get_text(), content="Hi")
 }
 
+///|
 test "cursor bounds checking" {
   let editor = Editor::new("alice")
   editor.insert("Hello")
@@ -84,6 +93,7 @@ test "cursor bounds checking" {
   inspect(editor.get_cursor(), content="5")
 }
 
+///|
 test "concurrent edits from two editors" {
   // Create two editors
   let alice = Editor::new("alice")
@@ -117,6 +127,7 @@ test "concurrent edits from two editors" {
   inspect(alice_text.contains("World"), content="false")
 }
 
+///|
 test "concurrent inserts at same position" {
   // Create two editors with initial text "AC"
   let alice = Editor::new("alice")
@@ -125,7 +136,6 @@ test "concurrent inserts at same position" {
   // Both start with "AC"
   alice.insert("A")
   alice.insert("C")
-
   let ops = alice.get_operations()
   let frontier = alice.get_frontier()
   bob.merge_remote(ops, frontier)
@@ -137,7 +147,6 @@ test "concurrent inserts at same position" {
   // Both insert between A and C concurrently
   alice.move_cursor(1)
   alice.insert("X")
-
   bob.move_cursor(1)
   bob.insert("Y")
 

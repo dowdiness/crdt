@@ -1,35 +1,45 @@
 ///| Document - User-facing CRDT document API
-///|
-///| Manages the FugueTree, OpLog, and CausalGraph together
-///| Provides position-based operations (insert/delete at cursor position)
 
+///|
+
+///| Manages the FugueTree, OpLog, and CausalGraph together
+
+///|
+/// Provides position-based operations (insert/delete at cursor position)
 pub struct Document {
   tree : @fugue.FugueTree
   oplog : @oplog.OpLog
   agent_id : String
 }
 
-///| Create a new document for an agent
+///|
+/// Create a new document for an agent
 pub fn Document::new(agent_id : String) -> Document {
   let oplog = @oplog.OpLog::new(agent_id)
   let tree = @fugue.FugueTree::new()
   { tree, oplog, agent_id }
 }
 
-///| Get the current text content
+///|
+/// Get the current text content
 pub fn Document::to_text(self : Document) -> String {
   self.tree.to_text()
 }
 
-///| Get the current frontier
+///|
+/// Get the current frontier
 pub fn Document::get_frontier(self : Document) -> Array[Int] {
   self.oplog.get_frontier()
 }
 
 ///| Map a user position (0-based cursor position) to the LV at that position
+
 ///|
+
 ///| Returns the LV of the item before the cursor position
-///| Returns -1 if at the start of the document
+
+///|
+/// Returns -1 if at the start of the document
 fn Document::position_to_lv(self : Document, position : Int) -> Int {
   if position == 0 {
     return -1
@@ -56,18 +66,20 @@ fn Document::position_to_lv(self : Document, position : Int) -> Int {
       return -1
     }
   }
-
   let (id, _) = items_list[position - 1]
   id
 }
 
 ///| Insert text at a cursor position
+
 ///|
-///| Returns the operation that was created
+
+///|
+/// Returns the operation that was created
 pub fn Document::insert(
   self : Document,
   position : Int,
-  text : String
+  text : String,
 ) -> @oplog.Op {
   // Map position to LV
   let origin_left = self.position_to_lv(position)
@@ -120,14 +132,16 @@ pub fn Document::insert(
 
   // Apply to tree
   self.tree.insert(op.lv, text, origin_left, origin_right, timestamp)
-
   op
 }
 
 ///| Delete character at a cursor position
+
 ///|
-///| Returns Some(operation) if successful, None if position is invalid
-pub fn Document::delete(self : Document, position : Int) -> Option[@oplog.Op] {
+
+///|
+/// Returns Some(operation) if successful, None if position is invalid
+pub fn Document::delete(self : Document, position : Int) -> @oplog.Op? {
   if position < 0 {
     return None
   }
@@ -142,7 +156,6 @@ pub fn Document::delete(self : Document, position : Int) -> Option[@oplog.Op] {
     }
   }
   items_list.sort_by(fn(a, b) { a.0.compare(b.0) })
-
   if position >= items_list.length() {
     return None
   }
@@ -153,11 +166,11 @@ pub fn Document::delete(self : Document, position : Int) -> Option[@oplog.Op] {
   // Create and apply delete operation
   let op = self.oplog.delete(target_lv)
   self.tree.delete(target_lv)
-
   Some(op)
 }
 
-///| Apply a remote operation to this document
+///|
+/// Apply a remote operation to this document
 pub fn Document::apply_remote(self : Document, op : @oplog.Op) -> Unit {
   // Add to oplog
   self.oplog.apply_remote(op)
@@ -176,11 +189,12 @@ pub fn Document::apply_remote(self : Document, op : @oplog.Op) -> Unit {
   }
 }
 
-///| Merge remote operations into this document
+///|
+/// Merge remote operations into this document
 pub fn Document::merge_remote(
   self : Document,
   remote_ops : Array[@oplog.Op],
-  _remote_frontier : Array[Int]
+  _remote_frontier : Array[Int],
 ) -> Unit {
   // Use the merge module's convenience function
   @merge.merge_remote_ops(self.tree, self.oplog, remote_ops)
