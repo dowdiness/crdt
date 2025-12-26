@@ -1,0 +1,62 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/crdt"
+
+import(
+  "dowdiness/crdt/editor"
+  "dowdiness/crdt/oplog"
+)
+
+// Values
+pub fn apply_remote(@editor.Editor, @oplog.Op) -> Unit
+
+pub fn backspace(@editor.Editor) -> Bool
+
+pub fn delete(@editor.Editor) -> Bool
+
+pub fn doc_apply_remote(@editor.Document, @oplog.Op) -> Unit
+
+pub fn doc_delete(@editor.Document, Int) -> @oplog.Op?
+
+pub fn doc_get_frontier(@editor.Document) -> Array[Int]
+
+pub fn doc_insert(@editor.Document, Int, String) -> @oplog.Op
+
+pub fn doc_merge_remote(@editor.Document, Array[@oplog.Op], Array[Int]) -> Unit
+
+pub fn doc_to_text(@editor.Document) -> String
+
+pub fn get_cursor(@editor.Editor) -> Int
+
+pub fn get_frontier(@editor.Editor) -> Array[Int]
+
+pub fn get_operations(@editor.Editor) -> Array[@oplog.Op]
+
+pub fn get_text(@editor.Editor) -> String
+
+pub fn insert(@editor.Editor, String) -> Unit
+
+pub fn insert_at(@editor.Editor, Int, String) -> Unit
+
+pub fn merge_remote(@editor.Editor, Array[@oplog.Op], Array[Int]) -> Unit
+
+pub fn move_cursor(@editor.Editor, Int) -> Unit
+
+pub fn new_document(String) -> @editor.Document
+
+pub fn new_editor(String) -> @editor.Editor
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+pub using @editor {type Document}
+
+pub using @editor {type Editor}
+
+pub using @oplog {type Op}
+
+pub using @oplog {type OpContent}
+
+// Traits
+

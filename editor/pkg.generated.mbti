@@ -1,0 +1,47 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/crdt/editor"
+
+import(
+  "dowdiness/crdt/fugue"
+  "dowdiness/crdt/oplog"
+)
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Document {
+  tree : @fugue.FugueTree
+  oplog : @oplog.OpLog
+  agent_id : String
+}
+pub fn Document::apply_remote(Self, @oplog.Op) -> Unit
+pub fn Document::delete(Self, Int) -> @oplog.Op?
+pub fn Document::get_frontier(Self) -> Array[Int]
+pub fn Document::insert(Self, Int, String) -> @oplog.Op
+pub fn Document::merge_remote(Self, Array[@oplog.Op], Array[Int]) -> Unit
+pub fn Document::new(String) -> Self
+pub fn Document::to_text(Self) -> String
+
+pub struct Editor {
+  doc : Document
+  mut cursor : Int
+}
+pub fn Editor::apply_remote(Self, @oplog.Op) -> Unit
+pub fn Editor::backspace(Self) -> Bool
+pub fn Editor::delete(Self) -> Bool
+pub fn Editor::get_cursor(Self) -> Int
+pub fn Editor::get_frontier(Self) -> Array[Int]
+pub fn Editor::get_operations(Self) -> Array[@oplog.Op]
+pub fn Editor::get_text(Self) -> String
+pub fn Editor::insert(Self, String) -> Unit
+pub fn Editor::insert_at(Self, Int, String) -> Unit
+pub fn Editor::merge_remote(Self, Array[@oplog.Op], Array[Int]) -> Unit
+pub fn Editor::move_cursor(Self, Int) -> Unit
+pub fn Editor::new(String) -> Self
+
+// Type aliases
+
+// Traits
+

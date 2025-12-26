@@ -1,0 +1,53 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/crdt/causal_graph"
+
+import(
+  "moonbitlang/core/immut/hashmap"
+)
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct CausalGraph {
+  mut entries : @hashmap.HashMap[Int, GraphEntry]
+  mut version_map : @hashmap.HashMap[RawVersion, Int]
+  mut next_lv : Int
+  mut frontier : Array[Int]
+  mut agent_seqs : @hashmap.HashMap[String, Int]
+}
+pub fn CausalGraph::add_version(Self, Array[Int], String) -> Int
+pub fn CausalGraph::get_frontier(Self) -> Array[Int]
+pub fn CausalGraph::graph_diff(Self, Array[Int], Array[Int]) -> (Array[Int], Array[Int])
+pub fn CausalGraph::is_ancestor(Self, Int, Int) -> Bool
+pub fn CausalGraph::lv_to_raw(Self, Int) -> RawVersion?
+pub fn CausalGraph::new() -> Self
+pub fn CausalGraph::raw_to_lv(Self, RawVersion) -> Int?
+
+pub struct GraphEntry {
+  parents : Array[Int]
+  agent : String
+  seq : Int
+  lamport : Int
+}
+pub impl Show for GraphEntry
+
+pub struct RawVersion {
+  agent : String
+  seq : Int
+}
+pub fn RawVersion::new(String, Int) -> Self
+pub fn RawVersion::to_string(Self) -> String
+pub impl Compare for RawVersion
+pub impl Eq for RawVersion
+pub impl Hash for RawVersion
+pub impl Show for RawVersion
+
+// Type aliases
+pub type AgentId = String
+
+pub type LV = Int
+
+// Traits
+

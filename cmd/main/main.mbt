@@ -1,8 +1,13 @@
 ///| Main entry point for the CRDT editor CLI
 
 ///|
-/// This will be implemented in Phase 6
+/// Runs demos of the CRDT editor
 fn main {
-  println("Eg-walker CRDT Editor")
-  println("Phase 6 (CLI/REPL) - Coming soon")
+  // First run the convergence demo
+  run_convergence_demo()
+  println("")
+  println("")
+
+  // Then run the interactive REPL demo
+  run_repl("alice")
 }

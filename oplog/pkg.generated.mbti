@@ -1,0 +1,52 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/crdt/oplog"
+
+import(
+  "dowdiness/crdt/causal_graph"
+)
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Op {
+  lv : Int
+  parents : Array[Int]
+  content : OpContent
+  origin_left : Int
+  origin_right : Int
+}
+pub fn Op::get_insert_text(Self) -> String?
+pub fn Op::is_delete(Self) -> Bool
+pub fn Op::is_insert(Self) -> Bool
+pub fn Op::new_delete(Int, Array[Int], Int) -> Self
+pub fn Op::new_insert(Int, Array[Int], String, Int, Int) -> Self
+pub impl Show for Op
+
+pub enum OpContent {
+  Insert(String)
+  Delete
+}
+pub impl Eq for OpContent
+pub impl Show for OpContent
+
+pub struct OpLog {
+  mut operations : Array[Op]
+  graph : @causal_graph.CausalGraph
+  agent_id : String
+}
+pub fn OpLog::add_op(Self, Op) -> Unit
+pub fn OpLog::apply_remote(Self, Op) -> Unit
+pub fn OpLog::delete(Self, Int) -> Op
+pub fn OpLog::get_all_ops(Self) -> Array[Op]
+pub fn OpLog::get_frontier(Self) -> Array[Int]
+pub fn OpLog::get_op(Self, Int) -> Op?
+pub fn OpLog::insert(Self, String, Int, Int) -> Op
+pub fn OpLog::new(String) -> Self
+pub fn OpLog::op_count(Self) -> Int
+
+// Type aliases
+
+// Traits
+

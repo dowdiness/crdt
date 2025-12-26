@@ -1,0 +1,45 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/crdt/fugue"
+
+import(
+  "moonbitlang/core/immut/hashmap"
+)
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct FugueTree {
+  mut items : @hashmap.HashMap[Int, Item]
+  root : Int
+  mut length : Int
+}
+pub fn FugueTree::add_item(Self, Item) -> Unit
+pub fn FugueTree::delete(Self, Int) -> Unit
+pub fn FugueTree::find_parent(Self, Int, Int) -> Int
+pub fn FugueTree::get_all_items(Self) -> Array[(Int, Item)]
+pub fn FugueTree::get_item(Self, Int) -> Item?
+pub fn FugueTree::insert(Self, Int, String, Int, Int, Int) -> Unit
+pub fn FugueTree::new() -> Self
+pub fn FugueTree::to_text(Self) -> String
+pub fn FugueTree::visible_count(Self) -> Int
+pub impl Show for FugueTree
+
+pub struct Item {
+  id : Int
+  content : String
+  parent : Int
+  deleted : Bool
+  timestamp : Int
+}
+pub fn Item::is_visible(Self) -> Bool
+pub fn Item::mark_deleted(Self) -> Self
+pub fn Item::new(Int, String, Int, Int) -> Self
+pub fn Item::new_deleted(Int, String, Int, Int) -> Self
+pub impl Show for Item
+
+// Type aliases
+
+// Traits
+

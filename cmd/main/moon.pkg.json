@@ -1,9 +1,7 @@
 {
   "is-main": true,
   "import": [
-    {
-      "path": "dowdiness/crdt",
-      "alias": "lib"
-    }
+    "dowdiness/crdt/editor",
+    "dowdiness/crdt/oplog"
   ]
 }
