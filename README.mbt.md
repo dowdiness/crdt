@@ -10,19 +10,19 @@ An implementation of the eg-walker CRDT algorithm for collaborative text editing
 
 - **Phase 1: CausalGraph Foundation** - Version tracking and causal dependencies
 - **Phase 2: OpLog** - Operation storage with causal metadata
+- **Phase 3: FugueMax Tree** - Sequence CRDT with deterministic concurrent insert ordering
 
 ### 🚧 Next Steps
 
-- **Phase 3: FugueMax Tree** - Sequence CRDT for deterministic concurrent insert ordering
 - **Phase 4: Merge Algorithm** - Retreat-advance-apply merge implementation
 - **Phase 5: Document & Editor** - User-facing API
 - **Phase 6: CLI/REPL** - Terminal interface
 
 ## Current Status
 
-- **Files**: 8 MoonBit source files
-- **Tests**: 10 passing
-- **Modules**: causal_graph ✓, oplog ✓
+- **Files**: 11 MoonBit source files
+- **Tests**: 18 passing (100%)
+- **Modules**: causal_graph ✓, oplog ✓, fugue ✓
 
 ## Testing
 
