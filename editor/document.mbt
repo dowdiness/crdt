@@ -45,16 +45,8 @@ fn Document::position_to_lv(self : Document, position : Int) -> Int {
     return -1
   }
 
-  // Get all visible items in order
-  let items_list : Array[(Int, @fugue.Item)] = []
-  let items_iter = self.tree.items.iter()
-  for entry in items_iter {
-    let (id, item) = entry
-    if id != -1 && item.is_visible() {
-      items_list.push((id, item))
-    }
-  }
-  items_list.sort_by(fn(a, b) { a.0.compare(b.0) })
+  // Get all visible items in proper tree order
+  let items_list = self.tree.get_visible_items()
 
   // Find the LV at position - 1
   if position > items_list.length() {
@@ -129,17 +121,9 @@ pub fn Document::delete(self : Document, position : Int) -> @oplog.Op? {
     return None
   }
 
-  // Get all visible items in order
-  let items_list : Array[(Int, @fugue.Item)] = []
-  let items_iter = self.tree.items.iter()
-  for entry in items_iter {
-    let (id, item) = entry
-    if id != -1 && item.is_visible() {
-      items_list.push((id, item))
-    }
-  }
-  items_list.sort_by(fn(a, b) { a.0.compare(b.0) })
-  println("items_list: \{items_list}, position: \{position}")
+  // Get all visible items in proper tree order
+  let items_list = self.tree.get_visible_items()
+
   if position >= items_list.length() {
     return None
   }

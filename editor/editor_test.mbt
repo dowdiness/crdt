@@ -58,9 +58,9 @@ test "backspace" {
   let editor = Editor::new("alice")
   editor.insert("Hello")
   let success = editor.backspace()
-  inspect(success, content="false")
-  inspect(editor.get_text(), content="Hello")
-  inspect(editor.get_cursor(), content="5")
+  inspect(success, content="true")
+  inspect(editor.get_text(), content="Hell")
+  inspect(editor.get_cursor(), content="4")
 }
 
 ///|
@@ -162,8 +162,10 @@ test "concurrent inserts at same position" {
 
   // Both should converge to same text
   let alice_text = alice.get_text()
-  inspect(alice_text, content="ACX")
-  inspect(alice_text, content="ACX")
+  // With FugueMax: X is inserted between A and C with origin_left=A, origin_right=C
+  // Since A is ancestor of C, X becomes left child of C, appearing before C
+  inspect(alice_text, content="AXC")
+  inspect(alice_text, content="AXC")
 
   // Text should have deterministic order
   inspect(alice_text.contains("A"), content="true")
