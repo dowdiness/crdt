@@ -160,7 +160,7 @@ pub fn ParsedDocument::new(source : String) -> ParsedDocument {
 }
 
 ///| Parse and create CRDT tree
-pub fn ParsedDocument::parse(self : ParsedDocument) -> Unit raise {
+pub fn ParsedDocument::parse(self : ParsedDocument) -> Unit {
   // Parse source
   let ast = self.parser.parse()
 
@@ -179,7 +179,7 @@ pub fn ParsedDocument::edit(
   self : ParsedDocument,
   edit : Edit,
   new_source : String
-) -> Unit raise {
+) -> Unit {
   // Update source
   self.source = new_source
 

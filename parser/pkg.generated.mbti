@@ -104,11 +104,11 @@ pub struct IncrementalParser {
   parse_cache : ParseCache
   mut node_id_counter : Int
 }
-pub fn IncrementalParser::edit(Self, Edit, String) -> TermNode raise
+pub fn IncrementalParser::edit(Self, Edit, String) -> TermNode
 pub fn IncrementalParser::get_source(Self) -> String
 pub fn IncrementalParser::get_tree(Self) -> TermNode?
 pub fn IncrementalParser::new(String) -> Self
-pub fn IncrementalParser::parse(Self) -> TermNode raise
+pub fn IncrementalParser::parse(Self) -> TermNode
 pub fn IncrementalParser::stats(Self) -> String
 
 pub struct ParseCache {
@@ -133,11 +133,11 @@ pub struct ParsedDocument {
   parser : IncrementalParser
   mut crdt_tree : CRDTNode?
 }
-pub fn ParsedDocument::edit(Self, Edit, String) -> Unit raise
+pub fn ParsedDocument::edit(Self, Edit, String) -> Unit
 pub fn ParsedDocument::get_crdt_tree(Self) -> CRDTNode?
 pub fn ParsedDocument::get_source(Self) -> String
 pub fn ParsedDocument::new(String) -> Self
-pub fn ParsedDocument::parse(Self) -> Unit raise
+pub fn ParsedDocument::parse(Self) -> Unit
 pub fn ParsedDocument::reconstruct_source(Self) -> String
 
 pub struct Range {

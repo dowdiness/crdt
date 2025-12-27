@@ -8,13 +8,12 @@
 /// REPL state holding the editor
 struct ReplState {
   editor : @editor.Editor
-  agent_id : String
 }
 
 ///|
 /// Create a new REPL state
 fn ReplState::new(agent_id : String) -> ReplState {
-  { editor: @editor.Editor::new(agent_id), agent_id }
+  { editor: @editor.Editor::new(agent_id) }
 }
 
 ///|

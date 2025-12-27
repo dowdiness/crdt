@@ -32,9 +32,9 @@ test "parse scaling - large (30+ tokens)" (b : @bench.T) {
 test "incremental vs full - edit at start" (b : @bench.T) {
   b.bench(fn() {
     let parser = IncrementalParser::new("λf.λx.if f x then x + 1 else x - 1")
-    let _ = try { parser.parse() } catch { _ => abort("benchmark failed") }
+    let _ = parser.parse()
     let edit = Edit::replace(0, 1, 1)
-    let result = try { parser.edit(edit, "\\f.λx.if f x then x + 1 else x - 1") } catch { _ => abort("benchmark failed") }
+    let result = parser.edit(edit, "\\f.λx.if f x then x + 1 else x - 1")
     b.keep(result)
   })
 }
@@ -43,9 +43,9 @@ test "incremental vs full - edit at start" (b : @bench.T) {
 test "incremental vs full - edit at end" (b : @bench.T) {
   b.bench(fn() {
     let parser = IncrementalParser::new("λf.λx.if f x then x + 1 else x - 1")
-    let _ = try { parser.parse() } catch { _ => abort("benchmark failed") }
+    let _ = parser.parse()
     let edit = Edit::replace(32, 33, 33)
-    let result = try { parser.edit(edit, "λf.λx.if f x then x + 1 else x - 2") } catch { _ => abort("benchmark failed") }
+    let result = parser.edit(edit, "λf.λx.if f x then x + 1 else x - 2")
     b.keep(result)
   })
 }
@@ -54,9 +54,9 @@ test "incremental vs full - edit at end" (b : @bench.T) {
 test "incremental vs full - edit in middle" (b : @bench.T) {
   b.bench(fn() {
     let parser = IncrementalParser::new("λf.λx.if f x then x + 1 else x - 1")
-    let _ = try { parser.parse() } catch { _ => abort("benchmark failed") }
+    let _ = parser.parse()
     let edit = Edit::replace(14, 15, 15)
-    let result = try { parser.edit(edit, "λf.λx.if f x then y + 1 else x - 1") } catch { _ => abort("benchmark failed") }
+    let result = parser.edit(edit, "λf.λx.if f x then y + 1 else x - 1")
     b.keep(result)
   })
 }
@@ -66,9 +66,9 @@ test "sequential edits - typing simulation" (b : @bench.T) {
   b.bench(fn() {
     // Simulate typing by making progressive edits
     let parser1 = IncrementalParser::new("x")
-    let _ = try { parser1.parse() } catch { _ => abort("benchmark failed") }
+    let _ = parser1.parse()
     let edit1 = Edit::insert(1, 4)
-    let result = try { parser1.edit(edit1, "x + 1") } catch { _ => abort("benchmark failed") }
+    let result = parser1.edit(edit1, "x + 1")
     b.keep(result)
   })
 }
@@ -78,9 +78,9 @@ test "sequential edits - backspace simulation" (b : @bench.T) {
   b.bench(fn() {
     // Simulate backspacing by deleting text
     let parser = IncrementalParser::new("x + 1")
-    let _ = try { parser.parse() } catch { _ => abort("benchmark failed") }
+    let _ = parser.parse()
     let edit = Edit::delete(2, 5)  // Delete " + 1"
-    let result = try { parser.edit(edit, "x") } catch { _ => abort("benchmark failed") }
+    let result = parser.edit(edit, "x")
     b.keep(result)
   })
 }
@@ -89,16 +89,15 @@ test "sequential edits - backspace simulation" (b : @bench.T) {
 test "cache effectiveness - repeated parsing" (b : @bench.T) {
   b.bench(fn() {
     let parser = IncrementalParser::new("λx.x")
-    let _ = try { parser.parse() } catch { _ => abort("benchmark failed") }
+    let _ = parser.parse()
 
     // Make edit
     let edit = Edit::insert(4, 8)
-    let _ = try { parser.edit(edit, "λx.x + 1") } catch { _ => abort("benchmark failed") }
+    let _ = parser.edit(edit, "λx.x + 1")
 
     // Undo edit (should hit cache ideally)
     let edit2 = Edit::delete(4, 8)
-    let result = try { parser.edit(edit2, "λx.x") } catch { _ => abort("benchmark failed") }
-    b.keep(result)
+    let _ = parser.edit(edit2, "λx.x")
   })
 }
 
@@ -106,10 +105,10 @@ test "cache effectiveness - repeated parsing" (b : @bench.T) {
 test "cache effectiveness - similar expressions" (b : @bench.T) {
   b.bench(fn() {
     let parser1 = IncrementalParser::new("x + 1")
-    let result1 = try { parser1.parse() } catch { _ => abort("benchmark failed") }
+    let result1 = parser1.parse()
 
     let parser2 = IncrementalParser::new("x + 2")
-    let result2 = try { parser2.parse() } catch { _ => abort("benchmark failed") }
+    let result2 = parser2.parse()
 
     b.keep((result1, result2))
   })
@@ -141,7 +140,7 @@ test "damage tracking - widespread damage" (b : @bench.T) {
 test "position adjustment after edit" (b : @bench.T) {
   b.bench(fn() {
     let parser = IncrementalParser::new("λf.λx.f x")
-    let tree = try { parser.parse() } catch { _ => abort("benchmark failed") }
+    let tree = parser.parse()
     let edit = Edit::insert(7, 4)
     let adjusted = parser.adjust_tree_positions(tree, edit)
     b.keep(adjusted)
@@ -177,12 +176,12 @@ test "memory pressure - large document" (b : @bench.T) {
     let large_expr = "λf.λx.if f x then (λy.y + 1) x else (λz.z - 1) (f x)"
 
     let parser = IncrementalParser::new(large_expr)
-    let _ = try { parser.parse() } catch { _ => abort("benchmark failed") }
+    let _ = parser.parse()
 
     // Make small edit - change first variable
     let edit = Edit::replace(3, 4, 4)  // Replace 'f' with 'g'
     let new_expr = "λg.λx.if g x then (λy.y + 1) x else (λz.z - 1) (g x)"
-    let result = try { parser.edit(edit, new_expr) } catch { _ => abort("benchmark failed") }
+    let result = parser.edit(edit, new_expr)
     b.keep(result)
   })
 }
@@ -191,11 +190,11 @@ test "memory pressure - large document" (b : @bench.T) {
 test "worst case - full invalidation" (b : @bench.T) {
   b.bench(fn() {
     let parser = IncrementalParser::new("λf.λx.if f x then x + 1 else x - 1")
-    let _ = try { parser.parse() } catch { _ => abort("benchmark failed") }
+    let _ = parser.parse()
 
     // Change at start affects everything (λ → \)
     let edit = Edit::replace(0, 1, 1)
-    let result = try { parser.edit(edit, "\\f.λx.if f x then x + 1 else x - 1") } catch { _ => abort("benchmark failed") }
+    let result = parser.edit(edit, "\\f.λx.if f x then x + 1 else x - 1")
     b.keep(result)
   })
 }
@@ -204,11 +203,11 @@ test "worst case - full invalidation" (b : @bench.T) {
 test "best case - cosmetic change" (b : @bench.T) {
   b.bench(fn() {
     let parser = IncrementalParser::new("x + 1")
-    let _ = try { parser.parse() } catch { _ => abort("benchmark failed") }
+    let _ = parser.parse()
 
     // Change just the constant
     let edit = Edit::replace(4, 5, 5)
-    let result = try { parser.edit(edit, "x + 2") } catch { _ => abort("benchmark failed") }
+    let result = parser.edit(edit, "x + 2")
     b.keep(result)
   })
 }

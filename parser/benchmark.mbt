@@ -53,7 +53,7 @@ test "tokenization" (b : @bench.T) {
 test "incremental - initial parse" (b : @bench.T) {
   b.bench(fn() {
     let parser = IncrementalParser::new("x")
-    let result = try { parser.parse() } catch { _ => abort("benchmark failed") }
+    let result = parser.parse()
     b.keep(result)
   })
 }
@@ -62,9 +62,9 @@ test "incremental - initial parse" (b : @bench.T) {
 test "incremental - small edit" (b : @bench.T) {
   b.bench(fn() {
     let parser = IncrementalParser::new("x")
-    let _ = try { parser.parse() } catch { _ => abort("benchmark failed") }
+    let _ = parser.parse()
     let edit = Edit::insert(1, 4)
-    let result = try { parser.edit(edit, "x + 1") } catch { _ => abort("benchmark failed") }
+    let result = parser.edit(edit, "x + 1")
     b.keep(result)
   })
 }
@@ -73,11 +73,11 @@ test "incremental - small edit" (b : @bench.T) {
 test "incremental - multiple edits" (b : @bench.T) {
   b.bench(fn() {
     let parser = IncrementalParser::new("x")
-    let _ = try { parser.parse() } catch { _ => abort("benchmark failed") }
+    let _ = parser.parse()
     let edit1 = Edit::insert(1, 4)
-    let _ = try { parser.edit(edit1, "x + 1") } catch { _ => abort("benchmark failed") }
+    let _ = parser.edit(edit1, "x + 1")
     let edit2 = Edit::replace(4, 5, 5)
-    let result = try { parser.edit(edit2, "x + 2") } catch { _ => abort("benchmark failed") }
+    let result = parser.edit(edit2, "x + 2")
     b.keep(result)
   })
 }
@@ -86,9 +86,9 @@ test "incremental - multiple edits" (b : @bench.T) {
 test "incremental - replacement" (b : @bench.T) {
   b.bench(fn() {
     let parser = IncrementalParser::new("λx.x")
-    let _ = try { parser.parse() } catch { _ => abort("benchmark failed") }
+    let _ = parser.parse()
     let edit = Edit::replace(0, 1, 1)
-    let result = try { parser.edit(edit, "\\x.x") } catch { _ => abort("benchmark failed") }
+    let result = parser.edit(edit, "\\x.x")
     b.keep(result)
   })
 }
@@ -155,7 +155,7 @@ test "error recovery - error" (b : @bench.T) {
 test "parsed document - parse" (b : @bench.T) {
   b.bench(fn() {
     let doc = ParsedDocument::new("42")
-    try { doc.parse() } catch { _ => abort("benchmark failed") }
+    doc.parse()
     b.keep(doc)
   })
 }
@@ -164,9 +164,9 @@ test "parsed document - parse" (b : @bench.T) {
 test "parsed document - edit" (b : @bench.T) {
   b.bench(fn() {
     let doc = ParsedDocument::new("x")
-    try { doc.parse() } catch { _ => abort("benchmark failed") }
+    doc.parse()
     let edit = Edit::insert(1, 4)
-    try { doc.edit(edit, "x + 1") } catch { _ => abort("benchmark failed") }
+    doc.edit(edit, "x + 1")
     b.keep(doc)
   })
 }

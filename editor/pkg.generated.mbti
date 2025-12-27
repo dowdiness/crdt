@@ -54,7 +54,7 @@ pub struct ParsedEditor {
 }
 pub fn ParsedEditor::backspace(Self) -> Bool
 pub fn ParsedEditor::delete(Self) -> Bool
-pub fn ParsedEditor::get_ast(Self) -> @parser.TermNode raise
+pub fn ParsedEditor::get_ast(Self) -> @parser.TermNode
 pub fn ParsedEditor::get_cursor(Self) -> Int
 pub fn ParsedEditor::get_frontier(Self) -> Array[Int]
 pub fn ParsedEditor::get_operations(Self) -> Array[@oplog.Op]

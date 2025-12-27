@@ -29,8 +29,8 @@ fn IncrementalParser::next_node_id(self : IncrementalParser) -> Int {
 }
 
 ///| Perform initial full parse
-pub fn IncrementalParser::parse(self : IncrementalParser) -> TermNode raise {
-  let tree = parse_positioned(self.source)
+pub fn IncrementalParser::parse(self : IncrementalParser) -> TermNode {
+  let (tree, _errors) = parse_with_error_recovery(self.source)
   self.tree = Some(tree)
   tree
 }
@@ -46,7 +46,7 @@ pub fn IncrementalParser::edit(
   self : IncrementalParser,
   edit : Edit,
   new_source : String
-) -> TermNode raise {
+) -> TermNode {
   // Step 1: Update source
   self.source = new_source
 
@@ -71,9 +71,9 @@ pub fn IncrementalParser::edit(
   self.token_cache.invalidate_range(damaged_range.start, damaged_range.end)
   self.parse_cache.invalidate_range(damaged_range)
 
-  // Step 6: Reparse (for now, do full reparse)
+  // Step 6: Reparse (for now, do full reparse) with error recovery
   // TODO: Implement partial reparsing with cache reuse
-  let new_tree = parse_positioned(new_source)
+  let (new_tree, _errors) = parse_with_error_recovery(new_source)
   self.tree = Some(new_tree)
   new_tree
 }

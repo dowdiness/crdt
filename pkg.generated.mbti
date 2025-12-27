@@ -52,7 +52,7 @@ pub fn parsed_backspace(@editor.ParsedEditor) -> Bool
 
 pub fn parsed_delete(@editor.ParsedEditor) -> Bool
 
-pub fn parsed_get_ast(@editor.ParsedEditor) -> @parser.TermNode raise
+pub fn parsed_get_ast(@editor.ParsedEditor) -> @parser.TermNode
 
 pub fn parsed_get_cursor(@editor.ParsedEditor) -> Int
 

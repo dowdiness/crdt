@@ -68,7 +68,7 @@ pub fn ParsedEditor::get_text(self : ParsedEditor) -> String {
 
 /// Get the AST (lazy evaluation - only reparses if dirty)
 /// Raises an error if parsing fails
-pub fn ParsedEditor::get_ast(self : ParsedEditor) -> @parser.TermNode raise {
+pub fn ParsedEditor::get_ast(self : ParsedEditor) -> @parser.TermNode {
   if self.parse_dirty {
     self.reparse()
   }
@@ -80,7 +80,7 @@ pub fn ParsedEditor::get_ast(self : ParsedEditor) -> @parser.TermNode raise {
 
 /// Incremental reparse using text diff
 /// Computes Edit from old→new text and incrementally reparses
-fn ParsedEditor::reparse(self : ParsedEditor) -> Unit raise {
+fn ParsedEditor::reparse(self : ParsedEditor) -> Unit {
   let old_text = self.cached_text
   let new_text = self.editor.get_text()
 

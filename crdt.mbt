@@ -112,7 +112,7 @@ pub let parsed_get_text : (ParsedEditor) -> String = @editor.ParsedEditor::get_t
 pub let parsed_get_cursor : (ParsedEditor) -> Int = @editor.ParsedEditor::get_cursor
 
 ///|
-pub let parsed_get_ast : (ParsedEditor) -> TermNode raise = @editor.ParsedEditor::get_ast
+pub let parsed_get_ast : (ParsedEditor) -> TermNode = @editor.ParsedEditor::get_ast
 
 ///|
 pub let parsed_is_parse_valid : (ParsedEditor) -> Bool = @editor.ParsedEditor::is_parse_valid
