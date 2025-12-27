@@ -1,16 +1,40 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "dowdiness/crdt/parser"
 
+import(
+  "moonbitlang/core/hashmap"
+)
+
 // Values
+pub fn ast_to_crdt(TermNode) -> CRDTNode
+
+pub fn collect_errors(TermNode) -> Array[String]
+
+pub fn crdt_to_source(CRDTNode) -> String
+
+pub fn has_errors(TermNode) -> Bool
+
 pub fn parse(String) -> Term raise
+
+pub fn parse_positioned(String) -> TermNode raise
+
+pub fn parse_with_error_recovery(String) -> (TermNode, Array[String])
+
+pub fn print_crdt_tree(CRDTNode, Int) -> String
 
 pub fn print_term(Term) -> String
 
+pub fn print_term_node(TermNode) -> String
+
 pub fn print_token(Token) -> String
+
+pub fn print_token_info(TokenInfo) -> String
+
+pub fn print_token_infos(Array[TokenInfo]) -> String
 
 pub fn print_tokens(Array[Token]) -> String
 
-pub fn tokenize(String) -> Array[Token] raise TokenizationError
+pub fn tokenize(String) -> Array[TokenInfo] raise TokenizationError
 
 // Errors
 pub suberror ParseError (String, Token)
@@ -25,6 +49,119 @@ pub(all) enum Bop {
 pub impl Eq for Bop
 pub impl Show for Bop
 
+pub struct CRDTNode {
+  node_type : String
+  text_value : String
+  attributes : @hashmap.HashMap[String, String]
+  children : Array[CRDTNode]
+}
+pub fn CRDTNode::new(String, String, @hashmap.HashMap[String, String], Array[Self]) -> Self
+
+type CacheKey
+pub impl Eq for CacheKey
+pub impl Hash for CacheKey
+
+type CachedNode
+
+type CachedTokens
+
+pub struct DamageTracker {
+  damaged_ranges : Array[Range]
+}
+pub fn DamageTracker::add_range(Self, Range) -> Unit
+pub fn DamageTracker::empty() -> Self
+pub fn DamageTracker::expand_for_node(Self, Int, Int) -> Unit
+pub fn DamageTracker::expand_for_tree(Self, TermNode) -> Unit
+pub fn DamageTracker::is_damaged(Self, Range) -> Bool
+pub fn DamageTracker::is_position_damaged(Self, Int) -> Bool
+pub fn DamageTracker::new(Edit) -> Self
+pub fn DamageTracker::range(Self) -> Range
+pub fn DamageTracker::stats(Self) -> String
+
+pub struct Edit {
+  start : Int
+  old_end : Int
+  new_end : Int
+}
+pub fn Edit::affects_position(Self, Int) -> Bool
+pub fn Edit::apply_to_position(Self, Int) -> Int
+pub fn Edit::delete(Int, Int) -> Self
+pub fn Edit::deleted_length(Self) -> Int
+pub fn Edit::delta(Self) -> Int
+pub fn Edit::insert(Int, Int) -> Self
+pub fn Edit::inserted_length(Self) -> Int
+pub fn Edit::new(Int, Int, Int) -> Self
+pub fn Edit::overlaps_range(Self, Int, Int) -> Bool
+pub fn Edit::replace(Int, Int, Int) -> Self
+pub fn Edit::to_string(Self) -> String
+pub impl Eq for Edit
+pub impl Show for Edit
+
+pub struct IncrementalParser {
+  mut source : String
+  mut tree : TermNode?
+  token_cache : TokenCache
+  parse_cache : ParseCache
+  mut node_id_counter : Int
+}
+pub fn IncrementalParser::edit(Self, Edit, String) -> TermNode raise
+pub fn IncrementalParser::get_source(Self) -> String
+pub fn IncrementalParser::get_tree(Self) -> TermNode?
+pub fn IncrementalParser::new(String) -> Self
+pub fn IncrementalParser::parse(Self) -> TermNode raise
+pub fn IncrementalParser::stats(Self) -> String
+
+pub struct ParseCache {
+  cache : @hashmap.HashMap[ParseCacheKey, CachedNode]
+  mut version : Int
+  max_entries : Int
+}
+pub fn ParseCache::clear(Self) -> Unit
+pub fn ParseCache::get(Self, Array[TokenInfo], Int, Int) -> TermNode?
+pub fn ParseCache::insert(Self, Array[TokenInfo], Int, Int, TermNode) -> Unit
+pub fn ParseCache::invalidate_range(Self, Range) -> Unit
+pub fn ParseCache::new() -> Self
+pub fn ParseCache::stats(Self) -> String
+pub fn ParseCache::with_capacity(Int) -> Self
+
+type ParseCacheKey
+pub impl Eq for ParseCacheKey
+pub impl Hash for ParseCacheKey
+
+pub struct ParsedDocument {
+  mut source : String
+  parser : IncrementalParser
+  mut crdt_tree : CRDTNode?
+}
+pub fn ParsedDocument::edit(Self, Edit, String) -> Unit raise
+pub fn ParsedDocument::get_crdt_tree(Self) -> CRDTNode?
+pub fn ParsedDocument::get_source(Self) -> String
+pub fn ParsedDocument::new(String) -> Self
+pub fn ParsedDocument::parse(Self) -> Unit raise
+pub fn ParsedDocument::reconstruct_source(Self) -> String
+
+pub struct Range {
+  start : Int
+  end : Int
+}
+pub fn Range::contains(Self, Int) -> Bool
+pub fn Range::length(Self) -> Int
+pub fn Range::merge(Self, Self) -> Self
+pub fn Range::new(Int, Int) -> Self
+pub fn Range::overlaps(Self, Self) -> Bool
+pub impl Eq for Range
+pub impl Show for Range
+
+pub struct RecoveringParser {
+  tokens : Array[TokenInfo]
+  mut position : Int
+  mut node_id_counter : Int
+  errors : Array[String]
+}
+pub fn RecoveringParser::get_errors(Self) -> Array[String]
+pub fn RecoveringParser::new(Array[TokenInfo]) -> Self
+pub fn RecoveringParser::record_error(Self, String) -> Unit
+
 pub(all) enum Term {
   Int(Int)
   Var(String)
@@ -35,6 +172,28 @@ pub(all) enum Term {
 }
 pub impl Eq for Term
 pub impl Show for Term
+
+pub enum TermKind {
+  Int(Int)
+  Var(String)
+  Lam(String)
+  App
+  Bop(Bop)
+  If
+  Error(String)
+}
+pub impl Show for TermKind
+
+pub struct TermNode {
+  kind : TermKind
+  start : Int
+  end : Int
+  node_id : Int
+  children : Array[TermNode]
+}
+pub fn TermNode::error(String, Int, Int) -> Self
+pub fn TermNode::new(TermKind, Int, Int, Int, Array[Self]) -> Self
+pub impl Show for TermNode
 
 pub enum Token {
   Lambda
@@ -52,6 +211,28 @@ pub enum Token {
 }
 pub impl Eq for Token
 pub impl Show for Token
+
+pub struct TokenCache {
+  cache : @hashmap.HashMap[CacheKey, CachedTokens]
+  mut version : Int
+  max_entries : Int
+}
+pub fn TokenCache::clear(Self) -> Unit
+pub fn TokenCache::get(Self, String, Int, Int) -> Array[TokenInfo]?
+pub fn TokenCache::insert(Self, String, Int, Int, Array[TokenInfo]) -> Unit
+pub fn TokenCache::invalidate_range(Self, Int, Int) -> Unit
+pub fn TokenCache::new() -> Self
+pub fn TokenCache::stats(Self) -> String
+pub fn TokenCache::with_capacity(Int) -> Self
+
+pub struct TokenInfo {
+  token : Token
+  start : Int
+  end : Int
+}
+pub fn TokenInfo::new(Token, Int, Int) -> Self
+pub impl Eq for TokenInfo
+pub impl Show for TokenInfo
 
 // Type aliases
 pub type VarName = String
