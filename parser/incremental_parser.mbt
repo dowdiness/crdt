@@ -89,26 +89,195 @@ fn IncrementalParser::incremental_reparse(
   damaged_range : Range,
   adjusted_tree : TermNode
 ) -> TermNode {
-  // Infrastructure for Lezer-style tree fragment reuse is in place:
-  // - can_reuse_node() checks if nodes are outside damaged range
-  // - collect_reusable_children() identifies reusable child nodes
-  // - Selective cache invalidation preserves valid cache entries
-  //
-  // However, tree reuse requires additional validation:
-  // Even if a node is positionally outside the damaged range, we must verify
-  // that the overall parse structure is compatible. For example, inserting " + 1"
-  // after "x" changes the structure from Var to Bop, so we can't reuse "x".
-  //
-  // For correctness, we conservatively reparse when any damage is detected.
-  // The benefits of selective cache invalidation are still achieved.
+  // Lezer-style incremental repair with structural validation
 
-  let _ = self.can_reuse_node(adjusted_tree, damaged_range)  // Infrastructure ready
-  let _ = self.collect_reusable_children(adjusted_tree.children, damaged_range)  // For future use
+  // Strategy 1: Try to reuse the entire tree if it's completely outside damage
+  // and covers the entire source (no structural change)
+  if self.can_reuse_node(adjusted_tree, damaged_range) &&
+    adjusted_tree.start == 0 &&
+    adjusted_tree.end == source.length() {
+    // Tree is outside damaged range AND covers full source
+    // This handles edits that don't affect this tree at all
+    // (e.g., editing a different part of a multi-expression document)
+    return adjusted_tree
+  }
 
-  // Always do full reparse to ensure correctness
-  // Selective cache invalidation still provides optimization
+  // Strategy 2: Check if the damaged range is at the end and tree size matches
+  // This handles appending text that doesn't change existing structure
+  if damaged_range.start >= adjusted_tree.end && damaged_range.start == adjusted_tree.end {
+    // Damage is strictly after the tree - need to reparse to include new content
+    // Fall through to full reparse
+  }
+
+  // Strategy 3: Check if we can validate and reuse with structural check
+  if self.can_potentially_reuse_with_validation(adjusted_tree, source, damaged_range) {
+    // Try structural validation approach
+    match self.try_validated_reuse(adjusted_tree, source, damaged_range) {
+      Some(validated_tree) => return validated_tree
+      None => ()  // Fall through to full reparse
+    }
+  }
+
+  // Default: Full reparse with benefit of selective cache invalidation
+  // Caches outside damaged range are preserved, providing optimization
   let (tree, _errors) = parse_with_error_recovery(source)
   tree
+}
+
+///| Check if tree reuse might be possible with validation
+fn IncrementalParser::can_potentially_reuse_with_validation(
+  _self : IncrementalParser,
+  tree : TermNode,
+  _source : String,
+  damaged_range : Range
+) -> Bool {
+  // Only consider reuse if damage is localized (not affecting entire tree)
+  // and tree has some structure outside the damaged range
+  if tree.children.length() == 0 {
+    return false  // Leaf nodes should just be reparsed
+  }
+
+  // Check if at least some children are outside damaged range
+  let mut has_undamaged_children = false
+  for child in tree.children {
+    if can_reuse_node(child, damaged_range) {
+      has_undamaged_children = true
+      break
+    }
+  }
+
+  has_undamaged_children
+}
+
+///| Try to reuse tree with structural validation (Lezer-style validation)
+fn IncrementalParser::try_validated_reuse(
+  self : IncrementalParser,
+  tree : TermNode,
+  source : String,
+  damaged_range : Range
+) -> TermNode? {
+  // Lezer-style structural validation and fragment reuse
+
+  // Collect children outside damaged range
+  let reusable_children = self.collect_reusable_children(tree.children, damaged_range)
+
+  // If no children are reusable, fall back to full reparse
+  if reusable_children.length() == 0 {
+    return None
+  }
+
+  // Validate each reusable child
+  for child in reusable_children {
+    if !self.validate_node_structure(child, source) {
+      // Structure mismatch - can't safely reuse
+      return None
+    }
+  }
+
+  // All reusable children validated successfully
+  // Now validate the parent node itself before reconstruction
+
+  // CRITICAL: Even if all children validate, the parent node's structure
+  // might have changed. For example, inserting "λy." at the start changes
+  // the top-level structure from "λx.(...)" to "λy.(λx.(...))"
+
+  // Validate the parent node structure matches the source
+  if !self.validate_node_structure(tree, source) {
+    // Parent structure changed - can't safely reuse even with valid children
+    return None
+  }
+
+  // Strategy: If we can reuse all children AND parent validates,
+  // reconstruct the parent node with the reused children.
+
+  // Check if all children are reusable
+  if reusable_children.length() == tree.children.length() {
+    // All children validated and reusable - reconstruct parent with same structure
+    Some(
+      TermNode::new(
+        tree.kind,
+        tree.start,
+        tree.end,
+        tree.node_id,
+        reusable_children,
+      ),
+    )
+  } else {
+    // Some children are in damaged range - need partial reparse
+    // For now, fall back to full reparse as partial reconstruction is complex
+    // This path handles mixed scenarios (some children reusable, some damaged)
+    None
+  }
+}
+
+///| Validate that a node's structure matches its source text
+fn IncrementalParser::validate_node_structure(
+  _self : IncrementalParser,
+  node : TermNode,
+  source : String
+) -> Bool {
+  // Extract the text for this node's range
+  let node_text = extract_substring(source, node.start, node.end)
+
+  // Reparse the text
+  let (reparsed, _errors) = parse_with_error_recovery(node_text)
+
+  // Check if the structure matches
+  nodes_have_same_structure(node, reparsed)
+}
+
+///| Extract substring from source
+fn extract_substring(source : String, start : Int, end : Int) -> String {
+  // Handle bounds checking
+  if start < 0 || end > source.length() || start >= end {
+    return ""
+  }
+
+  // Use MoonBit's substring method
+  // Build string character by character
+  let mut result = ""
+  for i = start; i < end && i < source.length(); i = i + 1 {
+    let code = source.code_unit_at(i).to_int()
+    let ch = Int::unsafe_to_char(code)
+    result = result + ch.to_string()
+  }
+  result
+}
+
+///| Check if two nodes have the same structure
+fn nodes_have_same_structure(node1 : TermNode, node2 : TermNode) -> Bool {
+  // Check if kinds match
+  if !kinds_match(node1.kind, node2.kind) {
+    return false
+  }
+
+  // Check if children count matches
+  if node1.children.length() != node2.children.length() {
+    return false
+  }
+
+  // Recursively check children
+  for i = 0; i < node1.children.length(); i = i + 1 {
+    if !nodes_have_same_structure(node1.children[i], node2.children[i]) {
+      return false
+    }
+  }
+
+  true
+}
+
+///| Check if two TermKinds match structurally
+fn kinds_match(kind1 : TermKind, kind2 : TermKind) -> Bool {
+  match (kind1, kind2) {
+    (TermKind::Int(_), TermKind::Int(_)) => true
+    (TermKind::Var(_), TermKind::Var(_)) => true
+    (TermKind::Lam(_), TermKind::Lam(_)) => true
+    (TermKind::App, TermKind::App) => true
+    (TermKind::Bop(op1), TermKind::Bop(op2)) => op1 == op2
+    (TermKind::If, TermKind::If) => true
+    (TermKind::Error(_), TermKind::Error(_)) => true
+    _ => false
+  }
 }
 
 ///| Check if a node can be reused (Lezer-style fragment reuse check)
@@ -163,7 +332,7 @@ fn IncrementalParser::adjust_tree_positions(
   if tree.end <= edit.start {
     // Node is entirely before edit, no change needed
     tree
-  } else if tree.start >= edit.old_end {
+  } else if tree.start > edit.old_end {
     // Node is entirely after edit, shift positions
     let adjusted_children = tree.children.map(
       fn(child) { self.adjust_tree_positions(child, edit) },

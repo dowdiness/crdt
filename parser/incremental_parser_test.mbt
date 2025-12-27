@@ -218,3 +218,293 @@ test "Lezer-style: damage tracking accuracy" {
   inspect(print_term_node(new_tree).contains("a"), content="true")
   inspect(print_term_node(new_tree).contains("b"), content="false")
 }
+
+// Edge case tests for Lezer-style incremental parsing
+
+test "Edge case: insertion at position 0" {
+  let parser = IncrementalParser::new("x")
+  let _ = parser.parse()
+
+  // Insert at the very beginning
+  let edit = Edit::insert(0, 2)
+  let new_tree = parser.edit(edit, "λx.x")
+
+  // Should correctly parse the new structure
+  let full_tree = parse_positioned("λx.x")
+  inspect(
+    print_term_node(new_tree),
+    content=print_term_node(full_tree),
+  )
+}
+
+test "Edge case: insertion at end of document" {
+  let parser = IncrementalParser::new("x")
+  let _ = parser.parse()
+
+  // Insert at the very end
+  let edit = Edit::insert(1, 4)
+  let new_tree = parser.edit(edit, "x + 1")
+
+  // Should correctly parse the new structure
+  let full_tree = parse_positioned("x + 1")
+  inspect(
+    print_term_node(new_tree),
+    content=print_term_node(full_tree),
+  )
+}
+
+test "Edge case: delete entire document" {
+  let parser = IncrementalParser::new("x + y")
+  let _ = parser.parse()
+
+  // Delete everything
+  let edit = Edit::delete(0, 5)
+  let _ = parser.edit(edit, "")
+
+  // Should handle empty document
+  inspect(parser.get_source(), content="")
+}
+
+test "Edge case: replace with longer text" {
+  let parser = IncrementalParser::new("x")
+  let _ = parser.parse()
+
+  // Replace single char with much longer expression
+  let edit = Edit::replace(0, 1, 15)
+  let new_tree = parser.edit(edit, "λf.λx.f (f (x))")
+
+  let full_tree = parse_positioned("λf.λx.f (f (x))")
+  inspect(
+    print_term_node(new_tree),
+    content=print_term_node(full_tree),
+  )
+}
+
+test "Edge case: replace with shorter text" {
+  let parser = IncrementalParser::new("λf.λx.f (f (x))")
+  let _ = parser.parse()
+
+  // Replace long expression with single char
+  let edit = Edit::replace(0, 15, 1)
+  let new_tree = parser.edit(edit, "y")
+
+  let full_tree = parse_positioned("y")
+  inspect(
+    print_term_node(new_tree),
+    content=print_term_node(full_tree),
+  )
+}
+
+test "Edge case: consecutive insertions at same position" {
+  let parser = IncrementalParser::new("x")
+  let _ = parser.parse()
+
+  // First insertion
+  let edit1 = Edit::insert(1, 2)
+  let _ = parser.edit(edit1, "x y")
+
+  // Second insertion at same position (after first edit)
+  let edit2 = Edit::insert(3, 2)
+  let tree2 = parser.edit(edit2, "x y z")
+
+  let full_tree = parse_positioned("x y z")
+  inspect(
+    print_term_node(tree2),
+    content=print_term_node(full_tree),
+  )
+}
+
+test "Edge case: insertion in middle of lambda parameter" {
+  let parser = IncrementalParser::new("λx.x")
+  let _ = parser.parse()
+
+  // Insert in the middle of parameter name (should change structure)
+  let edit = Edit::insert(2, 1)
+  let new_tree = parser.edit(edit, "λxy.x")
+
+  let full_tree = parse_positioned("λxy.x")
+  inspect(
+    print_term_node(new_tree),
+    content=print_term_node(full_tree),
+  )
+}
+
+test "Edge case: deletion at boundary between nodes" {
+  let parser = IncrementalParser::new("x + y")
+  let _ = parser.parse()
+
+  // Delete the operator (critical boundary)
+  let edit = Edit::delete(2, 4)
+  let new_tree = parser.edit(edit, "x y")
+
+  let full_tree = parse_positioned("x y")
+  inspect(
+    print_term_node(new_tree),
+    content=print_term_node(full_tree),
+  )
+}
+
+test "Edge case: structural change from leaf to compound" {
+  let parser = IncrementalParser::new("42")
+  let _ = parser.parse()
+
+  // Change from simple int to binary operation
+  let edit = Edit::insert(2, 4)
+  let new_tree = parser.edit(edit, "42 + 1")
+
+  let full_tree = parse_positioned("42 + 1")
+  inspect(
+    print_term_node(new_tree),
+    content=print_term_node(full_tree),
+  )
+}
+
+test "Edge case: structural change from compound to leaf" {
+  let parser = IncrementalParser::new("x + y")
+  let _ = parser.parse()
+
+  // Change from binary operation to simple variable
+  let edit = Edit::replace(0, 5, 1)
+  let new_tree = parser.edit(edit, "z")
+
+  let full_tree = parse_positioned("z")
+  inspect(
+    print_term_node(new_tree),
+    content=print_term_node(full_tree),
+  )
+}
+
+test "Edge case: nested lambda insertion at start" {
+  let parser = IncrementalParser::new("λx.x + 1")
+  let _ = parser.parse()
+
+  // Wrap with another lambda
+  let edit = Edit::insert(0, 3)
+  let new_tree = parser.edit(edit, "λy.λx.x + 1")
+
+  let full_tree = parse_positioned("λy.λx.x + 1")
+  inspect(
+    print_term_node(new_tree),
+    content=print_term_node(full_tree),
+  )
+}
+
+test "Edge case: multiple rapid edits in sequence" {
+  let parser = IncrementalParser::new("a")
+  let _ = parser.parse()
+
+  // Rapid sequence of edits
+  let edit1 = Edit::insert(1, 2)
+  let _ = parser.edit(edit1, "a b")
+
+  let edit2 = Edit::insert(3, 2)
+  let _ = parser.edit(edit2, "a b c")
+
+  let edit3 = Edit::insert(5, 2)
+  let tree3 = parser.edit(edit3, "a b c d")
+
+  let full_tree = parse_positioned("a b c d")
+  inspect(
+    print_term_node(tree3),
+    content=print_term_node(full_tree),
+  )
+}
+
+test "Edge case: edit that changes operator precedence" {
+  let parser = IncrementalParser::new("a + b * c")
+  let _ = parser.parse()
+
+  // Change to affect precedence structure
+  let edit = Edit::replace(4, 5, 5)
+  let new_tree = parser.edit(edit, "a + b + c")
+
+  let full_tree = parse_positioned("a + b + c")
+  inspect(
+    print_term_node(new_tree),
+    content=print_term_node(full_tree),
+  )
+}
+
+test "Edge case: whitespace-only insertion" {
+  let parser = IncrementalParser::new("λx.x")
+  let _ = parser.parse()
+
+  // Insert whitespace (should not change structure)
+  let edit = Edit::insert(4, 1)
+  let new_tree = parser.edit(edit, "λx.x ")
+
+  // Structure should be preserved
+  inspect(print_term_node(new_tree).contains("λx"), content="true")
+}
+
+test "Edge case: validation with identical structure but different content" {
+  let parser = IncrementalParser::new("λx.x")
+  let _ = parser.parse()
+
+  // Change variable name (same structure, different content)
+  let edit = Edit::replace(1, 2, 2)
+  let new_tree = parser.edit(edit, "λy.x")
+
+  let full_tree = parse_positioned("λy.x")
+  inspect(
+    print_term_node(new_tree),
+    content=print_term_node(full_tree),
+  )
+}
+
+test "Edge case: insertion that creates error node" {
+  let parser = IncrementalParser::new("x")
+  let _ = parser.parse()
+
+  // Insert invalid syntax
+  let edit = Edit::insert(1, 1)
+  let _ = parser.edit(edit, "x+")
+
+  // Should produce some tree (with error recovery)
+  inspect(parser.get_source(), content="x+")
+}
+
+test "Edge case: zero-length edit (no-op)" {
+  let parser = IncrementalParser::new("x + y")
+  let initial_tree = parser.parse()
+
+  // Zero-length insertion (no change)
+  let edit = Edit::insert(2, 0)
+  let new_tree = parser.edit(edit, "x + y")
+
+  // Should produce same result
+  inspect(
+    print_term_node(new_tree),
+    content=print_term_node(initial_tree),
+  )
+}
+
+test "Edge case: position boundary at node start" {
+  let parser = IncrementalParser::new("λx.λy.x")
+  let _ = parser.parse()
+
+  // Insert exactly at inner lambda boundary
+  let edit = Edit::insert(3, 1)
+  let new_tree = parser.edit(edit, "λx. λy.x")
+
+  let full_tree = parse_positioned("λx. λy.x")
+  inspect(
+    print_term_node(new_tree),
+    content=print_term_node(full_tree),
+  )
+}
+
+test "Edge case: position boundary at node end" {
+  let parser = IncrementalParser::new("λx.λy.x")
+  let _ = parser.parse()
+
+  // Insert exactly at end of inner lambda
+  let edit = Edit::insert(7, 2)
+  let new_tree = parser.edit(edit, "λx.λy.x y")
+
+  let full_tree = parse_positioned("λx.λy.x y")
+  inspect(
+    print_term_node(new_tree),
+    content=print_term_node(full_tree),
+  )
+}
