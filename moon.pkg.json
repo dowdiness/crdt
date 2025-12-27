@@ -12,6 +12,7 @@
         "delete_",
         "backspace",
         "get_text",
+        "set_text",
         "get_cursor",
         "set_cursor",
         "get_ast_json",

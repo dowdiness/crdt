@@ -110,14 +110,18 @@ fn escape_json(s : String) -> String {
   let mut result = ""
   let length = s.length()
   for i = 0; i < length; i = i + 1 {
-    let c = s[i]
+    let code = s.code_unit_at(i).to_int()
+    let c = Int::unsafe_to_char(code)
     match c {
       '"' => result = result + "\\\""
       '\\' => result = result + "\\\\"
       '\n' => result = result + "\\n"
       '\r' => result = result + "\\r"
       '\t' => result = result + "\\t"
-      _ => result = result + c.to_string()
+      _ => {
+        // Use Char.to_string() which properly converts char to string
+        result = result + Char::to_string(c)
+      }
     }
   }
   result

@@ -114,29 +114,8 @@ export class LambdaEditor {
 
   private syncTextToWasm(newText: string): void {
     try {
-
-      const oldText = crdt.get_text(this.handle);
-
-      if (oldText === newText) {
-        return; // Already in sync
-      }
-
-      // Clear and rebuild from scratch - safer than trying to diff
-      // Delete all old content first
-      const oldLen = oldText.length;
-      for (let i = 0; i < oldLen; i++) {
-        try {
-          crdt.delete_(this.handle);
-        } catch (e) {
-          console.warn('Error deleting at position', i, ':', e);
-          break;
-        }
-      }
-
-      // Insert new content character by character
-      if (newText.length > 0) {
-        crdt.insert(this.handle, newText);
-      }
+      // Use the new set_text function for efficient sync
+      crdt.set_text(this.handle, newText);
     } catch (error) {
       console.error('Error in syncTextToWasm:', error);
       throw error;

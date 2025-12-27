@@ -43,6 +43,32 @@ pub fn get_text(_handle : Int) -> String {
   }
 }
 
+/// Set text content directly (replaces entire document)
+/// This is more efficient than delete+insert for syncing from DOM
+pub fn set_text(_handle : Int, new_text : String) -> Unit {
+  match editor.val {
+    Some(ed) => {
+      let old_text = ed.get_text()
+      if old_text == new_text {
+        return  // Already synced
+      }
+
+      // Clear the document
+      let old_len = old_text.length()
+      ed.move_cursor(0)  // Move to start
+      for _i = 0; _i < old_len; _i = _i + 1 {
+        let _ = ed.delete()  // Delete at position 0
+      }
+
+      // Insert new text
+      if new_text.length() > 0 {
+        ed.insert(new_text)
+      }
+    }
+    None => ()
+  }
+}
+
 /// Get cursor position
 pub fn get_cursor(_handle : Int) -> Int {
   match editor.val {
@@ -60,11 +86,13 @@ pub fn set_cursor(_handle : Int, position : Int) -> Unit {
 }
 
 /// Get AST as JSON string
+/// Uses incremental parser for efficient reparsing
 pub fn get_ast_json(_handle : Int) -> String {
   match editor.val {
-    Some(editor) => {
-      let text = editor.get_text()
-      let (ast, _errors) = @parser.parse_with_error_recovery(text)
+    Some(ed) => {
+      // Use the incremental parser from ParsedEditor
+      // This triggers lazy evaluation and incremental reparse if needed
+      let ast = ed.get_ast()
       serialize_ast(ast)
     }
     None => "{}"
@@ -72,11 +100,14 @@ pub fn get_ast_json(_handle : Int) -> String {
 }
 
 /// Get parse errors as JSON array
+/// Extracts errors from the current AST (uses incremental parser)
 pub fn get_errors_json(_handle : Int) -> String {
   match editor.val {
-    Some(editor) => {
-      let text = editor.get_text()
-      let (_ast, errors) = @parser.parse_with_error_recovery(text)
+    Some(ed) => {
+      // Get AST from incremental parser (reuses cached parse)
+      let ast = ed.get_ast()
+      // Extract errors from the AST
+      let errors = @parser.collect_errors(ast)
       serialize_errors(errors)
     }
     None => "[]"
