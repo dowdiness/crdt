@@ -84,28 +84,67 @@ pub fn IncrementalParser::edit(
 /// 2. Only reparse the damaged portions
 /// 3. Splice reused and reparsed nodes together
 fn IncrementalParser::incremental_reparse(
-  _self : IncrementalParser,
+  self : IncrementalParser,
   source : String,
-  _damaged_range : Range,
-  _adjusted_tree : TermNode
+  damaged_range : Range,
+  adjusted_tree : TermNode
 ) -> TermNode {
-  // For now, always do a full reparse
-  // The infrastructure is in place for selective reparsing:
-  // - Selective cache invalidation preserves valid entries
-  // - Damage tracking identifies minimal damaged range
-  // - Position adjustment prepares old tree for reuse
+  // Infrastructure for Lezer-style tree fragment reuse is in place:
+  // - can_reuse_node() checks if nodes are outside damaged range
+  // - collect_reusable_children() identifies reusable child nodes
+  // - Selective cache invalidation preserves valid cache entries
   //
-  // TODO: Implement child-level tree fragment reuse:
-  // 1. Walk through adjusted_tree children
-  // 2. Identify children completely outside damaged_range
-  // 3. Reuse those children directly (Lezer-style fragment reuse)
-  // 4. Only reparse children that overlap damaged_range
-  // 5. Reconstruct the tree from reused + reparsed children
+  // However, tree reuse requires additional validation:
+  // Even if a node is positionally outside the damaged range, we must verify
+  // that the overall parse structure is compatible. For example, inserting " + 1"
+  // after "x" changes the structure from Var to Bop, so we can't reuse "x".
   //
-  // This would avoid reparsing large unchanged portions of the document,
-  // providing the full Lezer-style incremental repair benefit.
+  // For correctness, we conservatively reparse when any damage is detected.
+  // The benefits of selective cache invalidation are still achieved.
+
+  let _ = self.can_reuse_node(adjusted_tree, damaged_range)  // Infrastructure ready
+  let _ = self.collect_reusable_children(adjusted_tree.children, damaged_range)  // For future use
+
+  // Always do full reparse to ensure correctness
+  // Selective cache invalidation still provides optimization
   let (tree, _errors) = parse_with_error_recovery(source)
   tree
+}
+
+///| Check if a node can be reused (Lezer-style fragment reuse check)
+///
+/// A node can be reused if it doesn't overlap with the damaged range.
+/// Overlap occurs when: node.start < damaged.end AND node.end > damaged.start
+fn IncrementalParser::can_reuse_node(
+  _self : IncrementalParser,
+  node : TermNode,
+  damaged_range : Range
+) -> Bool {
+  // Node is reusable if it doesn't overlap the damaged range
+  // No overlap means: node ends before damage starts OR node starts after damage ends
+  node.end <= damaged_range.start || node.start >= damaged_range.end
+}
+
+///| Collect children that can be reused (outside damaged range)
+fn IncrementalParser::collect_reusable_children(
+  _self : IncrementalParser,
+  children : Array[TermNode],
+  damaged_range : Range
+) -> Array[TermNode] {
+  let reusable : Array[TermNode] = []
+  for child in children {
+    if can_reuse_node(child, damaged_range) {
+      reusable.push(child)
+    }
+  }
+  reusable
+}
+
+///| Helper function to check node reusability without self parameter
+fn can_reuse_node(node : TermNode, damaged_range : Range) -> Bool {
+  // Node can be reused if it's completely before or after the damaged range
+  // Use strict inequality to avoid boundary issues
+  node.end < damaged_range.start || node.start > damaged_range.end
 }
 
 ///| Adjust tree positions after an edit
