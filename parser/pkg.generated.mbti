@@ -1,0 +1,60 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/crdt/parser"
+
+// Values
+pub fn parse(String) -> Term raise
+
+pub fn print_term(Term) -> String
+
+pub fn print_token(Token) -> String
+
+pub fn print_tokens(Array[Token]) -> String
+
+pub fn tokenize(String) -> Array[Token] raise TokenizationError
+
+// Errors
+pub suberror ParseError (String, Token)
+
+pub suberror TokenizationError String
+
+// Types and methods
+pub(all) enum Bop {
+  Plus
+  Minus
+}
+pub impl Eq for Bop
+pub impl Show for Bop
+
+pub(all) enum Term {
+  Int(Int)
+  Var(String)
+  Lam(String, Term)
+  App(Term, Term)
+  Bop(Bop, Term, Term)
+  If(Term, Term, Term)
+}
+pub impl Eq for Term
+pub impl Show for Term
+
+pub enum Token {
+  Lambda
+  Dot
+  LeftParen
+  RightParen
+  Plus
+  Minus
+  If
+  Then
+  Else
+  Identifier(String)
+  Integer(Int)
+  EOF
+}
+pub impl Eq for Token
+pub impl Show for Token
+
+// Type aliases
+pub type VarName = String
+
+// Traits
+
