@@ -67,47 +67,73 @@ fn Document::position_to_lv(self : Document, position : Int) -> Int {
 ///|
 
 ///|
-/// Returns the operation that was created
+/// Returns the last operation that was created (for multi-character inserts)
 pub fn Document::insert(
   self : Document,
   position : Int,
   text : String,
 ) -> @oplog.Op {
-  // Map position to LV
-  let origin_left = self.position_to_lv(position)
+  // Insert each character one by one
+  let mut current_pos = position
+  let mut last_op : @oplog.Op? = None
 
-  // Find origin_right (the item after the cursor)
-  let items_list : Array[(Int, @fugue.Item)] = self.tree.get_visible_items()
-  let origin_right = if position == 0 {
-    // At start, find first visible item
-    if items_list.length() > 0 {
-      let (id, _) = items_list[0]
-      id
-    } else {
-      -1
+  // Iterate through each character in the string
+  for i = 0; i < text.length(); i = i + 1 {
+    // Extract single character as string
+    let ch = try {
+      text[i:i + 1].to_string()
+    } catch {
+      _ => continue  // Skip invalid indices
     }
-  } else {
-    // Find item at position
-    if position < items_list.length() {
-      let (id, _) = items_list[position]
-      id
+
+    // Map position to LV
+    let origin_left = self.position_to_lv(current_pos)
+
+    // Find origin_right (the item after the cursor)
+    let items_list : Array[(Int, @fugue.Item)] = self.tree.get_visible_items()
+    let origin_right = if current_pos == 0 {
+      // At start, find first visible item
+      if items_list.length() > 0 {
+        let (id, _) = items_list[0]
+        id
+      } else {
+        -1
+      }
     } else {
-      -1
+      // Find item at position
+      if current_pos < items_list.length() {
+        let (id, _) = items_list[current_pos]
+        id
+      } else {
+        -1
+      }
     }
+
+    // Create and apply the operation for this character
+    let op = self.oplog.insert(ch, origin_left, origin_right)
+
+    // Get lamport timestamp from graph
+    let timestamp = match self.oplog.graph.lv_to_raw(op.lv) {
+      Some(raw) => raw.seq
+      None => op.lv
+    }
+
+    // Apply to tree
+    self.tree.insert(op.lv, ch, origin_left, origin_right, timestamp)
+
+    last_op = Some(op)
+    current_pos = current_pos + 1
   }
 
-  // Create and apply the operation
-  let op = self.oplog.insert(text, origin_left, origin_right)
-
-  // Get lamport timestamp from graph
-  let timestamp = match self.oplog.graph.lv_to_raw(op.lv) {
-    Some(raw) => raw.seq
-    None => op.lv
+  // Return the last operation (or create a dummy one if text was empty)
+  match last_op {
+    Some(op) => op
+    None => {
+      // Empty string inserted - create a no-op
+      // This shouldn't happen in practice, but we need to return something
+      self.oplog.insert("", -1, -1)
+    }
   }
-
-  // Apply to tree
-  self.tree.insert(op.lv, text, origin_left, origin_right, timestamp)
-  op
 }
 
 ///| Delete character at a cursor position

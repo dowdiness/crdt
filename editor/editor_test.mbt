@@ -30,7 +30,7 @@ test "insert at specific position" {
   editor.insert("Heo")
   editor.move_cursor(2)
   editor.insert("ll")
-  inspect(editor.get_text(), content="Heoll")
+  inspect(editor.get_text(), content="Hello")
 }
 
 ///|
@@ -49,8 +49,8 @@ test "delete at cursor" {
   editor.insert("Hello")
   editor.move_cursor(1)
   let success = editor.delete()
-  inspect(success, content="false")
-  inspect(editor.get_text(), content="Hello")
+  inspect(success, content="true")
+  inspect(editor.get_text(), content="Hllo")
 }
 
 ///|
