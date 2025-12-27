@@ -4,9 +4,11 @@ package "dowdiness/crdt/editor"
 import(
   "dowdiness/crdt/fugue"
   "dowdiness/crdt/oplog"
+  "dowdiness/crdt/parser"
 )
 
 // Values
+pub fn compute_edit(String, String) -> @parser.Edit
 
 // Errors
 
@@ -23,6 +25,7 @@ pub fn Document::insert(Self, Int, String) -> @oplog.Op
 pub fn Document::merge_remote(Self, Array[@oplog.Op], Array[Int]) -> Unit
 pub fn Document::new(String) -> Self
 pub fn Document::to_text(Self) -> String
+pub impl Show for Document
 
 pub struct Editor {
   doc : Document
@@ -40,6 +43,27 @@ pub fn Editor::insert_at(Self, Int, String) -> Unit
 pub fn Editor::merge_remote(Self, Array[@oplog.Op], Array[Int]) -> Unit
 pub fn Editor::move_cursor(Self, Int) -> Unit
 pub fn Editor::new(String) -> Self
+pub impl Show for Editor
+
+pub struct ParsedEditor {
+  editor : Editor
+  parser : @parser.IncrementalParser
+  mut ast : @parser.TermNode?
+  mut parse_dirty : Bool
+  mut cached_text : String
+}
+pub fn ParsedEditor::backspace(Self) -> Bool
+pub fn ParsedEditor::delete(Self) -> Bool
+pub fn ParsedEditor::get_ast(Self) -> @parser.TermNode raise
+pub fn ParsedEditor::get_cursor(Self) -> Int
+pub fn ParsedEditor::get_frontier(Self) -> Array[Int]
+pub fn ParsedEditor::get_operations(Self) -> Array[@oplog.Op]
+pub fn ParsedEditor::get_text(Self) -> String
+pub fn ParsedEditor::insert(Self, String) -> Unit
+pub fn ParsedEditor::is_parse_valid(Self) -> Bool
+pub fn ParsedEditor::merge_remote(Self, Array[@oplog.Op], Array[Int]) -> Unit
+pub fn ParsedEditor::move_cursor(Self, Int) -> Unit
+pub fn ParsedEditor::new(String) -> Self
 
 // Type aliases
 

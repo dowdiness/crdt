@@ -40,12 +40,10 @@ pub fn MergeContext::apply_operations(
       Some(op) =>
         match op.content {
           @oplog.Insert(text) => {
-            // Get lamport timestamp from the graph
-            let timestamp = match self.oplog.graph.lv_to_raw(op.lv) {
-              Some(raw) =>
-                // Use sequence number as timestamp (simplified)
-                raw.seq
-              None => op.lv
+            // Get Lamport timestamp and agent from causal graph for proper ordering
+            let (timestamp, agent) = match self.oplog.graph.get_entry(op.lv) {
+              Some(entry) => (entry.lamport, entry.agent)
+              None => (0, "unknown")  // Fallback
             }
 
             // Insert into tree with FugueMax algorithm
@@ -55,6 +53,7 @@ pub fn MergeContext::apply_operations(
               op.origin_left,
               op.origin_right,
               timestamp,
+              agent,
             )
           }
           @oplog.Delete =>
@@ -98,10 +97,9 @@ pub fn MergeContext::retreat_operations(
 pub fn merge(
   tree : @fugue.FugueTree,
   oplog : @oplog.OpLog,
+  current_frontier : Array[Int],
   target_frontier : Array[Int],
 ) -> Unit {
-  let current_frontier = oplog.get_frontier()
-
   // Calculate retreat and advance sets
   let (retreat_ops, advance_ops) = oplog.graph.graph_diff(
     current_frontier, target_frontier,
@@ -126,14 +124,77 @@ pub fn merge_remote_ops(
   oplog : @oplog.OpLog,
   remote_ops : Array[@oplog.Op],
 ) -> Unit {
-  // Add remote operations to oplog
-  for op in remote_ops {
-    oplog.apply_remote(op)
+  // Save current frontier BEFORE adding remote ops
+  let old_frontier = oplog.get_frontier()
+
+  // Build a mapping from remote LVs to local LVs as we add operations
+  let mut lv_map : @immut/hashmap.HashMap[Int, Int] = @immut/hashmap.new()
+
+  // Add remote operations to oplog with LV translation
+  for remote_op in remote_ops {
+    // Check if we already have this operation (agent, seq)
+    let raw_version = @causal_graph.RawVersion::new(remote_op.agent, remote_op.seq)
+    match oplog.graph.raw_to_lv(raw_version) {
+      Some(existing_lv) => {
+        // We already have this operation, just record the LV mapping and skip
+        lv_map = lv_map.add(remote_op.lv, existing_lv)
+        continue
+      }
+      None => ()  // New operation, proceed to add it
+    }
+
+    // Translate origin_left and origin_right from remote LV space to local LV space
+    let local_origin_left = if remote_op.origin_left == -1 {
+      -1
+    } else {
+      match lv_map.get(remote_op.origin_left) {
+        Some(local_lv) => local_lv
+        None => remote_op.origin_left  // Fallback: use as-is (may cause issues)
+      }
+    }
+
+    let local_origin_right = if remote_op.origin_right == -1 {
+      -1
+    } else {
+      match lv_map.get(remote_op.origin_right) {
+        Some(local_lv) => local_lv
+        None => remote_op.origin_right  // Fallback: use as-is (may cause issues)
+      }
+    }
+
+    // Add version to graph
+    let local_lv = oplog.graph.add_version(remote_op.parents, remote_op.agent)
+
+    // Create operation with translated origins and local LV
+    let local_op = match remote_op.content {
+      @oplog.Insert(text) => @oplog.Op::new_insert(
+        local_lv,
+        remote_op.parents,
+        remote_op.agent,
+        remote_op.seq,
+        text,
+        local_origin_left,
+        local_origin_right,
+      )
+      @oplog.Delete => @oplog.Op::new_delete(
+        local_lv,
+        remote_op.parents,
+        remote_op.agent,
+        remote_op.seq,
+        local_origin_left,
+      )
+    }
+
+    // Add to operations
+    oplog.add_op(local_op)
+
+    // Record the mapping from remote LV to local LV
+    lv_map = lv_map.add(remote_op.lv, local_lv)
   }
 
   // Get the new frontier after adding remote ops
   let new_frontier = oplog.get_frontier()
 
-  // Merge to the new frontier
-  merge(tree, oplog, new_frontier)
+  // Merge from old frontier to new frontier
+  merge(tree, oplog, old_frontier, new_frontier)
 }

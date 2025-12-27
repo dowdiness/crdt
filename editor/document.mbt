@@ -112,14 +112,14 @@ pub fn Document::insert(
     // Create and apply the operation for this character
     let op = self.oplog.insert(ch, origin_left, origin_right)
 
-    // Get lamport timestamp from graph
-    let timestamp = match self.oplog.graph.lv_to_raw(op.lv) {
-      Some(raw) => raw.seq
-      None => op.lv
+    // Get Lamport timestamp and agent from causal graph for proper ordering
+    let (timestamp, agent) = match self.oplog.graph.get_entry(op.lv) {
+      Some(entry) => (entry.lamport, entry.agent)
+      None => (0, "unknown")  // Fallback for root operations
     }
 
     // Apply to tree
-    self.tree.insert(op.lv, ch, origin_left, origin_right, timestamp)
+    self.tree.insert(op.lv, ch, origin_left, origin_right, timestamp, agent)
 
     last_op = Some(op)
     current_pos = current_pos + 1
@@ -172,12 +172,12 @@ pub fn Document::apply_remote(self : Document, op : @oplog.Op) -> Unit {
   // Apply to tree based on operation type
   match op.content {
     @oplog.Insert(text) => {
-      // Get lamport timestamp from graph
-      let timestamp = match self.oplog.graph.lv_to_raw(op.lv) {
-        Some(raw) => raw.seq
-        None => op.lv
+      // Get Lamport timestamp and agent from causal graph for proper ordering
+      let (timestamp, agent) = match self.oplog.graph.get_entry(op.lv) {
+        Some(entry) => (entry.lamport, entry.agent)
+        None => (0, "unknown")  // Fallback
       }
-      self.tree.insert(op.lv, text, op.origin_left, op.origin_right, timestamp)
+      self.tree.insert(op.lv, text, op.origin_left, op.origin_right, timestamp, agent)
     }
     @oplog.Delete => self.tree.delete(op.origin_left)
   }

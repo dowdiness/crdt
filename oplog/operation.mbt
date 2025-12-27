@@ -12,6 +12,8 @@ pub enum OpContent {
 pub struct Op {
   lv : Int // Local version when this op was created
   parents : Array[Int] // Causal dependencies (frontier)
+  agent : String // Agent that created this operation
+  seq : Int // Sequence number for this agent
   content : OpContent // Operation content
   origin_left : Int // FugueMax: LV of item to the left (-1 for start)
   origin_right : Int // FugueMax: LV of item to the right (-1 for end)
@@ -22,17 +24,19 @@ pub struct Op {
 pub fn Op::new_insert(
   lv : Int,
   parents : Array[Int],
+  agent : String,
+  seq : Int,
   text : String,
   origin_left : Int,
   origin_right : Int,
 ) -> Op {
-  { lv, parents, content: Insert(text), origin_left, origin_right }
+  { lv, parents, agent, seq, content: Insert(text), origin_left, origin_right }
 }
 
 ///|
 /// Create a new delete operation
-pub fn Op::new_delete(lv : Int, parents : Array[Int], origin_left : Int) -> Op {
-  { lv, parents, content: Delete, origin_left, origin_right: -1 }
+pub fn Op::new_delete(lv : Int, parents : Array[Int], agent : String, seq : Int, origin_left : Int) -> Op {
+  { lv, parents, agent, seq, content: Delete, origin_left, origin_right: -1 }
 }
 
 ///|

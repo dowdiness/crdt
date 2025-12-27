@@ -13,6 +13,8 @@ import(
 pub struct Op {
   lv : Int
   parents : Array[Int]
+  agent : String
+  seq : Int
   content : OpContent
   origin_left : Int
   origin_right : Int
@@ -20,8 +22,8 @@ pub struct Op {
 pub fn Op::get_insert_text(Self) -> String?
 pub fn Op::is_delete(Self) -> Bool
 pub fn Op::is_insert(Self) -> Bool
-pub fn Op::new_delete(Int, Array[Int], Int) -> Self
-pub fn Op::new_insert(Int, Array[Int], String, Int, Int) -> Self
+pub fn Op::new_delete(Int, Array[Int], String, Int, Int) -> Self
+pub fn Op::new_insert(Int, Array[Int], String, Int, String, Int, Int) -> Self
 pub impl Show for Op
 
 pub enum OpContent {
@@ -45,6 +47,7 @@ pub fn OpLog::get_op(Self, Int) -> Op?
 pub fn OpLog::insert(Self, String, Int, Int) -> Op
 pub fn OpLog::new(String) -> Self
 pub fn OpLog::op_count(Self) -> Int
+pub impl Show for OpLog
 
 // Type aliases
 

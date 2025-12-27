@@ -11,7 +11,7 @@ pub struct FugueTree {
 ///|
 /// Create a new empty FugueTree
 pub fn FugueTree::new() -> FugueTree {
-  let root_item = Item::new(-1, "", -1, Left, 0) // Virtual root
+  let root_item = Item::new(-1, "", -1, Left, 0, "root") // Virtual root
   let mut items = @immut/hashmap.new()
   items = items.add(-1, root_item)
   { items, root: -1, length: 0 }
@@ -116,18 +116,24 @@ fn partition_children(children : Array[(Int, Item)]) -> (Array[(Int, Item)], Arr
 }
 
 ///|
-/// Compare children by timestamp (primary) and ID (tiebreaker)
+/// Compare children by Lamport timestamp (primary) and agent (tiebreaker)
 fn compare_children(a : (Int, Item), b : (Int, Item)) -> Int {
   let (_, item_a) = a
   let (_, item_b) = b
 
-  // First compare by timestamp
+  // First compare by Lamport timestamp for causal ordering
   let ts_cmp = item_a.timestamp.compare(item_b.timestamp)
   if ts_cmp != 0 {
     return ts_cmp
   }
 
-  // If timestamps equal, compare by ID
+  // If timestamps equal, compare by agent for deterministic tiebreaking
+  let agent_cmp = item_a.agent.compare(item_b.agent)
+  if agent_cmp != 0 {
+    return agent_cmp
+  }
+
+  // If agents equal, compare by ID
   item_a.id.compare(item_b.id)
 }
 
@@ -209,12 +215,13 @@ pub fn FugueTree::insert(
   origin_left : Int,
   origin_right : Int,
   timestamp : Int,
+  agent : String,
 ) -> Unit {
   // Find correct parent and side using FugueMax algorithm
   let (parent, side) = self.find_parent_and_side(origin_left, origin_right)
 
   // Create item with found parent and side
-  let item = Item::new(id, content, parent, side, timestamp)
+  let item = Item::new(id, content, parent, side, timestamp, agent)
 
   // Add to tree
   self.add_item(item)

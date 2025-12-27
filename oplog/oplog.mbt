@@ -32,7 +32,14 @@ pub fn OpLog::insert(
 ) -> Op {
   let parents = self.graph.get_frontier()
   let lv = self.graph.add_version(parents, self.agent_id)
-  let op = Op::new_insert(lv, parents, text, origin_left, origin_right)
+
+  // Get the seq for this operation from the graph
+  let seq = match self.graph.lv_to_raw(lv) {
+    Some(raw) => raw.seq
+    None => 0  // Shouldn't happen, but fallback to 0
+  }
+
+  let op = Op::new_insert(lv, parents, self.agent_id, seq, text, origin_left, origin_right)
   self.add_op(op)
   op
 }
@@ -42,7 +49,14 @@ pub fn OpLog::insert(
 pub fn OpLog::delete(self : OpLog, origin_left : Int) -> Op {
   let parents = self.graph.get_frontier()
   let lv = self.graph.add_version(parents, self.agent_id)
-  let op = Op::new_delete(lv, parents, origin_left)
+
+  // Get the seq for this operation from the graph
+  let seq = match self.graph.lv_to_raw(lv) {
+    Some(raw) => raw.seq
+    None => 0  // Shouldn't happen, but fallback to 0
+  }
+
+  let op = Op::new_delete(lv, parents, self.agent_id, seq, origin_left)
   self.add_op(op)
   op
 }
@@ -78,9 +92,30 @@ pub fn OpLog::get_frontier(self : OpLog) -> Array[Int] {
 ///|
 /// Apply a remote operation
 pub fn OpLog::apply_remote(self : OpLog, op : Op) -> Unit {
-  // Add version to graph
-  let _lv = self.graph.add_version(op.parents, "remote")
+  // Add version to graph using the operation's actual agent
+  // This assigns a local LV that may differ from the sender's LV
+  let local_lv = self.graph.add_version(op.parents, op.agent)
+
+  // Create a new operation with the local LV
+  let local_op = match op.content {
+    Insert(text) => Op::new_insert(
+      local_lv,
+      op.parents,
+      op.agent,
+      op.seq,
+      text,
+      op.origin_left,
+      op.origin_right,
+    )
+    Delete => Op::new_delete(
+      local_lv,
+      op.parents,
+      op.agent,
+      op.seq,
+      op.origin_left,
+    )
+  }
 
   // Add operation
-  self.add_op(op)
+  self.add_op(local_op)
 }

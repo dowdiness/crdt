@@ -4,6 +4,7 @@ package "dowdiness/crdt"
 import(
   "dowdiness/crdt/editor"
   "dowdiness/crdt/oplog"
+  "dowdiness/crdt/parser"
 )
 
 // Values
@@ -45,6 +46,30 @@ pub fn new_document(String) -> @editor.Document
 
 pub fn new_editor(String) -> @editor.Editor
 
+pub fn new_parsed_editor(String) -> @editor.ParsedEditor
+
+pub fn parsed_backspace(@editor.ParsedEditor) -> Bool
+
+pub fn parsed_delete(@editor.ParsedEditor) -> Bool
+
+pub fn parsed_get_ast(@editor.ParsedEditor) -> @parser.TermNode raise
+
+pub fn parsed_get_cursor(@editor.ParsedEditor) -> Int
+
+pub fn parsed_get_frontier(@editor.ParsedEditor) -> Array[Int]
+
+pub fn parsed_get_operations(@editor.ParsedEditor) -> Array[@oplog.Op]
+
+pub fn parsed_get_text(@editor.ParsedEditor) -> String
+
+pub fn parsed_insert(@editor.ParsedEditor, String) -> Unit
+
+pub fn parsed_is_parse_valid(@editor.ParsedEditor) -> Bool
+
+pub fn parsed_merge_remote(@editor.ParsedEditor, Array[@oplog.Op], Array[Int]) -> Unit
+
+pub fn parsed_move_cursor(@editor.ParsedEditor, Int) -> Unit
+
 // Errors
 
 // Types and methods
@@ -57,6 +82,10 @@ pub using @editor {type Editor}
 pub using @oplog {type Op}
 
 pub using @oplog {type OpContent}
+
+pub using @editor {type ParsedEditor}
+
+pub using @parser {type TermNode}
 
 // Traits
 

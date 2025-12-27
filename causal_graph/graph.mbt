@@ -47,6 +47,12 @@ pub fn CausalGraph::raw_to_lv(self : CausalGraph, raw : RawVersion) -> Int? {
 }
 
 ///|
+/// Get graph entry by LV
+pub fn CausalGraph::get_entry(self : CausalGraph, lv : Int) -> GraphEntry? {
+  self.entries.get(lv)
+}
+
+///|
 /// Add a new version to the graph
 pub fn CausalGraph::add_version(
   self : CausalGraph,

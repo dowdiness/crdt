@@ -16,6 +16,7 @@ pub struct Item {
   side : Side // Which side of parent (Left or Right)
   deleted : Bool // Is this item deleted (tombstone)
   timestamp : Int // Lamport timestamp for tie-breaking
+  agent : String // Agent that created this item (for deterministic tiebreaking)
 } derive(Show)
 
 ///|
@@ -26,8 +27,9 @@ pub fn Item::new(
   parent : Int,
   side : Side,
   timestamp : Int,
+  agent : String,
 ) -> Item {
-  { id, content, parent, side, deleted: false, timestamp }
+  { id, content, parent, side, deleted: false, timestamp, agent }
 }
 
 ///|
@@ -38,8 +40,9 @@ pub fn Item::new_deleted(
   parent : Int,
   side : Side,
   timestamp : Int,
+  agent : String,
 ) -> Item {
-  { id, content, parent, side, deleted: true, timestamp }
+  { id, content, parent, side, deleted: true, timestamp, agent }
 }
 
 ///|

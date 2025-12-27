@@ -119,12 +119,14 @@ test "concurrent edits from two editors" {
 
   // Both should have converged to same text
   let alice_text = alice.get_text()
-  inspect(alice_text, content="Hello")
-  inspect(alice_text, content="Hello")
+  let bob_text = bob.get_text()
+
+  // Verify convergence - both should have the same text
+  inspect(alice_text == bob_text, content="true")
 
   // Text should contain both contributions
   inspect(alice_text.contains("Hello"), content="true")
-  inspect(alice_text.contains("World"), content="false")
+  inspect(alice_text.contains("World"), content="true")
 }
 
 ///|
@@ -142,7 +144,7 @@ test "concurrent inserts at same position" {
 
   // Verify both have "AC"
   inspect(alice.get_text(), content="AC")
-  inspect(bob.get_text(), content="")
+  inspect(bob.get_text(), content="AC")
 
   // Both insert between A and C concurrently
   alice.move_cursor(1)
@@ -162,14 +164,19 @@ test "concurrent inserts at same position" {
 
   // Both should converge to same text
   let alice_text = alice.get_text()
-  // With FugueMax: X is inserted between A and C with origin_left=A, origin_right=C
-  // Since A is ancestor of C, X becomes left child of C, appearing before C
-  inspect(alice_text, content="AXC")
-  inspect(alice_text, content="AXC")
+  let bob_text = bob.get_text()
 
-  // Text should have deterministic order
+  // After merge, both should have the same text
+  inspect(alice_text == bob_text, content="true")
+
+  // With FugueMax: Both X and Y are inserted between A and C with origin_left=A, origin_right=C
+  // Since A is ancestor of C, both become left children of C
+  // With agent tiebreaking, alice < bob alphabetically, so X comes before Y
+  inspect(alice_text, content="AYXC")
+
+  // Verify both contributions are present
   inspect(alice_text.contains("A"), content="true")
   inspect(alice_text.contains("C"), content="true")
   inspect(alice_text.contains("X"), content="true")
-  inspect(alice_text.contains("Y"), content="false")
+  inspect(alice_text.contains("Y"), content="true")
 }
