@@ -1,11 +1,19 @@
 ///| Item structure for FugueMax tree
 
 ///|
+/// Side of parent node where item is attached
+pub enum Side {
+  Left
+  Right
+} derive(Show, Eq)
+
+///|
 /// Item in the sequence - represents a character or text chunk
 pub struct Item {
   id : Int // LV that created this item
   content : String // The character(s)
   parent : Int // Parent item ID in tree (-1 for root)
+  side : Side // Which side of parent (Left or Right)
   deleted : Bool // Is this item deleted (tombstone)
   timestamp : Int // Lamport timestamp for tie-breaking
 } derive(Show)
@@ -16,9 +24,10 @@ pub fn Item::new(
   id : Int,
   content : String,
   parent : Int,
+  side : Side,
   timestamp : Int,
 ) -> Item {
-  { id, content, parent, deleted: false, timestamp }
+  { id, content, parent, side, deleted: false, timestamp }
 }
 
 ///|
@@ -27,9 +36,10 @@ pub fn Item::new_deleted(
   id : Int,
   content : String,
   parent : Int,
+  side : Side,
   timestamp : Int,
 ) -> Item {
-  { id, content, parent, deleted: true, timestamp }
+  { id, content, parent, side, deleted: true, timestamp }
 }
 
 ///|
