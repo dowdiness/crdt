@@ -108,13 +108,29 @@ pub fn TokenCache::insert(
 }
 
 ///| Invalidate cache entries overlapping with the edit range
-pub fn TokenCache::invalidate_range(self : TokenCache, _start : Int, _end : Int) -> Unit {
-  // Simple approach: increment version to invalidate all entries
-  // A more sophisticated approach would selectively invalidate overlapping ranges
+///
+/// Implements Lezer-style selective invalidation:
+/// Only invalidates cache entries that overlap with the damaged range,
+/// preserving valid entries outside the damaged region for reuse.
+pub fn TokenCache::invalidate_range(self : TokenCache, start : Int, end : Int) -> Unit {
+  // Increment version for new entries
   self.version = self.version + 1
 
-  // TODO: Implement selective invalidation based on range overlap
-  // For now, we rely on version checking to invalidate stale entries
+  // Collect keys that overlap with the damaged range
+  let keys_to_remove : Array[CacheKey] = []
+  self.cache.iter().each(fn(entry) {
+    let (key, _cached) = entry
+    // Check if this cache entry overlaps with the damaged range
+    // Entry overlaps if: entry.start < damaged.end AND entry.end > damaged.start
+    if key.start < end && key.end > start {
+      keys_to_remove.push(key)
+    }
+  })
+
+  // Remove overlapping entries
+  for key in keys_to_remove {
+    self.cache.remove(key)
+  }
 }
 
 ///| Clear the entire cache

@@ -110,13 +110,30 @@ pub fn ParseCache::insert(
 }
 
 ///| Invalidate cache entries within a source range
-pub fn ParseCache::invalidate_range(self : ParseCache, _range : Range) -> Unit {
-  // Simple approach: increment version to invalidate all entries
-  // A more sophisticated approach would selectively invalidate based on source positions
+///
+/// Implements Lezer-style selective invalidation:
+/// Only invalidates cache entries whose corresponding nodes overlap with the damaged range,
+/// preserving valid entries outside the damaged region for reuse.
+pub fn ParseCache::invalidate_range(self : ParseCache, range : Range) -> Unit {
+  // Increment version for new entries
   self.version = self.version + 1
 
-  // TODO: Implement selective invalidation based on range overlap
-  // For now, we rely on version checking to invalidate stale entries
+  // Collect keys that overlap with the damaged range
+  let keys_to_remove : Array[ParseCacheKey] = []
+  self.cache.iter().each(fn(entry) {
+    let (key, cached) = entry
+    let node = cached.node
+    // Check if the cached node overlaps with the damaged range
+    // Node overlaps if: node.start < damaged.end AND node.end > damaged.start
+    if node.start < range.end && node.end > range.start {
+      keys_to_remove.push(key)
+    }
+  })
+
+  // Remove overlapping entries
+  for key in keys_to_remove {
+    self.cache.remove(key)
+  }
 }
 
 ///| Clear the entire cache
