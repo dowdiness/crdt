@@ -6,7 +6,7 @@ pub struct OpLog {
   mut operations : Array[Op] // All operations in LV order
   graph : @causal_graph.CausalGraph // The causal graph
   agent_id : String // This agent's ID
-}
+} derive(Show)
 
 ///|
 /// Create a new OpLog

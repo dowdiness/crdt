@@ -79,3 +79,49 @@ pub let doc_apply_remote : (Document, Op) -> Unit = @editor.Document::apply_remo
 
 ///|
 pub let doc_merge_remote : (Document, Array[Op], Array[Int]) -> Unit = @editor.Document::merge_remote
+
+// Re-export ParsedEditor types (CRDT editor with integrated incremental parser)
+
+///|
+pub type ParsedEditor = @editor.ParsedEditor
+
+///|
+pub type TermNode = @parser.TermNode
+
+// Re-export ParsedEditor functions
+
+///|
+pub let new_parsed_editor : (String) -> ParsedEditor = @editor.ParsedEditor::new
+
+///|
+pub let parsed_insert : (ParsedEditor, String) -> Unit = @editor.ParsedEditor::insert
+
+///|
+pub let parsed_delete : (ParsedEditor) -> Bool = @editor.ParsedEditor::delete
+
+///|
+pub let parsed_backspace : (ParsedEditor) -> Bool = @editor.ParsedEditor::backspace
+
+///|
+pub let parsed_move_cursor : (ParsedEditor, Int) -> Unit = @editor.ParsedEditor::move_cursor
+
+///|
+pub let parsed_get_text : (ParsedEditor) -> String = @editor.ParsedEditor::get_text
+
+///|
+pub let parsed_get_cursor : (ParsedEditor) -> Int = @editor.ParsedEditor::get_cursor
+
+///|
+pub let parsed_get_ast : (ParsedEditor) -> TermNode raise = @editor.ParsedEditor::get_ast
+
+///|
+pub let parsed_is_parse_valid : (ParsedEditor) -> Bool = @editor.ParsedEditor::is_parse_valid
+
+///|
+pub let parsed_get_operations : (ParsedEditor) -> Array[Op] = @editor.ParsedEditor::get_operations
+
+///|
+pub let parsed_get_frontier : (ParsedEditor) -> Array[Int] = @editor.ParsedEditor::get_frontier
+
+///|
+pub let parsed_merge_remote : (ParsedEditor, Array[Op], Array[Int]) -> Unit = @editor.ParsedEditor::merge_remote

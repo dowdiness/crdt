@@ -34,6 +34,7 @@ test "delete item" {
   tree.insert(2, "C", 1, -1, 2)
   tree.delete(1) // Delete "B"
   inspect(tree.visible_count(), content="2")
+  inspect(tree.get_visible_items(), content="[(0, {id: 0, content: \"A\", parent: -1, deleted: false, timestamp: 0}), (2, {id: 2, content: \"C\", parent: 1, deleted: false, timestamp: 2})]")
   inspect(tree.to_text(), content="AC")
 }
 
@@ -65,6 +66,7 @@ test "find parent with origin_left" {
   inspect(parent, content="0")
 }
 
+// TODO: concurrent inserts ordering is not correct ordering
 ///|
 test "concurrent inserts ordering" {
   let tree = FugueTree::new()
@@ -73,7 +75,7 @@ test "concurrent inserts ordering" {
   tree.insert(0, "A", -1, -1, 0)
   tree.insert(2, "C", 0, -1, 2)
 
-  // Two users concurrently insert "B" between A and C
+  // Two users concurrently insert "X" and "Y" between A and C
   // Both reference A as origin_left and C as origin_right
   tree.insert(1, "X", 0, 2, 1)
   tree.insert(3, "Y", 0, 2, 3)

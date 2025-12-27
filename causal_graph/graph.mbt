@@ -17,7 +17,7 @@ pub struct CausalGraph {
   mut next_lv : Int
   mut frontier : Array[Int]
   mut agent_seqs : @immut/hashmap.HashMap[String, Int]
-}
+} derive(Show)
 
 ///|
 /// Create a new empty CausalGraph

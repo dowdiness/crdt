@@ -2,6 +2,7 @@
   "is_main": false,
   "import": [
     "dowdiness/crdt/editor",
-    "dowdiness/crdt/oplog"
+    "dowdiness/crdt/oplog",
+    "dowdiness/crdt/parser"
   ]
 }

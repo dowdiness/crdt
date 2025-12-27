@@ -36,42 +36,31 @@ pub fn FugueTree::get_all_items(self : FugueTree) -> Array[(Int, Item)] {
   self.items.iter().collect()
 }
 
-///|
-/// Count visible (non-deleted) items
-pub fn FugueTree::visible_count(self : FugueTree) -> Int {
-  let mut count = 0
-  let items_iter = self.items.iter()
-  for entry in items_iter {
-    let (_, item) = entry
-    if item.is_visible() {
-      count = count + 1
-    }
-  }
-  count - 1 // Exclude root
+///| Get all visible (non-deleted) items
+pub fn FugueTree::get_visible_items(self : FugueTree) -> Array[(Int, Item)] {
+  let items_list : Array[(Int, Item)] = self.items
+    .filter(is_visible_child)
+    .to_array()
+  // Sort by ID (which corresponds to insertion order with FugueMax)
+  // This is a simplified version - proper FugueMax needs tree traversal
+  items_list.sort_by(compare_by_id)
+  items_list
 }
 
 ///|
+/// Count visible (non-deleted) items
+pub fn FugueTree::visible_count(self : FugueTree) -> Int {
+  self.get_visible_items().length()
+}
+///|
 /// Convert tree to text by traversing in order
 pub fn FugueTree::to_text(self : FugueTree) -> String {
-  // Build list of items with their parents for sorting
-  let items_list : Array[(Int, Item)] = []
-  let items_iter = self.items.iter()
-  for entry in items_iter {
-    let (id, item) = entry
-    if id != -1 && item.is_visible() { // Skip root and deleted items
-      items_list.push((id, item))
-    }
-  }
-
-  // Sort by ID (which corresponds to insertion order with FugueMax)
-  // This is a simplified version - proper FugueMax needs tree traversal
-  items_list.sort_by(fn(a, b) { a.0.compare(b.0) })
-  let mut result = ""
-  for entry in items_list {
+  self
+  .get_visible_items()
+  .fold(init="", fn(acc, entry) {
     let (_, item) = entry
-    result = result + item.content
-  }
-  result
+    acc + item.content
+  })
 }
 
 ///|
@@ -93,26 +82,19 @@ pub fn FugueTree::find_parent(
 
   // Navigate up from origin_left to find valid parent
   // Valid parent = ancestor of origin_left that is also left of origin_right
-  let mut current = origin_left
-  while true {
-    match self.get_item(current) {
-      Some(item) => {
-        // Check if current is a valid parent
-        if self.is_valid_parent(current, origin_right) {
-          return current
-        }
-
-        // Move up to parent
-        if item.parent == -1 {
-          return -1 // Reached root
-        }
-        current = item.parent
-        continue
+  loop (origin_left, self.get_item(origin_left)) {
+    (current, Some(item)) => {
+      // Check if current is a valid parent
+      if self.is_valid_parent(current, origin_right) {
+        return current
+      } else if item.parent == -1 {
+        return -1 // Reached root without finding valid parent
       }
-      None => return -1 // Item not found, use root
+      // Move up to parent
+      continue(item.parent, self.get_item(item.parent))
     }
+    (_, None) => break(-1) // Item not found, use root
   }
-  -1 // Fallback
 }
 
 ///|
@@ -141,23 +123,18 @@ fn FugueTree::is_ancestor(
   if ancestor_id == descendant_id {
     return true
   }
-  let mut current = descendant_id
-  while true {
-    match self.get_item(current) {
-      Some(item) => {
-        if item.parent == ancestor_id {
-          return true
-        }
-        if item.parent == -1 {
-          return false // Reached root without finding ancestor
-        }
-        current = item.parent
-        continue
+  loop (self.get_item(descendant_id)) {
+    Some(item) => {
+      if item.parent == ancestor_id {
+        return true
       }
-      None => return false
+      if item.parent == -1 {
+        return false // Reached root without finding ancestor
+      }
+      continue(self.get_item(item.parent))
     }
+    None => break(false)
   }
-  false // Fallback
 }
 
 ///|
@@ -190,4 +167,15 @@ pub fn FugueTree::delete(self : FugueTree, id : Int) -> Unit {
     }
     None => () // Item doesn't exist, nothing to delete
   }
+}
+
+///|
+fn is_visible_child(id : Int, item : Item) -> Bool {
+  // id -1 is the root, so we skip it
+  id != -1 && item.is_visible()
+}
+
+///|
+fn compare_by_id(a : (Int, Item), b : (Int, Item)) -> Int {
+  a.0.compare(b.0)
 }

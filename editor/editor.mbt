@@ -7,7 +7,7 @@
 pub struct Editor {
   doc : Document
   mut cursor : Int // Current cursor position (0-based)
-}
+} derive(Show)
 
 ///|
 /// Create a new editor for an agent

@@ -1,0 +1,136 @@
+// ParsedEditor: Integration of CRDT text editor with incremental parser
+// Combines Editor (CRDT text) and IncrementalParser (AST) using wrapper pattern
+
+/// ParsedEditor wraps both the CRDT editor and incremental parser
+/// Keeps them synchronized via lazy evaluation and text diffing
+pub struct ParsedEditor {
+  editor : Editor                         // CRDT text editor
+  parser : @parser.IncrementalParser      // Incremental parser
+  mut ast : @parser.TermNode?             // Cached AST (lazy evaluation)
+  mut parse_dirty : Bool                  // Does AST need reparsing?
+  mut cached_text : String                // Last parsed text (for computing Edit)
+}
+
+/// Create a new ParsedEditor with the given agent ID
+pub fn ParsedEditor::new(agent_id : String) -> ParsedEditor {
+  let editor = Editor::new(agent_id)
+  let parser = @parser.IncrementalParser::new("")
+  {
+    editor,
+    parser,
+    ast: None,
+    parse_dirty: true,
+    cached_text: ""
+  }
+}
+
+/// Insert text at the current cursor position
+/// Marks AST as dirty for lazy reparsing
+pub fn ParsedEditor::insert(self : ParsedEditor, text : String) -> Unit {
+  self.editor.insert(text)
+  self.parse_dirty = true
+}
+
+/// Delete character at cursor position (forward delete)
+/// Returns true if deletion succeeded, false if at end of document
+pub fn ParsedEditor::delete(self : ParsedEditor) -> Bool {
+  let result = self.editor.delete()
+  if result {
+    self.parse_dirty = true
+  }
+  result
+}
+
+/// Delete character before cursor (backspace)
+/// Returns true if deletion succeeded, false if at start of document
+pub fn ParsedEditor::backspace(self : ParsedEditor) -> Bool {
+  let result = self.editor.backspace()
+  if result {
+    self.parse_dirty = true
+  }
+  result
+}
+
+/// Move cursor to specific position
+pub fn ParsedEditor::move_cursor(self : ParsedEditor, position : Int) -> Unit {
+  self.editor.move_cursor(position)
+}
+
+/// Get current cursor position
+pub fn ParsedEditor::get_cursor(self : ParsedEditor) -> Int {
+  self.editor.get_cursor()
+}
+
+/// Get the current text content
+pub fn ParsedEditor::get_text(self : ParsedEditor) -> String {
+  self.editor.get_text()
+}
+
+/// Get the AST (lazy evaluation - only reparses if dirty)
+/// Raises an error if parsing fails
+pub fn ParsedEditor::get_ast(self : ParsedEditor) -> @parser.TermNode raise {
+  if self.parse_dirty {
+    self.reparse()
+  }
+  match self.ast {
+    Some(ast) => ast
+    None => abort("No valid parse tree")
+  }
+}
+
+/// Incremental reparse using text diff
+/// Computes Edit from old→new text and incrementally reparses
+fn ParsedEditor::reparse(self : ParsedEditor) -> Unit raise {
+  let old_text = self.cached_text
+  let new_text = self.editor.get_text()
+
+  if old_text.length() == 0 && new_text.length() == 0 {
+    // Both empty - create an empty AST or error node
+    // For now, try to parse empty string
+    let edit = @parser.Edit::new(0, 0, 0)
+    let ast = self.parser.edit(edit, new_text)
+    self.ast = Some(ast)
+  } else if old_text.length() == 0 {
+    // Initial parse from empty to non-empty
+    let edit = @parser.Edit::new(0, 0, new_text.length())
+    let ast = self.parser.edit(edit, new_text)
+    self.ast = Some(ast)
+  } else {
+    // Incremental reparse
+    let edit = compute_edit(old_text, new_text)
+    let ast = self.parser.edit(edit, new_text)
+    self.ast = Some(ast)
+  }
+
+  self.cached_text = new_text
+  self.parse_dirty = false
+}
+
+/// Check if the current parse tree is valid (no errors)
+pub fn ParsedEditor::is_parse_valid(self : ParsedEditor) -> Bool {
+  match self.ast {
+    Some(ast) => not(@parser.has_errors(ast))
+    None => false
+  }
+}
+
+/// Merge remote operations and update local state
+/// Marks AST as dirty for reparsing after merge
+pub fn ParsedEditor::merge_remote(
+  self : ParsedEditor,
+  ops : Array[@oplog.Op],
+  frontier : Array[Int]
+) -> Unit {
+  self.editor.merge_remote(ops, frontier)
+  self.parse_dirty = true
+}
+
+/// Get all operations from the operation log
+pub fn ParsedEditor::get_operations(self : ParsedEditor) -> Array[@oplog.Op] {
+  self.editor.get_operations()
+}
+
+/// Get the current version frontier
+pub fn ParsedEditor::get_frontier(self : ParsedEditor) -> Array[Int] {
+  self.editor.get_frontier()
+}

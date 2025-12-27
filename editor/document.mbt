@@ -10,7 +10,7 @@ pub struct Document {
   tree : @fugue.FugueTree
   oplog : @oplog.OpLog
   agent_id : String
-}
+} derive(Show)
 
 ///|
 /// Create a new document for an agent
@@ -85,17 +85,9 @@ pub fn Document::insert(
   let origin_left = self.position_to_lv(position)
 
   // Find origin_right (the item after the cursor)
+  let items_list : Array[(Int, @fugue.Item)] = self.tree.get_visible_items()
   let origin_right = if position == 0 {
     // At start, find first visible item
-    let items_list : Array[(Int, @fugue.Item)] = []
-    let items_iter = self.tree.items.iter()
-    for entry in items_iter {
-      let (id, item) = entry
-      if id != -1 && item.is_visible() {
-        items_list.push((id, item))
-      }
-    }
-    items_list.sort_by(fn(a, b) { a.0.compare(b.0) })
     if items_list.length() > 0 {
       let (id, _) = items_list[0]
       id
@@ -104,15 +96,6 @@ pub fn Document::insert(
     }
   } else {
     // Find item at position
-    let items_list : Array[(Int, @fugue.Item)] = []
-    let items_iter = self.tree.items.iter()
-    for entry in items_iter {
-      let (id, item) = entry
-      if id != -1 && item.is_visible() {
-        items_list.push((id, item))
-      }
-    }
-    items_list.sort_by(fn(a, b) { a.0.compare(b.0) })
     if position < items_list.length() {
       let (id, _) = items_list[position]
       id
@@ -156,6 +139,7 @@ pub fn Document::delete(self : Document, position : Int) -> @oplog.Op? {
     }
   }
   items_list.sort_by(fn(a, b) { a.0.compare(b.0) })
+  println("items_list: \{items_list}, position: \{position}")
   if position >= items_list.length() {
     return None
   }
