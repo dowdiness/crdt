@@ -1,8 +1,25 @@
 {
-  "is_main": false,
   "import": [
     "dowdiness/crdt/editor",
     "dowdiness/crdt/oplog",
     "dowdiness/crdt/parser"
-  ]
+  ],
+  "link": {
+    "js": {
+      "exports": [
+        "create_editor",
+        "insert",
+        "delete_",
+        "backspace",
+        "get_text",
+        "get_cursor",
+        "set_cursor",
+        "get_ast_json",
+        "get_errors_json",
+        "get_operations_json",
+        "get_frontier_json",
+        "merge_operations"
+      ]
+    }
+  }
 }

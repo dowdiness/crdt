@@ -1,127 +1,119 @@
-///| Public API for the eg-walker CRDT editor
+// WebAssembly bindings for CRDT Editor
+// Exposes ParsedEditor API to JavaScript via FFI
 
-///|
+// Global editor state (single editor for MVP)
+let editor : Ref[@editor.ParsedEditor?] = { val: None }
 
-///|
-/// This module re-exports the main types and functions from the editor package
+/// Create a new ParsedEditor instance
+/// Returns handle 1 (MVP: single editor only)
+pub fn create_editor(agent_id : String) -> Int {
+  editor.val = Some(@editor.ParsedEditor::new(agent_id))
+  1
+}
 
-// Re-export main editor types
-pub type Editor = @editor.Editor
+/// Insert text at cursor position
+pub fn insert(_handle : Int, text : String) -> Unit {
+  match editor.val {
+    Some(editor) => editor.insert(text)
+    None => ()
+  }
+}
 
-///|
-pub type Document = @editor.Document
+/// Delete character at cursor (forward delete)
+pub fn delete_(_handle : Int) -> Bool {
+  match editor.val {
+    Some(editor) => editor.delete()
+    None => false
+  }
+}
 
-// Re-export operation types
+/// Delete character before cursor (backspace)
+pub fn backspace(_handle : Int) -> Bool {
+  match editor.val {
+    Some(editor) => editor.backspace()
+    None => false
+  }
+}
 
-///|
-pub type Op = @oplog.Op
+/// Get current text content
+pub fn get_text(_handle : Int) -> String {
+  match editor.val {
+    Some(editor) => editor.get_text()
+    None => ""
+  }
+}
 
-///|
-pub type OpContent = @oplog.OpContent
+/// Get cursor position
+pub fn get_cursor(_handle : Int) -> Int {
+  match editor.val {
+    Some(editor) => editor.get_cursor()
+    None => 0
+  }
+}
 
-// Re-export editor functions
+/// Set cursor position
+pub fn set_cursor(_handle : Int, position : Int) -> Unit {
+  match editor.val {
+    Some(editor) => editor.move_cursor(position)
+    None => ()
+  }
+}
 
-///|
-pub let new_editor : (String) -> Editor = @editor.Editor::new
+/// Get AST as JSON string
+pub fn get_ast_json(_handle : Int) -> String {
+  match editor.val {
+    Some(editor) => {
+      let text = editor.get_text()
+      let (ast, _errors) = @parser.parse_with_error_recovery(text)
+      serialize_ast(ast)
+    }
+    None => "{}"
+  }
+}
 
-///|
-pub let insert : (Editor, String) -> Unit = @editor.Editor::insert
+/// Get parse errors as JSON array
+pub fn get_errors_json(_handle : Int) -> String {
+  match editor.val {
+    Some(editor) => {
+      let text = editor.get_text()
+      let (_ast, errors) = @parser.parse_with_error_recovery(text)
+      serialize_errors(errors)
+    }
+    None => "[]"
+  }
+}
 
-///|
-pub let insert_at : (Editor, Int, String) -> Unit = @editor.Editor::insert_at
+/// Get all operations as JSON
+pub fn get_operations_json(_handle : Int) -> String {
+  match editor.val {
+    Some(editor) => {
+      let ops = editor.get_operations()
+      serialize_ops(ops)
+    }
+    None => "[]"
+  }
+}
 
-///|
-pub let delete : (Editor) -> Bool = @editor.Editor::delete
+/// Get frontier as JSON
+pub fn get_frontier_json(_handle : Int) -> String {
+  match editor.val {
+    Some(editor) => {
+      let frontier = editor.get_frontier()
+      let mut result = "["
+      for i = 0; i < frontier.length(); i = i + 1 {
+        if i > 0 {
+          result = result + ","
+        }
+        result = result + frontier[i].to_string()
+      }
+      result + "]"
+    }
+    None => "[]"
+  }
+}
 
-///|
-pub let backspace : (Editor) -> Bool = @editor.Editor::backspace
-
-///|
-pub let move_cursor : (Editor, Int) -> Unit = @editor.Editor::move_cursor
-
-///|
-pub let get_text : (Editor) -> String = @editor.Editor::get_text
-
-///|
-pub let get_cursor : (Editor) -> Int = @editor.Editor::get_cursor
-
-///|
-pub let get_frontier : (Editor) -> Array[Int] = @editor.Editor::get_frontier
-
-///|
-pub let get_operations : (Editor) -> Array[Op] = @editor.Editor::get_operations
-
-///|
-pub let apply_remote : (Editor, Op) -> Unit = @editor.Editor::apply_remote
-
-///|
-pub let merge_remote : (Editor, Array[Op], Array[Int]) -> Unit = @editor.Editor::merge_remote
-
-// Re-export document functions
-
-///|
-pub let new_document : (String) -> Document = @editor.Document::new
-
-///|
-pub let doc_insert : (Document, Int, String) -> Op = @editor.Document::insert
-
-///|
-pub let doc_delete : (Document, Int) -> Op? = @editor.Document::delete
-
-///|
-pub let doc_to_text : (Document) -> String = @editor.Document::to_text
-
-///|
-pub let doc_get_frontier : (Document) -> Array[Int] = @editor.Document::get_frontier
-
-///|
-pub let doc_apply_remote : (Document, Op) -> Unit = @editor.Document::apply_remote
-
-///|
-pub let doc_merge_remote : (Document, Array[Op], Array[Int]) -> Unit = @editor.Document::merge_remote
-
-// Re-export ParsedEditor types (CRDT editor with integrated incremental parser)
-
-///|
-pub type ParsedEditor = @editor.ParsedEditor
-
-///|
-pub type TermNode = @parser.TermNode
-
-// Re-export ParsedEditor functions
-
-///|
-pub let new_parsed_editor : (String) -> ParsedEditor = @editor.ParsedEditor::new
-
-///|
-pub let parsed_insert : (ParsedEditor, String) -> Unit = @editor.ParsedEditor::insert
-
-///|
-pub let parsed_delete : (ParsedEditor) -> Bool = @editor.ParsedEditor::delete
-
-///|
-pub let parsed_backspace : (ParsedEditor) -> Bool = @editor.ParsedEditor::backspace
-
-///|
-pub let parsed_move_cursor : (ParsedEditor, Int) -> Unit = @editor.ParsedEditor::move_cursor
-
-///|
-pub let parsed_get_text : (ParsedEditor) -> String = @editor.ParsedEditor::get_text
-
-///|
-pub let parsed_get_cursor : (ParsedEditor) -> Int = @editor.ParsedEditor::get_cursor
-
-///|
-pub let parsed_get_ast : (ParsedEditor) -> TermNode = @editor.ParsedEditor::get_ast
-
-///|
-pub let parsed_is_parse_valid : (ParsedEditor) -> Bool = @editor.ParsedEditor::is_parse_valid
-
-///|
-pub let parsed_get_operations : (ParsedEditor) -> Array[Op] = @editor.ParsedEditor::get_operations
-
-///|
-pub let parsed_get_frontier : (ParsedEditor) -> Array[Int] = @editor.ParsedEditor::get_frontier
-
-///|
-pub let parsed_merge_remote : (ParsedEditor, Array[Op], Array[Int]) -> Unit = @editor.ParsedEditor::merge_remote
+/// Merge remote operations (placeholder for Phase 3)
+pub fn merge_operations(_handle : Int, _ops_json : String, _frontier_json : String) -> Unit {
+  // TODO: Implement in Phase 3
+  ()
+}

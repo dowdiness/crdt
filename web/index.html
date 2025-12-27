@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lambda Calculus CRDT Editor</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #4ec9b0;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #858585;
+      margin-bottom: 20px;
+    }
+
+    .editor-container {
+      background: #252526;
+      border: 1px solid #3c3c3c;
+      border-radius: 4px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    #editor {
+      min-height: 200px;
+      outline: none;
+      font-size: 16px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    #editor:empty:before {
+      content: 'Type lambda calculus expressions here... (e.g., (\\x. x + 1) 5)';
+      color: #6a6a6a;
+    }
+
+    /* Syntax highlighting */
+    .lambda { color: #c586c0; font-weight: bold; }
+    .variable { color: #9cdcfe; }
+    .keyword { color: #569cd6; }
+    .operator { color: #d4d4d4; }
+    .number { color: #b5cea8; }
+    .error {
+      background: #ff000033;
+      text-decoration: underline wavy #ff0000;
+    }
+
+    .info-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: #252526;
+      border: 1px solid #3c3c3c;
+      border-radius: 4px;
+      padding: 15px;
+    }
+
+    .panel h2 {
+      color: #4ec9b0;
+      font-size: 14px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+
+    .panel pre {
+      background: #1e1e1e;
+      padding: 10px;
+      border-radius: 3px;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+
+    .error-list {
+      list-style: none;
+    }
+
+    .error-item {
+      color: #f48771;
+      padding: 5px 0;
+      border-left: 3px solid #ff0000;
+      padding-left: 10px;
+      margin-bottom: 5px;
+    }
+
+    .status {
+      background: #007acc22;
+      border-left: 3px solid #007acc;
+      padding: 10px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+
+    .status.success {
+      background: #4ec9b022;
+      border-left-color: #4ec9b0;
+    }
+
+    .status.error {
+      background: #ff000022;
+      border-left-color: #ff0000;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>λ Lambda Calculus CRDT Editor</h1>
+    <p class="subtitle">Collaborative real-time editor with error recovery</p>
+
+    <div id="status" class="status">Loading WebAssembly...</div>
+
+    <div class="editor-container">
+      <div id="editor" contenteditable="true" spellcheck="false"></div>
+    </div>
+
+    <div class="info-panel">
+      <div class="panel">
+        <h2>AST Structure</h2>
+        <pre id="ast-output">Waiting for input...</pre>
+      </div>
+
+      <div class="panel">
+        <h2>Parse Errors</h2>
+        <ul id="error-output" class="error-list">
+          <li>No errors</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
