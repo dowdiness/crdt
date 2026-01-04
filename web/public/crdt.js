@@ -301,20 +301,25 @@ const moonbitlang$core$builtin$$output$46$42$bind$124$8198 = "/";
 const moonbitlang$core$builtin$$output$46$42$bind$124$8192 = "/";
 const moonbitlang$core$builtin$$boyer_moore_horspool_find$46$constr$47$98 = 0;
 const moonbitlang$core$builtin$$brute_force_find$46$constr$47$112 = 0;
-const dowdiness$crdt$fugue$$find_parent_and_side$46$tuple$47$1539 = { _0: -1, _1: 1 };
-const dowdiness$crdt$parser$$parse_positioned$46$constr$47$1786 = new $64$dowdiness$47$crdt$47$parser$46$TermKind$Bop(0);
-const dowdiness$crdt$parser$$parse_positioned$46$constr$47$1787 = new $64$dowdiness$47$crdt$47$parser$46$TermKind$Bop(1);
-const dowdiness$crdt$editor$$insert$46$tuple$47$2028 = { _0: 0, _1: "unknown" };
+const dowdiness$crdt$fugue$$find_parent_and_side$46$tuple$47$1576 = { _0: -1, _1: 1 };
+const dowdiness$crdt$parser$$parse_tree$46$constr$47$1818 = new $64$dowdiness$47$crdt$47$parser$46$TermKind$Bop(0);
+const dowdiness$crdt$parser$$parse_tree$46$constr$47$1819 = new $64$dowdiness$47$crdt$47$parser$46$TermKind$Bop(1);
+const dowdiness$crdt$editor$$insert$46$tuple$47$2005 = { _0: 0, _1: "unknown" };
+const dowdiness$crdt$$escape_json$46$42$bind$124$118 = "";
+const dowdiness$crdt$$serialize_ast_array$46$42$bind$124$140 = "";
+const dowdiness$crdt$$serialize_errors$46$42$bind$124$155 = "";
+const dowdiness$crdt$$serialize_int_array$46$42$bind$124$158 = "";
+const dowdiness$crdt$$serialize_ops$46$42$bind$124$171 = "";
 const dowdiness$crdt$$editor = { val: undefined };
 const moonbitlang$core$builtin$$seed = moonbitlang$core$builtin$$random_seed();
 function moonbitlang$core$abort$$abort$3$(msg) {
   return $panic();
 }
 function moonbitlang$core$abort$$abort$4$(msg) {
-  return $panic();
+  $panic();
 }
 function moonbitlang$core$abort$$abort$5$(msg) {
-  $panic();
+  return $panic();
 }
 function moonbitlang$core$abort$$abort$6$(msg) {
   return $panic();
@@ -344,10 +349,10 @@ function moonbitlang$core$builtin$$abort$3$(string, loc) {
   return moonbitlang$core$abort$$abort$3$(`${string}\n  at ${moonbitlang$core$builtin$$Show$to_string$12$(loc)}\n`);
 }
 function moonbitlang$core$builtin$$abort$4$(string, loc) {
-  return moonbitlang$core$abort$$abort$4$(`${string}\n  at ${moonbitlang$core$builtin$$Show$to_string$12$(loc)}\n`);
+  moonbitlang$core$abort$$abort$4$(`${string}\n  at ${moonbitlang$core$builtin$$Show$to_string$12$(loc)}\n`);
 }
 function moonbitlang$core$builtin$$abort$5$(string, loc) {
-  moonbitlang$core$abort$$abort$5$(`${string}\n  at ${moonbitlang$core$builtin$$Show$to_string$12$(loc)}\n`);
+  return moonbitlang$core$abort$$abort$5$(`${string}\n  at ${moonbitlang$core$builtin$$Show$to_string$12$(loc)}\n`);
 }
 function moonbitlang$core$builtin$$abort$6$(string, loc) {
   return moonbitlang$core$abort$$abort$6$(`${string}\n  at ${moonbitlang$core$builtin$$Show$to_string$12$(loc)}\n`);
@@ -847,7 +852,7 @@ function moonbitlang$core$string$$StringView$view$46$inner(self, start_offset, e
     const _Some = end_offset;
     end_offset$2 = _Some;
   }
-  return start_offset >= 0 && (start_offset <= end_offset$2 && end_offset$2 <= (self.end - self.start | 0)) ? { str: self.str, start: self.start + start_offset | 0, end: self.start + end_offset$2 | 0 } : moonbitlang$core$builtin$$abort$4$("Invalid index for View", "@moonbitlang/core/builtin:stringview.mbt:111:5-111:36");
+  return start_offset >= 0 && (start_offset <= end_offset$2 && end_offset$2 <= (self.end - self.start | 0)) ? { str: self.str, start: self.start + start_offset | 0, end: self.start + end_offset$2 | 0 } : moonbitlang$core$builtin$$abort$5$("Invalid index for View", "@moonbitlang/core/builtin:stringview.mbt:111:5-111:36");
 }
 function moonbitlang$core$builtin$$parse$46$parse_loc$124$1093(view) {
   const _bind = moonbitlang$core$string$$StringView$find(view, { str: moonbitlang$core$builtin$$parse$46$42$bind$124$5354, start: 0, end: moonbitlang$core$builtin$$parse$46$42$bind$124$5354.length });
@@ -1101,7 +1106,7 @@ function moonbitlang$core$builtin$$Show$to_string$2$(self) {
 function moonbitlang$core$int$$Int$to_string$46$inner(self, radix) {
   return moonbitlang$core$builtin$$int_to_string_js(self, radix);
 }
-function moonbitlang$core$builtin$$Show$to_string$4$(self) {
+function moonbitlang$core$builtin$$Show$to_string$5$(self) {
   return self.str.substring(self.start, self.end);
 }
 function moonbitlang$core$builtin$$Iterator$next$27$(self) {
@@ -1196,6 +1201,40 @@ function moonbitlang$core$builtin$$Iterator$iter$18$(self) {
     }
   };
 }
+function moonbitlang$core$string$$String$char_length_eq$46$inner(self, len, start_offset, end_offset) {
+  let end_offset$2;
+  if (end_offset === undefined) {
+    end_offset$2 = self.length;
+  } else {
+    const _Some = end_offset;
+    end_offset$2 = _Some;
+  }
+  let _tmp = start_offset;
+  let _tmp$2 = 0;
+  while (true) {
+    const index = _tmp;
+    const count = _tmp$2;
+    if (index < end_offset$2 && count < len) {
+      const c1 = self.charCodeAt(index);
+      if (55296 <= c1 && c1 <= 56319 && (index + 1 | 0) < end_offset$2) {
+        const _tmp$3 = index + 1 | 0;
+        const c2 = self.charCodeAt(_tmp$3);
+        if (56320 <= c2 && c2 <= 57343) {
+          _tmp = index + 2 | 0;
+          _tmp$2 = count + 1 | 0;
+          continue;
+        } else {
+          moonbitlang$core$builtin$$abort$4$("invalid surrogate pair", "@moonbitlang/core/builtin:string.mbt:463:9-463:40");
+        }
+      }
+      _tmp = index + 1 | 0;
+      _tmp$2 = count + 1 | 0;
+      continue;
+    } else {
+      return count === len && index === end_offset$2;
+    }
+  }
+}
 function moonbitlang$core$string$$String$char_length_ge$46$inner(self, len, start_offset, end_offset) {
   let end_offset$2;
   if (end_offset === undefined) {
@@ -1219,7 +1258,7 @@ function moonbitlang$core$string$$String$char_length_ge$46$inner(self, len, star
           _tmp$2 = count + 1 | 0;
           continue;
         } else {
-          moonbitlang$core$builtin$$abort$5$("invalid surrogate pair", "@moonbitlang/core/builtin:string.mbt:491:9-491:40");
+          moonbitlang$core$builtin$$abort$4$("invalid surrogate pair", "@moonbitlang/core/builtin:string.mbt:491:9-491:40");
         }
       }
       _tmp = index + 1 | 0;
@@ -1286,7 +1325,7 @@ function moonbitlang$core$string$$String$offset_of_nth_char$46$inner(self, i, st
 }
 function moonbitlang$core$builtin$$Logger$write_view$0$(self, str) {
   const _bind = self;
-  _bind.val = `${_bind.val}${moonbitlang$core$builtin$$Show$to_string$4$(str)}`;
+  _bind.val = `${_bind.val}${moonbitlang$core$builtin$$Show$to_string$5$(str)}`;
 }
 function moonbitlang$core$array$$Array$new$46$inner$9$(capacity) {
   return [];
@@ -1310,9 +1349,6 @@ function moonbitlang$core$array$$Array$push$10$(self, value) {
   moonbitlang$core$builtin$$JSArray$push(self, value);
 }
 function moonbitlang$core$array$$Array$push$18$(self, value) {
-  moonbitlang$core$builtin$$JSArray$push(self, value);
-}
-function moonbitlang$core$array$$Array$push$3$(self, value) {
   moonbitlang$core$builtin$$JSArray$push(self, value);
 }
 function moonbitlang$core$array$$Array$push$21$(self, value) {
@@ -1411,6 +1447,9 @@ function moonbitlang$core$builtin$$Iter$each$34$(self, f) {
     }
   }
 }
+function moonbitlang$core$builtin$$ToStringView$to_string_view$19$(self) {
+  return { str: self, start: 0, end: self.length };
+}
 function moonbitlang$core$builtin$$Compare$compare$19$(self, other) {
   const len = self.length;
   const _bind = $compare_int(len, other.length);
@@ -1503,7 +1542,7 @@ function moonbitlang$core$array$$MutArrayView$set$9$(self, index, value) {
     _tmp[_tmp$2] = value;
     return;
   } else {
-    moonbitlang$core$builtin$$abort$5$(`index out of bounds: the len is from 0 to ${moonbitlang$core$builtin$$Show$to_string$22$(self.end - self.start | 0)} but the index is ${moonbitlang$core$builtin$$Show$to_string$22$(index)}`, "@moonbitlang/core/builtin:mutarrayview.mbt:151:5-153:6");
+    moonbitlang$core$builtin$$abort$4$(`index out of bounds: the len is from 0 to ${moonbitlang$core$builtin$$Show$to_string$22$(self.end - self.start | 0)} but the index is ${moonbitlang$core$builtin$$Show$to_string$22$(index)}`, "@moonbitlang/core/builtin:mutarrayview.mbt:151:5-153:6");
     return;
   }
 }
@@ -1515,7 +1554,7 @@ function moonbitlang$core$array$$MutArrayView$set$10$(self, index, value) {
     _tmp[_tmp$2] = value;
     return;
   } else {
-    moonbitlang$core$builtin$$abort$5$(`index out of bounds: the len is from 0 to ${moonbitlang$core$builtin$$Show$to_string$22$(self.end - self.start | 0)} but the index is ${moonbitlang$core$builtin$$Show$to_string$22$(index)}`, "@moonbitlang/core/builtin:mutarrayview.mbt:151:5-153:6");
+    moonbitlang$core$builtin$$abort$4$(`index out of bounds: the len is from 0 to ${moonbitlang$core$builtin$$Show$to_string$22$(self.end - self.start | 0)} but the index is ${moonbitlang$core$builtin$$Show$to_string$22$(index)}`, "@moonbitlang/core/builtin:mutarrayview.mbt:151:5-153:6");
     return;
   }
 }
@@ -1623,7 +1662,7 @@ function moonbitlang$core$array$$FixedArray$blit_to$46$inner$13$(self, dst, len,
     moonbitlang$core$array$$FixedArray$unsafe_blit$13$(dst, dst_offset, self, src_offset, len);
     return;
   } else {
-    moonbitlang$core$builtin$$abort$5$(`bounds check failed: dst_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(dst_offset)}, src_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(src_offset)}, len = ${moonbitlang$core$builtin$$Show$to_string$22$(len)}, dst.length = ${moonbitlang$core$builtin$$Show$to_string$22$(dst.length)}, self.length = ${moonbitlang$core$builtin$$Show$to_string$22$(self.length)}`, "@moonbitlang/core/builtin:fixedarray_block.mbt:111:5-113:6");
+    moonbitlang$core$builtin$$abort$4$(`bounds check failed: dst_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(dst_offset)}, src_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(src_offset)}, len = ${moonbitlang$core$builtin$$Show$to_string$22$(len)}, dst.length = ${moonbitlang$core$builtin$$Show$to_string$22$(dst.length)}, self.length = ${moonbitlang$core$builtin$$Show$to_string$22$(self.length)}`, "@moonbitlang/core/builtin:fixedarray_block.mbt:111:5-113:6");
     return;
   }
 }
@@ -1632,7 +1671,7 @@ function moonbitlang$core$array$$FixedArray$blit_to$46$inner$14$(self, dst, len,
     moonbitlang$core$array$$FixedArray$unsafe_blit$14$(dst, dst_offset, self, src_offset, len);
     return;
   } else {
-    moonbitlang$core$builtin$$abort$5$(`bounds check failed: dst_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(dst_offset)}, src_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(src_offset)}, len = ${moonbitlang$core$builtin$$Show$to_string$22$(len)}, dst.length = ${moonbitlang$core$builtin$$Show$to_string$22$(dst.length)}, self.length = ${moonbitlang$core$builtin$$Show$to_string$22$(self.length)}`, "@moonbitlang/core/builtin:fixedarray_block.mbt:111:5-113:6");
+    moonbitlang$core$builtin$$abort$4$(`bounds check failed: dst_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(dst_offset)}, src_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(src_offset)}, len = ${moonbitlang$core$builtin$$Show$to_string$22$(len)}, dst.length = ${moonbitlang$core$builtin$$Show$to_string$22$(dst.length)}, self.length = ${moonbitlang$core$builtin$$Show$to_string$22$(self.length)}`, "@moonbitlang/core/builtin:fixedarray_block.mbt:111:5-113:6");
     return;
   }
 }
@@ -1641,7 +1680,7 @@ function moonbitlang$core$array$$FixedArray$blit_to$46$inner$15$(self, dst, len,
     moonbitlang$core$array$$FixedArray$unsafe_blit$15$(dst, dst_offset, self, src_offset, len);
     return;
   } else {
-    moonbitlang$core$builtin$$abort$5$(`bounds check failed: dst_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(dst_offset)}, src_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(src_offset)}, len = ${moonbitlang$core$builtin$$Show$to_string$22$(len)}, dst.length = ${moonbitlang$core$builtin$$Show$to_string$22$(dst.length)}, self.length = ${moonbitlang$core$builtin$$Show$to_string$22$(self.length)}`, "@moonbitlang/core/builtin:fixedarray_block.mbt:111:5-113:6");
+    moonbitlang$core$builtin$$abort$4$(`bounds check failed: dst_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(dst_offset)}, src_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(src_offset)}, len = ${moonbitlang$core$builtin$$Show$to_string$22$(len)}, dst.length = ${moonbitlang$core$builtin$$Show$to_string$22$(dst.length)}, self.length = ${moonbitlang$core$builtin$$Show$to_string$22$(self.length)}`, "@moonbitlang/core/builtin:fixedarray_block.mbt:111:5-113:6");
     return;
   }
 }
@@ -1650,7 +1689,7 @@ function moonbitlang$core$array$$FixedArray$blit_to$46$inner$16$(self, dst, len,
     moonbitlang$core$array$$FixedArray$unsafe_blit$16$(dst, dst_offset, self, src_offset, len);
     return;
   } else {
-    moonbitlang$core$builtin$$abort$5$(`bounds check failed: dst_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(dst_offset)}, src_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(src_offset)}, len = ${moonbitlang$core$builtin$$Show$to_string$22$(len)}, dst.length = ${moonbitlang$core$builtin$$Show$to_string$22$(dst.length)}, self.length = ${moonbitlang$core$builtin$$Show$to_string$22$(self.length)}`, "@moonbitlang/core/builtin:fixedarray_block.mbt:111:5-113:6");
+    moonbitlang$core$builtin$$abort$4$(`bounds check failed: dst_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(dst_offset)}, src_offset = ${moonbitlang$core$builtin$$Show$to_string$22$(src_offset)}, len = ${moonbitlang$core$builtin$$Show$to_string$22$(len)}, dst.length = ${moonbitlang$core$builtin$$Show$to_string$22$(dst.length)}, self.length = ${moonbitlang$core$builtin$$Show$to_string$22$(self.length)}`, "@moonbitlang/core/builtin:fixedarray_block.mbt:111:5-113:6");
     return;
   }
 }
@@ -1708,6 +1747,70 @@ function moonbitlang$core$builtin$$Show$output$35$(self, logger) {
 }
 function moonbitlang$core$builtin$$Show$output$24$(self, logger) {
   moonbitlang$core$builtin$$Show$output$35$(moonbitlang$core$builtin$$SourceLocRepr$parse(self), logger);
+}
+function moonbitlang$core$array$$ArrayView$join$19$(self, separator) {
+  if ((self.end - self.start | 0) === 0) {
+    return "";
+  } else {
+    const _hd = self.buf[self.start];
+    const _bind = self.buf;
+    const _bind$2 = 1 + self.start | 0;
+    const _bind$3 = self.end;
+    const _x = { buf: _bind, start: _bind$2, end: _bind$3 };
+    const hd = moonbitlang$core$builtin$$ToStringView$to_string_view$19$(_hd);
+    let size_hint = hd.end - hd.start | 0;
+    const _len = _x.end - _x.start | 0;
+    let _tmp = 0;
+    while (true) {
+      const _i = _tmp;
+      if (_i < _len) {
+        const s = _bind[_bind$2 + _i | 0];
+        const _tmp$2 = size_hint;
+        const _p = moonbitlang$core$builtin$$ToStringView$to_string_view$19$(s);
+        size_hint = _tmp$2 + ((_p.end - _p.start | 0) + (separator.end - separator.start | 0) | 0) | 0;
+        _tmp = _i + 1 | 0;
+        continue;
+      } else {
+        break;
+      }
+    }
+    size_hint = size_hint << 1;
+    const buf = moonbitlang$core$builtin$$StringBuilder$new$46$inner(size_hint);
+    moonbitlang$core$builtin$$Logger$write_view$0$(buf, hd);
+    if (moonbitlang$core$string$$String$char_length_eq$46$inner(separator.str, 0, separator.start, separator.end)) {
+      const _len$2 = _x.end - _x.start | 0;
+      let _tmp$2 = 0;
+      while (true) {
+        const _i = _tmp$2;
+        if (_i < _len$2) {
+          const s = _bind[_bind$2 + _i | 0];
+          const s$2 = moonbitlang$core$builtin$$ToStringView$to_string_view$19$(s);
+          moonbitlang$core$builtin$$Logger$write_view$0$(buf, s$2);
+          _tmp$2 = _i + 1 | 0;
+          continue;
+        } else {
+          break;
+        }
+      }
+    } else {
+      const _len$2 = _x.end - _x.start | 0;
+      let _tmp$2 = 0;
+      while (true) {
+        const _i = _tmp$2;
+        if (_i < _len$2) {
+          const s = _bind[_bind$2 + _i | 0];
+          const s$2 = moonbitlang$core$builtin$$ToStringView$to_string_view$19$(s);
+          moonbitlang$core$builtin$$Logger$write_view$0$(buf, separator);
+          moonbitlang$core$builtin$$Logger$write_view$0$(buf, s$2);
+          _tmp$2 = _i + 1 | 0;
+          continue;
+        } else {
+          break;
+        }
+      }
+    }
+    return buf.val;
+  }
 }
 function moonbitlang$core$array$$Array$unsafe_truncate_to_length$10$(self, new_len) {
   moonbitlang$core$builtin$$JSArray$set_length(self, new_len);
@@ -1832,7 +1935,7 @@ function moonbitlang$core$builtin$$fixed_bubble_sort_by$10$(arr, cmp) {
     }
   }
 }
-function moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$604(_env, a, b) {
+function moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$639(_env, a, b) {
   const cmp = _env._2;
   const arr = _env._1;
   const swaps = _env._0;
@@ -1844,10 +1947,10 @@ function moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$604(_env, 
     return;
   }
 }
-function moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$605(_env, a, b, c) {
-  moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$604(_env, a, b);
-  moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$604(_env, b, c);
-  moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$604(_env, a, b);
+function moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$640(_env, a, b, c) {
+  moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$639(_env, a, b);
+  moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$639(_env, b, c);
+  moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$639(_env, a, b);
 }
 function moonbitlang$core$builtin$$fixed_choose_pivot_by$9$(arr, cmp) {
   const len = arr.end - arr.start | 0;
@@ -1858,11 +1961,11 @@ function moonbitlang$core$builtin$$fixed_choose_pivot_by$9$(arr, cmp) {
     const c = Math.imul(len / 4 | 0, 3) | 0;
     const _env = { _0: swaps, _1: arr, _2: cmp };
     if (len > 50) {
-      moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$605(_env, a - 1 | 0, a, a + 1 | 0);
-      moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$605(_env, b - 1 | 0, b, b + 1 | 0);
-      moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$605(_env, c - 1 | 0, c, c + 1 | 0);
+      moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$640(_env, a - 1 | 0, a, a + 1 | 0);
+      moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$640(_env, b - 1 | 0, b, b + 1 | 0);
+      moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$640(_env, c - 1 | 0, c, c + 1 | 0);
     }
-    moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$605(_env, a, b, c);
+    moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$640(_env, a, b, c);
   }
   if (swaps.val === 12) {
     moonbitlang$core$array$$MutArrayView$rev_in_place$9$(arr);
@@ -1871,7 +1974,7 @@ function moonbitlang$core$builtin$$fixed_choose_pivot_by$9$(arr, cmp) {
     return { _0: b, _1: swaps.val === 0 };
   }
 }
-function moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$624(_env, a, b) {
+function moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$659(_env, a, b) {
   const cmp = _env._2;
   const arr = _env._1;
   const swaps = _env._0;
@@ -1883,10 +1986,10 @@ function moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$624(_env, 
     return;
   }
 }
-function moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$625(_env, a, b, c) {
-  moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$624(_env, a, b);
-  moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$624(_env, b, c);
-  moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$624(_env, a, b);
+function moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$660(_env, a, b, c) {
+  moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$659(_env, a, b);
+  moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$659(_env, b, c);
+  moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_2$47$659(_env, a, b);
 }
 function moonbitlang$core$builtin$$fixed_choose_pivot_by$10$(arr, cmp) {
   const len = arr.end - arr.start | 0;
@@ -1897,11 +2000,11 @@ function moonbitlang$core$builtin$$fixed_choose_pivot_by$10$(arr, cmp) {
     const c = Math.imul(len / 4 | 0, 3) | 0;
     const _env = { _0: swaps, _1: arr, _2: cmp };
     if (len > 50) {
-      moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$625(_env, a - 1 | 0, a, a + 1 | 0);
-      moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$625(_env, b - 1 | 0, b, b + 1 | 0);
-      moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$625(_env, c - 1 | 0, c, c + 1 | 0);
+      moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$660(_env, a - 1 | 0, a, a + 1 | 0);
+      moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$660(_env, b - 1 | 0, b, b + 1 | 0);
+      moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$660(_env, c - 1 | 0, c, c + 1 | 0);
     }
-    moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$625(_env, a, b, c);
+    moonbitlang$core$builtin$$fixed_choose_pivot_by$46$sort_3$47$660(_env, a, b, c);
   }
   if (swaps.val === 12) {
     moonbitlang$core$array$$MutArrayView$rev_in_place$10$(arr);
@@ -2291,6 +2394,9 @@ function moonbitlang$core$array$$Array$contains$18$(self, value) {
       return false;
     }
   }
+}
+function moonbitlang$core$array$$Array$join$19$(self, separator) {
+  return moonbitlang$core$array$$ArrayView$join$19$({ buf: self, start: 0, end: self.length }, separator);
 }
 function moonbitlang$core$builtin$$Show$output$26$(self, logger) {
   logger.method_table.method_0(logger.self, Error$$to_string(self));
@@ -3785,7 +3891,7 @@ function moonbitlang$core$immut$hashmap$$HashMap$add$42$(self, key, value) {
     return moonbitlang$core$immut$hashmap$$Node$add_with_path$42$(_node, key, value, moonbitlang$core$immut$internal$path$$of$19$(key));
   }
 }
-function moonbitlang$core$immut$hashmap$$length$46$node_size$47$1411(node) {
+function moonbitlang$core$immut$hashmap$$length$46$node_size$47$1448(node) {
   switch (node.$tag) {
     case 1: {
       const _Leaf = node;
@@ -3807,7 +3913,7 @@ function moonbitlang$core$immut$hashmap$$length$46$node_size$47$1411(node) {
           _tmp = i + 1 | 0;
           const _tmp$3 = _children.data;
           $bound_check(_tmp$3, i);
-          _tmp$2 = total_size + moonbitlang$core$immut$hashmap$$length$46$node_size$47$1411(_tmp$3[i]) | 0;
+          _tmp$2 = total_size + moonbitlang$core$immut$hashmap$$length$46$node_size$47$1448(_tmp$3[i]) | 0;
           continue;
         } else {
           return total_size;
@@ -3823,7 +3929,7 @@ function moonbitlang$core$immut$hashmap$$HashMap$length$43$(self) {
   } else {
     const _Some = _bind;
     const _node = _Some;
-    return moonbitlang$core$immut$hashmap$$length$46$node_size$47$1411(_node);
+    return moonbitlang$core$immut$hashmap$$length$46$node_size$47$1448(_node);
   }
 }
 function moonbitlang$core$immut$hashmap$$HashMap$each$51$(self, f) {
@@ -4143,7 +4249,7 @@ function dowdiness$crdt$fugue$$FugueTree$is_ancestor(self, ancestor_id, descenda
 }
 function dowdiness$crdt$fugue$$FugueTree$find_parent_and_side(self, origin_left, origin_right) {
   if (origin_left === -1) {
-    return dowdiness$crdt$fugue$$find_parent_and_side$46$tuple$47$1539;
+    return dowdiness$crdt$fugue$$find_parent_and_side$46$tuple$47$1576;
   }
   if (origin_right === -1) {
     return { _0: origin_left, _1: 1 };
@@ -4224,110 +4330,95 @@ function dowdiness$crdt$oplog$$OpLog$get_all_ops(self) {
 function dowdiness$crdt$oplog$$OpLog$get_frontier(self) {
   return dowdiness$crdt$causal_graph$$CausalGraph$get_frontier(self.graph);
 }
-function moonbitlang$core$builtin$$Eq$equal$52$(_x_867, _x_868) {
-  if (_x_867 === 0) {
-    if (_x_868 === 0) {
-      return true;
-    } else {
-      return false;
-    }
-  } else {
-    if (_x_868 === 1) {
-      return true;
-    } else {
-      return false;
-    }
-  }
-}
-function moonbitlang$core$builtin$$Eq$equal$53$(_x_847, _x_848) {
-  switch (_x_847.$tag) {
+function moonbitlang$core$builtin$$Eq$equal$52$(_x_748, _x_749) {
+  switch (_x_748.$tag) {
     case 0: {
-      if (_x_848.$tag === 0) {
+      if (_x_749.$tag === 0) {
         return true;
       } else {
         return false;
       }
     }
     case 1: {
-      if (_x_848.$tag === 1) {
+      if (_x_749.$tag === 1) {
         return true;
       } else {
         return false;
       }
     }
     case 2: {
-      if (_x_848.$tag === 2) {
+      if (_x_749.$tag === 2) {
         return true;
       } else {
         return false;
       }
     }
     case 3: {
-      if (_x_848.$tag === 3) {
+      if (_x_749.$tag === 3) {
         return true;
       } else {
         return false;
       }
     }
     case 4: {
-      if (_x_848.$tag === 4) {
+      if (_x_749.$tag === 4) {
         return true;
       } else {
         return false;
       }
     }
     case 5: {
-      if (_x_848.$tag === 5) {
+      if (_x_749.$tag === 5) {
         return true;
       } else {
         return false;
       }
     }
     case 6: {
-      if (_x_848.$tag === 6) {
+      if (_x_749.$tag === 6) {
         return true;
       } else {
         return false;
       }
     }
     case 7: {
-      if (_x_848.$tag === 7) {
+      if (_x_749.$tag === 7) {
         return true;
       } else {
         return false;
       }
     }
     case 8: {
-      if (_x_848.$tag === 8) {
+      if (_x_749.$tag === 8) {
         return true;
       } else {
         return false;
       }
     }
     case 9: {
-      const _Identifier = _x_847;
-      const _$42$x0_849 = _Identifier._0;
-      if (_x_848.$tag === 9) {
-        const _Identifier$2 = _x_848;
-        const _$42$y0_850 = _Identifier$2._0;
-        return _$42$x0_849 === _$42$y0_850;
+      const _Identifier = _x_748;
+      const _$42$x0_750 = _Identifier._0;
+      if (_x_749.$tag === 9) {
+        const _Identifier$2 = _x_749;
+        const _$42$y0_751 = _Identifier$2._0;
+        return _$42$x0_750 === _$42$y0_751;
       } else {
         return false;
       }
     }
     case 10: {
-      const _Integer = _x_847;
-      const _$42$x0_851 = _Integer._0;
-      if (_x_848.$tag === 10) {
-        const _Integer$2 = _x_848;
-        const _$42$y0_852 = _Integer$2._0;
-        return _$42$x0_851 === _$42$y0_852;
+      const _Integer = _x_748;
+      const _$42$x0_752 = _Integer._0;
+      if (_x_749.$tag === 10) {
+        const _Integer$2 = _x_749;
+        const _$42$y0_753 = _Integer$2._0;
+        return _$42$x0_752 === _$42$y0_753;
       } else {
         return false;
       }
     }
     default: {
-      if (_x_848.$tag === 11) {
+      if (_x_749.$tag === 11) {
         return true;
       } else {
         return false;
@@ -4417,25 +4508,19 @@ function dowdiness$crdt$parser$$print_token(token) {
     }
   }
 }
-function dowdiness$crdt$parser$$TermNode$new(kind, start, end, node_id, children) {
-  return { kind: kind, start: start, end: end, node_id: node_id, children: children };
-}
-function dowdiness$crdt$parser$$TermNode$error(message, position, node_id) {
-  return dowdiness$crdt$parser$$TermNode$new(new $64$dowdiness$47$crdt$47$parser$46$TermKind$Error(message), position, position, node_id, []);
-}
-function dowdiness$crdt$parser$$advance_positioned(parser) {
+function dowdiness$crdt$parser$$advance(parser) {
   parser.position = parser.position + 1 | 0;
   return parser;
 }
-function dowdiness$crdt$parser$$expect_positioned(parser, expected) {
+function dowdiness$crdt$parser$$expect(parser, expected) {
   const current = parser.position < parser.tokens.length ? moonbitlang$core$array$$Array$at$21$(parser.tokens, parser.position).token : $64$dowdiness$47$crdt$47$parser$46$Token$EOF;
-  if (moonbitlang$core$builtin$$Eq$equal$53$(current, expected)) {
-    return new Result$Ok$11$(dowdiness$crdt$parser$$advance_positioned(parser));
+  if (moonbitlang$core$builtin$$Eq$equal$52$(current, expected)) {
+    return new Result$Ok$11$(dowdiness$crdt$parser$$advance(parser));
   } else {
     return new Result$Err$11$(new Error$dowdiness$47$crdt$47$parser$46$ParseError$46$ParseError({ _0: "Expected token", _1: expected }));
   }
 }
-function dowdiness$crdt$parser$$make_positioned_parser(tokens) {
+function dowdiness$crdt$parser$$make_parser(tokens) {
   return { tokens: tokens, position: 0, node_id_counter: 0 };
 }
 function dowdiness$crdt$parser$$next_node_id(parser) {
@@ -4443,7 +4528,7 @@ function dowdiness$crdt$parser$$next_node_id(parser) {
   parser.node_id_counter = parser.node_id_counter + 1 | 0;
   return id;
 }
-function dowdiness$crdt$parser$$peek_info_positioned(parser) {
+function dowdiness$crdt$parser$$peek_info(parser) {
   return parser.position < parser.tokens.length ? moonbitlang$core$array$$Array$at$21$(parser.tokens, parser.position) : dowdiness$crdt$parser$$TokenInfo$new($64$dowdiness$47$crdt$47$parser$46$Token$EOF, 0, 0);
 }
 function dowdiness$crdt$parser$$is_alphabet(code) {
@@ -4615,13 +4700,16 @@ function dowdiness$crdt$parser$$tokenize_helper(input, pos, acc) {
 function dowdiness$crdt$parser$$tokenize(input) {
   return dowdiness$crdt$parser$$tokenize_helper(input, 0, []);
 }
-function dowdiness$crdt$parser$$parse_positioned$46$parse_expression$124$405(_env, parser) {
-  return dowdiness$crdt$parser$$parse_positioned$46$parse_binary_op$124$406(_env, parser);
+function dowdiness$crdt$parser$$TermNode$new(kind, start, end, node_id, children) {
+  return { kind: kind, start: start, end: end, node_id: node_id, children: children };
 }
-function dowdiness$crdt$parser$$parse_positioned$46$parse_binary_op$124$406(_env, parser) {
+function dowdiness$crdt$parser$$parse_tree$46$parse_expression$124$346(_env, parser) {
+  return dowdiness$crdt$parser$$parse_tree$46$parse_binary_op$124$347(_env, parser);
+}
+function dowdiness$crdt$parser$$parse_tree$46$parse_binary_op$124$347(_env, parser) {
   const constr = _env._1;
   const constr$2 = _env._0;
-  const _bind = dowdiness$crdt$parser$$parse_positioned$46$parse_application$124$407(_env, parser);
+  const _bind = dowdiness$crdt$parser$$parse_tree$46$parse_application$124$348(_env, parser);
   let _bind$2;
   if (_bind.$tag === 1) {
     const _ok = _bind;
@@ -4640,8 +4728,8 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_binary_op$124$406(_env
     const _bind$3 = _param_0.position < _param_0.tokens.length ? moonbitlang$core$array$$Array$at$21$(_param_0.tokens, _param_0.position).token : $64$dowdiness$47$crdt$47$parser$46$Token$EOF;
     switch (_bind$3.$tag) {
       case 4: {
-        const parser$2 = dowdiness$crdt$parser$$advance_positioned(_param_0);
-        const _bind$4 = dowdiness$crdt$parser$$parse_positioned$46$parse_application$124$407(_env, parser$2);
+        const parser$2 = dowdiness$crdt$parser$$advance(_param_0);
+        const _bind$4 = dowdiness$crdt$parser$$parse_tree$46$parse_application$124$348(_env, parser$2);
         let _bind$5;
         if (_bind$4.$tag === 1) {
           const _ok = _bind$4;
@@ -4660,8 +4748,8 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_binary_op$124$406(_env
         continue _L;
       }
       case 5: {
-        const parser$3 = dowdiness$crdt$parser$$advance_positioned(_param_0);
-        const _bind$6 = dowdiness$crdt$parser$$parse_positioned$46$parse_application$124$407(_env, parser$3);
+        const parser$3 = dowdiness$crdt$parser$$advance(_param_0);
+        const _bind$6 = dowdiness$crdt$parser$$parse_tree$46$parse_application$124$348(_env, parser$3);
         let _bind$7;
         if (_bind$6.$tag === 1) {
           const _ok = _bind$6;
@@ -4687,8 +4775,8 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_binary_op$124$406(_env
   }
   return new Result$Ok$13$(_tmp);
 }
-function dowdiness$crdt$parser$$parse_positioned$46$parse_application$124$407(_env, parser) {
-  const _bind = dowdiness$crdt$parser$$parse_positioned$46$parse_atom$124$408(_env, parser);
+function dowdiness$crdt$parser$$parse_tree$46$parse_application$124$348(_env, parser) {
+  const _bind = dowdiness$crdt$parser$$parse_tree$46$parse_atom$124$349(_env, parser);
   let _bind$2;
   if (_bind.$tag === 1) {
     const _ok = _bind;
@@ -4725,7 +4813,7 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_application$124$407(_e
         }
       }
     }
-    const _bind$3 = dowdiness$crdt$parser$$parse_positioned$46$parse_atom$124$408(_env, _param_0);
+    const _bind$3 = dowdiness$crdt$parser$$parse_tree$46$parse_atom$124$349(_env, _param_0);
     let _bind$4;
     if (_bind$3.$tag === 1) {
       const _ok = _bind$3;
@@ -4745,8 +4833,8 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_application$124$407(_e
   }
   return new Result$Ok$13$(_tmp);
 }
-function dowdiness$crdt$parser$$parse_positioned$46$parse_atom$124$408(_env, parser) {
-  const token_info = dowdiness$crdt$parser$$peek_info_positioned(parser);
+function dowdiness$crdt$parser$$parse_tree$46$parse_atom$124$349(_env, parser) {
+  const token_info = dowdiness$crdt$parser$$peek_info(parser);
   const _bind = token_info.token;
   switch (_bind.$tag) {
     case 10: {
@@ -4754,25 +4842,25 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_atom$124$408(_env, par
       const _n = _Integer._0;
       const node_id = dowdiness$crdt$parser$$next_node_id(parser);
       const node = dowdiness$crdt$parser$$TermNode$new(new $64$dowdiness$47$crdt$47$parser$46$TermKind$Int(_n), token_info.start, token_info.end, node_id, []);
-      return new Result$Ok$13$({ _0: dowdiness$crdt$parser$$advance_positioned(parser), _1: node });
+      return new Result$Ok$13$({ _0: dowdiness$crdt$parser$$advance(parser), _1: node });
     }
     case 9: {
       const _Identifier = _bind;
       const _name = _Identifier._0;
       const node_id$2 = dowdiness$crdt$parser$$next_node_id(parser);
       const node$2 = dowdiness$crdt$parser$$TermNode$new(new $64$dowdiness$47$crdt$47$parser$46$TermKind$Var(_name), token_info.start, token_info.end, node_id$2, []);
-      return new Result$Ok$13$({ _0: dowdiness$crdt$parser$$advance_positioned(parser), _1: node$2 });
+      return new Result$Ok$13$({ _0: dowdiness$crdt$parser$$advance(parser), _1: node$2 });
     }
     case 0: {
       const lambda_start = token_info.start;
-      const parser$2 = dowdiness$crdt$parser$$advance_positioned(parser);
-      const param_info = dowdiness$crdt$parser$$peek_info_positioned(parser$2);
+      const parser$2 = dowdiness$crdt$parser$$advance(parser);
+      const param_info = dowdiness$crdt$parser$$peek_info(parser$2);
       const _bind$2 = param_info.token;
       if (_bind$2.$tag === 9) {
         const _Identifier$2 = _bind$2;
         const _param = _Identifier$2._0;
-        const parser$3 = dowdiness$crdt$parser$$advance_positioned(parser$2);
-        const _bind$3 = dowdiness$crdt$parser$$expect_positioned(parser$3, $64$dowdiness$47$crdt$47$parser$46$Token$Dot);
+        const parser$3 = dowdiness$crdt$parser$$advance(parser$2);
+        const _bind$3 = dowdiness$crdt$parser$$expect(parser$3, $64$dowdiness$47$crdt$47$parser$46$Token$Dot);
         let parser$4;
         if (_bind$3.$tag === 1) {
           const _ok = _bind$3;
@@ -4780,7 +4868,7 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_atom$124$408(_env, par
         } else {
           return _bind$3;
         }
-        const _bind$4 = dowdiness$crdt$parser$$parse_positioned$46$parse_expression$124$405(_env, parser$4);
+        const _bind$4 = dowdiness$crdt$parser$$parse_tree$46$parse_expression$124$346(_env, parser$4);
         let _bind$5;
         if (_bind$4.$tag === 1) {
           const _ok = _bind$4;
@@ -4799,8 +4887,8 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_atom$124$408(_env, par
     }
     case 6: {
       const if_start = token_info.start;
-      const parser$3 = dowdiness$crdt$parser$$advance_positioned(parser);
-      const _bind$3 = dowdiness$crdt$parser$$parse_positioned$46$parse_expression$124$405(_env, parser$3);
+      const parser$3 = dowdiness$crdt$parser$$advance(parser);
+      const _bind$3 = dowdiness$crdt$parser$$parse_tree$46$parse_expression$124$346(_env, parser$3);
       let _bind$4;
       if (_bind$3.$tag === 1) {
         const _ok = _bind$3;
@@ -4810,7 +4898,7 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_atom$124$408(_env, par
       }
       const _parser = _bind$4._0;
       const _condition = _bind$4._1;
-      const _bind$5 = dowdiness$crdt$parser$$expect_positioned(_parser, $64$dowdiness$47$crdt$47$parser$46$Token$Then);
+      const _bind$5 = dowdiness$crdt$parser$$expect(_parser, $64$dowdiness$47$crdt$47$parser$46$Token$Then);
       let parser$4;
       if (_bind$5.$tag === 1) {
         const _ok = _bind$5;
@@ -4818,7 +4906,7 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_atom$124$408(_env, par
       } else {
         return _bind$5;
       }
-      const _bind$6 = dowdiness$crdt$parser$$parse_positioned$46$parse_expression$124$405(_env, parser$4);
+      const _bind$6 = dowdiness$crdt$parser$$parse_tree$46$parse_expression$124$346(_env, parser$4);
       let _bind$7;
       if (_bind$6.$tag === 1) {
         const _ok = _bind$6;
@@ -4828,7 +4916,7 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_atom$124$408(_env, par
       }
       const _parser$2 = _bind$7._0;
       const _then_expr = _bind$7._1;
-      const _bind$8 = dowdiness$crdt$parser$$expect_positioned(_parser$2, $64$dowdiness$47$crdt$47$parser$46$Token$Else);
+      const _bind$8 = dowdiness$crdt$parser$$expect(_parser$2, $64$dowdiness$47$crdt$47$parser$46$Token$Else);
       let parser$5;
       if (_bind$8.$tag === 1) {
         const _ok = _bind$8;
@@ -4836,7 +4924,7 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_atom$124$408(_env, par
       } else {
         return _bind$8;
       }
-      const _bind$9 = dowdiness$crdt$parser$$parse_positioned$46$parse_expression$124$405(_env, parser$5);
+      const _bind$9 = dowdiness$crdt$parser$$parse_tree$46$parse_expression$124$346(_env, parser$5);
       let _bind$10;
       if (_bind$9.$tag === 1) {
         const _ok = _bind$9;
@@ -4852,8 +4940,8 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_atom$124$408(_env, par
     }
     case 2: {
       const paren_start = token_info.start;
-      const parser$6 = dowdiness$crdt$parser$$advance_positioned(parser);
-      const _bind$11 = dowdiness$crdt$parser$$parse_positioned$46$parse_expression$124$405(_env, parser$6);
+      const parser$6 = dowdiness$crdt$parser$$advance(parser);
+      const _bind$11 = dowdiness$crdt$parser$$parse_tree$46$parse_expression$124$346(_env, parser$6);
       let _bind$12;
       if (_bind$11.$tag === 1) {
         const _ok = _bind$11;
@@ -4863,8 +4951,8 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_atom$124$408(_env, par
       }
       const _parser$4 = _bind$12._0;
       const _expr = _bind$12._1;
-      const close_info = dowdiness$crdt$parser$$peek_info_positioned(_parser$4);
-      const _bind$13 = dowdiness$crdt$parser$$expect_positioned(_parser$4, $64$dowdiness$47$crdt$47$parser$46$Token$RightParen);
+      const close_info = dowdiness$crdt$parser$$peek_info(_parser$4);
+      const _bind$13 = dowdiness$crdt$parser$$expect(_parser$4, $64$dowdiness$47$crdt$47$parser$46$Token$RightParen);
       let parser$7;
       if (_bind$13.$tag === 1) {
         const _ok = _bind$13;
@@ -4881,7 +4969,7 @@ function dowdiness$crdt$parser$$parse_positioned$46$parse_atom$124$408(_env, par
     }
   }
 }
-function dowdiness$crdt$parser$$parse_positioned(input) {
+function dowdiness$crdt$parser$$parse_tree(input) {
   const _bind = dowdiness$crdt$parser$$tokenize(input);
   let tokens;
   if (_bind.$tag === 1) {
@@ -4890,9 +4978,9 @@ function dowdiness$crdt$parser$$parse_positioned(input) {
   } else {
     return _bind;
   }
-  const parser = dowdiness$crdt$parser$$make_positioned_parser(tokens);
-  const _env = { _0: dowdiness$crdt$parser$$parse_positioned$46$constr$47$1786, _1: dowdiness$crdt$parser$$parse_positioned$46$constr$47$1787 };
-  const _bind$2 = dowdiness$crdt$parser$$parse_positioned$46$parse_expression$124$405(_env, parser);
+  const parser = dowdiness$crdt$parser$$make_parser(tokens);
+  const _env = { _0: dowdiness$crdt$parser$$parse_tree$46$constr$47$1818, _1: dowdiness$crdt$parser$$parse_tree$46$constr$47$1819 };
+  const _bind$2 = dowdiness$crdt$parser$$parse_tree$46$parse_expression$124$346(_env, parser);
   let _bind$3;
   if (_bind$2.$tag === 1) {
     const _ok = _bind$2;
@@ -4908,6 +4996,9 @@ function dowdiness$crdt$parser$$parse_positioned(input) {
   } else {
     return new Result$Err$16$(new Error$dowdiness$47$crdt$47$parser$46$ParseError$46$ParseError({ _0: "Unexpected tokens after expression", _1: _bind$4 }));
   }
+}
+function dowdiness$crdt$parser$$TermNode$error(message, position, node_id) {
+  return dowdiness$crdt$parser$$TermNode$new(new $64$dowdiness$47$crdt$47$parser$46$TermKind$Error(message), position, position, node_id, []);
 }
 function dowdiness$crdt$parser$$Edit$new(start, old_end, new_end) {
   return { start: start, old_end: old_end, new_end: new_end };
@@ -5049,7 +5140,7 @@ function dowdiness$crdt$parser$$Edit$delta(self) {
 }
 function dowdiness$crdt$parser$$IncrementalParser$adjust_tree_positions(self, tree, edit) {
   const delta = dowdiness$crdt$parser$$Edit$delta(edit);
-  if (tree.end <= edit.start) {
+  if (tree.end < edit.start) {
     return tree;
   } else {
     if (tree.start > edit.old_end) {
@@ -5092,7 +5183,7 @@ function dowdiness$crdt$parser$$IncrementalParser$adjust_tree_positions(self, tr
   }
 }
 function dowdiness$crdt$parser$$RecoveringParser$new(tokens) {
-  return { tokens: tokens, position: 0, node_id_counter: 0, errors: [] };
+  return { tokens: tokens, position: 0, errors: [] };
 }
 function dowdiness$crdt$parser$$RecoveringParser$record_error(self, error) {
   moonbitlang$core$array$$Array$push$19$(self.errors, error);
@@ -5124,7 +5215,7 @@ function dowdiness$crdt$parser$$parse_with_error_recovery(input) {
   let _try_err$2;
   _L$2: {
     _L$3: {
-      const _bind = dowdiness$crdt$parser$$parse_positioned(input);
+      const _bind = dowdiness$crdt$parser$$parse_tree(input);
       if (_bind.$tag === 1) {
         const _ok = _bind;
         tree = _ok._0;
@@ -5152,194 +5243,9 @@ function dowdiness$crdt$parser$$parse_with_error_recovery(input) {
   }
   return { _0: tree, _1: parser.errors };
 }
-function dowdiness$crdt$parser$$IncrementalParser$can_potentially_reuse_with_validation(_self, tree, _source, damaged_range) {
-  if (tree.children.length === 0) {
-    return false;
-  }
-  let has_undamaged_children = false;
-  const _arr = tree.children;
-  const _len = _arr.length;
-  let _tmp = 0;
-  while (true) {
-    const _i = _tmp;
-    if (_i < _len) {
-      const child = _arr[_i];
-      if (child.end < damaged_range.start || child.start > damaged_range.end) {
-        has_undamaged_children = true;
-        break;
-      }
-      _tmp = _i + 1 | 0;
-      continue;
-    } else {
-      break;
-    }
-  }
-  return has_undamaged_children;
-}
-function dowdiness$crdt$parser$$IncrementalParser$collect_reusable_children(_self, children, damaged_range) {
-  const reusable = [];
-  const _len = children.length;
-  let _tmp = 0;
-  while (true) {
-    const _i = _tmp;
-    if (_i < _len) {
-      const child = children[_i];
-      if (child.end < damaged_range.start || child.start > damaged_range.end) {
-        moonbitlang$core$array$$Array$push$3$(reusable, child);
-      }
-      _tmp = _i + 1 | 0;
-      continue;
-    } else {
-      break;
-    }
-  }
-  return reusable;
-}
-function dowdiness$crdt$parser$$extract_substring(source, start, end) {
-  if (start < 0 || (end > source.length || start >= end)) {
-    return "";
-  }
-  let result = "";
-  let _tmp = start;
-  while (true) {
-    const i = _tmp;
-    if (i < end && i < source.length) {
-      $bound_check(source, i);
-      const code = source.charCodeAt(i);
-      const ch = code;
-      result = `${result}${moonbitlang$core$builtin$$Show$to_string$31$(ch)}`;
-      _tmp = i + 1 | 0;
-      continue;
-    } else {
-      break;
-    }
-  }
-  return result;
-}
-function dowdiness$crdt$parser$$kinds_match(kind1, kind2) {
-  switch (kind1.$tag) {
-    case 0: {
-      if (kind2.$tag === 0) {
-        return true;
-      } else {
-        return false;
-      }
-    }
-    case 1: {
-      if (kind2.$tag === 1) {
-        return true;
-      } else {
-        return false;
-      }
-    }
-    case 2: {
-      if (kind2.$tag === 2) {
-        return true;
-      } else {
-        return false;
-      }
-    }
-    case 3: {
-      if (kind2.$tag === 3) {
-        return true;
-      } else {
-        return false;
-      }
-    }
-    case 4: {
-      const _Bop = kind1;
-      const _op1 = _Bop._0;
-      if (kind2.$tag === 4) {
-        const _Bop$2 = kind2;
-        const _op2 = _Bop$2._0;
-        return moonbitlang$core$builtin$$Eq$equal$52$(_op1, _op2);
-      } else {
-        return false;
-      }
-    }
-    case 5: {
-      if (kind2.$tag === 5) {
-        return true;
-      } else {
-        return false;
-      }
-    }
-    default: {
-      if (kind2.$tag === 6) {
-        return true;
-      } else {
-        return false;
-      }
-    }
-  }
-}
-function dowdiness$crdt$parser$$nodes_have_same_structure(node1, node2) {
-  if (!dowdiness$crdt$parser$$kinds_match(node1.kind, node2.kind)) {
-    return false;
-  }
-  if (node1.children.length !== node2.children.length) {
-    return false;
-  }
-  let _tmp = 0;
-  while (true) {
-    const i = _tmp;
-    if (i < node1.children.length) {
-      if (!dowdiness$crdt$parser$$nodes_have_same_structure(moonbitlang$core$array$$Array$at$3$(node1.children, i), moonbitlang$core$array$$Array$at$3$(node2.children, i))) {
-        return false;
-      }
-      _tmp = i + 1 | 0;
-      continue;
-    } else {
-      break;
-    }
-  }
-  return true;
-}
-function dowdiness$crdt$parser$$IncrementalParser$validate_node_structure(_self, node, source) {
-  const node_text = dowdiness$crdt$parser$$extract_substring(source, node.start, node.end);
-  const _bind = dowdiness$crdt$parser$$parse_with_error_recovery(node_text);
-  const _reparsed = _bind._0;
-  return dowdiness$crdt$parser$$nodes_have_same_structure(node, _reparsed);
-}
-function dowdiness$crdt$parser$$IncrementalParser$try_validated_reuse(self, tree, source, damaged_range) {
-  const reusable_children = dowdiness$crdt$parser$$IncrementalParser$collect_reusable_children(self, tree.children, damaged_range);
-  if (reusable_children.length === 0) {
-    return undefined;
-  }
-  const _len = reusable_children.length;
-  let _tmp = 0;
-  while (true) {
-    const _i = _tmp;
-    if (_i < _len) {
-      const child = reusable_children[_i];
-      if (!dowdiness$crdt$parser$$IncrementalParser$validate_node_structure(self, child, source)) {
-        return undefined;
-      }
-      _tmp = _i + 1 | 0;
-      continue;
-    } else {
-      break;
-    }
-  }
-  if (!dowdiness$crdt$parser$$IncrementalParser$validate_node_structure(self, tree, source)) {
-    return undefined;
-  }
-  return reusable_children.length === tree.children.length ? dowdiness$crdt$parser$$TermNode$new(tree.kind, tree.start, tree.end, tree.node_id, reusable_children) : undefined;
-}
 function dowdiness$crdt$parser$$IncrementalParser$incremental_reparse(self, source, damaged_range, adjusted_tree) {
   if ((adjusted_tree.end <= damaged_range.start || adjusted_tree.start >= damaged_range.end) && (adjusted_tree.start === 0 && adjusted_tree.end === source.length)) {
     return adjusted_tree;
-  }
-  if (damaged_range.start >= adjusted_tree.end && damaged_range.start === adjusted_tree.end) {
-  }
-  if (dowdiness$crdt$parser$$IncrementalParser$can_potentially_reuse_with_validation(self, adjusted_tree, source, damaged_range)) {
-    const _bind = dowdiness$crdt$parser$$IncrementalParser$try_validated_reuse(self, adjusted_tree, source, damaged_range);
-    if (_bind === undefined) {
-    } else {
-      const _Some = _bind;
-      const _validated_tree = _Some;
-      return _validated_tree;
-    }
   }
   const _bind = dowdiness$crdt$parser$$parse_with_error_recovery(source);
   return _bind._0;
@@ -5402,7 +5308,7 @@ function dowdiness$crdt$parser$$ParseCache$new() {
   return { cache: moonbitlang$core$hashmap$$HashMap$new$46$inner$38$(8), version: 0, max_entries: 500 };
 }
 function dowdiness$crdt$parser$$IncrementalParser$new(source) {
-  return { source: source, tree: undefined, token_cache: dowdiness$crdt$parser$$TokenCache$new(), parse_cache: dowdiness$crdt$parser$$ParseCache$new(), node_id_counter: 0 };
+  return { source: source, tree: undefined, token_cache: dowdiness$crdt$parser$$TokenCache$new(), parse_cache: dowdiness$crdt$parser$$ParseCache$new() };
 }
 function moonbitlang$core$builtin$$Hash$hash$30$(self) {
   let hasher = 0;
@@ -5526,21 +5432,21 @@ function dowdiness$crdt$editor$$Editor$get_text(self) {
 function dowdiness$crdt$editor$$ParsedEditor$reparse(self) {
   const old_text = self.cached_text;
   const new_text = dowdiness$crdt$editor$$Editor$get_text(self.editor);
+  let ast;
   if (old_text.length === 0 && new_text.length === 0) {
     const edit = dowdiness$crdt$parser$$Edit$new(0, 0, 0);
-    const ast = dowdiness$crdt$parser$$IncrementalParser$edit(self.parser, edit, new_text);
-    self.ast = ast;
+    ast = dowdiness$crdt$parser$$IncrementalParser$edit(self.parser, edit, new_text);
   } else {
     if (old_text.length === 0) {
       const edit = dowdiness$crdt$parser$$Edit$new(0, 0, new_text.length);
-      const ast = dowdiness$crdt$parser$$IncrementalParser$edit(self.parser, edit, new_text);
-      self.ast = ast;
+      ast = dowdiness$crdt$parser$$IncrementalParser$edit(self.parser, edit, new_text);
     } else {
       const edit = dowdiness$crdt$editor$$compute_edit(old_text, new_text);
-      const ast = dowdiness$crdt$parser$$IncrementalParser$edit(self.parser, edit, new_text);
-      self.ast = ast;
+      ast = dowdiness$crdt$parser$$IncrementalParser$edit(self.parser, edit, new_text);
     }
   }
+  self.ast = ast;
+  self.cached_errors = dowdiness$crdt$parser$$collect_errors(ast);
   self.cached_text = new_text;
   self.parse_dirty = false;
 }
@@ -5550,7 +5456,7 @@ function dowdiness$crdt$editor$$ParsedEditor$get_ast(self) {
   }
   const _bind = self.ast;
   if (_bind === undefined) {
-    return moonbitlang$core$builtin$$abort$3$("No valid parse tree", "@dowdiness/crdt/editor:parsed_editor.mbt:77:13-77:41");
+    return moonbitlang$core$builtin$$abort$3$("No valid parse tree", "@dowdiness/crdt/editor:parsed_editor.mbt:79:13-79:41");
   } else {
     const _Some = _bind;
     return _Some;
@@ -5596,7 +5502,7 @@ function dowdiness$crdt$editor$$Document$insert(self, position, text) {
               _try_err = _tmp$3;
               break _L$3;
             }
-            ch = moonbitlang$core$builtin$$Show$to_string$4$(_tmp$2);
+            ch = moonbitlang$core$builtin$$Show$to_string$5$(_tmp$2);
             break _L$2;
           }
           break _L;
@@ -5623,7 +5529,7 @@ function dowdiness$crdt$editor$$Document$insert(self, position, text) {
         const _bind = dowdiness$crdt$causal_graph$$CausalGraph$get_entry(self.oplog.graph, op.lv);
         let _bind$2;
         if (_bind === undefined) {
-          _bind$2 = dowdiness$crdt$editor$$insert$46$tuple$47$2028;
+          _bind$2 = dowdiness$crdt$editor$$insert$46$tuple$47$2005;
         } else {
           const _Some = _bind;
           const _entry = _Some;
@@ -5669,7 +5575,7 @@ function dowdiness$crdt$editor$$Editor$new(agent_id) {
 function dowdiness$crdt$editor$$ParsedEditor$new(agent_id) {
   const editor = dowdiness$crdt$editor$$Editor$new(agent_id);
   const parser = dowdiness$crdt$parser$$IncrementalParser$new("");
-  return { editor: editor, parser: parser, ast: undefined, parse_dirty: true, cached_text: "" };
+  return { editor: editor, parser: parser, ast: undefined, parse_dirty: true, cached_text: "", cached_errors: [] };
 }
 function dowdiness$crdt$editor$$Document$delete(self, position) {
   if (position < 0) {
@@ -5742,6 +5648,10 @@ function dowdiness$crdt$editor$$ParsedEditor$get_cursor(self) {
   const _p = self.editor;
   return _p.cursor;
 }
+function dowdiness$crdt$editor$$ParsedEditor$get_errors(self) {
+  dowdiness$crdt$editor$$ParsedEditor$get_ast(self);
+  return self.cached_errors;
+}
 function dowdiness$crdt$editor$$Editor$get_operations(self) {
   return dowdiness$crdt$oplog$$OpLog$get_all_ops(self.doc.oplog);
 }
@@ -5758,7 +5668,7 @@ function dowdiness$crdt$editor$$ParsedEditor$get_frontier(self) {
   return dowdiness$crdt$editor$$Editor$get_frontier(self.editor);
 }
 function dowdiness$crdt$$escape_json(s) {
-  let result = "";
+  const parts = [];
   const length = s.length;
   let _tmp = 0;
   while (true) {
@@ -5769,27 +5679,27 @@ function dowdiness$crdt$$escape_json(s) {
       const c = code;
       switch (c) {
         case 34: {
-          result = `${result}\\\"`;
+          moonbitlang$core$array$$Array$push$19$(parts, "\\\"");
           break;
         }
         case 92: {
-          result = `${result}\\\\`;
+          moonbitlang$core$array$$Array$push$19$(parts, "\\\\");
           break;
         }
         case 10: {
-          result = `${result}\\n`;
+          moonbitlang$core$array$$Array$push$19$(parts, "\\n");
           break;
         }
         case 13: {
-          result = `${result}\\r`;
+          moonbitlang$core$array$$Array$push$19$(parts, "\\r");
           break;
         }
         case 9: {
-          result = `${result}\\t`;
+          moonbitlang$core$array$$Array$push$19$(parts, "\\t");
           break;
         }
         default: {
-          result = `${result}${moonbitlang$core$builtin$$Show$to_string$31$(c)}`;
+          moonbitlang$core$array$$Array$push$19$(parts, moonbitlang$core$builtin$$Show$to_string$31$(c));
         }
       }
       _tmp = i + 1 | 0;
@@ -5798,76 +5708,7 @@ function dowdiness$crdt$$escape_json(s) {
       break;
     }
   }
-  return result;
-}
-function dowdiness$crdt$$serialize_errors(errors) {
-  let result = "[";
-  let _tmp = 0;
-  while (true) {
-    const i = _tmp;
-    if (i < errors.length) {
-      if (i > 0) {
-        result = `${result},`;
-      }
-      result = `${result}\"${dowdiness$crdt$$escape_json(moonbitlang$core$array$$Array$at$19$(errors, i))}\"`;
-      _tmp = i + 1 | 0;
-      continue;
-    } else {
-      break;
-    }
-  }
-  return `${result}]`;
-}
-function dowdiness$crdt$$serialize_op_content(content) {
-  if (content.$tag === 0) {
-    const _Insert = content;
-    const _text = _Insert._0;
-    return `{\"Insert\":\"${dowdiness$crdt$$escape_json(_text)}\"}`;
-  } else {
-    return "{\"Delete\":null}";
-  }
-}
-function dowdiness$crdt$$serialize_int_array(arr) {
-  let result = "[";
-  let _tmp = 0;
-  while (true) {
-    const i = _tmp;
-    if (i < arr.length) {
-      if (i > 0) {
-        result = `${result},`;
-      }
-      result = `${result}${moonbitlang$core$int$$Int$to_string$46$inner(moonbitlang$core$array$$Array$at$18$(arr, i), 10)}`;
-      _tmp = i + 1 | 0;
-      continue;
-    } else {
-      break;
-    }
-  }
-  return `${result}]`;
-}
-function dowdiness$crdt$$serialize_op(op) {
-  const parents = dowdiness$crdt$$serialize_int_array(op.parents);
-  const agent = `\"${dowdiness$crdt$$escape_json(op.agent)}\"`;
-  const content = dowdiness$crdt$$serialize_op_content(op.content);
-  return `{\"lv\":${moonbitlang$core$int$$Int$to_string$46$inner(op.lv, 10)},\"parents\":${parents},\"agent\":${agent},\"seq\":${moonbitlang$core$int$$Int$to_string$46$inner(op.seq, 10)},\"content\":${content},\"origin_left\":${moonbitlang$core$int$$Int$to_string$46$inner(op.origin_left, 10)},\"origin_right\":${moonbitlang$core$int$$Int$to_string$46$inner(op.origin_right, 10)}}`;
-}
-function dowdiness$crdt$$serialize_ops(ops) {
-  let result = "[";
-  let _tmp = 0;
-  while (true) {
-    const i = _tmp;
-    if (i < ops.length) {
-      if (i > 0) {
-        result = `${result},`;
-      }
-      result = `${result}${dowdiness$crdt$$serialize_op(moonbitlang$core$array$$Array$at$20$(ops, i))}`;
-      _tmp = i + 1 | 0;
-      continue;
-    } else {
-      break;
-    }
-  }
-  return `${result}]`;
+  return moonbitlang$core$array$$Array$join$19$(parts, { str: dowdiness$crdt$$escape_json$46$42$bind$124$118, start: 0, end: dowdiness$crdt$$escape_json$46$42$bind$124$118.length });
 }
 function dowdiness$crdt$$serialize_term_kind(kind) {
   switch (kind.$tag) {
@@ -5916,22 +5757,101 @@ function dowdiness$crdt$$serialize_ast(node) {
   return `{\"kind\":${kind},\"start\":${moonbitlang$core$int$$Int$to_string$46$inner(node.start, 10)},\"end\":${moonbitlang$core$int$$Int$to_string$46$inner(node.end, 10)},\"node_id\":${moonbitlang$core$int$$Int$to_string$46$inner(node.node_id, 10)},\"children\":${children}}`;
 }
 function dowdiness$crdt$$serialize_ast_array(nodes) {
-  let result = "[";
+  const parts = [];
+  moonbitlang$core$array$$Array$push$19$(parts, "[");
   let _tmp = 0;
   while (true) {
     const i = _tmp;
     if (i < nodes.length) {
       if (i > 0) {
-        result = `${result},`;
+        moonbitlang$core$array$$Array$push$19$(parts, ",");
       }
-      result = `${result}${dowdiness$crdt$$serialize_ast(moonbitlang$core$array$$Array$at$3$(nodes, i))}`;
+      moonbitlang$core$array$$Array$push$19$(parts, dowdiness$crdt$$serialize_ast(moonbitlang$core$array$$Array$at$3$(nodes, i)));
       _tmp = i + 1 | 0;
       continue;
     } else {
       break;
     }
   }
-  return `${result}]`;
+  moonbitlang$core$array$$Array$push$19$(parts, "]");
+  return moonbitlang$core$array$$Array$join$19$(parts, { str: dowdiness$crdt$$serialize_ast_array$46$42$bind$124$140, start: 0, end: dowdiness$crdt$$serialize_ast_array$46$42$bind$124$140.length });
+}
+function dowdiness$crdt$$serialize_errors(errors) {
+  const parts = [];
+  moonbitlang$core$array$$Array$push$19$(parts, "[");
+  let _tmp = 0;
+  while (true) {
+    const i = _tmp;
+    if (i < errors.length) {
+      if (i > 0) {
+        moonbitlang$core$array$$Array$push$19$(parts, ",");
+      }
+      moonbitlang$core$array$$Array$push$19$(parts, "\"");
+      moonbitlang$core$array$$Array$push$19$(parts, dowdiness$crdt$$escape_json(moonbitlang$core$array$$Array$at$19$(errors, i)));
+      moonbitlang$core$array$$Array$push$19$(parts, "\"");
+      _tmp = i + 1 | 0;
+      continue;
+    } else {
+      break;
+    }
+  }
+  moonbitlang$core$array$$Array$push$19$(parts, "]");
+  return moonbitlang$core$array$$Array$join$19$(parts, { str: dowdiness$crdt$$serialize_errors$46$42$bind$124$155, start: 0, end: dowdiness$crdt$$serialize_errors$46$42$bind$124$155.length });
+}
+function dowdiness$crdt$$serialize_int_array(arr) {
+  const parts = [];
+  moonbitlang$core$array$$Array$push$19$(parts, "[");
+  let _tmp = 0;
+  while (true) {
+    const i = _tmp;
+    if (i < arr.length) {
+      if (i > 0) {
+        moonbitlang$core$array$$Array$push$19$(parts, ",");
+      }
+      moonbitlang$core$array$$Array$push$19$(parts, moonbitlang$core$int$$Int$to_string$46$inner(moonbitlang$core$array$$Array$at$18$(arr, i), 10));
+      _tmp = i + 1 | 0;
+      continue;
+    } else {
+      break;
+    }
+  }
+  moonbitlang$core$array$$Array$push$19$(parts, "]");
+  return moonbitlang$core$array$$Array$join$19$(parts, { str: dowdiness$crdt$$serialize_int_array$46$42$bind$124$158, start: 0, end: dowdiness$crdt$$serialize_int_array$46$42$bind$124$158.length });
+}
+function dowdiness$crdt$$serialize_op_content(content) {
+  if (content.$tag === 0) {
+    const _Insert = content;
+    const _text = _Insert._0;
+    return `{\"Insert\":\"${dowdiness$crdt$$escape_json(_text)}\"}`;
+  } else {
+    return "{\"Delete\":null}";
+  }
+}
+function dowdiness$crdt$$serialize_op(op) {
+  const parents = dowdiness$crdt$$serialize_int_array(op.parents);
+  const agent = `\"${dowdiness$crdt$$escape_json(op.agent)}\"`;
+  const content = dowdiness$crdt$$serialize_op_content(op.content);
+  return `{\"lv\":${moonbitlang$core$int$$Int$to_string$46$inner(op.lv, 10)},\"parents\":${parents},\"agent\":${agent},\"seq\":${moonbitlang$core$int$$Int$to_string$46$inner(op.seq, 10)},\"content\":${content},\"origin_left\":${moonbitlang$core$int$$Int$to_string$46$inner(op.origin_left, 10)},\"origin_right\":${moonbitlang$core$int$$Int$to_string$46$inner(op.origin_right, 10)}}`;
+}
+function dowdiness$crdt$$serialize_ops(ops) {
+  const parts = [];
+  moonbitlang$core$array$$Array$push$19$(parts, "[");
+  let _tmp = 0;
+  while (true) {
+    const i = _tmp;
+    if (i < ops.length) {
+      if (i > 0) {
+        moonbitlang$core$array$$Array$push$19$(parts, ",");
+      }
+      moonbitlang$core$array$$Array$push$19$(parts, dowdiness$crdt$$serialize_op(moonbitlang$core$array$$Array$at$20$(ops, i)));
+      _tmp = i + 1 | 0;
+      continue;
+    } else {
+      break;
+    }
+  }
+  moonbitlang$core$array$$Array$push$19$(parts, "]");
+  return moonbitlang$core$array$$Array$join$19$(parts, { str: dowdiness$crdt$$serialize_ops$46$42$bind$124$171, start: 0, end: dowdiness$crdt$$serialize_ops$46$42$bind$124$171.length });
 }
 function dowdiness$crdt$$create_editor(agent_id) {
   dowdiness$crdt$$editor.val = dowdiness$crdt$editor$$ParsedEditor$new(agent_id);
@@ -6049,8 +5969,7 @@ function dowdiness$crdt$$get_errors_json(_handle) {
   } else {
     const _Some = _bind;
     const _ed = _Some;
-    const ast = dowdiness$crdt$editor$$ParsedEditor$get_ast(_ed);
-    const errors = dowdiness$crdt$parser$$collect_errors(ast);
+    const errors = dowdiness$crdt$editor$$ParsedEditor$get_errors(_ed);
     return dowdiness$crdt$$serialize_errors(errors);
   }
 }

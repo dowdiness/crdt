@@ -67,18 +67,18 @@ export class LambdaEditor {
 
       const currentText = this.editorElement.textContent || '';
 
-      // Sync DOM text to WASM if it has changed
+      // Sync DOM text to MoonBit if it has changed
       if (currentText !== this.lastSyncedText) {
         try {
-          this.syncTextToWasm(currentText);
+          this.syncTextToMoonBit(currentText);
           this.lastSyncedText = currentText;
         } catch (syncError) {
-          console.error('Failed to sync text to WASM:', syncError);
+          console.error('Failed to sync text to MoonBit:', syncError);
           // Continue anyway - try to read state even if sync failed
         }
       }
 
-      // Get AST and errors from WASM
+      // Get AST and errors from MoonBit
       try {
         const astJson = crdt.get_ast_json(this.handle);
         const errorsJson = crdt.get_errors_json(this.handle);
@@ -112,20 +112,21 @@ export class LambdaEditor {
     }
   }
 
-  private syncTextToWasm(newText: string): void {
+  private syncTextToMoonBit(newText: string): void {
     try {
       // Use the new set_text function for efficient sync
       crdt.set_text(this.handle, newText);
     } catch (error) {
-      console.error('Error in syncTextToWasm:', error);
+      console.error('Error in syncTextToMoonBit:', error);
       throw error;
     }
   }
 
 
   private updateASTDisplay(ast: ASTNode): void {
-    const formatted = this.highlighter.formatAST(ast);
-    this.astElement.textContent = formatted;
+    const prettyPrinted = this.highlighter.printTermNode(ast);
+    const treeView = this.highlighter.formatAST(ast);
+    this.astElement.textContent = `Expression: ${prettyPrinted}\n\nTree:\n${treeView}`;
   }
 
   private updateErrorsDisplay(errors: string[]): void {

@@ -96,6 +96,46 @@ export class SyntaxHighlighter {
       .replace(/'/g, '&#039;');
   }
 
+  printTermNode(node: ASTNode): string {
+    const { kind, children } = node;
+
+    switch (kind.tag) {
+      case 'Int':
+        return String(kind.value);
+
+      case 'Var':
+        return String(kind.value);
+
+      case 'Lam':
+        const param = kind.value;
+        const body = children.length > 0 ? this.printTermNode(children[0]) : '?';
+        return `(λ${param}. ${body})`;
+
+      case 'App':
+        const left = children.length > 0 ? this.printTermNode(children[0]) : '?';
+        const right = children.length > 1 ? this.printTermNode(children[1]) : '?';
+        return `(${left} ${right})`;
+
+      case 'Bop':
+        const op = kind.value === 'Plus' ? '+' : '-';
+        const leftOp = children.length > 0 ? this.printTermNode(children[0]) : '?';
+        const rightOp = children.length > 1 ? this.printTermNode(children[1]) : '?';
+        return `(${leftOp} ${op} ${rightOp})`;
+
+      case 'If':
+        const cond = children.length > 0 ? this.printTermNode(children[0]) : '?';
+        const thenBranch = children.length > 1 ? this.printTermNode(children[1]) : '?';
+        const elseBranch = children.length > 2 ? this.printTermNode(children[2]) : '?';
+        return `if ${cond} then ${thenBranch} else ${elseBranch}`;
+
+      case 'Error':
+        return `<error: ${kind.value}>`;
+
+      default:
+        return '?';
+    }
+  }
+
   formatAST(ast: ASTNode, indent: number = 0): string {
     const indentStr = '  '.repeat(indent);
     const { kind, start, end, children } = ast;

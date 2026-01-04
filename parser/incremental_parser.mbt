@@ -140,7 +140,13 @@ fn IncrementalParser::adjust_tree_positions(
 ) -> TermNode {
   let delta = edit.delta()
 
-  if tree.end <= edit.start {
+  //  tree.end <= edit.start Doesn't Work!
+  //  When tree.end == edit.start, the new content is inserted immediately adjacent to the tree. In lambda calculus grammar, adjacent terms form function application: (\x.x) 5 → App(Lam, Int).
+
+  //  tree.end < edit.start means:
+  //  - Only reuse the tree if there's a gap between the tree and the edit
+  //  - If tree.end == edit.start (adjacent insertion), force a reparse to check for combinations
+  if tree.end < edit.start {
     // Node is entirely before edit, no change needed
     tree
   } else if tree.start > edit.old_end {

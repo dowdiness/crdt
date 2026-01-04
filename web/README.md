@@ -14,7 +14,7 @@ A collaborative lambda calculus editor built with MoonBit CRDT and JavaScript.
 ### Prerequisites
 
 - Node.js 18+ and npm
-- MoonBit compiler (for rebuilding Wasm)
+- MoonBit compiler (for rebuilding MoonBit JavaScript)
 
 ### Installation
 
