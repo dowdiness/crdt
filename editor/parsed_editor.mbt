@@ -9,6 +9,7 @@ pub struct ParsedEditor {
   mut ast : @parser.TermNode?             // Cached AST (lazy evaluation)
   mut parse_dirty : Bool                  // Does AST need reparsing?
   mut cached_text : String                // Last parsed text (for computing Edit)
+  mut cached_errors : Array[String]       // Cached errors from last parse
 }
 
 /// Create a new ParsedEditor with the given agent ID
@@ -20,7 +21,8 @@ pub fn ParsedEditor::new(agent_id : String) -> ParsedEditor {
     parser,
     ast: None,
     parse_dirty: true,
-    cached_text: ""
+    cached_text: "",
+    cached_errors: []
   }
 }
 
@@ -84,26 +86,35 @@ fn ParsedEditor::reparse(self : ParsedEditor) -> Unit {
   let old_text = self.cached_text
   let new_text = self.editor.get_text()
 
-  if old_text.length() == 0 && new_text.length() == 0 {
+  let ast = if old_text.length() == 0 && new_text.length() == 0 {
     // Both empty - create an empty AST or error node
     // For now, try to parse empty string
     let edit = @parser.Edit::new(0, 0, 0)
-    let ast = self.parser.edit(edit, new_text)
-    self.ast = Some(ast)
+    self.parser.edit(edit, new_text)
   } else if old_text.length() == 0 {
     // Initial parse from empty to non-empty
     let edit = @parser.Edit::new(0, 0, new_text.length())
-    let ast = self.parser.edit(edit, new_text)
-    self.ast = Some(ast)
+    self.parser.edit(edit, new_text)
   } else {
     // Incremental reparse
     let edit = compute_edit(old_text, new_text)
-    let ast = self.parser.edit(edit, new_text)
-    self.ast = Some(ast)
+    self.parser.edit(edit, new_text)
   }
 
+  // Cache the AST and collect errors
+  self.ast = Some(ast)
+  self.cached_errors = @parser.collect_errors(ast)
   self.cached_text = new_text
   self.parse_dirty = false
+}
+
+/// Get cached errors from the last parse
+/// Ensures AST is up-to-date before returning errors
+pub fn ParsedEditor::get_errors(self : ParsedEditor) -> Array[String] {
+  // Ensure the AST is up-to-date (triggers reparse if dirty)
+  let _ = self.get_ast()
+  // Return the cached errors (collected during reparse)
+  self.cached_errors
 }
 
 /// Check if the current parse tree is valid (no errors)

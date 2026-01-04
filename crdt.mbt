@@ -100,14 +100,12 @@ pub fn get_ast_json(_handle : Int) -> String {
 }
 
 /// Get parse errors as JSON array
-/// Extracts errors from the current AST (uses incremental parser)
+/// Uses cached errors from ParsedEditor (O(1) after parse)
 pub fn get_errors_json(_handle : Int) -> String {
   match editor.val {
     Some(ed) => {
-      // Get AST from incremental parser (reuses cached parse)
-      let ast = ed.get_ast()
-      // Extract errors from the AST
-      let errors = @parser.collect_errors(ast)
+      // Get cached errors (triggers reparse if dirty, then returns cached errors)
+      let errors = ed.get_errors()
       serialize_errors(errors)
     }
     None => "[]"

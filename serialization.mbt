@@ -27,26 +27,30 @@ pub fn serialize_op(op : @oplog.Op) -> String {
 
 /// Serialize array of operations to JSON
 pub fn serialize_ops(ops : Array[@oplog.Op]) -> String {
-  let mut result = "["
+  let parts : Array[String] = []
+  parts.push("[")
   for i = 0; i < ops.length(); i = i + 1 {
     if i > 0 {
-      result = result + ","
+      parts.push(",")
     }
-    result = result + serialize_op(ops[i])
+    parts.push(serialize_op(ops[i]))
   }
-  result + "]"
+  parts.push("]")
+  parts.join("")
 }
 
 /// Serialize array of integers to JSON
 fn serialize_int_array(arr : Array[Int]) -> String {
-  let mut result = "["
+  let parts : Array[String] = []
+  parts.push("[")
   for i = 0; i < arr.length(); i = i + 1 {
     if i > 0 {
-      result = result + ","
+      parts.push(",")
     }
-    result = result + arr[i].to_string()
+    parts.push(arr[i].to_string())
   }
-  result + "]"
+  parts.push("]")
+  parts.join("")
 }
 
 /// Serialize TermKind to JSON
@@ -83,46 +87,52 @@ pub fn serialize_ast(node : @parser.TermNode) -> String {
 
 /// Serialize array of TermNode to JSON
 fn serialize_ast_array(nodes : Array[@parser.TermNode]) -> String {
-  let mut result = "["
+  let parts : Array[String] = []
+  parts.push("[")
   for i = 0; i < nodes.length(); i = i + 1 {
     if i > 0 {
-      result = result + ","
+      parts.push(",")
     }
-    result = result + serialize_ast(nodes[i])
+    parts.push(serialize_ast(nodes[i]))
   }
-  result + "]"
+  parts.push("]")
+  parts.join("")
 }
 
 /// Serialize array of error strings to JSON
 pub fn serialize_errors(errors : Array[String]) -> String {
-  let mut result = "["
+  let parts : Array[String] = []
+  parts.push("[")
   for i = 0; i < errors.length(); i = i + 1 {
     if i > 0 {
-      result = result + ","
+      parts.push(",")
     }
-    result = result + "\"" + escape_json(errors[i]) + "\""
+    parts.push("\"")
+    parts.push(escape_json(errors[i]))
+    parts.push("\"")
   }
-  result + "]"
+  parts.push("]")
+  parts.join("")
 }
 
 /// Escape JSON special characters
 fn escape_json(s : String) -> String {
-  let mut result = ""
+  let parts : Array[String] = []
   let length = s.length()
   for i = 0; i < length; i = i + 1 {
     let code = s.code_unit_at(i).to_int()
     let c = Int::unsafe_to_char(code)
     match c {
-      '"' => result = result + "\\\""
-      '\\' => result = result + "\\\\"
-      '\n' => result = result + "\\n"
-      '\r' => result = result + "\\r"
-      '\t' => result = result + "\\t"
+      '"' => parts.push("\\\"")
+      '\\' => parts.push("\\\\")
+      '\n' => parts.push("\\n")
+      '\r' => parts.push("\\r")
+      '\t' => parts.push("\\t")
       _ => {
         // Use Char.to_string() which properly converts char to string
-        result = result + Char::to_string(c)
+        parts.push(Char::to_string(c))
       }
     }
   }
-  result
+  parts.join("")
 }
