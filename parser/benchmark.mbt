@@ -4,7 +4,7 @@
 ///| Benchmark: Full parse of simple expression
 test "full parse - simple" (b : @bench.T) {
   b.bench(fn() {
-    let result = try { parse_positioned("42") } catch { _ => abort("benchmark failed") }
+    let result = try { parse_tree("42") } catch { _ => abort("benchmark failed") }
     b.keep(result)
   })
 }
@@ -12,7 +12,7 @@ test "full parse - simple" (b : @bench.T) {
 ///| Benchmark: Full parse of lambda expression
 test "full parse - lambda" (b : @bench.T) {
   b.bench(fn() {
-    let result = try { parse_positioned("λx.x") } catch { _ => abort("benchmark failed") }
+    let result = try { parse_tree("λx.x") } catch { _ => abort("benchmark failed") }
     b.keep(result)
   })
 }
@@ -20,7 +20,7 @@ test "full parse - lambda" (b : @bench.T) {
 ///| Benchmark: Full parse of nested lambdas
 test "full parse - nested lambdas" (b : @bench.T) {
   b.bench(fn() {
-    let result = try { parse_positioned("λf.λx.f (f x)") } catch { _ => abort("benchmark failed") }
+    let result = try { parse_tree("λf.λx.f (f x)") } catch { _ => abort("benchmark failed") }
     b.keep(result)
   })
 }
@@ -28,7 +28,7 @@ test "full parse - nested lambdas" (b : @bench.T) {
 ///| Benchmark: Full parse of arithmetic expression
 test "full parse - arithmetic" (b : @bench.T) {
   b.bench(fn() {
-    let result = try { parse_positioned("1 + 2 - 3 + 4") } catch { _ => abort("benchmark failed") }
+    let result = try { parse_tree("1 + 2 - 3 + 4") } catch { _ => abort("benchmark failed") }
     b.keep(result)
   })
 }
@@ -36,7 +36,7 @@ test "full parse - arithmetic" (b : @bench.T) {
 ///| Benchmark: Full parse of complex expression
 test "full parse - complex" (b : @bench.T) {
   b.bench(fn() {
-    let result = try { parse_positioned("λf.λx.if f x then x + 1 else x - 1") } catch { _ => abort("benchmark failed") }
+    let result = try { parse_tree("λf.λx.if f x then x + 1 else x - 1") } catch { _ => abort("benchmark failed") }
     b.keep(result)
   })
 }
@@ -98,7 +98,7 @@ test "parse cache - get" (b : @bench.T) {
   b.bench(fn() {
     let cache = ParseCache::new()
     let tokens = try { tokenize("42") } catch { _ => abort("benchmark failed") }
-    let ast = try { parse_positioned("42") } catch { _ => abort("benchmark failed") }
+    let ast = try { parse_tree("42") } catch { _ => abort("benchmark failed") }
     cache.insert(tokens, 0, tokens.length(), ast)
     let result = cache.get(tokens, 0, tokens.length())
     b.keep(result)
@@ -110,7 +110,7 @@ test "damage tracking" (b : @bench.T) {
   b.bench(fn() {
     let edit = Edit::insert(4, 4)
     let damage = DamageTracker::new(edit)
-    let tree = try { parse_positioned("λx.x") } catch { _ => abort("benchmark failed") }
+    let tree = try { parse_tree("λx.x") } catch { _ => abort("benchmark failed") }
     damage.expand_for_tree(tree)
     b.keep(damage)
   })
@@ -119,7 +119,7 @@ test "damage tracking" (b : @bench.T) {
 ///| Benchmark: AST to CRDT conversion
 test "ast to crdt" (b : @bench.T) {
   b.bench(fn() {
-    let ast = try { parse_positioned("λf.λx.f x") } catch { _ => abort("benchmark failed") }
+    let ast = try { parse_tree("λf.λx.f x") } catch { _ => abort("benchmark failed") }
     let result = ast_to_crdt(ast)
     b.keep(result)
   })
@@ -128,7 +128,7 @@ test "ast to crdt" (b : @bench.T) {
 ///| Benchmark: CRDT to source reconstruction
 test "crdt to source" (b : @bench.T) {
   b.bench(fn() {
-    let ast = try { parse_positioned("λf.λx.f x") } catch { _ => abort("benchmark failed") }
+    let ast = try { parse_tree("λf.λx.f x") } catch { _ => abort("benchmark failed") }
     let crdt = ast_to_crdt(ast)
     let result = crdt_to_source(crdt)
     b.keep(result)

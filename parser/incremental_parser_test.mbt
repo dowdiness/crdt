@@ -110,7 +110,7 @@ test "IncrementalParser::edit result equals full reparse" {
   let incremental_tree = parser.edit(edit, "x + 1")
 
   // Full reparse
-  let full_tree = parse_positioned("x + 1")
+  let full_tree = parse_tree("x + 1")
 
   // Results should be equivalent (same printed form)
   inspect(
@@ -198,7 +198,7 @@ test "Lezer-style: multiple incremental edits preserve correctness" {
   inspect(print_term_node(tree3).contains("λy"), content="true")
 
   // Final result should match full reparse
-  let full_tree = parse_positioned("λy.λx.x + 2")
+  let full_tree = parse_tree("λy.λx.x + 2")
   inspect(
     print_term_node(tree3),
     content=print_term_node(full_tree),
@@ -230,7 +230,7 @@ test "Edge case: insertion at position 0" {
   let new_tree = parser.edit(edit, "λx.x")
 
   // Should correctly parse the new structure
-  let full_tree = parse_positioned("λx.x")
+  let full_tree = parse_tree("λx.x")
   inspect(
     print_term_node(new_tree),
     content=print_term_node(full_tree),
@@ -246,7 +246,7 @@ test "Edge case: insertion at end of document" {
   let new_tree = parser.edit(edit, "x + 1")
 
   // Should correctly parse the new structure
-  let full_tree = parse_positioned("x + 1")
+  let full_tree = parse_tree("x + 1")
   inspect(
     print_term_node(new_tree),
     content=print_term_node(full_tree),
@@ -273,7 +273,7 @@ test "Edge case: replace with longer text" {
   let edit = Edit::replace(0, 1, 15)
   let new_tree = parser.edit(edit, "λf.λx.f (f (x))")
 
-  let full_tree = parse_positioned("λf.λx.f (f (x))")
+  let full_tree = parse_tree("λf.λx.f (f (x))")
   inspect(
     print_term_node(new_tree),
     content=print_term_node(full_tree),
@@ -288,7 +288,7 @@ test "Edge case: replace with shorter text" {
   let edit = Edit::replace(0, 15, 1)
   let new_tree = parser.edit(edit, "y")
 
-  let full_tree = parse_positioned("y")
+  let full_tree = parse_tree("y")
   inspect(
     print_term_node(new_tree),
     content=print_term_node(full_tree),
@@ -307,7 +307,7 @@ test "Edge case: consecutive insertions at same position" {
   let edit2 = Edit::insert(3, 2)
   let tree2 = parser.edit(edit2, "x y z")
 
-  let full_tree = parse_positioned("x y z")
+  let full_tree = parse_tree("x y z")
   inspect(
     print_term_node(tree2),
     content=print_term_node(full_tree),
@@ -322,7 +322,7 @@ test "Edge case: insertion in middle of lambda parameter" {
   let edit = Edit::insert(2, 1)
   let new_tree = parser.edit(edit, "λxy.x")
 
-  let full_tree = parse_positioned("λxy.x")
+  let full_tree = parse_tree("λxy.x")
   inspect(
     print_term_node(new_tree),
     content=print_term_node(full_tree),
@@ -337,7 +337,7 @@ test "Edge case: deletion at boundary between nodes" {
   let edit = Edit::delete(2, 4)
   let new_tree = parser.edit(edit, "x y")
 
-  let full_tree = parse_positioned("x y")
+  let full_tree = parse_tree("x y")
   inspect(
     print_term_node(new_tree),
     content=print_term_node(full_tree),
@@ -352,7 +352,7 @@ test "Edge case: structural change from leaf to compound" {
   let edit = Edit::insert(2, 4)
   let new_tree = parser.edit(edit, "42 + 1")
 
-  let full_tree = parse_positioned("42 + 1")
+  let full_tree = parse_tree("42 + 1")
   inspect(
     print_term_node(new_tree),
     content=print_term_node(full_tree),
@@ -367,7 +367,7 @@ test "Edge case: structural change from compound to leaf" {
   let edit = Edit::replace(0, 5, 1)
   let new_tree = parser.edit(edit, "z")
 
-  let full_tree = parse_positioned("z")
+  let full_tree = parse_tree("z")
   inspect(
     print_term_node(new_tree),
     content=print_term_node(full_tree),
@@ -382,7 +382,7 @@ test "Edge case: nested lambda insertion at start" {
   let edit = Edit::insert(0, 3)
   let new_tree = parser.edit(edit, "λy.λx.x + 1")
 
-  let full_tree = parse_positioned("λy.λx.x + 1")
+  let full_tree = parse_tree("λy.λx.x + 1")
   inspect(
     print_term_node(new_tree),
     content=print_term_node(full_tree),
@@ -403,7 +403,7 @@ test "Edge case: multiple rapid edits in sequence" {
   let edit3 = Edit::insert(5, 2)
   let tree3 = parser.edit(edit3, "a b c d")
 
-  let full_tree = parse_positioned("a b c d")
+  let full_tree = parse_tree("a b c d")
   inspect(
     print_term_node(tree3),
     content=print_term_node(full_tree),
@@ -418,7 +418,7 @@ test "Edge case: edit that changes operator precedence" {
   let edit = Edit::replace(4, 5, 5)
   let new_tree = parser.edit(edit, "a + b + c")
 
-  let full_tree = parse_positioned("a + b + c")
+  let full_tree = parse_tree("a + b + c")
   inspect(
     print_term_node(new_tree),
     content=print_term_node(full_tree),
@@ -445,7 +445,7 @@ test "Edge case: validation with identical structure but different content" {
   let edit = Edit::replace(1, 2, 2)
   let new_tree = parser.edit(edit, "λy.x")
 
-  let full_tree = parse_positioned("λy.x")
+  let full_tree = parse_tree("λy.x")
   inspect(
     print_term_node(new_tree),
     content=print_term_node(full_tree),
@@ -487,7 +487,7 @@ test "Edge case: position boundary at node start" {
   let edit = Edit::insert(3, 1)
   let new_tree = parser.edit(edit, "λx. λy.x")
 
-  let full_tree = parse_positioned("λx. λy.x")
+  let full_tree = parse_tree("λx. λy.x")
   inspect(
     print_term_node(new_tree),
     content=print_term_node(full_tree),
@@ -502,7 +502,7 @@ test "Edge case: position boundary at node end" {
   let edit = Edit::insert(7, 2)
   let new_tree = parser.edit(edit, "λx.λy.x y")
 
-  let full_tree = parse_positioned("λx.λy.x y")
+  let full_tree = parse_tree("λx.λy.x y")
   inspect(
     print_term_node(new_tree),
     content=print_term_node(full_tree),

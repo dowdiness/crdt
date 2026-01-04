@@ -16,7 +16,7 @@ test "ParseCache::get returns None for missing entry" {
 test "ParseCache::insert and get" {
   let cache = ParseCache::new()
   let tokens = tokenize("42")
-  let node = parse_positioned("42")
+  let node = parse_tree("42")
 
   cache.insert(tokens, 0, 1, node)
 
@@ -32,7 +32,7 @@ test "ParseCache::insert and get" {
 test "ParseCache::invalidate_range increments version" {
   let cache = ParseCache::new()
   let tokens = tokenize("42")
-  let node = parse_positioned("42")
+  let node = parse_tree("42")
 
   cache.insert(tokens, 0, 1, node)
 
@@ -51,7 +51,7 @@ test "ParseCache::invalidate_range increments version" {
 test "ParseCache::clear removes all entries" {
   let cache = ParseCache::new()
   let tokens = tokenize("42")
-  let node = parse_positioned("42")
+  let node = parse_tree("42")
 
   cache.insert(tokens, 0, 1, node)
   cache.insert(tokens, 0, 2, node)
@@ -68,7 +68,7 @@ test "ParseCache::clear removes all entries" {
 test "ParseCache respects max_entries limit" {
   let cache = ParseCache::with_capacity(5)
   let tokens = tokenize("x")
-  let node = parse_positioned("x")
+  let node = parse_tree("x")
 
   // Insert 10 entries with different ranges
   for i = 0; i < 10; i = i + 1 {
@@ -84,8 +84,8 @@ test "ParseCache caches different token sequences separately" {
   let cache = ParseCache::new()
   let tokens1 = tokenize("42")
   let tokens2 = tokenize("100")
-  let node1 = parse_positioned("42")
-  let node2 = parse_positioned("100")
+  let node1 = parse_tree("42")
+  let node2 = parse_tree("100")
 
   cache.insert(tokens1, 0, 1, node1)
   cache.insert(tokens2, 0, 1, node2)

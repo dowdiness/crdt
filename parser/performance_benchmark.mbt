@@ -5,7 +5,7 @@
 ///| Benchmark: Parse scaling - small input (5 tokens)
 test "parse scaling - small (5 tokens)" (b : @bench.T) {
   b.bench(fn() {
-    let result = try { parse_positioned("1 + 2") } catch { _ => abort("benchmark failed") }
+    let result = try { parse_tree("1 + 2") } catch { _ => abort("benchmark failed") }
     b.keep(result)
   })
 }
@@ -13,7 +13,7 @@ test "parse scaling - small (5 tokens)" (b : @bench.T) {
 ///| Benchmark: Parse scaling - medium input (15 tokens)
 test "parse scaling - medium (15 tokens)" (b : @bench.T) {
   b.bench(fn() {
-    let result = try { parse_positioned("λf.λx.if f x then x + 1 else x - 1") } catch { _ => abort("benchmark failed") }
+    let result = try { parse_tree("λf.λx.if f x then x + 1 else x - 1") } catch { _ => abort("benchmark failed") }
     b.keep(result)
   })
 }
@@ -22,7 +22,7 @@ test "parse scaling - medium (15 tokens)" (b : @bench.T) {
 test "parse scaling - large (30+ tokens)" (b : @bench.T) {
   b.bench(fn() {
     let result = try {
-      parse_positioned("λf.λx.if f x then (λy.y + 1) x else (λz.z - 1) (f x)")
+      parse_tree("λf.λx.if f x then (λy.y + 1) x else (λz.z - 1) (f x)")
     } catch { _ => abort("benchmark failed") }
     b.keep(result)
   })
@@ -119,7 +119,7 @@ test "damage tracking - localized damage" (b : @bench.T) {
   b.bench(fn() {
     let edit = Edit::replace(4, 5, 5)
     let damage = DamageTracker::new(edit)
-    let tree = try { parse_positioned("x + 1") } catch { _ => abort("benchmark failed") }
+    let tree = try { parse_tree("x + 1") } catch { _ => abort("benchmark failed") }
     damage.expand_for_tree(tree)
     b.keep(damage)
   })
@@ -130,7 +130,7 @@ test "damage tracking - widespread damage" (b : @bench.T) {
   b.bench(fn() {
     let edit = Edit::replace(0, 1, 1)
     let damage = DamageTracker::new(edit)
-    let tree = try { parse_positioned("λf.λx.if f x then x + 1 else x - 1") } catch { _ => abort("benchmark failed") }
+    let tree = try { parse_tree("λf.λx.if f x then x + 1 else x - 1") } catch { _ => abort("benchmark failed") }
     damage.expand_for_tree(tree)
     b.keep(damage)
   })
@@ -150,7 +150,7 @@ test "position adjustment after edit" (b : @bench.T) {
 ///| Benchmark: CRDT operations - nested structure
 test "crdt operations - nested structure" (b : @bench.T) {
   b.bench(fn() {
-    let ast = try { parse_positioned("λf.λx.if f x then x + 1 else x - 1") } catch { _ => abort("benchmark failed") }
+    let ast = try { parse_tree("λf.λx.if f x then x + 1 else x - 1") } catch { _ => abort("benchmark failed") }
     let crdt = ast_to_crdt(ast)
     let source = crdt_to_source(crdt)
     b.keep(source)
@@ -161,10 +161,10 @@ test "crdt operations - nested structure" (b : @bench.T) {
 test "crdt operations - round trip" (b : @bench.T) {
   b.bench(fn() {
     let original = "λf.λx.f (f x)"
-    let ast = try { parse_positioned(original) } catch { _ => abort("benchmark failed") }
+    let ast = try { parse_tree(original) } catch { _ => abort("benchmark failed") }
     let crdt = ast_to_crdt(ast)
     let reconstructed = crdt_to_source(crdt)
-    let ast2 = try { parse_positioned(reconstructed) } catch { _ => abort("benchmark failed") }
+    let ast2 = try { parse_tree(reconstructed) } catch { _ => abort("benchmark failed") }
     b.keep(ast2)
   })
 }

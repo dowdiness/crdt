@@ -119,3 +119,64 @@ pub fn print_term(term : Term) -> String {
 
   go(term)
 }
+
+///| Convert a TermNode to a Term (discarding position information)
+pub fn node_to_term(node : TermNode) -> Term {
+  match node.kind {
+    TermKind::Int(n) => Term::Int(n)
+    TermKind::Var(name) => Term::Var(name)
+    TermKind::Lam(param) => {
+      let body = if node.children.length() > 0 {
+        node_to_term(node.children[0])
+      } else {
+        abort("Lambda node missing body child")
+      }
+      Term::Lam(param, body)
+    }
+    TermKind::App => {
+      let left = if node.children.length() > 0 {
+        node_to_term(node.children[0])
+      } else {
+        abort("App node missing left child")
+      }
+      let right = if node.children.length() > 1 {
+        node_to_term(node.children[1])
+      } else {
+        abort("App node missing right child")
+      }
+      Term::App(left, right)
+    }
+    TermKind::Bop(op) => {
+      let left = if node.children.length() > 0 {
+        node_to_term(node.children[0])
+      } else {
+        abort("Bop node missing left child")
+      }
+      let right = if node.children.length() > 1 {
+        node_to_term(node.children[1])
+      } else {
+        abort("Bop node missing right child")
+      }
+      Term::Bop(op, left, right)
+    }
+    TermKind::If => {
+      let cond = if node.children.length() > 0 {
+        node_to_term(node.children[0])
+      } else {
+        abort("If node missing condition child")
+      }
+      let then_expr = if node.children.length() > 1 {
+        node_to_term(node.children[1])
+      } else {
+        abort("If node missing then child")
+      }
+      let else_expr = if node.children.length() > 2 {
+        node_to_term(node.children[2])
+      } else {
+        abort("If node missing else child")
+      }
+      Term::If(cond, then_expr, else_expr)
+    }
+    TermKind::Error(msg) => abort("Cannot convert error node to Term: " + msg)
+  }
+}

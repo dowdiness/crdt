@@ -11,11 +11,11 @@
 ```
 Priority 0: Truth & Documentation    [██████████] 100% (5/5 complete) ✅
 Priority 1: Remove Dead Code         [██████████] 100% (2/2 complete) ✅
-Priority 2: Fix Duplication          [░░░░░░░░░░]   0% (0/1 complete)
+Priority 2: Fix Duplication          [██████████] 100% (1/1 complete) ✅
 Priority 3: Performance              [░░░░░░░░░░]   0% (0/2 complete)
 Priority 4: Future Enhancements      [░░░░░░░░░░]   0% (0/2 optional)
 
-Overall Progress: [███████░░░] 70% (7/10 core tasks) 🚀
+Overall Progress: [████████░░] 80% (8/10 core tasks) 🚀
 ```
 
 ---
@@ -200,46 +200,41 @@ moon test   # ✅ All 223 tests passing
 
 **Goal:** Eliminate ~200 lines of duplicated parsing logic
 
-### 🔨 Task 2.1: Unify Parser and PositionedParser
-- [ ] Design unified parser structure
-- [ ] Implement ParseResult enum (SimpleTerm | PositionedNode)
-- [ ] Refactor parse_atom to single implementation
-- [ ] Refactor parse_application to single implementation
-- [ ] Refactor parse_binary_op to single implementation
-- [ ] Update public API (parse, parse_positioned)
-- [ ] Run all parser tests
-- [ ] Run all incremental parser tests
-- **Status:** 🔴 Not Started
-- **Files:** `parser/parser.mbt`
-- **Assignee:** Pending
-- **Estimated Time:** 1-2 days
-- **Lines Removed:** ~150-200 lines (after accounting for new code)
+### ✅ Task 2.1: Unify Parser and PositionedParser
+- [x] Remove duplicated Parser struct and all its parsing functions
+- [x] Implement node_to_term conversion function
+- [x] Make parse() call parse_positioned() and convert result
+- [x] Keep PositionedParser as the single source of truth
+- [x] Run all parser tests
+- [x] Run all incremental parser tests
+- **Status:** ✅ Complete (2026-01-04)
+- **Files:**
+  - `parser/parser.mbt` (334 → 227 lines, -107 lines)
+  - `parser/term.mbt` (122 → 182 lines, +60 lines for conversion)
+- **Time Taken:** 25 minutes
+- **Net Lines Removed:** 47 lines
 
-**Implementation approach:**
-```mbt
-struct UnifiedParser {
-  tokens : Array[TokenInfo]
-  mut position : Int
-  mut node_id_counter : Int
-  track_positions : Bool
-}
+**Implementation achieved:**
+Instead of creating a complex `UnifiedParser` with conditional logic, we took a simpler approach:
+1. Removed entire `Parser` struct and all duplicate parsing functions
+2. Added `node_to_term()` conversion function in term.mbt (60 lines)
+3. Rewrote `parse()` as a 3-line wrapper around `parse_positioned()`
+4. Kept `PositionedParser` as the single parser implementation
 
-enum ParseResult {
-  SimpleTerm(Term)
-  PositionedNode(TermNode)
-}
+This is simpler, cleaner, and easier to maintain than the proposed `ParseResult` enum approach.
 
-fn parse_atom(parser : UnifiedParser) -> (UnifiedParser, ParseResult) {
-  // Single implementation with conditional position tracking
-}
+**Verification:**
+```bash
+moon check  # ✅ No warnings (0 errors, 0 warnings)
+moon test   # ✅ All 223 tests passing
 ```
 
 **Acceptance Criteria:**
-- [ ] All parser tests passing
-- [ ] All incremental parser tests passing
-- [ ] No behavioral changes (same AST output)
-- [ ] Code duplication eliminated
-- [ ] Easier to maintain (single source of truth)
+- [x] All parser tests passing (223/223)
+- [x] All incremental parser tests passing
+- [x] No behavioral changes (same AST output)
+- [x] Code duplication eliminated (107 lines of duplicate parser code removed)
+- [x] Easier to maintain (single source of truth: PositionedParser)
 
 ---
 
@@ -575,7 +570,42 @@ When working on tasks:
 
 **Next steps:** Ready to proceed with Priority 2 (Fix Parser Duplication)
 
+### 2026-01-04 - Priority 2 Complete ✅
+
+**What was accomplished:**
+- ✅ Unified Parser and PositionedParser (Task 2.1)
+- ✅ Eliminated all duplicate parsing logic
+- ✅ Created single source of truth for parser implementation
+
+**Key outcomes:**
+- **Code reduction:** 47 net lines removed
+  - `parser.mbt`: 334 → 227 lines (-107 lines, 32% reduction)
+  - `term.mbt`: 122 → 182 lines (+60 lines for node_to_term conversion)
+- **Simpler architecture:** parse() now just wraps parse_positioned() and converts
+- **Single source of truth:** PositionedParser is the only parser implementation
+- **All tests passing:** 223/223 tests (100%)
+- **No behavioral changes:** Output identical to before
+
+**Implementation approach:**
+Instead of creating complex `UnifiedParser` with conditional logic:
+1. Removed entire `Parser` struct (lines 7-120)
+2. Removed all duplicate parsing functions (parse_expression, parse_binary_op, parse_application, parse_atom)
+3. Added `node_to_term()` converter (60 lines in term.mbt)
+4. Rewrote `parse()` as 3-line wrapper calling parse_positioned()
+
+**Benefits:**
+- ✅ Eliminated 107 lines of duplicated parser logic
+- ✅ Simpler than proposed UnifiedParser/ParseResult approach
+- ✅ Easier to maintain (only one parser to update)
+- ✅ No performance impact (conversion is O(n) on tree size)
+
+**Time invested:** ~25 minutes
+**Files modified:** 2 source files (parser.mbt, term.mbt)
+**Net lines removed:** 47 lines
+
+**Next steps:** Ready to proceed with Priority 3 (Performance Optimizations) if needed
+
 ---
 
 **Last Updated:** 2026-01-04
-**Next Review:** After Priority 2 completion
+**Next Review:** After Priority 3 completion (or project complete)

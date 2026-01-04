@@ -1,7 +1,7 @@
 // Tests for CRDT integration
 
 test "ast_to_crdt converts integer" {
-  let ast = parse_positioned("42")
+  let ast = parse_tree("42")
   let crdt = ast_to_crdt(ast)
 
   inspect(crdt.node_type, content="int_literal")
@@ -9,7 +9,7 @@ test "ast_to_crdt converts integer" {
 }
 
 test "ast_to_crdt converts variable" {
-  let ast = parse_positioned("x")
+  let ast = parse_tree("x")
   let crdt = ast_to_crdt(ast)
 
   inspect(crdt.node_type, content="variable")
@@ -17,7 +17,7 @@ test "ast_to_crdt converts variable" {
 }
 
 test "ast_to_crdt converts lambda" {
-  let ast = parse_positioned("λx.x")
+  let ast = parse_tree("λx.x")
   let crdt = ast_to_crdt(ast)
 
   inspect(crdt.node_type, content="lambda")
@@ -26,7 +26,7 @@ test "ast_to_crdt converts lambda" {
 }
 
 test "ast_to_crdt converts application" {
-  let ast = parse_positioned("f x")
+  let ast = parse_tree("f x")
   let crdt = ast_to_crdt(ast)
 
   inspect(crdt.node_type, content="application")
@@ -34,7 +34,7 @@ test "ast_to_crdt converts application" {
 }
 
 test "ast_to_crdt converts binary operation" {
-  let ast = parse_positioned("1 + 2")
+  let ast = parse_tree("1 + 2")
   let crdt = ast_to_crdt(ast)
 
   inspect(crdt.node_type, content="binary_op_plus")
@@ -42,7 +42,7 @@ test "ast_to_crdt converts binary operation" {
 }
 
 test "ast_to_crdt preserves positions" {
-  let ast = parse_positioned("42")
+  let ast = parse_tree("42")
   let crdt = ast_to_crdt(ast)
 
   let start_attr = crdt.attributes.get("start")
@@ -53,7 +53,7 @@ test "ast_to_crdt preserves positions" {
 }
 
 test "crdt_to_source reconstructs integer" {
-  let ast = parse_positioned("42")
+  let ast = parse_tree("42")
   let crdt = ast_to_crdt(ast)
   let source = crdt_to_source(crdt)
 
@@ -61,7 +61,7 @@ test "crdt_to_source reconstructs integer" {
 }
 
 test "crdt_to_source reconstructs variable" {
-  let ast = parse_positioned("x")
+  let ast = parse_tree("x")
   let crdt = ast_to_crdt(ast)
   let source = crdt_to_source(crdt)
 
@@ -69,7 +69,7 @@ test "crdt_to_source reconstructs variable" {
 }
 
 test "crdt_to_source reconstructs lambda" {
-  let ast = parse_positioned("λx.x")
+  let ast = parse_tree("λx.x")
   let crdt = ast_to_crdt(ast)
   let source = crdt_to_source(crdt)
 
@@ -77,7 +77,7 @@ test "crdt_to_source reconstructs lambda" {
 }
 
 test "crdt_to_source reconstructs application" {
-  let ast = parse_positioned("f x")
+  let ast = parse_tree("f x")
   let crdt = ast_to_crdt(ast)
   let source = crdt_to_source(crdt)
 
@@ -86,7 +86,7 @@ test "crdt_to_source reconstructs application" {
 }
 
 test "crdt_to_source reconstructs binary operation" {
-  let ast = parse_positioned("1 + 2")
+  let ast = parse_tree("1 + 2")
   let crdt = ast_to_crdt(ast)
   let source = crdt_to_source(crdt)
 
@@ -138,7 +138,7 @@ test "ParsedDocument::reconstruct_source" {
 }
 
 test "print_crdt_tree produces readable output" {
-  let ast = parse_positioned("42")
+  let ast = parse_tree("42")
   let crdt = ast_to_crdt(ast)
   let output = print_crdt_tree(crdt, 0)
 
@@ -148,7 +148,7 @@ test "print_crdt_tree produces readable output" {
 
 test "round trip: source -> AST -> CRDT -> source" {
   let original = "λf.λx.f x"
-  let ast = parse_positioned(original)
+  let ast = parse_tree(original)
   let crdt = ast_to_crdt(ast)
   let reconstructed = crdt_to_source(crdt)
 

@@ -105,7 +105,7 @@ test "DamageTracker::expand_for_tree" {
   let tracker = DamageTracker::new(edit)
 
   // Create a simple tree by parsing
-  let tree = parse_positioned("1 + 2")
+  let tree = parse_tree("1 + 2")
 
   tracker.expand_for_tree(tree)
 

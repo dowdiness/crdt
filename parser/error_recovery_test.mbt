@@ -30,7 +30,7 @@ test "parse_with_error_recovery handles tokenization error" {
 }
 
 test "has_errors detects error nodes" {
-  let valid_tree = parse_positioned("42")
+  let valid_tree = parse_tree("42")
   inspect(has_errors(valid_tree), content="false")
 
   let error_tree = TermNode::error("test error", 0, 0)
@@ -48,7 +48,7 @@ test "collect_errors finds all error messages" {
 
 test "collect_errors finds nested errors" {
   // Parse a valid expression to get a tree structure
-  let tree = parse_positioned("1 + 2")
+  let tree = parse_tree("1 + 2")
 
   // This tree shouldn't have errors
   let errors = collect_errors(tree)
