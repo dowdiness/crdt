@@ -1,7 +1,7 @@
 // Main entry point for Lambda Calculus CRDT Editor
 
 import { LambdaEditor } from './editor';
-import * as crdt from '../../target/js/release/build/crdt'
+import * as crdt from '../public/crdt'
 
 async function main() {
   const statusElement = document.getElementById('status')!;

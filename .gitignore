@@ -4,3 +4,4 @@ target/
 .moonagent/
 
 node_modules/
+dist/

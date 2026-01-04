@@ -50,6 +50,10 @@ When you make changes to the MoonBit code:
 ```bash
 # From the crdt/ directory
 moon build
+
+# Copy the js file
+cp target/js/release/build/crdt.js web/public/
+cp target/js/release/build/crdt.d.ts web/public/
 ```
 
 ## Usage
