@@ -8,6 +8,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "playwright": "^1.57.0",
     "typescript": "^5.0.0",
     "vite": "^5.0.0"
   }
