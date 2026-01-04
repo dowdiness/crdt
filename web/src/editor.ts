@@ -1,7 +1,7 @@
 // Lambda Calculus Editor with CRDT backend
 
 import { SyntaxHighlighter } from './syntax-highlighter';
-import * as crdt from '../../target/js/release/build/crdt'
+import * as crdt from '../public/crdt'
 
 export interface ASTNode {
   kind: {
