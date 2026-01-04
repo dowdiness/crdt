@@ -1,73 +1,16 @@
 // Error recovery for incremental parsing
 // Implements panic mode recovery with synchronization points
 
-///| Check if a token is a synchronization point
-///
-/// Synchronization points are tokens where we can safely resume parsing
-/// after an error. For Lambda Calculus:
-/// - After ')' (closing parenthesis)
-/// - Before 'λ' or '\' (new lambda)
-/// - Before 'if' (new conditional)
-/// - At EOF
-fn is_sync_point(token : Token) -> Bool {
-  match token {
-    RightParen | Lambda | If | EOF => true
-    _ => false
-  }
-}
-
 ///| Parser with error recovery
 pub struct RecoveringParser {
   tokens : Array[TokenInfo]
-  mut position : Int
-  mut node_id_counter : Int
+  position : Int
   errors : Array[String]  // Accumulated errors
 }
 
 ///| Create a recovering parser
 pub fn RecoveringParser::new(tokens : Array[TokenInfo]) -> RecoveringParser {
-  { tokens, position: 0, node_id_counter: 0, errors: [] }
-}
-
-///| Get next node ID
-fn RecoveringParser::next_node_id(self : RecoveringParser) -> Int {
-  let id = self.node_id_counter
-  self.node_id_counter = self.node_id_counter + 1
-  id
-}
-
-///| Peek at current token
-fn RecoveringParser::peek(self : RecoveringParser) -> Token {
-  if self.position < self.tokens.length() {
-    self.tokens[self.position].token
-  } else {
-    EOF
-  }
-}
-
-///| Peek at current token info
-fn RecoveringParser::peek_info(self : RecoveringParser) -> TokenInfo {
-  if self.position < self.tokens.length() {
-    self.tokens[self.position]
-  } else {
-    TokenInfo::new(EOF, 0, 0)
-  }
-}
-
-///| Advance position
-fn RecoveringParser::advance(self : RecoveringParser) -> Unit {
-  self.position = self.position + 1
-}
-
-///| Skip to synchronization point
-fn RecoveringParser::skip_to_sync(self : RecoveringParser) -> Unit {
-  while self.position < self.tokens.length() {
-    let current = self.peek()
-    if is_sync_point(current) {
-      break
-    }
-    self.advance()
-  }
+  { tokens, position: 0, errors: [] }
 }
 
 ///| Record an error

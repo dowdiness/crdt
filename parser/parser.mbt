@@ -24,15 +24,6 @@ fn peek(parser : Parser) -> Token {
 }
 
 ///|
-fn peek_info(parser : Parser) -> TokenInfo {
-  if parser.position < parser.tokens.length() {
-    parser.tokens[parser.position]
-  } else {
-    TokenInfo::new(EOF, 0, 0)
-  }
-}
-
-///|
 fn advance(parser : Parser) -> Parser {
   parser.position = parser.position + 1
   parser
