@@ -1,5 +1,7 @@
 // Incremental parser based on Wagner-Graham algorithm
 // Efficiently reparses only damaged regions after edits
+// https://harmonia.cs.berkeley.edu/papers/twagner-parsing.pdf
+// https://marijnhaverbeke.nl/blog/lezer.html
 
 ///| Incremental parser state
 pub struct IncrementalParser {
