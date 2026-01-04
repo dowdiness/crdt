@@ -245,7 +245,7 @@ moon test   # ✅ All 223 tests passing
 ### 🚀 Task 3.1: Fix Serialization Performance
 - [ ] Replace string concatenation with array building
 - [ ] Implement collect_parts function
-- [ ] Use Array[String].join for final assembly
+- [ ] Use Array[String].join for final string
 - [ ] Benchmark before/after
 - [ ] Verify JSON output unchanged
 - **Status:** 🔴 Not Started

@@ -1,4 +1,4 @@
-// WebAssembly bindings for CRDT Editor
+// JavaScript bindings for CRDT Editor
 // Exposes ParsedEditor API to JavaScript via FFI
 
 // Global editor state (single editor for MVP)

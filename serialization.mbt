@@ -1,4 +1,4 @@
-// Serialization utilities for WebAssembly bindings
+// Serialization utilities for JavaScript bindings
 // Converts MoonBit types to JSON strings for JavaScript interop
 
 /// Serialize OpContent to JSON

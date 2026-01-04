@@ -1,13 +1,13 @@
 # Lambda Calculus CRDT Editor - Web Interface
 
-A collaborative lambda calculus editor built with MoonBit CRDT and WebAssembly.
+A collaborative lambda calculus editor built with MoonBit CRDT and JavaScript.
 
 ## Features
 
 - **Real-time syntax highlighting** for lambda calculus
 - **Error recovery** with inline error display
 - **CRDT-based** text editing for future collaboration
-- **WebAssembly-powered** for performance
+- **JavaScript-powered** for performance
 
 ## Getting Started
 
@@ -43,16 +43,13 @@ npm run build
 npm run preview
 ```
 
-## Rebuilding WebAssembly
+## Rebuilding JavaScript
 
 When you make changes to the MoonBit code:
 
 ```bash
 # From the crdt/ directory
-moon build --target wasm-gc wasm
-
-# Copy the wasm file
-cp target/wasm-gc/release/build/wasm/wasm.wasm web/public/
+moon build
 ```
 
 ## Usage
@@ -72,7 +69,7 @@ if 1 then 2 else 3
 ## Architecture
 
 - **Frontend**: TypeScript + Vite
-- **Backend**: MoonBit CRDT compiled to WebAssembly
+- **Backend**: MoonBit CRDT compiled to JavaScript
 - **Parser**: Error-recovering lambda calculus parser
 - **Editor**: contenteditable-based with AST-driven highlighting
 
