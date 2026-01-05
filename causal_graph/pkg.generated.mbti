@@ -18,6 +18,7 @@ pub struct CausalGraph {
   mut agent_seqs : @hashmap.HashMap[String, Int]
 }
 pub fn CausalGraph::add_version(Self, Array[Int], String) -> Int
+pub fn CausalGraph::diff_frontiers_lvs(Self, Array[Int], Array[Int]) -> (Array[Int], Array[Int])
 pub fn CausalGraph::get_entry(Self, Int) -> GraphEntry?
 pub fn CausalGraph::get_frontier(Self) -> Array[Int]
 pub fn CausalGraph::graph_diff(Self, Array[Int], Array[Int]) -> (Array[Int], Array[Int])
@@ -25,6 +26,7 @@ pub fn CausalGraph::is_ancestor(Self, Int, Int) -> Bool
 pub fn CausalGraph::lv_to_raw(Self, Int) -> RawVersion?
 pub fn CausalGraph::new() -> Self
 pub fn CausalGraph::raw_to_lv(Self, RawVersion) -> Int?
+pub fn CausalGraph::walk_from_frontier(Self, Array[Int]) -> Array[Int]
 pub impl Show for CausalGraph
 
 pub struct GraphEntry {

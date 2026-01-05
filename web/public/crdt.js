@@ -3988,6 +3988,9 @@ function moonbitlang$core$immut$hashmap$$HashMap$to_array$43$(self) {
   });
   return arr;
 }
+function dowdiness$crdt$causal_graph$$CausalGraph$get_entry(self, lv) {
+  return moonbitlang$core$immut$hashmap$$HashMap$get$41$(self.entries, lv);
+}
 function dowdiness$crdt$causal_graph$$RawVersion$new(agent, seq) {
   return { agent: agent, seq: seq };
 }
@@ -4006,9 +4009,6 @@ function dowdiness$crdt$causal_graph$$CausalGraph$lv_to_raw(self, lv) {
     const _entry = _Some;
     return dowdiness$crdt$causal_graph$$RawVersion$new(_entry.agent, _entry.seq);
   }
-}
-function dowdiness$crdt$causal_graph$$CausalGraph$get_entry(self, lv) {
-  return moonbitlang$core$immut$hashmap$$HashMap$get$41$(self.entries, lv);
 }
 function dowdiness$crdt$causal_graph$$CausalGraph$update_frontier(self, new_lv, parents) {
   const _p = self.frontier;
