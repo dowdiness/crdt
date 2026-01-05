@@ -2,6 +2,7 @@
 // Exposes ParsedEditor API to JavaScript via FFI
 
 // Global editor state (single editor for MVP)
+
 ///|
 let editor : Ref[@editor.ParsedEditor?] = { val: None }
 
@@ -65,7 +66,7 @@ pub fn set_text(_handle : Int, new_text : String) -> Unit {
       ed.move_cursor(0) // Move to start
       for _i = 0; _i < old_len; _i = _i + 1 {
         let _ = ed.delete()
-         // Delete at position 0
+        // Delete at position 0
       }
 
       // Insert new text

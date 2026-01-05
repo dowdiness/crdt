@@ -95,6 +95,10 @@ The codebase is organized into several MoonBit packages (each directory with `mo
 - **`fugue/`** - FugueMax tree implementation (ordered sequence CRDT)
   - Tree-based structure for maintaining operation order
   - Supports efficient insert/delete with causal ordering
+- **`branch/`** - Branch/snapshot system for efficient document state reconstruction
+  - `Branch` - Document snapshot at a specific frontier
+  - `checkout()` - Reconstruct document state at any frontier using walker
+  - `advance()` - Efficiently update branch with incremental operations
 - **`editor/`** - High-level editor abstractions
   - `Editor` - Basic text editor with cursor and CRDT operations
   - `ParsedEditor` - Enhanced editor with integrated incremental parsing
@@ -114,7 +118,10 @@ The implementation follows the eg-walker paper (https://arxiv.org/abs/2409.14252
 1. **Causal graph** - Tracks dependencies between operations
 2. **Event graph walker** - Traverses operations in topological (causal) order
 3. **FugueMax tree** - CRDT data structure for the actual sequence
-4. **Incremental checkout** - Efficiently compute document state at any frontier
+4. **Branch system** - Efficiently checkout document state at any frontier
+   - `Branch::checkout(oplog, frontier)` - Reconstruct document by walking operations in causal order
+   - `branch.advance(new_frontier)` - Incrementally apply new operations to existing branch
+   - **Important**: Operations represent character-level edits; multi-character inserts should be split into individual character operations
 
 #### Incremental Parsing
 The parser module features sophisticated incremental reparsing:
@@ -196,10 +203,30 @@ The CRDT implementation is split across multiple modules. Key files:
 - `causal_graph/graph.mbt` - Core graph operations
 - `causal_graph/walker.mbt` - Topological traversal (eg-walker)
 - `oplog/oplog.mbt` - Operation storage and retrieval
+- `oplog/walker.mbt` - Walker integration for collecting operations
 - `fugue/tree.mbt` - Sequence CRDT implementation
+- `branch/branch.mbt` - Branch system for efficient document snapshots
 - `editor/editor.mbt` - High-level editor API
 
 When adding features, consult `EG_WALKER_IMPLEMENTATION.md` and `WALKER_USAGE.md` for guidance on the eg-walker architecture.
+
+#### Using the Branch System
+The branch system provides efficient document state reconstruction:
+```moonbit
+// Checkout document at a specific frontier
+let branch = Branch::checkout(oplog, frontier)
+let text = branch.to_text()
+
+// Advance branch to new frontier (incremental update)
+let new_branch = branch.advance(new_frontier)
+
+// Check if branch is at specific frontier
+if branch.at_frontier(frontier) {
+  // Branch is at this version
+}
+```
+
+**Important**: The CRDT works at the character level. When inserting multi-character strings, split them into individual character operations (see `branch/branch_test.mbt` for examples).
 
 ## FFI and Web Integration
 

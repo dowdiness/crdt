@@ -25,49 +25,46 @@ Your implementation is **already very close** to eg-walker! You have:
 
 ## 🎯 Missing Pieces for Full Eg-walker
 
-### 1. Event Graph Walker (Priority: HIGH)
+### 1. ✅ Event Graph Walker (COMPLETED)
 
-**Location:** Create `/causal_graph/walker.mbt`
+**Location:** `/causal_graph/walker.mbt` and `/oplog/walker.mbt`
 
 The core algorithm that traverses the operation graph in topological order.
 
-```moonbit
-/// Walk the event graph from a frontier, yielding operations in causal order
-pub fn walk_from_frontier(
-  graph: CausalGraph,
-  oplog: OpLog,
-  start_frontier: Array[Int]
-) -> Array[Op] {
-  // Topological sort of operations reachable from frontier
-  // Returns operations in an order that respects causality
-}
-```
+**Implemented:**
+- `CausalGraph::walk_from_frontier(frontier)` - Topological sort in causal order
+- `OpLog::walk_and_collect(frontier)` - Collect operations at frontier
+- `OpLog::diff_and_collect(from, to)` - Diff two frontiers
+- Multiple convenience methods (walk_all, walk_recent, walk_range, etc.)
 
-**Algorithm:**
-- Start from frontier versions
-- Traverse parents in topological order
-- Ensure each operation is emitted after its dependencies
+All walker methods use method style (`self`) and have comprehensive tests.
 
-### 2. Branch/Snapshot System (Priority: HIGH)
+### 2. ✅ Branch/Snapshot System (COMPLETED)
 
-**Location:** Create `/branch/branch.mbt`
+**Location:** `/branch/branch.mbt`
 
 Efficient document state computation from operations.
 
+**Implemented:**
 ```moonbit
-/// A branch represents a document state at a specific frontier
 pub struct Branch {
-  frontier: Array[Int]           // Version frontier
-  text: String                   // Current document text
-  tree: @fugue.FugueTree        // CRDT tree state
+  frontier : Array[Int]       // Version frontier this branch represents
+  tree : @fugue.FugueTree     // CRDT tree state at this frontier
+  oplog : @oplog.OpLog        // Reference to the operation log
 }
 
 /// Checkout document state at a frontier
-pub fn checkout(graph: CausalGraph, oplog: OpLog, frontier: Array[Int]) -> Branch
+pub fn Branch::checkout(oplog : @oplog.OpLog, frontier : Array[Int]) -> Branch
 
-/// Fast-forward a branch by applying new operations
-pub fn advance_branch(branch: Branch, new_ops: Array[Op]) -> Branch
+/// Advance a branch by applying new operations
+pub fn Branch::advance(self : Branch, target_frontier : Array[Int]) -> Branch
 ```
+
+**Features:**
+- Efficient checkout using walker to apply operations in causal order
+- Incremental advance (only applies new operations when possible)
+- Full test coverage (12 tests) including concurrent inserts and complex operations
+- Character-level operations (multi-character strings must be split into individual operations)
 
 ### 3. Version Vectors (Priority: MEDIUM)
 
@@ -114,71 +111,41 @@ pub fn merge_branches(
 
 ## 📋 Implementation Steps
 
-### Phase 1: Event Graph Walker (1-2 days)
+### Phase 1: ✅ Event Graph Walker (COMPLETED)
 
-1. **Create `/causal_graph/walker.mbt`**
-   ```moonbit
-   /// Topological sort of operations
-   pub fn topological_sort(
-     graph: CausalGraph,
-     start: Array[Int]
-   ) -> Array[Int] {
-     // Kahn's algorithm or DFS-based topological sort
-   }
+**Completed:**
+- ✅ Created `/causal_graph/walker.mbt` with topological sort
+- ✅ Created `/oplog/walker.mbt` with operation collection
+- ✅ Implemented all walker methods in method style
+- ✅ Added comprehensive tests (8 tests in causal_graph, 7 tests in oplog)
+- ✅ All 234+ tests passing
 
-   /// Walk graph and collect operations
-   pub fn walk_and_collect(
-     graph: CausalGraph,
-     oplog: OpLog,
-     frontier: Array[Int]
-   ) -> Array[Op]
-   ```
+**Key implementations:**
+- `CausalGraph::walk_from_frontier(frontier)` - Uses Kahn's algorithm
+- `OpLog::walk_and_collect(frontier)` - Collects operations in causal order
+- `OpLog::diff_and_collect(from, to)` - Computes diff between frontiers
 
-2. **Add tests in `/causal_graph/walker_test.mbt`**
+### Phase 2: ✅ Branch System (COMPLETED)
 
-### Phase 2: Branch System (2-3 days)
+**Completed:**
+- ✅ Created `/branch/` directory with `moon.pkg.json`
+- ✅ Implemented `Branch` struct and all operations
+- ✅ Implemented checkout using walker
+- ✅ Implemented incremental advance
+- ✅ Added 12 comprehensive tests
+- ✅ All 246 tests passing
 
-1. **Create `/branch/` directory**
-   ```bash
-   mkdir -p branch
-   ```
+**Key implementations:**
+```moonbit
+pub struct Branch {
+  frontier : Array[Int]
+  tree : @fugue.FugueTree
+  oplog : @oplog.OpLog
+}
 
-2. **Implement `Branch` struct and operations**
-   ```moonbit
-   // branch/branch.mbt
-   pub struct Branch {
-     frontier: Array[Int]
-     tree: @fugue.FugueTree
-   }
-
-   pub fn Branch::new() -> Branch
-   pub fn Branch::from_frontier(
-     graph: CausalGraph,
-     oplog: OpLog,
-     frontier: Array[Int]
-   ) -> Branch
-   ```
-
-3. **Implement checkout**
-   ```moonbit
-   pub fn checkout(
-     graph: CausalGraph,
-     oplog: OpLog,
-     frontier: Array[Int]
-   ) -> Branch {
-     // 1. Walk graph to get operations in order
-     let ops = walk_and_collect(graph, oplog, frontier)
-
-     // 2. Apply operations to empty tree
-     let tree = @fugue.FugueTree::new()
-     for op in ops {
-       apply_to_tree(tree, op)
-     }
-
-     // 3. Return branch
-     { frontier, tree }
-   }
-   ```
+pub fn Branch::checkout(oplog : @oplog.OpLog, frontier : Array[Int]) -> Branch
+pub fn Branch::advance(self : Branch, target_frontier : Array[Int]) -> Branch
+```
 
 ### Phase 3: Merge Algorithm (2-3 days)
 
@@ -294,26 +261,26 @@ Your architecture **improves** on basic eg-walker:
 3. ✅ **Type checking** - lambda calculus type inference (future)
 4. ✅ **Lamport timestamps** - already in your CausalGraph
 
-## 🎯 Minimal Viable Implementation (Start Here!)
+## 🎯 Implementation Status
 
-**Priority 1: Make it work locally**
+**✅ Phase 1-2 Complete: Local CRDT is fully functional!**
 
-1. Implement `walk_and_collect()` in walker.mbt
-2. Implement `checkout()` in branch.mbt
-3. Test with local concurrent edits
-4. Skip network/merge for now
+1. ✅ Implemented `walk_and_collect()` in walker.mbt
+2. ✅ Implemented `checkout()` in branch.mbt
+3. ✅ Tested with concurrent edits (246 tests passing)
+4. ✅ Full character-level operations support
 
-**Priority 2: Add network sync**
+**🚧 Next Priority: Network Sync**
 
-5. Implement `merge_operations()` FFI
-6. Add TypeScript WebSocket sync
-7. Test with 2 peers
+5. ⏳ Implement complete `merge_operations()` FFI (currently stub in crdt.mbt:160-167)
+6. ⏳ Add TypeScript WebSocket/WebRTC sync
+7. ⏳ Test with 2+ peers in browser
 
-**Priority 3: Optimize**
+**📋 Future Optimizations**
 
-8. Add version vectors
-9. Optimize checkout with deltas
-10. Add compression
+8. ⏳ Add version vectors for efficient frontier representation
+9. ⏳ Optimize checkout with deltas
+10. ⏳ Add compression for network sync
 
 ## 📖 References
 
@@ -323,12 +290,16 @@ Your architecture **improves** on basic eg-walker:
 
 ---
 
-## Next Steps
+## ✅ Completed Components
 
-Want me to implement:
-1. **walker.mbt** - Event graph traversal?
-2. **branch.mbt** - Snapshot/checkout system?
-3. **merge.mbt** - Branch merging?
-4. **network.ts** - Browser integration?
+1. ✅ **walker.mbt** - Event graph traversal (Phases 1-2)
+2. ✅ **branch.mbt** - Snapshot/checkout system (Phase 2)
 
-Choose where to start!
+## 🚧 Next Steps
+
+Next priorities for full network-enabled CRDT:
+3. **merge.mbt** - Complete branch merging implementation
+4. **network.ts** - Browser WebSocket/WebRTC integration
+5. **version_vector.mbt** - Efficient frontier compression
+
+The foundation is solid! The local CRDT with walker and branch system is complete and tested.

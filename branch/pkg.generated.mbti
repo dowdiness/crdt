@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/crdt/branch"
+
+import(
+  "dowdiness/crdt/fugue"
+  "dowdiness/crdt/oplog"
+)
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Branch {
+  frontier : Array[Int]
+  tree : @fugue.FugueTree
+  oplog : @oplog.OpLog
+}
+pub fn Branch::advance(Self, Array[Int]) -> Self
+pub fn Branch::at_frontier(Self, Array[Int]) -> Bool
+pub fn Branch::checkout(@oplog.OpLog, Array[Int]) -> Self
+pub fn Branch::get_frontier(Self) -> Array[Int]
+pub fn Branch::new(@oplog.OpLog) -> Self
+pub fn Branch::to_text(Self) -> String
+pub fn Branch::visible_count(Self) -> Int
+pub impl Show for Branch
+
+// Type aliases
+
+// Traits
+
