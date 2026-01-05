@@ -36,7 +36,8 @@ pub fn FugueTree::get_all_items(self : FugueTree) -> Array[(Int, Item)] {
   self.items.iter().collect()
 }
 
-///| Get all visible (non-deleted) items in tree order
+///|
+/// Get all visible (non-deleted) items in tree order
 pub fn FugueTree::get_visible_items(self : FugueTree) -> Array[(Int, Item)] {
   let result = []
   self.traverse_tree(-1, result)
@@ -60,7 +61,9 @@ fn FugueTree::traverse_tree(
   // Traverse left children (sorted by timestamp, then ID)
   let sorted_left = left_children
   sorted_left.sort_by(compare_children)
-  sorted_left.iter().each(fn(child) {
+  sorted_left
+  .iter()
+  .each(fn(child) {
     let (child_id, _) = child
     // Don't traverse back to parent (prevents cycles)
     if child_id != node_id {
@@ -71,11 +74,7 @@ fn FugueTree::traverse_tree(
   // Visit current node (if not root and visible)
   if node_id != -1 {
     match self.get_item(node_id) {
-      Some(item) => {
-        if item.is_visible() {
-          result.push((node_id, item))
-        }
-      }
+      Some(item) => if item.is_visible() { result.push((node_id, item)) }
       None => ()
     }
   }
@@ -83,7 +82,9 @@ fn FugueTree::traverse_tree(
   // Traverse right children (sorted by timestamp, then ID)
   let sorted_right = right_children
   sorted_right.sort_by(compare_children)
-  sorted_right.iter().each(fn(child) {
+  sorted_right
+  .iter()
+  .each(fn(child) {
     let (child_id, _) = child
     // Don't traverse back to parent (prevents cycles)
     if child_id != node_id {
@@ -94,18 +95,25 @@ fn FugueTree::traverse_tree(
 
 ///|
 /// Get all children of a node (excluding cycles)
-fn FugueTree::get_children(self : FugueTree, parent_id : Int) -> Array[(Int, Item)] {
+fn FugueTree::get_children(
+  self : FugueTree,
+  parent_id : Int,
+) -> Array[(Int, Item)] {
   self.items
-    .filter(fn(id, item) { item.parent == parent_id && id != parent_id })
-    .to_array()
+  .filter(fn(id, item) { item.parent == parent_id && id != parent_id })
+  .to_array()
 }
 
 ///|
 /// Partition children into left and right sides
-fn partition_children(children : Array[(Int, Item)]) -> (Array[(Int, Item)], Array[(Int, Item)]) {
+fn partition_children(
+  children : Array[(Int, Item)],
+) -> (Array[(Int, Item)], Array[(Int, Item)]) {
   let left = []
   let right = []
-  children.iter().each(fn(child) {
+  children
+  .iter()
+  .each(fn(child) {
     let (id, item) = child
     match item.side {
       Left => left.push((id, item))
@@ -142,6 +150,7 @@ fn compare_children(a : (Int, Item), b : (Int, Item)) -> Int {
 pub fn FugueTree::visible_count(self : FugueTree) -> Int {
   self.get_visible_items().length()
 }
+
 ///|
 /// Convert tree to text by traversing in order
 pub fn FugueTree::to_text(self : FugueTree) -> String {
@@ -181,7 +190,6 @@ pub fn FugueTree::find_parent_and_side(
   }
 }
 
-
 ///|
 /// Check if ancestor_id is an ancestor of descendant_id in the tree
 pub fn FugueTree::is_ancestor(
@@ -192,7 +200,7 @@ pub fn FugueTree::is_ancestor(
   if ancestor_id == descendant_id {
     return true
   }
-  loop (self.get_item(descendant_id)) {
+  loop self.get_item(descendant_id) {
     Some(item) => {
       if item.parent == ancestor_id {
         return true
@@ -200,9 +208,9 @@ pub fn FugueTree::is_ancestor(
       if item.parent == -1 {
         return false // Reached root without finding ancestor
       }
-      continue(self.get_item(item.parent))
+      continue self.get_item(item.parent)
     }
-    None => break(false)
+    None => break false
   }
 }
 
@@ -238,4 +246,3 @@ pub fn FugueTree::delete(self : FugueTree, id : Int) -> Unit {
     None => () // Item doesn't exist, nothing to delete
   }
 }
-

@@ -14,9 +14,11 @@ pub fn crdt_to_source(CRDTNode) -> String
 
 pub fn has_errors(TermNode) -> Bool
 
+pub fn node_to_term(TermNode) -> Term
+
 pub fn parse(String) -> Term raise
 
-pub fn parse_positioned(String) -> TermNode raise
+pub fn parse_tree(String) -> TermNode raise
 
 pub fn parse_with_error_recovery(String) -> (TermNode, Array[String])
 
@@ -102,7 +104,6 @@ pub struct IncrementalParser {
   mut tree : TermNode?
   token_cache : TokenCache
   parse_cache : ParseCache
-  mut node_id_counter : Int
 }
 pub fn IncrementalParser::edit(Self, Edit, String) -> TermNode
 pub fn IncrementalParser::get_source(Self) -> String
@@ -154,8 +155,7 @@ pub impl Show for Range
 
 pub struct RecoveringParser {
   tokens : Array[TokenInfo]
-  mut position : Int
-  mut node_id_counter : Int
+  position : Int
   errors : Array[String]
 }
 pub fn RecoveringParser::get_errors(Self) -> Array[String]

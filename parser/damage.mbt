@@ -1,58 +1,76 @@
 // Damage tracking for incremental parsing
 // Identifies which parts of the parse tree need reparsing after edits
 
-///| A range in the source
+///|
+/// A range in the source
 pub struct Range {
   start : Int
   end : Int
 } derive(Show, Eq)
 
-///| Create a new range
+///|
+/// Create a new range
 pub fn Range::new(start : Int, end : Int) -> Range {
   { start, end }
 }
 
-///| Check if this range contains a position
+///|
+/// Check if this range contains a position
 pub fn Range::contains(self : Range, pos : Int) -> Bool {
   pos >= self.start && pos < self.end
 }
 
-///| Check if this range overlaps with another
+///|
+/// Check if this range overlaps with another
 pub fn Range::overlaps(self : Range, other : Range) -> Bool {
   self.start < other.end && other.start < self.end
 }
 
-///| Merge two ranges
+///|
+/// Merge two ranges
 pub fn Range::merge(self : Range, other : Range) -> Range {
   Range::new(
-    if self.start < other.start { self.start } else { other.start },
-    if self.end > other.end { self.end } else { other.end },
+    if self.start < other.start {
+      self.start
+    } else {
+      other.start
+    },
+    if self.end > other.end {
+      self.end
+    } else {
+      other.end
+    },
   )
 }
 
-///| Get the length of the range
+///|
+/// Get the length of the range
 pub fn Range::length(self : Range) -> Int {
   self.end - self.start
 }
 
-///| Damage tracker that maintains damaged ranges
+///|
+/// Damage tracker that maintains damaged ranges
 pub struct DamageTracker {
-  damaged_ranges : Array[Range]  // Sorted, non-overlapping ranges
+  damaged_ranges : Array[Range] // Sorted, non-overlapping ranges
 }
 
-///| Create a new damage tracker from an edit
+///|
+/// Create a new damage tracker from an edit
 pub fn DamageTracker::new(edit : Edit) -> DamageTracker {
   // Initial damaged range is the edit range (adjusted for new source)
   let initial_range = Range::new(edit.start, edit.new_end)
   { damaged_ranges: [initial_range] }
 }
 
-///| Create an empty damage tracker
+///|
+/// Create an empty damage tracker
 pub fn DamageTracker::empty() -> DamageTracker {
   { damaged_ranges: [] }
 }
 
-///| Add a range to the damaged regions
+///|
+/// Add a range to the damaged regions
 pub fn DamageTracker::add_range(self : DamageTracker, range : Range) -> Unit {
   if range.length() == 0 {
     return
@@ -61,7 +79,6 @@ pub fn DamageTracker::add_range(self : DamageTracker, range : Range) -> Unit {
   // Find overlapping ranges and merge them
   let mut merged = range
   let new_ranges : Array[Range] = []
-
   for existing in self.damaged_ranges {
     if existing.overlaps(merged) {
       merged = merged.merge(existing)
@@ -69,7 +86,6 @@ pub fn DamageTracker::add_range(self : DamageTracker, range : Range) -> Unit {
       new_ranges.push(existing)
     }
   }
-
   new_ranges.push(merged)
 
   // Sort ranges by start position using sort_by_key
@@ -82,7 +98,8 @@ pub fn DamageTracker::add_range(self : DamageTracker, range : Range) -> Unit {
   }
 }
 
-///| Check if a range is damaged
+///|
+/// Check if a range is damaged
 pub fn DamageTracker::is_damaged(self : DamageTracker, range : Range) -> Bool {
   for damaged in self.damaged_ranges {
     if damaged.overlaps(range) {
@@ -92,8 +109,12 @@ pub fn DamageTracker::is_damaged(self : DamageTracker, range : Range) -> Bool {
   false
 }
 
-///| Check if a position is damaged
-pub fn DamageTracker::is_position_damaged(self : DamageTracker, pos : Int) -> Bool {
+///|
+/// Check if a position is damaged
+pub fn DamageTracker::is_position_damaged(
+  self : DamageTracker,
+  pos : Int,
+) -> Bool {
   for damaged in self.damaged_ranges {
     if damaged.contains(pos) {
       return true
@@ -102,14 +123,15 @@ pub fn DamageTracker::is_position_damaged(self : DamageTracker, pos : Int) -> Bo
   false
 }
 
-///| Expand damage to include a node's range
+///|
+/// Expand damage to include a node's range
 ///
 /// This is part of the Wagner-Graham algorithm:
 /// If a node overlaps the damaged region, mark it as damaged
 pub fn DamageTracker::expand_for_node(
   self : DamageTracker,
   node_start : Int,
-  node_end : Int
+  node_end : Int,
 ) -> Unit {
   let node_range = Range::new(node_start, node_end)
 
@@ -123,14 +145,17 @@ pub fn DamageTracker::expand_for_node(
   }
 }
 
-///| Expand damage for an entire tree
+///|
+/// Expand damage for an entire tree
 ///
 /// Wagner-Graham damage expansion:
 /// Walk the tree and mark nodes that overlap damaged regions
-pub fn DamageTracker::expand_for_tree(self : DamageTracker, tree : TermNode) -> Unit {
+pub fn DamageTracker::expand_for_tree(
+  self : DamageTracker,
+  tree : TermNode,
+) -> Unit {
   // Check if this node overlaps any damaged range
   let node_range = Range::new(tree.start, tree.end)
-
   let mut overlaps_damage = false
   for damaged in self.damaged_ranges {
     if damaged.overlaps(node_range) {
@@ -138,7 +163,6 @@ pub fn DamageTracker::expand_for_tree(self : DamageTracker, tree : TermNode) -> 
       break
     }
   }
-
   if overlaps_damage {
     // This node overlaps damage, expand damage to include entire node
     self.add_range(node_range)
@@ -155,15 +179,14 @@ pub fn DamageTracker::expand_for_tree(self : DamageTracker, tree : TermNode) -> 
   }
 }
 
-///| Get the total damaged range (union of all ranges)
+///|
+/// Get the total damaged range (union of all ranges)
 pub fn DamageTracker::range(self : DamageTracker) -> Range {
   if self.damaged_ranges.length() == 0 {
     return Range::new(0, 0)
   }
-
   let mut min_start = self.damaged_ranges[0].start
   let mut max_end = self.damaged_ranges[0].end
-
   for range in self.damaged_ranges {
     if range.start < min_start {
       min_start = range.start
@@ -172,11 +195,11 @@ pub fn DamageTracker::range(self : DamageTracker) -> Range {
       max_end = range.end
     }
   }
-
   Range::new(min_start, max_end)
 }
 
-///| Get damage statistics
+///|
+/// Get damage statistics
 pub fn DamageTracker::stats(self : DamageTracker) -> String {
   "DamageTracker { ranges: " +
   self.damaged_ranges.length().to_string() +

@@ -80,10 +80,8 @@ pub fn Document::insert(
   // Iterate through each character in the string
   for i = 0; i < text.length(); i = i + 1 {
     // Extract single character as string
-    let ch = try {
-      text[i:i + 1].to_string()
-    } catch {
-      _ => continue  // Skip invalid indices
+    let ch = text[i:i + 1].to_string() catch {
+      _ => continue // Skip invalid indices
     }
 
     // Map position to LV
@@ -99,14 +97,12 @@ pub fn Document::insert(
       } else {
         -1
       }
-    } else {
       // Find item at position
-      if current_pos < items_list.length() {
-        let (id, _) = items_list[current_pos]
-        id
-      } else {
-        -1
-      }
+    } else if current_pos < items_list.length() {
+      let (id, _) = items_list[current_pos]
+      id
+    } else {
+      -1
     }
 
     // Create and apply the operation for this character
@@ -115,12 +111,11 @@ pub fn Document::insert(
     // Get Lamport timestamp and agent from causal graph for proper ordering
     let (timestamp, agent) = match self.oplog.graph.get_entry(op.lv) {
       Some(entry) => (entry.lamport, entry.agent)
-      None => (0, "unknown")  // Fallback for root operations
+      None => (0, "unknown") // Fallback for root operations
     }
 
     // Apply to tree
     self.tree.insert(op.lv, ch, origin_left, origin_right, timestamp, agent)
-
     last_op = Some(op)
     current_pos = current_pos + 1
   }
@@ -128,11 +123,10 @@ pub fn Document::insert(
   // Return the last operation (or create a dummy one if text was empty)
   match last_op {
     Some(op) => op
-    None => {
+    None =>
       // Empty string inserted - create a no-op
       // This shouldn't happen in practice, but we need to return something
       self.oplog.insert("", -1, -1)
-    }
   }
 }
 
@@ -149,7 +143,6 @@ pub fn Document::delete(self : Document, position : Int) -> @oplog.Op? {
 
   // Get all visible items in proper tree order
   let items_list = self.tree.get_visible_items()
-
   if position >= items_list.length() {
     return None
   }
@@ -175,9 +168,16 @@ pub fn Document::apply_remote(self : Document, op : @oplog.Op) -> Unit {
       // Get Lamport timestamp and agent from causal graph for proper ordering
       let (timestamp, agent) = match self.oplog.graph.get_entry(op.lv) {
         Some(entry) => (entry.lamport, entry.agent)
-        None => (0, "unknown")  // Fallback
+        None => (0, "unknown") // Fallback
       }
-      self.tree.insert(op.lv, text, op.origin_left, op.origin_right, timestamp, agent)
+      self.tree.insert(
+        op.lv,
+        text,
+        op.origin_left,
+        op.origin_right,
+        timestamp,
+        agent,
+      )
     }
     @oplog.Delete => self.tree.delete(op.origin_left)
   }

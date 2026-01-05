@@ -1,5 +1,6 @@
 // Tests for positioned parser with source tracking
 
+///|
 test "parse_tree simple integer" {
   let node = parse_tree("42")
   let printed = print_term_node(node)
@@ -8,6 +9,7 @@ test "parse_tree simple integer" {
   inspect(node.end, content="2")
 }
 
+///|
 test "parse_tree simple variable" {
   let node = parse_tree("x")
   let printed = print_term_node(node)
@@ -16,6 +18,7 @@ test "parse_tree simple variable" {
   inspect(node.end, content="1")
 }
 
+///|
 test "parse_tree identity function" {
   let node = parse_tree("λx.x")
   let printed = print_term_node(node)
@@ -25,6 +28,7 @@ test "parse_tree identity function" {
   inspect(node.end >= 3, content="true")
 }
 
+///|
 test "parse_tree binary operator" {
   let node = parse_tree("1 + 2")
   let printed = print_term_node(node)
@@ -36,6 +40,7 @@ test "parse_tree binary operator" {
   inspect(node.children[1].start, content="4")
 }
 
+///|
 test "parse_tree application" {
   let node = parse_tree("f x")
   let printed = print_term_node(node)
@@ -43,6 +48,7 @@ test "parse_tree application" {
   inspect(node.children.length(), content="2")
 }
 
+///|
 test "parse_tree if-then-else" {
   let node = parse_tree("if x then y else z")
   let printed = print_term_node(node)
@@ -50,6 +56,7 @@ test "parse_tree if-then-else" {
   inspect(node.children.length(), content="3")
 }
 
+///|
 test "parse_tree complex expression" {
   let node = parse_tree("λf.λx.f x")
   let printed = print_term_node(node)
@@ -59,6 +66,7 @@ test "parse_tree complex expression" {
   inspect(node.children.length(), content="1")
 }
 
+///|
 test "parse_tree node IDs are unique" {
   let node = parse_tree("f x y")
   // Root node
@@ -73,6 +81,7 @@ test "parse_tree node IDs are unique" {
   inspect(left_id != right_id, content="true")
 }
 
+///|
 test "parse_tree preserves source positions" {
   let node = parse_tree("  x  +  y  ")
   // x should start around position 2

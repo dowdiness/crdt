@@ -34,7 +34,10 @@ test "delete item" {
   tree.insert(2, "C", 1, -1, 2, "agent0")
   tree.delete(1) // Delete "B"
   inspect(tree.visible_count(), content="2")
-  inspect(tree.get_visible_items(), content="[(0, {id: 0, content: \"A\", parent: -1, side: Right, deleted: false, timestamp: 0, agent: \"agent0\"}), (2, {id: 2, content: \"C\", parent: 1, side: Right, deleted: false, timestamp: 2, agent: \"agent0\"})]")
+  inspect(
+    tree.get_visible_items(),
+    content="[(0, {id: 0, content: \"A\", parent: -1, side: Right, deleted: false, timestamp: 0, agent: \"agent0\"}), (2, {id: 2, content: \"C\", parent: 1, side: Right, deleted: false, timestamp: 2, agent: \"agent0\"})]",
+  )
   inspect(tree.to_text(), content="AC")
 }
 
@@ -104,7 +107,6 @@ test "concurrent inserts with different ancestors" {
   // Y: origin_left=A(0), origin_right=B(1), timestamp=3
   tree.insert(2, "X", 0, 1, 2, "agent1")
   tree.insert(3, "Y", 0, 1, 3, "agent2")
-
   let text = tree.to_text()
   // Both X and Y will be left children of B (since A is ancestor of B)
   // Sorted by timestamp: X(2), Y(3)
@@ -124,7 +126,6 @@ test "three-way concurrent insert" {
   tree.insert(1, "B", 0, 3, 1, "agent1")
   tree.insert(2, "C", 0, 3, 2, "agent2")
   tree.insert(4, "E", 0, 3, 4, "agent3")
-
   let text = tree.to_text()
   // All B, C, E will be left children of D (since A is ancestor of D)
   // Sorted by timestamp: B(1), C(2), E(4)
@@ -146,7 +147,6 @@ test "nested concurrent inserts" {
   // Second level: insert X between B and C
   // B is NOT an ancestor of C, so X becomes right child of B
   tree.insert(3, "X", 1, 2, 3, "agent2")
-
   let text = tree.to_text()
   // Tree structure:
   // A → B → X (right child of B)
@@ -166,7 +166,6 @@ test "concurrent inserts with no right constraint" {
   tree.insert(1, "B", 0, -1, 1, "agent1")
   tree.insert(2, "C", 0, -1, 2, "agent2")
   tree.insert(3, "D", 0, -1, 3, "agent3")
-
   let text = tree.to_text()
   // All become right children of A, sorted by timestamp
   // Expected: ABCD
@@ -192,7 +191,6 @@ test "interleaved operations" {
 
   // Concurrent insert in middle
   tree.insert(6, "-", 2, 3, 6, "agent2")
-
   let text = tree.to_text()
   // Current behavior based on tree structure
   inspect(text, content="Hel-lo>")
@@ -228,7 +226,6 @@ test "delete in concurrent scenario" {
   // Concurrent: delete B and insert X between A and C
   tree.delete(1)
   tree.insert(3, "X", 0, 2, 3, "agent1")
-
   let text = tree.to_text()
   // B is deleted, X is inserted
   // Expected: AXC
@@ -247,7 +244,6 @@ test "reverse timestamp ordering" {
   tree.insert(2, "X", 0, 1, 95, "agent1")
   tree.insert(3, "Y", 0, 1, 85, "agent2")
   tree.insert(4, "Z", 0, 1, 92, "agent3")
-
   let text = tree.to_text()
   // All X, Y, Z are left children of B
   // Sorted by timestamp: Y(85), Z(92), X(95)
@@ -284,7 +280,6 @@ test "collaborative editing simulation" {
   // User 3: Inserts "," between "Hello" and "World"
   // They see "Hello World", insert between 'o' and ' '
   tree.insert(20, ",", 4, 10, 20, "user3")
-
   let final_text = tree.to_text()
   // Result should deterministically merge all edits
   inspect(final_text, content="Hello!, World")
@@ -305,7 +300,6 @@ test "fugue property - non-interleaving" {
   // User 2 inserts "YY" between A and B (concurrent with user 1)
   tree.insert(4, "Y", 0, 1, 4, "user2")
   tree.insert(5, "Y", 4, 1, 5, "user2")
-
   let text = tree.to_text()
   // FugueMax should not interleave: should get AXXYYB or AYYXXB
   // Based on timestamps and tree structure, we get AXXYYB

@@ -36,10 +36,17 @@ pub fn OpLog::insert(
   // Get the seq for this operation from the graph
   let seq = match self.graph.lv_to_raw(lv) {
     Some(raw) => raw.seq
-    None => 0  // Shouldn't happen, but fallback to 0
+    None => 0 // Shouldn't happen, but fallback to 0
   }
-
-  let op = Op::new_insert(lv, parents, self.agent_id, seq, text, origin_left, origin_right)
+  let op = Op::new_insert(
+    lv,
+    parents,
+    self.agent_id,
+    seq,
+    text,
+    origin_left,
+    origin_right,
+  )
   self.add_op(op)
   op
 }
@@ -53,9 +60,8 @@ pub fn OpLog::delete(self : OpLog, origin_left : Int) -> Op {
   // Get the seq for this operation from the graph
   let seq = match self.graph.lv_to_raw(lv) {
     Some(raw) => raw.seq
-    None => 0  // Shouldn't happen, but fallback to 0
+    None => 0 // Shouldn't happen, but fallback to 0
   }
-
   let op = Op::new_delete(lv, parents, self.agent_id, seq, origin_left)
   self.add_op(op)
   op
@@ -98,22 +104,18 @@ pub fn OpLog::apply_remote(self : OpLog, op : Op) -> Unit {
 
   // Create a new operation with the local LV
   let local_op = match op.content {
-    Insert(text) => Op::new_insert(
-      local_lv,
-      op.parents,
-      op.agent,
-      op.seq,
-      text,
-      op.origin_left,
-      op.origin_right,
-    )
-    Delete => Op::new_delete(
-      local_lv,
-      op.parents,
-      op.agent,
-      op.seq,
-      op.origin_left,
-    )
+    Insert(text) =>
+      Op::new_insert(
+        local_lv,
+        op.parents,
+        op.agent,
+        op.seq,
+        text,
+        op.origin_left,
+        op.origin_right,
+      )
+    Delete =>
+      Op::new_delete(local_lv, op.parents, op.agent, op.seq, op.origin_left)
   }
 
   // Add operation

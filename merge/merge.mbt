@@ -43,7 +43,7 @@ pub fn MergeContext::apply_operations(
             // Get Lamport timestamp and agent from causal graph for proper ordering
             let (timestamp, agent) = match self.oplog.graph.get_entry(op.lv) {
               Some(entry) => (entry.lamport, entry.agent)
-              None => (0, "unknown")  // Fallback
+              None => (0, "unknown") // Fallback
             }
 
             // Insert into tree with FugueMax algorithm
@@ -133,14 +133,17 @@ pub fn merge_remote_ops(
   // Add remote operations to oplog with LV translation
   for remote_op in remote_ops {
     // Check if we already have this operation (agent, seq)
-    let raw_version = @causal_graph.RawVersion::new(remote_op.agent, remote_op.seq)
+    let raw_version = @causal_graph.RawVersion::new(
+      remote_op.agent,
+      remote_op.seq,
+    )
     match oplog.graph.raw_to_lv(raw_version) {
       Some(existing_lv) => {
         // We already have this operation, just record the LV mapping and skip
         lv_map = lv_map.add(remote_op.lv, existing_lv)
         continue
       }
-      None => ()  // New operation, proceed to add it
+      None => () // New operation, proceed to add it
     }
 
     // Translate origin_left and origin_right from remote LV space to local LV space
@@ -149,16 +152,15 @@ pub fn merge_remote_ops(
     } else {
       match lv_map.get(remote_op.origin_left) {
         Some(local_lv) => local_lv
-        None => remote_op.origin_left  // Fallback: use as-is (may cause issues)
+        None => remote_op.origin_left // Fallback: use as-is (may cause issues)
       }
     }
-
     let local_origin_right = if remote_op.origin_right == -1 {
       -1
     } else {
       match lv_map.get(remote_op.origin_right) {
         Some(local_lv) => local_lv
-        None => remote_op.origin_right  // Fallback: use as-is (may cause issues)
+        None => remote_op.origin_right // Fallback: use as-is (may cause issues)
       }
     }
 
@@ -167,22 +169,24 @@ pub fn merge_remote_ops(
 
     // Create operation with translated origins and local LV
     let local_op = match remote_op.content {
-      @oplog.Insert(text) => @oplog.Op::new_insert(
-        local_lv,
-        remote_op.parents,
-        remote_op.agent,
-        remote_op.seq,
-        text,
-        local_origin_left,
-        local_origin_right,
-      )
-      @oplog.Delete => @oplog.Op::new_delete(
-        local_lv,
-        remote_op.parents,
-        remote_op.agent,
-        remote_op.seq,
-        local_origin_left,
-      )
+      @oplog.Insert(text) =>
+        @oplog.Op::new_insert(
+          local_lv,
+          remote_op.parents,
+          remote_op.agent,
+          remote_op.seq,
+          text,
+          local_origin_left,
+          local_origin_right,
+        )
+      @oplog.Delete =>
+        @oplog.Op::new_delete(
+          local_lv,
+          remote_op.parents,
+          remote_op.agent,
+          remote_op.seq,
+          local_origin_left,
+        )
     }
 
     // Add to operations

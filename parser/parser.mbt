@@ -3,7 +3,8 @@
 ///|
 pub suberror ParseError (String, Token)
 
-///| Parse the input string into a Term (without position information)
+///|
+/// Parse the input string into a Term (without position information)
 ///
 /// This is a wrapper around parse_tree that discards position information.
 pub fn parse(input : String) -> Term raise {
@@ -11,7 +12,8 @@ pub fn parse(input : String) -> Term raise {
   node_to_term(node)
 }
 
-///| Parser state with node ID counter
+///|
+/// Parser state with node ID counter
 priv struct Parser {
   tokens : Array[TokenInfo]
   mut position : Int
@@ -55,10 +57,7 @@ fn advance(parser : Parser) -> Parser {
 }
 
 ///|
-fn expect(
-  parser : Parser,
-  expected : Token
-) -> Parser raise ParseError {
+fn expect(parser : Parser, expected : Token) -> Parser raise ParseError {
   let current = peek(parser)
   match (current, expected) {
     (a, b) if a == b => advance(parser)
@@ -66,19 +65,15 @@ fn expect(
   }
 }
 
-///| Parse the input string into a TermNode with position tracking
+///|
+/// Parse the input string into a TermNode with position tracking
 pub fn parse_tree(input : String) -> TermNode raise {
   let tokens = tokenize(input)
   let parser = make_parser(tokens)
-
-  letrec parse_expression = fn(
-    parser : Parser
-  ) -> (Parser, TermNode) raise {
+  letrec parse_expression = fn(parser : Parser) -> (Parser, TermNode) raise {
     parse_binary_op(parser)
   }
-  and parse_binary_op = fn(
-    parser : Parser
-  ) -> (Parser, TermNode) raise {
+  and parse_binary_op = fn(parser : Parser) -> (Parser, TermNode) raise {
     let (parser, left) = parse_application(parser)
     loop (parser, left) {
       (parser, term) =>
@@ -89,10 +84,13 @@ pub fn parse_tree(input : String) -> TermNode raise {
             let start = term.start
             let end = right.end
             let node_id = next_node_id(parser)
-            let node = TermNode::new(TermKind::Bop(Bop::Plus), start, end, node_id, [
-              term,
-              right,
-            ])
+            let node = TermNode::new(
+              TermKind::Bop(Bop::Plus),
+              start,
+              end,
+              node_id,
+              [term, right],
+            )
             continue (parser, node)
           }
           Minus => {
@@ -101,19 +99,20 @@ pub fn parse_tree(input : String) -> TermNode raise {
             let start = term.start
             let end = right.end
             let node_id = next_node_id(parser)
-            let node = TermNode::new(TermKind::Bop(Bop::Minus), start, end, node_id, [
-              term,
-              right,
-            ])
+            let node = TermNode::new(
+              TermKind::Bop(Bop::Minus),
+              start,
+              end,
+              node_id,
+              [term, right],
+            )
             continue (parser, node)
           }
           _ => break (parser, term)
         }
     }
   }
-  and parse_application = fn(
-    parser : Parser
-  ) -> (Parser, TermNode) raise {
+  and parse_application = fn(parser : Parser) -> (Parser, TermNode) raise {
     let (parser, first) = parse_atom(parser)
     loop (parser, first) {
       (parser, acc) =>
@@ -123,16 +122,16 @@ pub fn parse_tree(input : String) -> TermNode raise {
             let start = acc.start
             let end = next.end
             let node_id = next_node_id(parser)
-            let node = TermNode::new(TermKind::App, start, end, node_id, [acc, next])
+            let node = TermNode::new(TermKind::App, start, end, node_id, [
+              acc, next,
+            ])
             continue (parser, node)
           }
           _ => break (parser, acc)
         }
     }
   }
-  and parse_atom = fn(
-    parser : Parser
-  ) -> (Parser, TermNode) raise {
+  and parse_atom = fn(parser : Parser) -> (Parser, TermNode) raise {
     let token_info = peek_info(parser)
     match token_info.token {
       Integer(n) => {

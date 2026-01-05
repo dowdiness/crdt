@@ -11,15 +11,17 @@
 // - Selective cache invalidation (primary optimization)
 // - Whole-tree reuse or full reparse with cache benefits
 
-///| Incremental parser state
+///|
+/// Incremental parser state
 pub struct IncrementalParser {
-  mut source : String                // Current source text
-  mut tree : TermNode?               // Current parse tree
-  token_cache : TokenCache           // Token cache
-  parse_cache : ParseCache           // Parse cache
+  mut source : String // Current source text
+  mut tree : TermNode? // Current parse tree
+  token_cache : TokenCache // Token cache
+  parse_cache : ParseCache // Parse cache
 }
 
-///| Create a new incremental parser
+///|
+/// Create a new incremental parser
 pub fn IncrementalParser::new(source : String) -> IncrementalParser {
   {
     source,
@@ -29,14 +31,16 @@ pub fn IncrementalParser::new(source : String) -> IncrementalParser {
   }
 }
 
-///| Perform initial full parse
+///|
+/// Perform initial full parse
 pub fn IncrementalParser::parse(self : IncrementalParser) -> TermNode {
   let (tree, _errors) = parse_with_error_recovery(self.source)
   self.tree = Some(tree)
   tree
 }
 
-///| Apply an edit and incrementally reparse
+///|
+/// Apply an edit and incrementally reparse
 ///
 /// This implements the Wagner-Graham incremental parsing algorithm:
 /// 1. Update source text
@@ -46,7 +50,7 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> TermNode {
 pub fn IncrementalParser::edit(
   self : IncrementalParser,
   edit : Edit,
-  new_source : String
+  new_source : String,
 ) -> TermNode {
   // Step 1: Update source
   self.source = new_source
@@ -54,10 +58,9 @@ pub fn IncrementalParser::edit(
   // Step 2: Get old tree (if any)
   let old_tree = match self.tree {
     Some(t) => t
-    None => {
+    None =>
       // No existing tree, do full parse
       return self.parse()
-    }
   }
 
   // Step 3: Adjust old tree positions based on edit
@@ -73,12 +76,15 @@ pub fn IncrementalParser::edit(
   self.parse_cache.invalidate_range(damaged_range)
 
   // Step 6: Incremental reparse (with cache benefits from step 5)
-  let new_tree = self.incremental_reparse(new_source, damaged_range, adjusted_tree)
+  let new_tree = self.incremental_reparse(
+    new_source, damaged_range, adjusted_tree,
+  )
   self.tree = Some(new_tree)
   new_tree
 }
 
-///| Incremental reparse with Wagner-Graham approach
+///|
+/// Incremental reparse with Wagner-Graham approach
 ///
 /// Strategy:
 /// 1. Attempt whole-tree reuse if damage is completely outside tree bounds
@@ -93,7 +99,7 @@ fn IncrementalParser::incremental_reparse(
   self : IncrementalParser,
   source : String,
   damaged_range : Range,
-  adjusted_tree : TermNode
+  adjusted_tree : TermNode,
 ) -> TermNode {
   // Attempt whole-tree reuse: Can we reuse the entire tree?
   // Only safe if damage is completely outside tree bounds
@@ -113,21 +119,23 @@ fn IncrementalParser::incremental_reparse(
   tree
 }
 
-///| Check if a node can be reused (Wagner-Graham range check)
+///|
+/// Check if a node can be reused (Wagner-Graham range check)
 ///
 /// A node can be reused if it doesn't overlap with the damaged range.
 /// Overlap occurs when: node.start < damaged.end AND node.end > damaged.start
 fn IncrementalParser::can_reuse_node(
   _self : IncrementalParser,
   node : TermNode,
-  damaged_range : Range
+  damaged_range : Range,
 ) -> Bool {
   // Node is reusable if it doesn't overlap the damaged range
   // No overlap means: node ends before damage starts OR node starts after damage ends
   node.end <= damaged_range.start || node.start >= damaged_range.end
 }
 
-///| Adjust tree positions after an edit
+///|
+/// Adjust tree positions after an edit
 ///
 /// Wagner-Graham position adjustment:
 /// - Nodes before edit: unchanged
@@ -136,7 +144,7 @@ fn IncrementalParser::can_reuse_node(
 fn IncrementalParser::adjust_tree_positions(
   self : IncrementalParser,
   tree : TermNode,
-  edit : Edit
+  edit : Edit,
 ) -> TermNode {
   let delta = edit.delta()
 
@@ -151,9 +159,9 @@ fn IncrementalParser::adjust_tree_positions(
     tree
   } else if tree.start > edit.old_end {
     // Node is entirely after edit, shift positions
-    let adjusted_children = tree.children.map(
-      fn(child) { self.adjust_tree_positions(child, edit) },
-    )
+    let adjusted_children = tree.children.map(fn(child) {
+      self.adjust_tree_positions(child, edit)
+    })
     TermNode::new(
       tree.kind,
       tree.start + delta,
@@ -164,24 +172,33 @@ fn IncrementalParser::adjust_tree_positions(
   } else {
     // Node overlaps edit range - will need reparsing
     // For now, just adjust children and mark range as needing update
-    let adjusted_children = tree.children.map(
-      fn(child) { self.adjust_tree_positions(child, edit) },
+    let adjusted_children = tree.children.map(fn(child) {
+      self.adjust_tree_positions(child, edit)
+    })
+    TermNode::new(
+      tree.kind,
+      tree.start,
+      tree.end,
+      tree.node_id,
+      adjusted_children,
     )
-    TermNode::new(tree.kind, tree.start, tree.end, tree.node_id, adjusted_children)
   }
 }
 
-///| Get the current parse tree
+///|
+/// Get the current parse tree
 pub fn IncrementalParser::get_tree(self : IncrementalParser) -> TermNode? {
   self.tree
 }
 
-///| Get the current source
+///|
+/// Get the current source
 pub fn IncrementalParser::get_source(self : IncrementalParser) -> String {
   self.source
 }
 
-///| Get cache statistics
+///|
+/// Get cache statistics
 pub fn IncrementalParser::stats(self : IncrementalParser) -> String {
   "IncrementalParser {\n" +
   "  source_length: " +

@@ -1,9 +1,9 @@
 // Tests for ParsedEditor integration
 
+///|
 test "create and insert text" {
   let pe = ParsedEditor::new("agent1")
   pe.insert("x")
-
   inspect(pe.get_text(), content="x")
 
   // Get AST
@@ -12,6 +12,7 @@ test "create and insert text" {
   inspect(ast_str, content="x")
 }
 
+///|
 test "sequential inserts update AST" {
   let pe = ParsedEditor::new("agent1")
   pe.insert("x")
@@ -29,10 +30,10 @@ test "sequential inserts update AST" {
   inspect(ast2_str, content="(x + 1)")
 }
 
+///|
 test "delete updates dirty flag" {
   let pe = ParsedEditor::new("agent1")
   pe.insert("123")
-
   inspect(pe.get_text(), content="123")
 
   // Get initial AST (123 is a valid integer)
@@ -44,27 +45,27 @@ test "delete updates dirty flag" {
   inspect(pe.get_text(), content="12")
 }
 
+///|
 test "parse error handling" {
   let pe = ParsedEditor::new("agent1")
-  pe.insert("λ.")  // Invalid: missing parameter
-
+  pe.insert("λ.") // Invalid: missing parameter
   let _ast = pe.get_ast()
 
   // Should have error node
   inspect(pe.is_parse_valid(), content="false")
 }
 
+///|
 test "cursor tracking" {
   let pe = ParsedEditor::new("agent1")
   inspect(pe.get_cursor(), content="0")
-
   pe.insert("abc")
   inspect(pe.get_cursor(), content="3")
-
   pe.move_cursor(1)
   inspect(pe.get_cursor(), content="1")
 }
 
+///|
 test "concurrent edits converge to same AST" {
   let pe1 = ParsedEditor::new("agent1")
   let pe2 = ParsedEditor::new("agent2")
@@ -89,7 +90,6 @@ test "concurrent edits converge to same AST" {
   let text1 = pe1.get_text()
   let text2 = pe2.get_text()
   inspect(text1 == text2, content="true")
-
   let ast1 = pe1.get_ast()
   let ast2 = pe2.get_ast()
   let ast1_str = @parser.print_term_node(ast1)
@@ -97,6 +97,7 @@ test "concurrent edits converge to same AST" {
   inspect(ast1_str == ast2_str, content="true")
 }
 
+///|
 test "collaborative lambda editing" {
   let pe1 = ParsedEditor::new("agent1")
   let pe2 = ParsedEditor::new("agent2")
@@ -116,7 +117,6 @@ test "collaborative lambda editing" {
   // Merge and verify both valid
   pe1.merge_remote(pe2.get_operations(), pe2.get_frontier())
   pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
-
   let text1 = pe1.get_text()
   let text2 = pe2.get_text()
   inspect(text1 == text2, content="true")
@@ -131,6 +131,7 @@ test "collaborative lambda editing" {
   inspect(ast1_str == ast2_str, content="true")
 }
 
+///|
 test "incremental parsing vs full reparse" {
   let pe = ParsedEditor::new("agent1")
   pe.insert("λf.λx.if f x then x + 1 else x - 1")
@@ -148,12 +149,10 @@ test "incremental parsing vs full reparse" {
 
   // Verify change
   let ast2_str = @parser.print_term_node(ast2)
-  inspect(
-    ast2_str,
-    content="(λf. (λx. if (f x) then (x + 1) else (x - 2)))",
-  )
+  inspect(ast2_str, content="(λf. (λx. if (f x) then (x + 1) else (x - 2)))")
 }
 
+///|
 test "empty document" {
   let pe = ParsedEditor::new("agent1")
 
@@ -162,39 +161,40 @@ test "empty document" {
 
   // Should still be able to get AST (may be error node)
   let _ast = pe.get_ast()
+
 }
 
+///|
 test "backspace at start returns false" {
   let pe = ParsedEditor::new("agent1")
   pe.insert("abc")
   pe.move_cursor(0)
-
   let result = pe.backspace()
   inspect(result, content="false")
   inspect(pe.get_text(), content="abc")
 }
 
+///|
 test "delete at end returns false" {
   let pe = ParsedEditor::new("agent1")
   pe.insert("abc")
   pe.move_cursor(3)
-
   let result = pe.delete()
   inspect(result, content="false")
   inspect(pe.get_text(), content="abc")
 }
 
+///|
 test "operations and frontier" {
   let pe = ParsedEditor::new("agent1")
   pe.insert("x")
-
   let ops = pe.get_operations()
   let frontier = pe.get_frontier()
-
   inspect(ops.length() > 0, content="true")
   inspect(frontier.length() > 0, content="true")
 }
 
+///|
 test "lazy AST evaluation" {
   let pe = ParsedEditor::new("agent1")
   pe.insert("x")
@@ -210,6 +210,7 @@ test "lazy AST evaluation" {
   inspect(ast2_str, content="x")
 }
 
+///|
 test "merge invalidates AST cache" {
   let pe1 = ParsedEditor::new("agent1")
   let pe2 = ParsedEditor::new("agent2")
@@ -217,7 +218,6 @@ test "merge invalidates AST cache" {
   // Start with common base
   pe1.insert("x")
   pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
-
   let _ast1 = pe1.get_ast()
 
   // pe2 makes change and pe1 merges

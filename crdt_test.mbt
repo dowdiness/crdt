@@ -1,5 +1,6 @@
 // Test simulating the exact web editor scenario
 
+///|
 test "Web scenario: error persistence bug" {
   // Simulate web editor usage
   let editor_ref : Ref[@editor.ParsedEditor?] = { val: None }
@@ -20,7 +21,6 @@ test "Web scenario: error persistence bug" {
     }
     None => abort("No editor")
   }
-
   println("After typing 'x':")
   println("  Errors: " + errors1.length().to_string())
   inspect(errors1.length(), content="0")
@@ -40,7 +40,6 @@ test "Web scenario: error persistence bug" {
     }
     None => abort("No editor")
   }
-
   println("After typing 'x+':")
   println("  Errors: " + errors2.length().to_string())
   inspect(errors2.length() > 0, content="true")
@@ -60,7 +59,6 @@ test "Web scenario: error persistence bug" {
     }
     None => abort("No editor")
   }
-
   println("After typing 'x+ 1':")
   let text = match editor_ref.val {
     Some(ed) => ed.get_text()

@@ -35,7 +35,13 @@ pub fn Op::new_insert(
 
 ///|
 /// Create a new delete operation
-pub fn Op::new_delete(lv : Int, parents : Array[Int], agent : String, seq : Int, origin_left : Int) -> Op {
+pub fn Op::new_delete(
+  lv : Int,
+  parents : Array[Int],
+  agent : String,
+  seq : Int,
+  origin_left : Int,
+) -> Op {
   { lv, parents, agent, seq, content: Delete, origin_left, origin_right: -1 }
 }
 
