@@ -3,6 +3,7 @@
   "import": [
     "dowdiness/crdt/causal_graph",
     "dowdiness/crdt/oplog",
-    "dowdiness/crdt/fugue"
+    "dowdiness/crdt/fugue",
+    "dowdiness/crdt/branch"
   ]
 }

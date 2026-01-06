@@ -113,92 +113,29 @@ pub fn merge(
   ctx.apply_operations(advance_ops)
 }
 
-///| Merge remote operations into local state
+///| Merge remote operations into local state using Branch system
 
 ///|
 
 ///|
+/// This properly uses the eg-walker Branch system:
+/// 1. Creates a Branch representing current state
+/// 2. Uses Branch::merge_remote_ops which leverages the walker
+/// 3. Updates the tree to match the merged branch
+///
 /// This is a convenience function for applying remote operations
 pub fn merge_remote_ops(
   tree : @fugue.FugueTree,
   oplog : @oplog.OpLog,
   remote_ops : Array[@oplog.Op],
 ) -> Unit {
-  // Save current frontier BEFORE adding remote ops
-  let old_frontier = oplog.get_frontier()
+  // Create a Branch representing the current state
+  let branch = @branch.Branch::from_tree_and_oplog(tree, oplog)
 
-  // Build a mapping from remote LVs to local LVs as we add operations
-  let mut lv_map : @immut/hashmap.HashMap[Int, Int] = @immut/hashmap.new()
+  // Use Branch::merge_remote_ops which properly uses the walker
+  // This leverages the eg-walker algorithm with causal ordering
+  let _ = branch.merge_remote_ops(remote_ops)
 
-  // Add remote operations to oplog with LV translation
-  for remote_op in remote_ops {
-    // Check if we already have this operation (agent, seq)
-    let raw_version = @causal_graph.RawVersion::new(
-      remote_op.agent,
-      remote_op.seq,
-    )
-    match oplog.graph.raw_to_lv(raw_version) {
-      Some(existing_lv) => {
-        // We already have this operation, just record the LV mapping and skip
-        lv_map = lv_map.add(remote_op.lv, existing_lv)
-        continue
-      }
-      None => () // New operation, proceed to add it
-    }
-
-    // Translate origin_left and origin_right from remote LV space to local LV space
-    let local_origin_left = if remote_op.origin_left == -1 {
-      -1
-    } else {
-      match lv_map.get(remote_op.origin_left) {
-        Some(local_lv) => local_lv
-        None => remote_op.origin_left // Fallback: use as-is (may cause issues)
-      }
-    }
-    let local_origin_right = if remote_op.origin_right == -1 {
-      -1
-    } else {
-      match lv_map.get(remote_op.origin_right) {
-        Some(local_lv) => local_lv
-        None => remote_op.origin_right // Fallback: use as-is (may cause issues)
-      }
-    }
-
-    // Add version to graph
-    let local_lv = oplog.graph.add_version(remote_op.parents, remote_op.agent)
-
-    // Create operation with translated origins and local LV
-    let local_op = match remote_op.content {
-      @oplog.Insert(text) =>
-        @oplog.Op::new_insert(
-          local_lv,
-          remote_op.parents,
-          remote_op.agent,
-          remote_op.seq,
-          text,
-          local_origin_left,
-          local_origin_right,
-        )
-      @oplog.Delete =>
-        @oplog.Op::new_delete(
-          local_lv,
-          remote_op.parents,
-          remote_op.agent,
-          remote_op.seq,
-          local_origin_left,
-        )
-    }
-
-    // Add to operations
-    oplog.add_op(local_op)
-
-    // Record the mapping from remote LV to local LV
-    lv_map = lv_map.add(remote_op.lv, local_lv)
-  }
-
-  // Get the new frontier after adding remote ops
-  let new_frontier = oplog.get_frontier()
-
-  // Merge from old frontier to new frontier
-  merge(tree, oplog, old_frontier, new_frontier)
+  // The tree has been updated in-place through the branch
+  // (since Branch reuses the same tree reference when only advancing)
 }

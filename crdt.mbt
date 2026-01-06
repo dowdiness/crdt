@@ -105,7 +105,7 @@ pub fn get_ast_json(_handle : Int) -> String {
       // Use the incremental parser from ParsedEditor
       // This triggers lazy evaluation and incremental reparse if needed
       let ast = ed.get_ast()
-      serialize_ast(ast)
+      ast.to_json().to_string()
     }
     None => "{}"
   }
@@ -119,7 +119,7 @@ pub fn get_errors_json(_handle : Int) -> String {
     Some(ed) => {
       // Get cached errors (triggers reparse if dirty, then returns cached errors)
       let errors = ed.get_errors()
-      serialize_errors(errors)
+      errors.to_json().to_string()
     }
     None => "[]"
   }
@@ -129,10 +129,7 @@ pub fn get_errors_json(_handle : Int) -> String {
 /// Get all operations as JSON
 pub fn get_operations_json(_handle : Int) -> String {
   match editor.val {
-    Some(editor) => {
-      let ops = editor.get_operations()
-      serialize_ops(ops)
-    }
+    Some(editor) => editor.get_operations().to_json().to_string()
     None => "[]"
   }
 }
@@ -141,28 +138,113 @@ pub fn get_operations_json(_handle : Int) -> String {
 /// Get frontier as JSON
 pub fn get_frontier_json(_handle : Int) -> String {
   match editor.val {
-    Some(editor) => {
-      let frontier = editor.get_frontier()
-      let mut result = "["
-      for i = 0; i < frontier.length(); i = i + 1 {
-        if i > 0 {
-          result = result + ","
-        }
-        result = result + frontier[i].to_string()
-      }
-      result + "]"
-    }
+    Some(editor) => editor.get_frontier().to_json().to_string()
     None => "[]"
   }
 }
 
 ///|
-/// Merge remote operations (placeholder for Phase 3)
+/// Parse operations from JSON
+/// Uses @json package for basic parsing, then extracts fields manually
+fn parse_ops_from_json(json_str : String) -> Array[@oplog.Op] {
+  let result : Array[@oplog.Op] = []
+  try {
+    let json_val = @json.parse(json_str)
+    match json_val {
+      Array(arr) =>
+        for elem in arr {
+          match elem {
+            Object(obj_map) => {
+              // Extract fields by direct matching on Map getters
+              let lv = match obj_map.get("lv") {
+                Some(Number(n, ..)) => n.to_int()
+                _ => -1
+              }
+              let agent = match obj_map.get("agent") {
+                Some(String(s)) => s
+                _ => ""
+              }
+              let seq = match obj_map.get("seq") {
+                Some(Number(n, ..)) => n.to_int()
+                _ => -1
+              }
+              let origin_left = match obj_map.get("origin_left") {
+                Some(Number(n, ..)) => n.to_int()
+                _ => -1
+              }
+              let origin_right = match obj_map.get("origin_right") {
+                Some(Number(n, ..)) => n.to_int()
+                _ => -1
+              }
+
+              // Parse parents array
+              let parents : Array[Int] = []
+              match obj_map.get("parents") {
+                Some(Array(p_arr)) =>
+                  for p in p_arr {
+                    match p {
+                      Number(n, ..) => parents.push(n.to_int())
+                      _ => ()
+                    }
+                  }
+                _ => ()
+              }
+
+              // Parse content (Insert or Delete)
+              match obj_map.get("content") {
+                Some(Object(content_obj)) =>
+                  // Check if it has "Insert" or "Delete" key
+                  match content_obj.get("Insert") {
+                    Some(String(text)) => {
+                      // Insert operation
+                      let op = @oplog.Op::new_insert(
+                        lv, parents, agent, seq, text, origin_left, origin_right,
+                      )
+                      result.push(op)
+                    }
+                    _ => {
+                      // Delete operation
+                      let op = @oplog.Op::new_delete(
+                        lv, parents, agent, seq, origin_left,
+                      )
+                      result.push(op)
+                    }
+                  }
+                _ => ()
+              }
+            }
+            _ => ()
+          }
+        }
+      _ => ()
+    }
+  } catch {
+    _ => () // Return empty array on any parse error
+  }
+  result
+}
+
+///|
+/// Merge remote operations into local editor
+/// This implements Phase 3 of the eg-walker algorithm
 pub fn merge_operations(
   _handle : Int,
-  _ops_json : String,
+  ops_json : String,
   _frontier_json : String,
 ) -> Unit {
-  // TODO: Implement in Phase 3
-  ()
+  match editor.val {
+    Some(ed) => {
+      // Parse remote operations from JSON
+      // Serialization uses ToJson trait (.to_json().to_string())
+      // Deserialization uses @json.parse + manual field extraction
+      let remote_ops = parse_ops_from_json(ops_json)
+
+      // Use ParsedEditor's merge_remote which calls Editor::merge_remote
+      // which calls Document::merge_remote which uses the merge module
+      ed.merge_remote(remote_ops, [])
+
+      // ParsedEditor::merge_remote already marks as dirty for reparsing
+    }
+    None => ()
+  }
 }

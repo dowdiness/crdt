@@ -3,6 +3,7 @@ package "dowdiness/crdt/parser"
 
 import(
   "moonbitlang/core/hashmap"
+  "moonbitlang/core/json"
 )
 
 // Values
@@ -50,6 +51,8 @@ pub(all) enum Bop {
 }
 pub impl Eq for Bop
 pub impl Show for Bop
+pub impl ToJson for Bop
+pub impl @json.FromJson for Bop
 
 pub struct CRDTNode {
   node_type : String
@@ -183,6 +186,8 @@ pub enum TermKind {
   Error(String)
 }
 pub impl Show for TermKind
+pub impl ToJson for TermKind
+pub impl @json.FromJson for TermKind
 
 pub struct TermNode {
   kind : TermKind
@@ -194,6 +199,8 @@ pub struct TermNode {
 pub fn TermNode::error(String, Int, Int) -> Self
 pub fn TermNode::new(TermKind, Int, Int, Int, Array[Self]) -> Self
 pub impl Show for TermNode
+pub impl ToJson for TermNode
+pub impl @json.FromJson for TermNode
 
 pub enum Token {
   Lambda

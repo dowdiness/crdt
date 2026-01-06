@@ -26,6 +26,17 @@ pub fn Branch::new(oplog : @oplog.OpLog) -> Branch {
 }
 
 ///|
+/// Create a branch from existing tree and oplog at current frontier
+/// This is useful for wrapping existing Document state
+pub fn Branch::from_tree_and_oplog(
+  tree : @fugue.FugueTree,
+  oplog : @oplog.OpLog,
+) -> Branch {
+  let frontier = oplog.get_frontier()
+  { frontier, tree, oplog }
+}
+
+///|
 /// Checkout document state at a specific frontier
 ///
 /// This reconstructs the document by walking the operation graph
@@ -124,6 +135,102 @@ pub fn Branch::at_frontier(self : Branch, frontier : Array[Int]) -> Bool {
     }
   }
   true
+}
+
+///|
+/// Merge remote operations into this branch
+///
+/// This properly uses the eg-walker algorithm:
+/// 1. Adds remote operations to the oplog with LV translation
+/// 2. Uses branch.advance() to apply the new operations
+///
+/// # Arguments
+/// * `remote_ops` - Array of remote operations to merge
+///
+/// # Returns
+/// A new Branch with the merged state
+pub fn Branch::merge_remote_ops(
+  self : Branch,
+  remote_ops : Array[@oplog.Op],
+) -> Branch {
+  // Build a mapping from remote LVs to local LVs as we add operations
+  let mut lv_map : @immut/hashmap.HashMap[Int, Int] = @immut/hashmap.new()
+
+  // Add remote operations to oplog with LV translation
+  for remote_op in remote_ops {
+    // Check if we already have this operation (agent, seq)
+    let raw_version = @causal_graph.RawVersion::new(
+      remote_op.agent,
+      remote_op.seq,
+    )
+    match self.oplog.graph.raw_to_lv(raw_version) {
+      Some(existing_lv) => {
+        // We already have this operation, just record the LV mapping and skip
+        lv_map = lv_map.add(remote_op.lv, existing_lv)
+        continue
+      }
+      None => () // New operation, proceed to add it
+    }
+
+    // Translate origin_left and origin_right from remote LV space to local LV space
+    let local_origin_left = if remote_op.origin_left == -1 {
+      -1
+    } else {
+      match lv_map.get(remote_op.origin_left) {
+        Some(local_lv) => local_lv
+        None => remote_op.origin_left // Fallback: use as-is
+      }
+    }
+    let local_origin_right = if remote_op.origin_right == -1 {
+      -1
+    } else {
+      match lv_map.get(remote_op.origin_right) {
+        Some(local_lv) => local_lv
+        None => remote_op.origin_right // Fallback: use as-is
+      }
+    }
+
+    // Add version to graph
+    let local_lv = self.oplog.graph.add_version(
+      remote_op.parents,
+      remote_op.agent,
+    )
+
+    // Create operation with translated origins and local LV
+    let local_op = match remote_op.content {
+      @oplog.Insert(text) =>
+        @oplog.Op::new_insert(
+          local_lv,
+          remote_op.parents,
+          remote_op.agent,
+          remote_op.seq,
+          text,
+          local_origin_left,
+          local_origin_right,
+        )
+      @oplog.Delete =>
+        @oplog.Op::new_delete(
+          local_lv,
+          remote_op.parents,
+          remote_op.agent,
+          remote_op.seq,
+          local_origin_left,
+        )
+    }
+
+    // Add to operations
+    self.oplog.add_op(local_op)
+
+    // Record the mapping from remote LV to local LV
+    lv_map = lv_map.add(remote_op.lv, local_lv)
+  }
+
+  // Get the new frontier after adding remote ops
+  let new_frontier = self.oplog.get_frontier()
+
+  // Use Branch::advance to apply the new operations
+  // This leverages the walker to apply operations in causal order
+  self.advance(new_frontier)
 }
 
 ///|

@@ -3,6 +3,7 @@ package "dowdiness/crdt/oplog"
 
 import(
   "dowdiness/crdt/causal_graph"
+  "moonbitlang/core/json"
 )
 
 // Values
@@ -25,6 +26,8 @@ pub fn Op::is_insert(Self) -> Bool
 pub fn Op::new_delete(Int, Array[Int], String, Int, Int) -> Self
 pub fn Op::new_insert(Int, Array[Int], String, Int, String, Int, Int) -> Self
 pub impl Show for Op
+pub impl ToJson for Op
+pub impl @json.FromJson for Op
 
 pub enum OpContent {
   Insert(String)
@@ -32,6 +35,8 @@ pub enum OpContent {
 }
 pub impl Eq for OpContent
 pub impl Show for OpContent
+pub impl ToJson for OpContent
+pub impl @json.FromJson for OpContent
 
 pub struct OpLog {
   mut operations : Array[Op]

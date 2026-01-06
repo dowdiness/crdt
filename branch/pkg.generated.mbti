@@ -19,7 +19,9 @@ pub struct Branch {
 pub fn Branch::advance(Self, Array[Int]) -> Self
 pub fn Branch::at_frontier(Self, Array[Int]) -> Bool
 pub fn Branch::checkout(@oplog.OpLog, Array[Int]) -> Self
+pub fn Branch::from_tree_and_oplog(@fugue.FugueTree, @oplog.OpLog) -> Self
 pub fn Branch::get_frontier(Self) -> Array[Int]
+pub fn Branch::merge_remote_ops(Self, Array[@oplog.Op]) -> Self
 pub fn Branch::new(@oplog.OpLog) -> Self
 pub fn Branch::to_text(Self) -> String
 pub fn Branch::visible_count(Self) -> Int

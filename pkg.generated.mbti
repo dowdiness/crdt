@@ -1,11 +1,6 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "dowdiness/crdt"
 
-import(
-  "dowdiness/crdt/oplog"
-  "dowdiness/crdt/parser"
-)
-
 // Values
 pub fn backspace(Int) -> Bool
 
@@ -28,14 +23,6 @@ pub fn get_text(Int) -> String
 pub fn insert(Int, String) -> Unit
 
 pub fn merge_operations(Int, String, String) -> Unit
-
-pub fn serialize_ast(@parser.TermNode) -> String
-
-pub fn serialize_errors(Array[String]) -> String
-
-pub fn serialize_op(@oplog.Op) -> String
-
-pub fn serialize_ops(Array[@oplog.Op]) -> String
 
 pub fn set_cursor(Int, Int) -> Unit
 

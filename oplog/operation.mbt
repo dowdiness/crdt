@@ -5,7 +5,7 @@
 pub enum OpContent {
   Insert(String) // Insert text
   Delete // Delete character
-} derive(Eq, Show)
+} derive(Eq, Show, FromJson, ToJson)
 
 ///|
 /// Operation structure with causal and FugueMax metadata
@@ -17,7 +17,7 @@ pub struct Op {
   content : OpContent // Operation content
   origin_left : Int // FugueMax: LV of item to the left (-1 for start)
   origin_right : Int // FugueMax: LV of item to the right (-1 for end)
-} derive(Show)
+} derive(Show, FromJson, ToJson)
 
 ///|
 /// Create a new insert operation

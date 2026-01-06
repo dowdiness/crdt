@@ -7,7 +7,7 @@ pub type VarName = String
 pub(all) enum Bop {
   Plus
   Minus
-} derive(Show, Eq)
+} derive(Show, Eq, FromJson, ToJson)
 
 ///|
 pub(all) enum Term {
@@ -35,7 +35,7 @@ pub enum TermKind {
   Bop(Bop) // Binary operation (operands in children[0] and children[1])
   If // If-then-else (condition, then, else in children)
   Error(String) // Error node for recovery
-} derive(Show)
+} derive(Show, FromJson, ToJson)
 
 ///|
 /// AST node with source position and unique identity
@@ -45,7 +45,7 @@ pub struct TermNode {
   end : Int // End byte offset in source
   node_id : Int // Unique node identifier
   children : Array[TermNode] // Child nodes
-} derive(Show)
+} derive(Show, FromJson, ToJson)
 
 ///|
 /// Create a new TermNode
