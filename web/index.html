@@ -181,6 +181,23 @@
 
     <div id="status" class="status">Loading JavaScript...</div>
 
+    <div class="panel" style="margin-bottom: 20px;">
+      <h2>Network Collaboration (Beta)</h2>
+      <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+        <button id="connect-btn" style="padding: 8px 16px; background: #007acc; color: white; border: none; border-radius: 3px; cursor: pointer;">
+          Connect to Network
+        </button>
+        <button id="disconnect-btn" style="padding: 8px 16px; background: #666; color: white; border: none; border-radius: 3px; cursor: pointer;" disabled>
+          Disconnect
+        </button>
+        <span id="network-status" style="color: #858585;">Not connected</span>
+      </div>
+      <div style="font-size: 12px; color: #858585;">
+        <p>Connect to collaborate with other peers in real-time. Make sure the signaling server is running:</p>
+        <pre style="margin-top: 5px;">node web/signaling-server.js</pre>
+      </div>
+    </div>
+
     <div class="docs-section">
       <h2>Basic Syntax & Examples</h2>
 

@@ -5,6 +5,9 @@ import * as crdt from '../public/crdt'
 
 async function main() {
   const statusElement = document.getElementById('status')!;
+  const connectBtn = document.getElementById('connect-btn') as HTMLButtonElement;
+  const disconnectBtn = document.getElementById('disconnect-btn') as HTMLButtonElement;
+  const networkStatus = document.getElementById('network-status')!;
 
   try {
     statusElement.textContent = 'Loading MoonBit module...';
@@ -16,6 +19,60 @@ async function main() {
     statusElement.textContent = `Ready! ID: ${agentId}`;
     statusElement.className = 'status success';
     console.log('Editor initialized with agent ID:', agentId);
+
+    // Network sync controls
+    connectBtn.addEventListener('click', async () => {
+      try {
+        connectBtn.disabled = true;
+        networkStatus.textContent = 'Connecting...';
+        networkStatus.style.color = '#007acc';
+
+        // Connect to local signaling server
+        const wsUrl = 'ws://localhost:8080';
+        await editor.enableNetworkSync(wsUrl);
+
+        connectBtn.disabled = true;
+        disconnectBtn.disabled = false;
+        networkStatus.textContent = 'Connected (0 peers)';
+        networkStatus.style.color = '#4ec9b0';
+
+        // Poll for network status updates
+        const statusInterval = setInterval(() => {
+          const status = editor.getNetworkStatus();
+          if (status) {
+            if (status.connected) {
+              networkStatus.textContent = `Connected (${status.peers} peer${status.peers !== 1 ? 's' : ''})`;
+              networkStatus.style.color = '#4ec9b0';
+            } else {
+              networkStatus.textContent = 'Disconnected';
+              networkStatus.style.color = '#ff0000';
+              clearInterval(statusInterval);
+            }
+          }
+        }, 1000);
+
+        // Store interval for cleanup
+        (disconnectBtn as any).statusInterval = statusInterval;
+      } catch (error) {
+        console.error('Failed to enable network sync:', error);
+        networkStatus.textContent = `Connection failed: ${error}`;
+        networkStatus.style.color = '#ff0000';
+        connectBtn.disabled = false;
+      }
+    });
+
+    disconnectBtn.addEventListener('click', () => {
+      editor.disableNetworkSync();
+      connectBtn.disabled = false;
+      disconnectBtn.disabled = true;
+      networkStatus.textContent = 'Disconnected';
+      networkStatus.style.color = '#858585';
+
+      // Clear status interval
+      if ((disconnectBtn as any).statusInterval) {
+        clearInterval((disconnectBtn as any).statusInterval);
+      }
+    });
   } catch (error) {
     console.error('Failed to initialize:', error);
     statusElement.textContent = `Error: ${error}`;

@@ -104,8 +104,7 @@ pub fn get_ast_json(_handle : Int) -> String {
     Some(ed) => {
       // Use the incremental parser from ParsedEditor
       // This triggers lazy evaluation and incremental reparse if needed
-      let ast = ed.get_ast()
-      ast.to_json().to_string()
+      ed.get_ast().to_json().stringify()
     }
     None => "{}"
   }
@@ -118,8 +117,7 @@ pub fn get_errors_json(_handle : Int) -> String {
   match editor.val {
     Some(ed) => {
       // Get cached errors (triggers reparse if dirty, then returns cached errors)
-      let errors = ed.get_errors()
-      errors.to_json().to_string()
+      ed.get_errors().to_json().stringify()
     }
     None => "[]"
   }
@@ -129,7 +127,7 @@ pub fn get_errors_json(_handle : Int) -> String {
 /// Get all operations as JSON
 pub fn get_operations_json(_handle : Int) -> String {
   match editor.val {
-    Some(editor) => editor.get_operations().to_json().to_string()
+    Some(editor) => editor.get_operations().to_json().stringify()
     None => "[]"
   }
 }
@@ -138,7 +136,7 @@ pub fn get_operations_json(_handle : Int) -> String {
 /// Get frontier as JSON
 pub fn get_frontier_json(_handle : Int) -> String {
   match editor.val {
-    Some(editor) => editor.get_frontier().to_json().to_string()
+    Some(editor) => editor.get_frontier().to_json().stringify()
     None => "[]"
   }
 }
@@ -191,24 +189,33 @@ fn parse_ops_from_json(json_str : String) -> Array[@oplog.Op] {
               }
 
               // Parse content (Insert or Delete)
+              // Insert: ["Insert", "text"] - array
+              // Delete: "Delete" - string
               match obj_map.get("content") {
-                Some(Object(content_obj)) =>
-                  // Check if it has "Insert" or "Delete" key
-                  match content_obj.get("Insert") {
-                    Some(String(text)) => {
-                      // Insert operation
-                      let op = @oplog.Op::new_insert(
-                        lv, parents, agent, seq, text, origin_left, origin_right,
-                      )
-                      result.push(op)
-                    }
-                    _ => {
-                      // Delete operation
-                      let op = @oplog.Op::new_delete(
-                        lv, parents, agent, seq, origin_left,
-                      )
-                      result.push(op)
-                    }
+                Some(json_content) =>
+                  match json_content {
+                    // Insert is an array ["Insert", "text"]
+                    Array(arr) =>
+                      if arr.length() > 1 {
+                        match arr[1] {
+                          String(text) => {
+                            let op = @oplog.Op::new_insert(
+                              lv, parents, agent, seq, text, origin_left, origin_right,
+                            )
+                            result.push(op)
+                          }
+                          _ => ()
+                        }
+                      }
+                    // Delete is just the string "Delete"
+                    String(s) =>
+                      if s == "Delete" {
+                        let op = @oplog.Op::new_delete(
+                          lv, parents, agent, seq, origin_left,
+                        )
+                        result.push(op)
+                      }
+                    _ => ()
                   }
                 _ => ()
               }

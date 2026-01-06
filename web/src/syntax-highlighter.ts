@@ -24,8 +24,9 @@ export class SyntaxHighlighter {
 
   private collectSpans(node: ASTNode, spans: HighlightSpan[]): void {
     const { kind, start, end, children } = node;
+    const tag = kind[0]; // Get variant name from array
 
-    switch (kind.tag) {
+    switch (tag) {
       case 'Lam':
         // Lambda abstraction
         spans.push({ start, end, className: 'lambda' });
@@ -98,16 +99,18 @@ export class SyntaxHighlighter {
 
   printTermNode(node: ASTNode): string {
     const { kind, children } = node;
+    const tag = kind[0]; // Variant name
+    const value = kind.length > 1 ? kind[1] : undefined; // Optional value
 
-    switch (kind.tag) {
+    switch (tag) {
       case 'Int':
-        return String(kind.value);
+        return String(value);
 
       case 'Var':
-        return String(kind.value);
+        return String(value);
 
       case 'Lam':
-        const param = kind.value;
+        const param = value;
         const body = children.length > 0 ? this.printTermNode(children[0]) : '?';
         return `(λ${param}. ${body})`;
 
@@ -117,7 +120,7 @@ export class SyntaxHighlighter {
         return `(${left} ${right})`;
 
       case 'Bop':
-        const op = kind.value === 'Plus' ? '+' : '-';
+        const op = value === 'Plus' ? '+' : '-';
         const leftOp = children.length > 0 ? this.printTermNode(children[0]) : '?';
         const rightOp = children.length > 1 ? this.printTermNode(children[1]) : '?';
         return `(${leftOp} ${op} ${rightOp})`;
@@ -129,7 +132,7 @@ export class SyntaxHighlighter {
         return `if ${cond} then ${thenBranch} else ${elseBranch}`;
 
       case 'Error':
-        return `<error: ${kind.value}>`;
+        return `<error: ${value}>`;
 
       default:
         return '?';
@@ -139,10 +142,12 @@ export class SyntaxHighlighter {
   formatAST(ast: ASTNode, indent: number = 0): string {
     const indentStr = '  '.repeat(indent);
     const { kind, start, end, children } = ast;
+    const tag = kind[0]; // Variant name
+    const value = kind.length > 1 ? kind[1] : undefined; // Optional value
 
-    let result = `${indentStr}${kind.tag}`;
-    if (kind.value !== undefined) {
-      result += `: ${kind.value}`;
+    let result = `${indentStr}${tag}`;
+    if (value !== undefined) {
+      result += `: ${value}`;
     }
     result += ` [${start}:${end}]`;
 
