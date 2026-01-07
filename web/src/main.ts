@@ -27,8 +27,15 @@ async function main() {
         networkStatus.textContent = 'Connecting...';
         networkStatus.style.color = '#007acc';
 
-        // Connect to local signaling server
-        const wsUrl = 'ws://localhost:8080';
+        // Auto-detect signaling server URL
+        // Use environment variable if set, otherwise auto-detect
+        const wsUrl = import.meta.env.VITE_SIGNALING_URL || (
+          window.location.hostname === 'localhost'
+            ? 'ws://localhost:8080'
+            : 'wss://crdt-signaling-server.koji-ishimoto.workers.dev'
+        );
+
+        console.log('Connecting to signaling server:', wsUrl);
         await editor.enableNetworkSync(wsUrl);
 
         connectBtn.disabled = true;
