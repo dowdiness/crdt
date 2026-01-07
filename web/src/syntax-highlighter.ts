@@ -24,7 +24,8 @@ export class SyntaxHighlighter {
 
   private collectSpans(node: ASTNode, spans: HighlightSpan[]): void {
     const { kind, start, end, children } = node;
-    const tag = kind[0]; // Get variant name from array
+    // Handle both string ("App") and array (["Lam", "x"]) kinds
+    const tag = typeof kind === 'string' ? kind : kind[0];
 
     switch (tag) {
       case 'Lam':
@@ -99,8 +100,9 @@ export class SyntaxHighlighter {
 
   printTermNode(node: ASTNode): string {
     const { kind, children } = node;
-    const tag = kind[0]; // Variant name
-    const value = kind.length > 1 ? kind[1] : undefined; // Optional value
+    // Handle both string ("App") and array (["Lam", "x"]) kinds
+    const tag = typeof kind === 'string' ? kind : kind[0];
+    const value = typeof kind === 'string' ? undefined : kind[1];
 
     switch (tag) {
       case 'Int':
@@ -142,8 +144,9 @@ export class SyntaxHighlighter {
   formatAST(ast: ASTNode, indent: number = 0): string {
     const indentStr = '  '.repeat(indent);
     const { kind, start, end, children } = ast;
-    const tag = kind[0]; // Variant name
-    const value = kind.length > 1 ? kind[1] : undefined; // Optional value
+    // Handle both string ("App") and array (["Lam", "x"]) kinds
+    const tag = typeof kind === 'string' ? kind : kind[0];
+    const value = typeof kind === 'string' ? undefined : kind[1];
 
     let result = `${indentStr}${tag}`;
     if (value !== undefined) {

@@ -5,7 +5,10 @@ import { NetworkSync } from './network';
 import * as crdt from '../public/crdt'
 
 export interface ASTNode {
-  kind: [string] | [string, string | number]; // MoonBit enum serialized as array
+  // MoonBit enum serialization:
+  // - Variants without data (App, If) → string: "App"
+  // - Variants with data (Lam("x"), Int(5)) → array: ["Lam", "x"]
+  kind: string | [string, string | number];
   start: number;
   end: number;
   node_id: number;
