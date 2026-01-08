@@ -54,6 +54,7 @@ moon build
 # Copy the js file
 cp target/js/release/build/crdt.js web/public/
 cp target/js/release/build/crdt.d.ts web/public/
+cp target/js/release/build/moonbit.d.ts web/public/
 ```
 
 ## Usage

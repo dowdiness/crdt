@@ -1,4 +1,4 @@
 {
   "is_main": false,
-  "import": []
+  "import": [{ "path": "moonbitlang/quickcheck", "alias": "qc" }]
 }

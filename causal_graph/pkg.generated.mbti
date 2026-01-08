@@ -4,6 +4,7 @@ package "dowdiness/crdt/causal_graph"
 import(
   "moonbitlang/core/immut/hashmap"
   "moonbitlang/core/json"
+  "moonbitlang/core/quickcheck/splitmix"
 )
 
 // Values
@@ -70,6 +71,8 @@ pub impl Eq for VersionVector
 pub impl Show for VersionVector
 pub impl ToJson for VersionVector
 pub impl @json.FromJson for VersionVector
+pub impl @moonbitlang/core/quickcheck.Arbitrary for VersionVector
+pub impl @moonbitlang/quickcheck.Shrink for VersionVector
 
 // Type aliases
 pub type AgentId = String

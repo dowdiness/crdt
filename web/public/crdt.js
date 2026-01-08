@@ -12842,16 +12842,16 @@ function moonbitlang$core$queue$$Queue$pop$14$(self) {
     }
   }
 }
-function moonbitlang$core$builtin$$ToJson$to_json$76$(_x_187) {
+function moonbitlang$core$builtin$$ToJson$to_json$76$(_x_221) {
   const _bind = [];
   const $36$map = moonbitlang$core$builtin$$Map$from_array$50$({ buf: _bind, start: 0, end: 0 });
-  moonbitlang$core$builtin$$Map$set$50$($36$map, "map", moonbitlang$core$builtin$$ToJson$to_json$63$(_x_187.map));
+  moonbitlang$core$builtin$$Map$set$50$($36$map, "map", moonbitlang$core$builtin$$ToJson$to_json$63$(_x_221.map));
   return new $64$moonbitlang$47$core$47$builtin$46$Json$Object($36$map);
 }
-function moonbitlang$core$json$$FromJson$from_json$76$(_x_177, _x_178) {
-  let _de_map_179 = undefined;
-  if (_x_177.$tag === 6) {
-    const _Object = _x_177;
+function moonbitlang$core$json$$FromJson$from_json$76$(_x_211, _x_212) {
+  let _de_map_213 = undefined;
+  if (_x_211.$tag === 6) {
+    const _Object = _x_211;
     const __map = _Object._0;
     const _bind = moonbitlang$core$builtin$$Map$get$50$(__map, "map");
     if (_bind === undefined) {
@@ -12859,7 +12859,7 @@ function moonbitlang$core$json$$FromJson$from_json$76$(_x_177, _x_178) {
       const _Some = _bind;
       const __v = _Some;
       const _p = "map";
-      const _bind$2 = moonbitlang$core$json$$FromJson$from_json$77$(__v, new $64$moonbitlang$47$core$47$json$46$JsonPath$Key(_x_178, _p));
+      const _bind$2 = moonbitlang$core$json$$FromJson$from_json$77$(__v, new $64$moonbitlang$47$core$47$json$46$JsonPath$Key(_x_212, _p));
       let _tmp;
       if (_bind$2.$tag === 1) {
         const _ok = _bind$2;
@@ -12867,20 +12867,20 @@ function moonbitlang$core$json$$FromJson$from_json$76$(_x_177, _x_178) {
       } else {
         return _bind$2;
       }
-      _de_map_179 = _tmp;
+      _de_map_213 = _tmp;
     }
   } else {
-    return new Result$Err$35$(new Error$moonbitlang$47$core$47$json$46$JsonDecodeError$46$JsonDecodeError({ _0: _x_178, _1: "Expected object to deserialize VersionVector" }));
+    return new Result$Err$35$(new Error$moonbitlang$47$core$47$json$46$JsonDecodeError$46$JsonDecodeError({ _0: _x_212, _1: "Expected object to deserialize VersionVector" }));
   }
-  const _bind = _de_map_179;
-  let _de_map_179$2;
+  const _bind = _de_map_213;
+  let _de_map_213$2;
   if (_bind === undefined) {
-    return new Result$Err$35$(new Error$moonbitlang$47$core$47$json$46$JsonDecodeError$46$JsonDecodeError({ _0: _x_178, _1: "Missing field map" }));
+    return new Result$Err$35$(new Error$moonbitlang$47$core$47$json$46$JsonDecodeError$46$JsonDecodeError({ _0: _x_212, _1: "Missing field map" }));
   } else {
     const _Some = _bind;
-    _de_map_179$2 = _Some;
+    _de_map_213$2 = _Some;
   }
-  return new Result$Ok$35$({ map: _de_map_179$2 });
+  return new Result$Ok$35$({ map: _de_map_213$2 });
 }
 function dowdiness$crdt$causal_graph$$CausalGraph$get_entry(self, lv) {
   return moonbitlang$core$immut$hashmap$$HashMap$get$83$(self.entries, lv);

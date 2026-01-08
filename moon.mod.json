@@ -1,6 +1,9 @@
 {
   "name": "dowdiness/crdt",
   "version": "0.1.0",
+  "deps": {
+    "moonbitlang/quickcheck": "0.9.8"
+  },
   "readme": "README.mbt.md",
   "repository": "",
   "license": "Apache-2.0",
