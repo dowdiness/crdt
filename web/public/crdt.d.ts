@@ -2,7 +2,9 @@ import type * as MoonBit from "./moonbit.d.ts";
 
 export function merge_operations(_handle: MoonBit.Int,
                                  ops_json: MoonBit.String,
-                                 _frontier_json: MoonBit.String): MoonBit.Unit;
+                                 version_vector_json: MoonBit.String): MoonBit.Unit;
+
+export function get_version_vector_json(_handle: MoonBit.Int): MoonBit.String;
 
 export function get_frontier_json(_handle: MoonBit.Int): MoonBit.String;
 

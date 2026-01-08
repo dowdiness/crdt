@@ -172,15 +172,49 @@ fn parse_ops_from_json(json_str : String) -> Array[@oplog.Op] {
 }
 
 ///|
+/// Parse version vector from JSON
+/// Uses @json.from_json with FromJson trait
+fn parse_version_vector_from_json(
+  json_str : String,
+) -> @causal_graph.VersionVector? {
+  try {
+    let json_val = @json.parse(json_str)
+    // Use FromJson trait - VersionVector implements FromJson
+    Some(@json.from_json(json_val))
+  } catch {
+    _ => None // Return None on any error
+  }
+}
+
+///|
 /// Merge remote operations into local editor
 /// This implements Phase 3 of the eg-walker algorithm
+/// Optimized with version vector comparison to skip redundant merges
 pub fn merge_operations(
   _handle : Int,
   ops_json : String,
-  _frontier_json : String,
+  version_vector_json : String,
 ) -> Unit {
   match editor.val {
     Some(ed) => {
+      // Get local version vector for comparison
+      let oplog = ed.editor.doc.oplog
+      let tree = ed.editor.doc.tree
+      let local_branch = @branch.Branch::from_tree_and_oplog(tree, oplog)
+      let local_vv = local_branch.get_version_vector()
+
+      // Parse remote version vector
+      match parse_version_vector_from_json(version_vector_json) {
+        Some(remote_vv) =>
+          // Optimization: If remote version vector is <= local, we already have
+          // all those operations. Skip the merge to avoid redundant processing.
+          if remote_vv <= local_vv {
+            // Already synced - remote has no new operations for us
+            return
+          }
+        None => () // If parsing fails, proceed with merge anyway
+      }
+
       // Parse remote operations from JSON
       // Serialization uses ToJson trait (.to_json().to_string())
       // Deserialization uses @json.parse + manual field extraction

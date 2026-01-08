@@ -2,6 +2,7 @@
 package "dowdiness/crdt/causal_graph"
 
 import(
+  "moonbitlang/core/immut/hashmap"
   "moonbitlang/core/json"
 )
 
@@ -11,11 +12,11 @@ import(
 
 // Types and methods
 pub struct CausalGraph {
-  mut entries : @moonbitlang/core/immut/hashmap.HashMap[Int, GraphEntry]
-  mut version_map : @moonbitlang/core/immut/hashmap.HashMap[RawVersion, Int]
+  mut entries : @hashmap.HashMap[Int, GraphEntry]
+  mut version_map : @hashmap.HashMap[RawVersion, Int]
   mut next_lv : Int
   mut frontier : Array[Int]
-  mut agent_seqs : @moonbitlang/core/immut/hashmap.HashMap[String, Int]
+  mut agent_seqs : @hashmap.HashMap[String, Int]
 }
 pub fn CausalGraph::add_version(Self, Array[Int], String) -> Int
 pub fn CausalGraph::diff_frontiers_lvs(Self, Array[Int], Array[Int]) -> (Array[Int], Array[Int])
@@ -49,24 +50,22 @@ pub impl Hash for RawVersion
 pub impl Show for RawVersion
 
 pub struct VersionVector {
-  map : @moonbitlang/core/hashmap.HashMap[String, Int]
+  map : Map[String, Int]
 }
 pub fn VersionVector::agents(Self) -> Array[String]
 pub fn VersionVector::concurrent(Self, Self) -> Bool
-pub fn VersionVector::equal(Self, Self) -> Bool
 pub fn VersionVector::from_frontier(CausalGraph, Array[Int]) -> Self
-pub fn VersionVector::from_map(@moonbitlang/core/hashmap.HashMap[String, Int]) -> Self
+pub fn VersionVector::from_map(Map[String, Int]) -> Self
 pub fn VersionVector::get(Self, String) -> Int?
 pub fn VersionVector::includes(Self, String, Int) -> Bool
 pub fn VersionVector::increment(Self, String) -> Self
 pub fn VersionVector::is_empty(Self) -> Bool
-pub fn VersionVector::le(Self, Self) -> Bool
 pub fn VersionVector::merge(Self, Self) -> Self
 pub fn VersionVector::new() -> Self
 pub fn VersionVector::set(Self, String, Int) -> Self
 pub fn VersionVector::size(Self) -> Int
 pub fn VersionVector::to_frontier(Self, CausalGraph) -> Array[Int]
-pub fn VersionVector::to_string(Self) -> String
+pub impl Compare for VersionVector
 pub impl Eq for VersionVector
 pub impl Show for VersionVector
 pub impl ToJson for VersionVector
@@ -74,6 +73,8 @@ pub impl @json.FromJson for VersionVector
 
 // Type aliases
 pub type AgentId = String
+
+pub type Frontier = Array[Int]
 
 pub type LV = Int
 

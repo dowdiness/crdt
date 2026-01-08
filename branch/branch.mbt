@@ -48,7 +48,10 @@ pub fn Branch::from_tree_and_oplog(
 ///
 /// # Returns
 /// A Branch representing the document state at the frontier
-pub fn Branch::checkout(oplog : @oplog.OpLog, frontier : @causal_graph.Frontier) -> Branch {
+pub fn Branch::checkout(
+  oplog : @oplog.OpLog,
+  frontier : @causal_graph.Frontier,
+) -> Branch {
   // Create empty tree
   let tree = @fugue.FugueTree::new()
 
@@ -75,7 +78,10 @@ pub fn Branch::checkout(oplog : @oplog.OpLog, frontier : @causal_graph.Frontier)
 ///
 /// # Returns
 /// A new Branch at the target frontier
-pub fn Branch::advance(self : Branch, target_frontier : @causal_graph.Frontier) -> Branch {
+pub fn Branch::advance(
+  self : Branch,
+  target_frontier : @causal_graph.Frontier,
+) -> Branch {
   // Calculate what operations to apply
   let (retreat_ops, advance_ops) = self.oplog.diff_and_collect(
     self.frontier,
@@ -118,7 +124,10 @@ pub fn Branch::visible_count(self : Branch) -> Int {
 
 ///|
 /// Check if this branch is at the given frontier
-pub fn Branch::at_frontier(self : Branch, frontier : @causal_graph.Frontier) -> Bool {
+pub fn Branch::at_frontier(
+  self : Branch,
+  frontier : @causal_graph.Frontier,
+) -> Bool {
   if self.frontier.length() != frontier.length() {
     return false
   }

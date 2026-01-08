@@ -16,13 +16,19 @@ pub struct VersionVector {
   map : Map[String, Int]
 } derive(Eq, ToJson, FromJson)
 
+///|
 pub impl Show for VersionVector with output(self, logger) {
   logger.write_object(self.map)
 }
 
+///|
 pub impl Compare for VersionVector with compare(self, other) {
-  if self == other { return 0 }
-  if self <= other { return -1 }
+  if self == other {
+    return 0
+  }
+  if self <= other {
+    return -1
+  }
   1
 }
 
@@ -50,9 +56,7 @@ pub fn VersionVector::new() -> VersionVector {
 
 ///|
 /// Create a version vector from agent-to-seq mappings
-pub fn VersionVector::from_map(
-  map : Map[String, Int],
-) -> VersionVector {
+pub fn VersionVector::from_map(map : Map[String, Int]) -> VersionVector {
   { map, }
 }
 
@@ -100,7 +104,7 @@ pub fn VersionVector::merge(
   self : VersionVector,
   other : VersionVector,
 ) -> VersionVector {
-  let result ={}
+  let result = {}
   // Copy all entries from self
   self.map.each(fn(k, v) { result.set(k, v) })
   // Merge entries from other (take max)

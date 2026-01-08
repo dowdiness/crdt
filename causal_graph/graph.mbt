@@ -1,6 +1,7 @@
-///| CausalGraph implementation
-
+///|
+/// CausalGraph implementation
 pub type Frontier = Array[Int]
+
 ///|
 /// Graph entry storing causal information for an operation
 pub struct GraphEntry {
