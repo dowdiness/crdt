@@ -6,11 +6,11 @@
 /// Property: Parser never panics on any input
 test "property: parser handles any string" {
   let inputs : Array[String] = @quickcheck.samples(30)
-
   for input in inputs {
     // Parser should handle any input gracefully (may raise, but shouldn't panic)
     try {
       let _ast = parse_tree(input)
+
     } catch {
       _ => () // Error is ok, panic is not
     }
@@ -33,7 +33,6 @@ test "property: empty input is safe" {
 /// Property: Position information is always valid
 test "property: positions are within bounds" {
   let inputs : Array[String] = @quickcheck.samples(20)
-
   for input in inputs {
     try {
       let ast = parse_tree(input)
@@ -45,6 +44,7 @@ test "property: positions are within bounds" {
   }
 }
 
+///|
 fn check_positions(node : TermNode, max_len : Int) -> Unit raise {
   // Verify positions are within bounds
   assert_true(node.start >= 0)
@@ -61,7 +61,6 @@ fn check_positions(node : TermNode, max_len : Int) -> Unit raise {
 /// Property: Parser produces well-formed AST structure
 test "property: ast structure is well-formed" {
   let inputs : Array[String] = @quickcheck.samples(20)
-
   for input in inputs {
     try {
       let ast = parse_tree(input)
@@ -72,6 +71,7 @@ test "property: ast structure is well-formed" {
   }
 }
 
+///|
 fn check_well_formed(node : TermNode) -> Unit raise {
   // Check node has correct number of children based on kind
   let valid = match node.kind {
@@ -83,7 +83,6 @@ fn check_well_formed(node : TermNode) -> Unit raise {
     TermKind::If => node.children.length() <= 3 // Cond, then, else
     TermKind::Error(_) => true // Error nodes can have any children
   }
-
   assert_true(valid)
 
   // Check children recursively
@@ -96,11 +95,11 @@ fn check_well_formed(node : TermNode) -> Unit raise {
 /// Property: Single character input doesn't panic
 test "property: single char is safe" {
   let chars : Array[Char] = @quickcheck.samples(30)
-
   for c in chars {
     let input = c.to_string()
     try {
       let _ast = parse_tree(input)
+
     } catch {
       _ => () // Parser should handle any single character
     }
@@ -111,13 +110,11 @@ test "property: single char is safe" {
 /// Property: Parser handles repeated characters
 test "property: repeated characters are safe" {
   let chars : Array[Char] = @quickcheck.samples(20)
-
   for c in chars {
     let mut input = ""
     for _i = 0; _i < 10; _i = _i + 1 {
       input = input + c.to_string()
     }
-
     try {
       let ast = parse_tree(input)
       // Should parse without panic
@@ -132,7 +129,6 @@ test "property: repeated characters are safe" {
 /// Property: Valid integers parse correctly
 test "property: integers parse as Int nodes" {
   let nums : Array[Int] = @quickcheck.samples(20)
-
   for n in nums {
     let input = n.abs().to_string()
     try {
@@ -153,14 +149,13 @@ test "property: integers parse as Int nodes" {
 /// Property: Parser handles whitespace correctly
 test "property: whitespace doesn't break parser" {
   let texts : Array[String] = @quickcheck.samples(15)
-
   for text in texts {
     // Add whitespace around input
     let inputs = ["   " + text, text + "   ", "   " + text + "   "]
-
     for input in inputs {
       try {
         let _ast = parse_tree(input)
+
       } catch {
         _ => () // Parser should handle whitespace gracefully
       }
@@ -172,7 +167,6 @@ test "property: whitespace doesn't break parser" {
 /// Property: Parentheses don't cause crashes
 test "property: parentheses are safe" {
   let counts : Array[Int] = @quickcheck.samples(15)
-
   for count in counts {
     let n = count.abs() % 20 // Limit to reasonable size
     let mut input = ""
@@ -184,9 +178,9 @@ test "property: parentheses are safe" {
     for _i = 0; _i < n; _i = _i + 1 {
       input = input + ")"
     }
-
     try {
       let _ast = parse_tree(input)
+
     } catch {
       _ => () // Should handle nested parens without panic
     }
@@ -198,13 +192,11 @@ test "property: parentheses are safe" {
 test "property: lambda syntax is robust" {
   let params = ["x", "y", "z"]
   let bodies = ["x", "1"]
-
   for _param in params {
     for _body in bodies {
       // Test both lambda syntaxes: λ and \
       let input1 = "\\{param}. {body}"
       let input2 = "λ{param}. {body}"
-
       for input in [input1, input2] {
         try {
           let ast = parse_tree(input)
@@ -223,7 +215,6 @@ test "property: lambda syntax is robust" {
 test "property: mixed syntax is safe" {
   let fragments = ["x", "1", "+", "-", ".", "(", ")"]
   let samples : Array[Array[String]] = @quickcheck.samples(10)
-
   for sample in samples {
     let mut input = ""
     for s in sample {
@@ -231,9 +222,9 @@ test "property: mixed syntax is safe" {
       let idx = s.length().abs() % fragments.length()
       input = input + fragments[idx] + " "
     }
-
     try {
       let _ast = parse_tree(input)
+
     } catch {
       _ => () // Parser should handle random combinations gracefully
     }
@@ -244,7 +235,6 @@ test "property: mixed syntax is safe" {
 /// Property: Parser is deterministic
 test "property: parser is deterministic" {
   let inputs : Array[String] = @quickcheck.samples(15)
-
   for input in inputs {
     try {
       let ast1 = parse_tree(input)
@@ -258,6 +248,7 @@ test "property: parser is deterministic" {
   }
 }
 
+///|
 fn ast_structure_equal(a : TermNode, b : TermNode) -> Bool {
   // Check kind matches
   let kind_matches = match (a.kind, b.kind) {
@@ -270,7 +261,6 @@ fn ast_structure_equal(a : TermNode, b : TermNode) -> Bool {
     (TermKind::Error(_), TermKind::Error(_)) => true
     _ => false
   }
-
   if not(kind_matches) {
     return false
   }
@@ -286,7 +276,6 @@ fn ast_structure_equal(a : TermNode, b : TermNode) -> Bool {
       return false
     }
   }
-
   true
 }
 
@@ -294,11 +283,9 @@ fn ast_structure_equal(a : TermNode, b : TermNode) -> Bool {
 /// Property: Node IDs are unique within AST
 test "property: node ids are unique" {
   let inputs : Array[String] = @quickcheck.samples(15)
-
   for input in inputs {
     try {
       let ast = parse_tree(input)
-
       let ids : Array[Int] = []
       collect_node_ids(ast, ids)
 
@@ -316,9 +303,9 @@ test "property: node ids are unique" {
   }
 }
 
+///|
 fn collect_node_ids(node : TermNode, ids : Array[Int]) -> Unit {
   ids.push(node.node_id)
-
   for child in node.children {
     collect_node_ids(child, ids)
   }

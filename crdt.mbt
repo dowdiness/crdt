@@ -101,11 +101,10 @@ pub fn set_cursor(_handle : Int, position : Int) -> Unit {
 /// Uses incremental parser for efficient reparsing
 pub fn get_ast_json(_handle : Int) -> String {
   match editor.val {
-    Some(ed) => {
+    Some(ed) =>
       // Use the incremental parser from ParsedEditor
       // This triggers lazy evaluation and incremental reparse if needed
       ed.get_ast().to_json().stringify()
-    }
     None => "{}"
   }
 }
@@ -115,10 +114,9 @@ pub fn get_ast_json(_handle : Int) -> String {
 /// Uses cached errors from ParsedEditor (O(1) after parse)
 pub fn get_errors_json(_handle : Int) -> String {
   match editor.val {
-    Some(ed) => {
+    Some(ed) =>
       // Get cached errors (triggers reparse if dirty, then returns cached errors)
       ed.get_errors().to_json().stringify()
-    }
     None => "[]"
   }
 }
@@ -138,6 +136,25 @@ pub fn get_frontier_json(_handle : Int) -> String {
   match editor.val {
     Some(editor) => editor.get_frontier().to_json().stringify()
     None => "[]"
+  }
+}
+
+///|
+/// Get version vector as JSON
+/// Returns a JSON object mapping agent IDs to sequence numbers
+/// Example: {"alice": 5, "bob": 3}
+pub fn get_version_vector_json(_handle : Int) -> String {
+  match editor.val {
+    Some(ed) => {
+      // Get the document's oplog and create a branch view
+      let oplog = ed.editor.doc.oplog
+      let tree = ed.editor.doc.tree
+      let branch = @branch.Branch::from_tree_and_oplog(tree, oplog)
+      let vv = branch.get_version_vector()
+      // Use ToJson trait to serialize
+      vv.to_json().stringify()
+    }
+    None => "{}"
   }
 }
 

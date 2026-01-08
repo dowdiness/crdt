@@ -2,7 +2,9 @@
   "import": [
     "dowdiness/crdt/editor",
     "dowdiness/crdt/oplog",
-    "dowdiness/crdt/parser"
+    "dowdiness/crdt/parser",
+    "dowdiness/crdt/branch",
+    "dowdiness/crdt/causal_graph"
   ],
   "link": {
     "js": {
@@ -19,6 +21,7 @@
         "get_errors_json",
         "get_operations_json",
         "get_frontier_json",
+        "get_version_vector_json",
         "merge_operations"
       ]
     }

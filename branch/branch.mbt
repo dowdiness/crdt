@@ -138,6 +138,51 @@ pub fn Branch::at_frontier(self : Branch, frontier : Array[Int]) -> Bool {
 }
 
 ///|
+/// Get the frontier of this branch as a VersionVector
+///
+/// This provides a more compact representation of the frontier,
+/// especially when there are many operations from the same agents.
+pub fn Branch::get_version_vector(self : Branch) -> @causal_graph.VersionVector {
+  @causal_graph.VersionVector::from_frontier(self.oplog.graph, self.frontier)
+}
+
+///|
+/// Check if this branch is at the given version vector
+pub fn Branch::at_version_vector(
+  self : Branch,
+  vv : @causal_graph.VersionVector,
+) -> Bool {
+  let frontier = vv.to_frontier(self.oplog.graph)
+  self.at_frontier(frontier)
+}
+
+///|
+/// Advance a branch to a version vector
+///
+/// This is a convenience method that converts the version vector to a frontier
+/// and then uses the regular advance method.
+pub fn Branch::advance_to_version_vector(
+  self : Branch,
+  vv : @causal_graph.VersionVector,
+) -> Branch {
+  let frontier = vv.to_frontier(self.oplog.graph)
+  self.advance(frontier)
+}
+
+///|
+/// Checkout document state at a specific version vector
+///
+/// This is a convenience method that converts the version vector to a frontier
+/// and then uses the regular checkout method.
+pub fn Branch::checkout_version_vector(
+  oplog : @oplog.OpLog,
+  vv : @causal_graph.VersionVector,
+) -> Branch {
+  let frontier = vv.to_frontier(oplog.graph)
+  Branch::checkout(oplog, frontier)
+}
+
+///|
 /// Merge remote operations into this branch
 ///
 /// This properly uses the eg-walker algorithm:
