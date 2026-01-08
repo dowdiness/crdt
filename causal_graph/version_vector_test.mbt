@@ -82,28 +82,28 @@ test "version vector equality - different agents" {
 test "version vector less than or equal - true" {
   let vv1 = VersionVector::new().set("alice", 3).set("bob", 2)
   let vv2 = VersionVector::new().set("alice", 5).set("bob", 4)
-  inspect(vv1.le(vv2), content="true")
+  inspect(vv1 <= vv2, content="true")
 }
 
 ///|
 test "version vector less than or equal - false" {
   let vv1 = VersionVector::new().set("alice", 6).set("bob", 2)
   let vv2 = VersionVector::new().set("alice", 5).set("bob", 4)
-  inspect(vv1.le(vv2), content="false")
+  inspect(vv1 <= vv2, content="false")
 }
 
 ///|
 test "version vector less than or equal - equal is le" {
   let vv1 = VersionVector::new().set("alice", 5).set("bob", 3)
   let vv2 = VersionVector::new().set("alice", 5).set("bob", 3)
-  inspect(vv1.le(vv2), content="true")
+  inspect(vv1 <= vv2, content="true")
 }
 
 ///|
 test "version vector less than or equal - missing agent" {
   let vv1 = VersionVector::new().set("alice", 5).set("bob", 3)
   let vv2 = VersionVector::new().set("alice", 5)
-  inspect(vv1.le(vv2), content="false")
+  inspect(vv1 <= vv2, content="false")
 }
 
 ///|
@@ -140,9 +140,9 @@ test "version vector to string" {
   let vv = VersionVector::new().set("alice", 5).set("bob", 3).set("charlie", 7)
   // Note: order may vary, so we just check it contains the right format
   let str = vv.to_string()
-  inspect(str.contains("alice:5"), content="true")
-  inspect(str.contains("bob:3"), content="true")
-  inspect(str.contains("charlie:7"), content="true")
+  inspect(str.contains("\"alice\": 5"), content="true")
+  inspect(str.contains("\"bob\": 3"), content="true")
+  inspect(str.contains("\"charlie\": 7"), content="true")
 }
 
 ///|

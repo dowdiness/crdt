@@ -13,41 +13,45 @@
 ///
 /// This provides O(1) comparison for common operations and reduces memory usage.
 pub struct VersionVector {
-  map : @hashmap.HashMap[String, Int]
-} derive(Show, Eq, ToJson)
+  map : Map[String, Int]
+} derive(Eq, ToJson, FromJson)
+
+pub impl Show for VersionVector with output(self, logger) {
+  logger.write_object(self.map)
+}
+
+pub impl Compare for VersionVector with compare(self, other) {
+  if self == other { return 0 }
+  if self <= other { return -1 }
+  1
+}
 
 ///|
-pub impl FromJson for VersionVector with from_json(
-  json : Json,
-  path : @json.JsonPath,
-) -> VersionVector raise @json.JsonDecodeError {
-  guard json is Object(map) else {
-    raise @json.JsonDecodeError(
-      (path, "VersionVector::from_json: expected object"),
-    )
-  }
-  let result = @hashmap.new()
-  map.each(fn(k, v) {
-    // Extend path with key for better error messages
-    let key_path = path.add_key(k)
-    guard v is Number(n, ..) else {
-      raise @json.JsonDecodeError((key_path, "Expected integer value"))
+/// Check if this version vector is <= other (all agents have seq <= other's seq)
+pub impl Compare for VersionVector with op_le(self, other) {
+  // For self <= other, every agent in self must have seq <= seq in other
+  let mut is_le = true
+  self.map.each(fn(agent, seq) {
+    match other.map.get(agent) {
+      Some(other_seq) => if seq > other_seq { is_le = false }
+      None =>
+        // self has agent but other doesn't - self is not <= other
+        is_le = false
     }
-    result.set(k, n.to_int())
   })
-  { map: result }
+  is_le
 }
 
 ///|
 /// Create a new empty version vector
 pub fn VersionVector::new() -> VersionVector {
-  { map: @hashmap.new() }
+  { map: {} }
 }
 
 ///|
 /// Create a version vector from agent-to-seq mappings
 pub fn VersionVector::from_map(
-  map : @hashmap.HashMap[String, Int],
+  map : Map[String, Int],
 ) -> VersionVector {
   { map, }
 }
@@ -65,10 +69,8 @@ pub fn VersionVector::set(
   agent : String,
   seq : Int,
 ) -> VersionVector {
-  let new_map = @hashmap.new()
-  self.map.each(fn(k, v) { new_map.set(k, v) })
-  new_map.set(agent, seq)
-  { map: new_map }
+  self.map.set(agent, seq)
+  self
 }
 
 ///|
@@ -77,14 +79,13 @@ pub fn VersionVector::increment(
   self : VersionVector,
   agent : String,
 ) -> VersionVector {
-  let new_seq = match self.map.get(agent) {
-    Some(seq) => seq + 1
-    None => 0
-  }
-  let new_map = @hashmap.new()
-  self.map.each(fn(k, v) { new_map.set(k, v) })
-  new_map.set(agent, new_seq)
-  { map: new_map }
+  self.map.update(agent, fn(seq) {
+    match seq {
+      Some(n) => Some(n + 1)
+      None => Some(0)
+    }
+  })
+  self
 }
 
 ///|
@@ -99,7 +100,7 @@ pub fn VersionVector::merge(
   self : VersionVector,
   other : VersionVector,
 ) -> VersionVector {
-  let result = @hashmap.new()
+  let result ={}
   // Copy all entries from self
   self.map.each(fn(k, v) { result.set(k, v) })
   // Merge entries from other (take max)
@@ -114,37 +115,12 @@ pub fn VersionVector::merge(
 }
 
 ///|
-/// Check if this version vector is <= other (all agents have seq <= other's seq)
-pub fn VersionVector::le(self : VersionVector, other : VersionVector) -> Bool {
-  // For self <= other, every agent in self must have seq <= seq in other
-  let mut is_le = true
-  self.map.each(fn(agent, seq) {
-    match other.map.get(agent) {
-      Some(other_seq) => if seq > other_seq { is_le = false }
-      None =>
-        // self has agent but other doesn't - self is not <= other
-        is_le = false
-    }
-  })
-  is_le
-}
-
-///|
 /// Check if version vectors are concurrent (neither <= the other)
 pub fn VersionVector::concurrent(
   self : VersionVector,
   other : VersionVector,
 ) -> Bool {
-  not(self.le(other)) && not(other.le(self))
-}
-
-///|
-/// Convert version vector to a readable string
-pub fn VersionVector::to_string(self : VersionVector) -> String {
-  let pairs = []
-  self.map.each(fn(agent, seq) { pairs.push("\{agent}:\{seq}") })
-  pairs.sort()
-  "{" + pairs.join(", ") + "}"
+  not(self <= other) && not(other <= self)
 }
 
 ///|
@@ -166,7 +142,7 @@ pub fn VersionVector::from_frontier(
   frontier : Frontier,
 ) -> VersionVector {
   // For each agent, find the maximum sequence number in the frontier
-  let agent_max_seq : @hashmap.HashMap[String, Int] = @hashmap.new()
+  let agent_max_seq = {}
 
   // Get transitive closure of frontier to include all reachable versions
   let reachable = graph.transitive_closure(frontier)
