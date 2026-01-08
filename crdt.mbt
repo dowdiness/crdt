@@ -160,92 +160,15 @@ pub fn get_version_vector_json(_handle : Int) -> String {
 
 ///|
 /// Parse operations from JSON
-/// Uses @json package for basic parsing, then extracts fields manually
+/// Uses @json.from_json with FromJson trait
 fn parse_ops_from_json(json_str : String) -> Array[@oplog.Op] {
-  let result : Array[@oplog.Op] = []
   try {
     let json_val = @json.parse(json_str)
-    match json_val {
-      Array(arr) =>
-        for elem in arr {
-          match elem {
-            Object(obj_map) => {
-              // Extract fields by direct matching on Map getters
-              let lv = match obj_map.get("lv") {
-                Some(Number(n, ..)) => n.to_int()
-                _ => -1
-              }
-              let agent = match obj_map.get("agent") {
-                Some(String(s)) => s
-                _ => ""
-              }
-              let seq = match obj_map.get("seq") {
-                Some(Number(n, ..)) => n.to_int()
-                _ => -1
-              }
-              let origin_left = match obj_map.get("origin_left") {
-                Some(Number(n, ..)) => n.to_int()
-                _ => -1
-              }
-              let origin_right = match obj_map.get("origin_right") {
-                Some(Number(n, ..)) => n.to_int()
-                _ => -1
-              }
-
-              // Parse parents array
-              let parents : Array[Int] = []
-              match obj_map.get("parents") {
-                Some(Array(p_arr)) =>
-                  for p in p_arr {
-                    match p {
-                      Number(n, ..) => parents.push(n.to_int())
-                      _ => ()
-                    }
-                  }
-                _ => ()
-              }
-
-              // Parse content (Insert or Delete)
-              // Insert: ["Insert", "text"] - array
-              // Delete: "Delete" - string
-              match obj_map.get("content") {
-                Some(json_content) =>
-                  match json_content {
-                    // Insert is an array ["Insert", "text"]
-                    Array(arr) =>
-                      if arr.length() > 1 {
-                        match arr[1] {
-                          String(text) => {
-                            let op = @oplog.Op::new_insert(
-                              lv, parents, agent, seq, text, origin_left, origin_right,
-                            )
-                            result.push(op)
-                          }
-                          _ => ()
-                        }
-                      }
-                    // Delete is just the string "Delete"
-                    String(s) =>
-                      if s == "Delete" {
-                        let op = @oplog.Op::new_delete(
-                          lv, parents, agent, seq, origin_left,
-                        )
-                        result.push(op)
-                      }
-                    _ => ()
-                  }
-                _ => ()
-              }
-            }
-            _ => ()
-          }
-        }
-      _ => ()
-    }
+    // Use FromJson trait - Op already derives FromJson
+    @json.from_json(json_val)
   } catch {
-    _ => () // Return empty array on any parse error
+    _ => [] // Return empty array on any error
   }
-  result
 }
 
 ///|
