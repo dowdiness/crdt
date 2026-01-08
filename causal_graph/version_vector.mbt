@@ -90,9 +90,7 @@ pub fn VersionVector::increment(
 ///|
 /// Get all agents in this version vector
 pub fn VersionVector::agents(self : VersionVector) -> Array[String] {
-  let result = []
-  self.map.each(fn(agent, _seq) { result.push(agent) })
-  result
+  self.map.keys().to_array()
 }
 
 ///|
@@ -132,28 +130,6 @@ pub fn VersionVector::le(self : VersionVector, other : VersionVector) -> Bool {
 }
 
 ///|
-/// Check if version vectors are equal
-pub fn VersionVector::equal(
-  self : VersionVector,
-  other : VersionVector,
-) -> Bool {
-  // Must have same agents with same sequences
-  let self_agents = self.agents()
-  let other_agents = other.agents()
-  if self_agents.length() != other_agents.length() {
-    return false
-  }
-  let mut is_equal = true
-  self.map.each(fn(agent, seq) {
-    match other.map.get(agent) {
-      Some(other_seq) => if seq != other_seq { is_equal = false }
-      None => is_equal = false
-    }
-  })
-  is_equal
-}
-
-///|
 /// Check if version vectors are concurrent (neither <= the other)
 pub fn VersionVector::concurrent(
   self : VersionVector,
@@ -187,7 +163,7 @@ pub fn VersionVector::is_empty(self : VersionVector) -> Bool {
 /// Convert frontier (array of LVs) to version vector using causal graph
 pub fn VersionVector::from_frontier(
   graph : CausalGraph,
-  frontier : Array[Int],
+  frontier : Frontier,
 ) -> VersionVector {
   // For each agent, find the maximum sequence number in the frontier
   let agent_max_seq : @hashmap.HashMap[String, Int] = @hashmap.new()

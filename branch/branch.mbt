@@ -14,7 +14,7 @@
 /// This is a snapshot of the document that can be efficiently
 /// advanced forward by applying new operations.
 pub struct Branch {
-  frontier : Array[Int] // Version frontier this branch represents
+  frontier : @causal_graph.Frontier // Version frontier this branch represents
   tree : @fugue.FugueTree // CRDT tree state at this frontier
   oplog : @oplog.OpLog // Reference to the operation log
 } derive(Show)
@@ -48,7 +48,7 @@ pub fn Branch::from_tree_and_oplog(
 ///
 /// # Returns
 /// A Branch representing the document state at the frontier
-pub fn Branch::checkout(oplog : @oplog.OpLog, frontier : Array[Int]) -> Branch {
+pub fn Branch::checkout(oplog : @oplog.OpLog, frontier : @causal_graph.Frontier) -> Branch {
   // Create empty tree
   let tree = @fugue.FugueTree::new()
 
@@ -75,7 +75,7 @@ pub fn Branch::checkout(oplog : @oplog.OpLog, frontier : Array[Int]) -> Branch {
 ///
 /// # Returns
 /// A new Branch at the target frontier
-pub fn Branch::advance(self : Branch, target_frontier : Array[Int]) -> Branch {
+pub fn Branch::advance(self : Branch, target_frontier : @causal_graph.Frontier) -> Branch {
   // Calculate what operations to apply
   let (retreat_ops, advance_ops) = self.oplog.diff_and_collect(
     self.frontier,
@@ -118,7 +118,7 @@ pub fn Branch::visible_count(self : Branch) -> Int {
 
 ///|
 /// Check if this branch is at the given frontier
-pub fn Branch::at_frontier(self : Branch, frontier : Array[Int]) -> Bool {
+pub fn Branch::at_frontier(self : Branch, frontier : @causal_graph.Frontier) -> Bool {
   if self.frontier.length() != frontier.length() {
     return false
   }

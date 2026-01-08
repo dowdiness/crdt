@@ -1,5 +1,6 @@
 ///| CausalGraph implementation
 
+pub type Frontier = Array[Int]
 ///|
 /// Graph entry storing causal information for an operation
 pub struct GraphEntry {
@@ -15,7 +16,7 @@ pub struct CausalGraph {
   mut entries : @immut/hashmap.HashMap[Int, GraphEntry]
   mut version_map : @immut/hashmap.HashMap[RawVersion, Int]
   mut next_lv : Int
-  mut frontier : Array[Int]
+  mut frontier : Frontier
   mut agent_seqs : @immut/hashmap.HashMap[String, Int]
 } derive(Show)
 
@@ -56,7 +57,7 @@ pub fn CausalGraph::get_entry(self : CausalGraph, lv : Int) -> GraphEntry? {
 /// Add a new version to the graph
 pub fn CausalGraph::add_version(
   self : CausalGraph,
-  parents : Array[Int],
+  parents : Frontier,
   agent : String,
 ) -> Int {
   // Calculate Lamport timestamp (max of parents + 1)
@@ -101,7 +102,7 @@ pub fn CausalGraph::add_version(
 fn CausalGraph::update_frontier(
   self : CausalGraph,
   new_lv : Int,
-  parents : Array[Int],
+  parents : Frontier,
 ) -> Unit {
   // Remove all parents from frontier (they now have a successor)
   let frontier = self.frontier.filter(fn(v) { not(parents.contains(v)) })
@@ -113,7 +114,7 @@ fn CausalGraph::update_frontier(
 
 ///|
 /// Get current frontier
-pub fn CausalGraph::get_frontier(self : CausalGraph) -> Array[Int] {
+pub fn CausalGraph::get_frontier(self : CausalGraph) -> Frontier {
   self.frontier.copy()
 }
 
@@ -166,7 +167,7 @@ pub fn CausalGraph::is_ancestor(
 /// Get all versions reachable from given frontiers (transitive closure)
 fn CausalGraph::transitive_closure(
   self : CausalGraph,
-  frontiers : Array[Int],
+  frontiers : Frontier,
 ) -> @immut/hashset.HashSet[Int] {
   let mut result : @immut/hashset.HashSet[Int] = @immut/hashset.new()
   let queue = @queue.Queue::new()
@@ -198,9 +199,9 @@ fn CausalGraph::transitive_closure(
 /// Calculate diff between two frontiers for retreat/advance
 pub fn CausalGraph::graph_diff(
   self : CausalGraph,
-  from : Array[Int],
-  to : Array[Int],
-) -> (Array[Int], Array[Int]) {
+  from : Frontier,
+  to : Frontier,
+) -> (Frontier, Frontier) {
   let from_set = self.transitive_closure(from)
   let to_set = self.transitive_closure(to)
 

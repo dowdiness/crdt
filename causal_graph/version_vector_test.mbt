@@ -61,21 +61,21 @@ test "merge version vectors - with overlap" {
 test "version vector equality - equal" {
   let vv1 = VersionVector::new().set("alice", 5).set("bob", 3)
   let vv2 = VersionVector::new().set("alice", 5).set("bob", 3)
-  inspect(vv1.equal(vv2), content="true")
+  inspect(vv1 == vv2, content="true")
 }
 
 ///|
 test "version vector equality - not equal" {
   let vv1 = VersionVector::new().set("alice", 5).set("bob", 3)
   let vv2 = VersionVector::new().set("alice", 5).set("bob", 4)
-  inspect(vv1.equal(vv2), content="false")
+  inspect(vv1 == vv2, content="false")
 }
 
 ///|
 test "version vector equality - different agents" {
   let vv1 = VersionVector::new().set("alice", 5)
   let vv2 = VersionVector::new().set("bob", 5)
-  inspect(vv1.equal(vv2), content="false")
+  inspect(vv1 == vv2, content="false")
 }
 
 ///|
@@ -223,7 +223,7 @@ test "roundtrip - frontier to version vector and back" {
   // The recovered frontier should be equivalent to the original
   // (it might be a different LV set, but represents the same version vector)
   let vv2 = VersionVector::from_frontier(graph, recovered_frontier)
-  inspect(vv.equal(vv2), content="true")
+  inspect(vv == vv2, content="true")
 }
 
 ///|

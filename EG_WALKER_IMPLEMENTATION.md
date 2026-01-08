@@ -85,6 +85,14 @@ pub fn contains(vv: VersionVector, version: RawVersion) -> Bool
 pub fn merge(vv1: VersionVector, vv2: VersionVector) -> VersionVector
 ```
 
+Recommendation
+
+To use VersionVector effectively:
+
+1. Replace frontier with version vector in network sync (network.ts lines 89, 332, 392)
+2. Update merge_operations signature to accept version vector instead of frontier
+3. Add version vector comparison to optimize "already synced" checks
+
 ### 4. Efficient Merge (Priority: HIGH)
 
 **Location:** `/merge/merge.mbt`
