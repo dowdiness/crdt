@@ -292,7 +292,7 @@ The web interface (`web/`) uses these APIs to provide a collaborative lambda cal
 - Check coverage with `moon coverage analyze`
 - Performance benchmarks in files ending with `_benchmark.mbt`
 - Parser has comprehensive edge case tests in `parser/docs/EDGE_CASE_TESTS.md`
-- Current test count: 337 tests, all passing
+- Current test count: 329 tests, all passing
 
 ## References
 

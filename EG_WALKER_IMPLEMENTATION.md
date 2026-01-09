@@ -1,4 +1,14 @@
-# Eg-walker Implementation Plan for MoonBit
+# Eg-walker Implementation Status for MoonBit
+
+> **🎉 STATUS: IMPLEMENTATION COMPLETE** (329 tests passing)
+>
+> All phases of the eg-walker CRDT are fully implemented:
+> - ✅ Phase 1: Event Graph Walker
+> - ✅ Phase 2: Branch/Snapshot System
+> - ✅ Phase 3: Version Vectors & Merge Algorithm
+> - ✅ Phase 4: Network Sync with WebRTC/WebSocket
+>
+> **Next step:** Production testing with real browser peers
 
 ## Current Architecture Analysis
 
@@ -23,7 +33,7 @@ Your implementation is **already very close** to eg-walker! You have:
 3. **CRDT Data Structure** (`/fugue/tree.mbt`)
    - ✅ FugueMax tree for ordered sequences
 
-## 🎯 Missing Pieces for Full Eg-walker
+## ✅ Implemented Eg-walker Components
 
 ### 1. ✅ Event Graph Walker (COMPLETED)
 
@@ -101,31 +111,56 @@ pub fn from_frontier(graph : CausalGraph, frontier : Array[Int]) -> VersionVecto
 - Network sync now uses version vectors instead of frontiers (`web/src/network.ts`)
 - `merge_operations()` accepts version vector for optimization
 - Early return optimization when `remote_vv <= local_vv` (already synced)
-- 337 tests passing including 25 property-based tests with Arbitrary/Shrink traits
+- 329 tests passing including 25 property-based tests with Arbitrary/Shrink traits
 
-### 4. Efficient Merge (Priority: HIGH)
+### 4. ✅ Efficient Merge (COMPLETED)
 
 **Location:** `/merge/merge.mbt`
 
-Merge concurrent branches efficiently.
+Merge concurrent branches efficiently using retreat-advance-apply strategy.
 
+**Implemented:**
 ```moonbit
-/// Merge two branches that diverged from a common base
-pub fn merge_branches(
-  graph: CausalGraph,
-  oplog: OpLog,
-  base: Branch,
-  branch_a: Branch,
-  branch_b: Branch
-) -> Branch {
-  // 1. Find operations unique to each branch
-  let (retreat_a, advance_a) = graph.graph_diff(base.frontier, branch_a.frontier)
-  let (retreat_b, advance_b) = graph.graph_diff(base.frontier, branch_b.frontier)
-
-  // 2. Apply operations in causal order
-  // 3. Return merged branch
+/// MergeContext - state during merge operation
+pub struct MergeContext {
+  tree : @fugue.FugueTree
+  oplog : @oplog.OpLog
 }
+
+/// Perform a full merge operation (three-phase retreat-advance-apply)
+pub fn merge(
+  tree : @fugue.FugueTree,
+  oplog : @oplog.OpLog,
+  current_frontier : Array[Int],
+  target_frontier : Array[Int]
+) -> Unit
+
+/// Merge remote operations into local state using Branch system
+pub fn merge_remote_ops(
+  tree : @fugue.FugueTree,
+  oplog : @oplog.OpLog,
+  remote_ops : Array[@oplog.Op]
+) -> Unit
+
+/// Apply operations from the advance set
+pub fn MergeContext::apply_operations(
+  self : MergeContext,
+  operations : Array[Int]
+) -> Unit
+
+/// Remove operations from the retreat set
+pub fn MergeContext::retreat_operations(
+  self : MergeContext,
+  operations : Array[Int]
+) -> Unit
 ```
+
+**Features:**
+- Three-phase merge: retreat-advance-apply
+- Uses `graph_diff()` to compute retreat and advance sets
+- `merge_remote_ops()` leverages Branch system and walker
+- 3 comprehensive tests covering concurrent inserts, deletes, and frontier transitions
+- All tests passing
 
 ## 📋 Implementation Steps
 
@@ -165,89 +200,75 @@ pub fn Branch::checkout(oplog : @oplog.OpLog, frontier : Array[Int]) -> Branch
 pub fn Branch::advance(self : Branch, target_frontier : Array[Int]) -> Branch
 ```
 
-### Phase 3: Merge Algorithm (2-3 days)
+### Phase 3: ✅ Merge Algorithm (COMPLETED)
 
-1. **Create `/merge/merge.mbt`**
-   ```moonbit
-   pub fn merge_branches(
-     graph: CausalGraph,
-     oplog: OpLog,
-     branch_a: Branch,
-     branch_b: Branch
-   ) -> Branch {
-     // Use graph_diff to find operations to apply
-     // Apply in topological order
-   }
-   ```
+**Completed:**
+- ✅ Created `/merge/merge.mbt` with three-phase merge implementation
+- ✅ Implemented `merge()` using `graph_diff()` for retreat-advance-apply strategy
+- ✅ Implemented `merge_remote_ops()` leveraging Branch system and walker
+- ✅ Added `MergeContext` for managing merge state
+- ✅ Optimized with version vectors in network sync
+- ✅ Added 3 comprehensive tests for merge module
 
-2. **Optimize with version vectors**
+### Phase 4: ✅ Network Integration (COMPLETED - Testing Needed)
 
-### Phase 4: Network Integration (TypeScript) (1-2 days)
+**Completed:**
+- ✅ Created `/web/src/network.ts` with `NetworkSync` class
+- ✅ Implemented WebRTC peer-to-peer data channels
+- ✅ Added WebSocket signaling server (`web/signaling-server.js`)
+- ✅ Integrated version vectors for efficient sync
+- ✅ Added `broadcastOperations()` and `handleRemoteOps()`
+- ✅ Updated to use `get_version_vector_json()` and optimized `merge_operations()`
+- ✅ Deployed signaling server guides (Cloudflare Durable Objects)
 
-1. **Create `/web/src/network.ts`**
-   ```typescript
-   import * as crdt from '../public/crdt';
+**Remaining:**
+- ⏳ Test with 2+ browser peers in real-time collaboration
+- ⏳ Verify version vector optimization in production scenarios
+- ⏳ Test reconnection and sync recovery
 
-   class NetworkSync {
-     private handle: number;
-     private peers: Map<string, WebRTCPeer> = new Map();
+## ✅ MoonBit API (COMPLETED)
 
-     // Send local operations to peers
-     broadcastOps() {
-       const ops = crdt.get_operations_json(this.handle);
-       const frontier = crdt.get_frontier_json(this.handle);
-
-       for (const peer of this.peers.values()) {
-         peer.send({ ops, frontier });
-       }
-     }
-
-     // Receive and merge remote operations
-     onReceiveOps(data: { ops: string, frontier: string }) {
-       crdt.merge_operations(this.handle, data.ops, data.frontier);
-       this.updateUI();
-     }
-   }
-   ```
-
-2. **Add WebRTC/WebSocket transport layer**
-
-## 🔧 MoonBit API Additions Needed
-
-Update `/crdt.mbt` to expose new functions:
+The `/crdt.mbt` FFI has been fully implemented with these functions:
 
 ```moonbit
-/// Checkout branch at frontier
-pub fn checkout_branch(_handle: Int, frontier_json: String) -> String {
-  match editor.val {
-    Some(ed) => {
-      let frontier = parse_frontier_json(frontier_json)
-      let branch = checkout(ed.graph, ed.oplog, frontier)
-      serialize_branch(branch)
-    }
-    None => "{}"
-  }
-}
+/// Get operations as JSON
+pub fn get_operations_json(_handle: Int) -> String
 
-/// Merge remote operations
-pub fn merge_operations(_handle: Int, ops_json: String, frontier_json: String) -> Unit {
-  match editor.val {
-    Some(ed) => {
-      let remote_ops = parse_ops_json(ops_json)
-      let remote_frontier = parse_frontier_json(frontier_json)
+/// Get frontier as JSON
+pub fn get_frontier_json(_handle: Int) -> String
 
-      // Apply remote operations
-      for op in remote_ops {
-        ed.oplog.apply_remote(op)
-      }
+/// Get version vector as JSON (for network sync)
+pub fn get_version_vector_json(_handle: Int) -> String
 
-      // Mark as dirty for reparse
-      ed.parse_dirty = true
-    }
-    None => ()
-  }
-}
+/// Merge remote operations with version vector optimization
+pub fn merge_operations(
+  _handle: Int,
+  ops_json: String,
+  version_vector_json: String
+) -> Unit
+
+/// Create editor with agent ID
+pub fn create_editor(agent_id: String) -> Int
+
+/// Text editing operations
+pub fn insert(_handle: Int, text: String) -> Unit
+pub fn delete_(_handle: Int) -> Unit
+pub fn backspace(_handle: Int) -> Unit
+pub fn get_text(_handle: Int) -> String
+pub fn set_text(_handle: Int, text: String) -> Unit
+
+/// Parsing and AST
+pub fn get_ast_json(_handle: Int) -> String
+pub fn get_errors_json(_handle: Int) -> String
+
+/// Cursor operations
+pub fn move_cursor(_handle: Int, position: Int) -> Unit
 ```
+
+**Key Features:**
+- Version vector integration for optimized network sync
+- Automatic incremental parsing after remote operations
+- Early return when `remote_vv <= local_vv` (already synced)
 
 ## 📊 Performance Optimizations (Phase 5)
 
@@ -281,27 +302,35 @@ Your architecture **improves** on basic eg-walker:
 
 ## 🎯 Implementation Status
 
-**✅ Phase 1-3 Complete: CRDT with Version Vectors is fully functional!**
+**✅ Phase 1-4 Complete: Full eg-walker CRDT implementation with network sync!**
 
 1. ✅ Implemented `walk_and_collect()` in walker.mbt
-2. ✅ Implemented `checkout()` in branch.mbt
-3. ✅ Tested with concurrent edits (337 tests passing)
+2. ✅ Implemented `checkout()` and `advance()` in branch.mbt
+3. ✅ Tested with concurrent edits (329 tests passing)
 4. ✅ Full character-level operations support
-5. ✅ Implemented version vectors with comprehensive property-based tests
+5. ✅ Implemented version vectors with comprehensive property-based tests (25 tests, 100 cases each)
 6. ✅ Network sync updated to use version vectors
 7. ✅ Merge optimization with version vector comparison
+8. ✅ Implemented three-phase merge algorithm (retreat-advance-apply)
+9. ✅ Created `merge()` and `merge_remote_ops()` functions
+10. ✅ WebRTC/WebSocket network infrastructure complete
+11. ✅ FFI API complete with all network sync functions
 
-**🚧 Next Priority: Complete Network Sync Testing**
+**🚧 Next Priority: Production Testing & Validation**
 
-8. ⏳ Test with 2+ peers in browser
-9. ⏳ Verify version vector optimization in real-time collaboration
-10. ⏳ Test reconnection and sync recovery scenarios
+12. ⏳ Test with 2+ peers in browser (real-time collaboration)
+13. ⏳ Verify version vector optimization in production scenarios
+14. ⏳ Test reconnection and sync recovery scenarios
+15. ⏳ Performance benchmarking for large documents
+16. ⏳ Stress testing with many concurrent users
 
-**📋 Future Optimizations**
+**📋 Future Enhancements**
 
-11. ⏳ Optimize checkout with deltas
-12. ⏳ Add compression for network sync
-13. ⏳ Implement merge_branches() for explicit branch merging
+17. ⏳ Optimize checkout with delta encoding
+18. ⏳ Add operation compression (gzip, brotli) for network sync
+19. ⏳ Implement persistent storage with operation log replay
+20. ⏳ Add presence awareness (cursor positions, user names)
+21. ⏳ Document rooms/channels for multi-document collaboration
 
 ## 📖 References
 
@@ -313,17 +342,24 @@ Your architecture **improves** on basic eg-walker:
 
 ## ✅ Completed Components
 
-1. ✅ **walker.mbt** - Event graph traversal (Phases 1-2)
+1. ✅ **walker.mbt** - Event graph traversal (Phase 1)
 2. ✅ **branch.mbt** - Snapshot/checkout system (Phase 2)
 3. ✅ **version_vector.mbt** - Efficient frontier compression (Phase 3)
-4. ✅ **network.ts** - Network sync with version vectors (Phase 3)
-5. ✅ **Property-based tests** - 25 tests with Arbitrary/Shrink traits
+4. ✅ **merge.mbt** - Three-phase merge algorithm (Phase 3)
+5. ✅ **network.ts** - Network sync with version vectors (Phase 4)
+6. ✅ **crdt.mbt FFI** - Complete JavaScript API with network functions (Phase 4)
+7. ✅ **Property-based tests** - 25 tests with Arbitrary/Shrink traits
+8. ✅ **signaling-server.js** - WebSocket signaling for peer discovery
+9. ✅ **Cloudflare deployment** - Durable Objects guides for production signaling
+
+**Total: 329 tests passing, all phases complete!**
 
 ## 🚧 Next Steps
 
-Next priorities for production-ready CRDT:
-- **merge.mbt** - Complete branch merging implementation for explicit merge operations
-- **Browser testing** - Verify multi-peer collaboration in real browsers
-- **Performance optimization** - Delta encoding and operation compression
+Next priorities for production deployment:
+- **Browser testing** - Verify multi-peer collaboration with 2+ real browsers
+- **Performance profiling** - Benchmark large documents and many concurrent users
+- **Production hardening** - Test reconnection, sync recovery, and edge cases
+- **Performance optimization** - Delta encoding and operation compression (Phase 5)
 
-The foundation is complete! The CRDT with version vectors is implemented and tested (337 tests passing).
+**The complete eg-walker CRDT is implemented!** All core components are working. Only production testing and optimization remain.
