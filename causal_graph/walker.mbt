@@ -72,15 +72,39 @@ fn collect_reachable_versions(
 /// Topological sort of versions using Kahn's algorithm
 /// Returns versions ordered from oldest to newest (respecting causality)
 ///
+/// https://en.wikipedia.org/wiki/Topological_sorting
+///
 /// # Algorithm
-/// 1. Calculate in-degree for each version (number of unprocessed dependencies)
-/// 2. Start with versions that have in-degree 0
-/// 3. Process versions, decrementing in-degrees of their children
-/// 4. Add newly-zero-in-degree versions to queue
+/// 1. Build children map for O(1) lookups (avoids O(n²) scanning)
+/// 2. Calculate in-degree for each version (number of unprocessed dependencies)
+/// 3. Start with versions that have in-degree 0
+/// 4. Process versions, decrementing in-degrees of their children
+/// 5. Add newly-zero-in-degree versions to queue
 fn topological_sort(
   graph : CausalGraph,
   versions : @immut/hashset.HashSet[Int],
 ) -> Array[Int] {
+  // Build children map: parent -> [children]
+  // This is O(n + edges) instead of O(n²) for repeated scanning
+  let mut children : @immut/hashmap.HashMap[Int, Array[Int]] = @immut/hashmap.new()
+  for lv in versions.iter() {
+    match graph.get_entry(lv) {
+      Some(entry) =>
+        // For each parent, record this version as a child
+        for parent in entry.parents {
+          if versions.contains(parent) {
+            let current_children = match children.get(parent) {
+              Some(c) => c
+              None => []
+            }
+            current_children.push(lv)
+            children = children.add(parent, current_children)
+          }
+        }
+      None => ()
+    }
+  }
+
   // Calculate in-degrees (number of parents in the reachable set)
   let mut in_degree : @immut/hashmap.HashMap[Int, Int] = @immut/hashmap.new()
 
@@ -128,29 +152,25 @@ fn topological_sort(
         // Add to result
         result.push(current)
 
-        // Find all versions that have 'current' as a parent
-        // (i.e., children of current in the DAG)
-        for candidate in versions.iter() {
-          match graph.get_entry(candidate) {
-            Some(entry) =>
-              // Check if 'current' is a parent of 'candidate'
-              if entry.parents.contains(current) {
-                // Decrement in-degree
-                match in_degree.get(candidate) {
-                  Some(degree) => {
-                    let new_degree = degree - 1
-                    in_degree = in_degree.add(candidate, new_degree)
+        // Look up children directly from map (O(1) instead of O(n))
+        match children.get(current) {
+          Some(child_list) =>
+            for child in child_list {
+              // Decrement in-degree
+              match in_degree.get(child) {
+                Some(degree) => {
+                  let new_degree = degree - 1
+                  in_degree = in_degree.add(child, new_degree)
 
-                    // If in-degree reaches 0, add to queue
-                    if new_degree == 0 {
-                      queue.push(candidate)
-                    }
+                  // If in-degree reaches 0, add to queue
+                  if new_degree == 0 {
+                    queue.push(child)
                   }
-                  None => ()
                 }
+                None => ()
               }
-            None => ()
-          }
+            }
+          None => () // No children, continue
         }
       }
       None => break
