@@ -81,10 +81,10 @@ Result: Both peers converge to either "HelloWorld" or "WorldHello"
 
 ```typescript
 interface SyncMessage {
-  type: 'ops' | 'frontier' | 'request_sync';
+  type: 'ops' | 'version_vector' | 'request_sync';
   sender: string;              // Agent ID
   ops?: string;                // JSON-encoded operations
-  frontier?: string;           // JSON-encoded version frontier
+  version_vector?: string;     // JSON-encoded version vector
 }
 ```
 
@@ -241,28 +241,28 @@ pm2 start signaling-server.js --name crdt-signaling
 
 - Reduce broadcast frequency (increase debounce timeout)
 - Use delta encoding for large documents
-- Implement version vectors for efficient frontier tracking
+- Version vectors are used for efficient frontier tracking (already implemented)
 
 ## Advanced: Custom Network Layer
 
 You can implement your own network layer by:
 
 1. Getting operations: `crdt.get_operations_json(handle)`
-2. Getting frontier: `crdt.get_frontier_json(handle)`
+2. Getting version vector: `crdt.get_version_vector_json(handle)`
 3. Broadcasting via your transport (WebSocket, HTTP, etc.)
-4. Receiving operations and calling: `crdt.merge_operations(handle, ops, frontier)`
+4. Receiving operations and calling: `crdt.merge_operations(handle, ops, version_vector)`
 
 Example:
 
 ```typescript
 // Send operations
 const ops = crdt.get_operations_json(handle);
-const frontier = crdt.get_frontier_json(handle);
-myTransport.send({ ops, frontier });
+const version_vector = crdt.get_version_vector_json(handle);
+myTransport.send({ ops, version_vector });
 
 // Receive operations
 myTransport.onMessage((data) => {
-  crdt.merge_operations(handle, data.ops, data.frontier);
+  crdt.merge_operations(handle, data.ops, data.version_vector);
   updateUI();
 });
 ```
@@ -277,7 +277,7 @@ myTransport.onMessage((data) => {
 ## Future Improvements
 
 - [ ] Persistent storage with operation log replay
-- [ ] Version vectors for efficient frontier compression
+- [x] Version vectors for efficient frontier compression (implemented)
 - [ ] Delta encoding for reduced bandwidth
 - [ ] Document rooms/channels
 - [ ] Presence awareness (cursor positions, user names)

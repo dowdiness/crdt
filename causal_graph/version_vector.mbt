@@ -539,7 +539,7 @@ pub fn VersionVector::from_frontier(
 pub fn VersionVector::to_frontier(
   self : VersionVector,
   graph : CausalGraph,
-) -> Array[Int] {
+) -> Frontier {
   let result = []
 
   // For each agent in version vector, find the LV for that (agent, seq)

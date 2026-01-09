@@ -88,6 +88,10 @@ The codebase is organized into several MoonBit packages (each directory with `mo
   - Maintains parent relationships and Lamport timestamps
   - Implements transitive closure, graph diffing, and ancestry checks
   - **Event graph walker** (`walker.mbt`) - Core eg-walker algorithm for topological traversal
+  - **Version vectors** (`version_vector.mbt`) - Compact representation of version frontiers for efficient network sync
+    - Tracks maximum sequence number per agent
+    - Supports comparison, merging, and conversion to/from frontiers
+    - Includes property-based tests with Arbitrary/Shrink traits
 - **`oplog/`** - Operation log for append-only storage of edit operations
   - Tracks insert/delete operations with version information
   - Handles remote operation merging
@@ -118,7 +122,11 @@ The implementation follows the eg-walker paper (https://arxiv.org/abs/2409.14252
 1. **Causal graph** - Tracks dependencies between operations
 2. **Event graph walker** - Traverses operations in topological (causal) order
 3. **FugueMax tree** - CRDT data structure for the actual sequence
-4. **Branch system** - Efficiently checkout document state at any frontier
+4. **Version vectors** - Compact frontier representation for efficient network synchronization
+   - Maps each agent to their maximum known sequence number
+   - Enables O(agents) comparison instead of O(operations)
+   - Used in network sync to detect if peers are already synchronized
+5. **Branch system** - Efficiently checkout document state at any frontier
    - `Branch::checkout(oplog, frontier)` - Reconstruct document by walking operations in causal order
    - `branch.advance(new_frontier)` - Incrementally apply new operations to existing branch
    - **Important**: Operations represent character-level edits; multi-character inserts should be split into individual character operations
@@ -202,6 +210,9 @@ The parser has extensive documentation in `parser/README.md` and `parser/docs/`.
 The CRDT implementation is split across multiple modules. Key files:
 - `causal_graph/graph.mbt` - Core graph operations
 - `causal_graph/walker.mbt` - Topological traversal (eg-walker)
+- `causal_graph/version_vector.mbt` - Version vector implementation for efficient frontier tracking
+- `causal_graph/version_vector_shrink.mbt` - Shrink trait for property-based testing
+- `causal_graph/version_vector_properties_test.mbt` - Property-based tests (25 tests, 100 cases each)
 - `oplog/oplog.mbt` - Operation storage and retrieval
 - `oplog/walker.mbt` - Walker integration for collecting operations
 - `fugue/tree.mbt` - Sequence CRDT implementation
@@ -228,6 +239,30 @@ if branch.at_frontier(frontier) {
 
 **Important**: The CRDT works at the character level. When inserting multi-character strings, split them into individual character operations (see `branch/branch_test.mbt` for examples).
 
+#### Using Version Vectors
+Version vectors provide compact frontier representation for network synchronization:
+```moonbit
+// Create version vector from frontier
+let vv = VersionVector::from_frontier(graph, frontier)
+
+// Compare version vectors
+if local_vv <= remote_vv {
+  // Local state is behind remote, need to sync
+} else if remote_vv <= local_vv {
+  // Already synced, remote has no new operations
+} else {
+  // Concurrent edits, need to merge
+}
+
+// Merge version vectors (take maximum sequence for each agent)
+let merged_vv = local_vv.merge(remote_vv)
+
+// Convert back to frontier for operations
+let merged_frontier = merged_vv.to_frontier(graph)
+```
+
+**Network Sync Optimization**: The `merge_operations()` function uses version vector comparison to skip redundant merges when `remote_vv <= local_vv`.
+
 ## FFI and Web Integration
 
 The root `crdt.mbt` file exports a JavaScript API:
@@ -239,6 +274,9 @@ The root `crdt.mbt` file exports a JavaScript API:
 - `get_ast_json(handle)` - Get parsed AST
 - `get_errors_json(handle)` - Get parse errors
 - `get_frontier_json(handle)` - Get current version frontier
+- `get_version_vector_json(handle)` - Get current version vector (used in network sync)
+- `get_operations_json(handle)` - Get all operations as JSON
+- `merge_operations(handle, ops_json, version_vector_json)` - Merge remote operations with version vector optimization
 - `move_cursor(handle, position)` - Update cursor
 
 The web interface (`web/`) uses these APIs to provide a collaborative lambda calculus editor with syntax highlighting.
@@ -247,9 +285,14 @@ The web interface (`web/`) uses these APIs to provide a collaborative lambda cal
 
 - All packages have test files (`*_test.mbt`)
 - Tests use MoonBit's snapshot testing - inspect output and update with `--update`
+- Property-based testing with QuickCheck (`@qc`) for algebraic properties:
+  - Version vectors have 25 property tests with Arbitrary/Shrink traits (100 test cases each)
+  - Parser has property-based tests for invariants
+  - Editor has property tests for CRDT convergence
 - Check coverage with `moon coverage analyze`
 - Performance benchmarks in files ending with `_benchmark.mbt`
 - Parser has comprehensive edge case tests in `parser/docs/EDGE_CASE_TESTS.md`
+- Current test count: 337 tests, all passing
 
 ## References
 
