@@ -425,3 +425,44 @@ Built a children map (parent → [children]) during initialization for O(1) chil
 ✅ **Improves all workloads**: 1.5x-138x speedup across all sizes
 
 **Status**: Walker performance issue **RESOLVED** ✅
+
+---
+
+## Future Optimization Opportunities
+
+### Priority: Medium (Optional Improvements)
+
+#### 1. Branch Advance Variance Reduction
+**Issue**: 55% variance in repeated advance benchmark (27-144ms range)
+**Impact**: Unpredictable real-time performance
+**Solutions**:
+- Profile memory allocations
+- Investigate GC pauses
+- Implement proper incremental updates
+**Expected gain**: More predictable performance (10% variance target)
+
+#### 2. Memory Optimizations (If Needed)
+**Run-Length Encoding**:
+- Coalesce consecutive operations into ranges
+- 50-80% memory reduction for text-heavy documents
+- Complexity: Medium (~200 lines)
+
+**Object Pooling**:
+- Reduce GC pauses through object reuse
+- 30-50% reduction in GC pressure
+- Complexity: Low (~150 lines)
+
+#### 3. Advanced Features (Future)
+- **B-tree Indexing**: O(log n) operation lookup (currently O(1) for most cases, acceptable)
+- **Lazy Loading**: Block-based document loading (10x improvement for very large docs)
+- **[Delta Encoding](https://en.wikipedia.org/wiki/Delta_encoding)**: Network optimization (version vectors already handle this well), [The Design of Fast Delta Encoding for Delta Compression Based Storage Systems](https://dl.acm.org/doi/10.1145/3664817)
+- **Compression**: Storage optimization (only if storage is bottleneck)
+
+### Recommendation
+✅ **Current performance is production-ready.** Walker optimization eliminated the critical bottleneck. Future optimizations are nice-to-have based on real-world usage patterns.
+
+Focus areas based on actual usage:
+- If real-time collaboration shows variance issues → Branch advance optimization
+- If memory usage becomes a concern → RLE/object pooling
+- If loading huge documents (100k+ ops) → Lazy loading
+- Otherwise → Ship it! 🚀
