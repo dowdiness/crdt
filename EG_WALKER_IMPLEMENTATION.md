@@ -270,14 +270,50 @@ pub fn move_cursor(_handle: Int, position: Int) -> Unit
 - Automatic incremental parsing after remote operations
 - Early return when `remote_vv <= local_vv` (already synced)
 
-## 📊 Performance Optimizations (Phase 5)
+## 📊 Performance Benchmarks & Optimizations (Phase 5)
+
+### Benchmarks Created
+
+Comprehensive performance benchmarks have been added:
+- ✅ **Walker benchmarks** - 9 tests covering linear history, concurrent branches, diamond patterns
+- ✅ **Branch benchmarks** - 10 tests for checkout, advance, to_text, concurrent edits
+- ✅ **Version vector benchmarks** - 15 tests for comparison, merge, conversion
+- ✅ **Merge benchmarks** - 9 tests for concurrent edits, many agents, deletes
+- ✅ **OpLog benchmarks** - 13 tests for insert, delete, walk, filter
+
+**Total: 56 benchmarks** for performance profiling
+
+Run with: `moon bench --release`
+
+See [BENCHMARKS.md](./BENCHMARKS.md) for detailed documentation.
+
+### Baseline Performance Results
+
+**Status**: ✅ Baseline established (2026-01-09)
+
+Performance analysis completed with comprehensive results:
+- ✅ **Version vectors**: Excellent (0.08-2.21 µs)
+- ✅ **Small-medium documents** (≤1000 ops): Good performance
+- ⚠️ **Large documents** (10,000 ops): Needs optimization (quadratic scaling)
+- ✅ **Merge operations**: Good scalability
+- ✅ **OpLog**: Excellent performance
+
+**Key Findings:**
+- Walker shows quadratic scaling at 10,000 ops (3.93s vs expected 265ms)
+- Version vectors performing excellently (no optimization needed)
+- Branch advance has high variance (needs investigation)
+- All targets met for typical document sizes (≤1000 ops)
+
+See [PERFORMANCE_ANALYSIS.md](./PERFORMANCE_ANALYSIS.md) for complete baseline results and optimization roadmap.
+
+### Optimization Status
 
 Based on eg-walker paper findings:
 
-1. **Indexing by agent/seq** - fast lookup of operations
-2. **Incremental checkout** - don't replay from scratch
-3. **Delta encoding** - only send new operations
-4. **Compressed frontiers** - version vectors instead of arrays
+1. ✅ **Compressed frontiers** - Version vectors instead of arrays (completed)
+2. ✅ **Incremental checkout** - Branch advance (completed)
+3. ⏳ **Indexing by agent/seq** - Fast lookup of operations (future)
+4. ⏳ **Delta encoding** - Only send new operations (future)
 
 ## 🧪 Testing Strategy
 
@@ -316,13 +352,15 @@ Your architecture **improves** on basic eg-walker:
 10. ✅ WebRTC/WebSocket network infrastructure complete
 11. ✅ FFI API complete with all network sync functions
 
-**🚧 Next Priority: Production Testing & Validation**
+**🚧 Next Priority: Production Testing & Optimization**
 
-12. ⏳ Test with 2+ peers in browser (real-time collaboration)
-13. ⏳ Verify version vector optimization in production scenarios
-14. ⏳ Test reconnection and sync recovery scenarios
-15. ⏳ Performance benchmarking for large documents
-16. ⏳ Stress testing with many concurrent users
+12. ✅ Performance benchmarking completed (56 benchmarks)
+13. ✅ Baseline performance analysis documented
+14. 🔴 **Walker optimization needed** (Priority 1: quadratic scaling at 10k ops)
+15. ⚠️ **Branch advance optimization** (Priority 2: high variance)
+16. ⏳ Test with 2+ peers in browser (real-time collaboration)
+17. ⏳ Verify version vector optimization in production scenarios
+18. ⏳ Test reconnection and sync recovery scenarios
 
 **📋 Future Enhancements**
 

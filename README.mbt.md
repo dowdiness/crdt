@@ -79,6 +79,39 @@ if x then 1 else 0
 if x then y + 1 else y - 1
 ```
 
+## Performance
+
+Comprehensive benchmarks available:
+- **56 benchmarks** across 5 modules
+- Baseline performance established
+- Small-medium documents (≤1000 ops): **Good performance**
+- Large documents (10,000 ops): Optimization needed
+
+Run benchmarks:
+```sh
+moon bench --release
+```
+
+See [PERFORMANCE_ANALYSIS.md](./PERFORMANCE_ANALYSIS.md) for detailed results and [BENCHMARKS.md](./BENCHMARKS.md) for benchmark documentation.
+
+## Documentation
+
+- **[CLAUDE.md](./CLAUDE.md)** - Complete project guide and development workflow
+- **[EG_WALKER_IMPLEMENTATION.md](./EG_WALKER_IMPLEMENTATION.md)** - Implementation status and architecture
+- **[WALKER_USAGE.md](./WALKER_USAGE.md)** - Event graph walker usage guide
+- **[NETWORK_SYNC.md](./NETWORK_SYNC.md)** - Network synchronization guide
+- **[BENCHMARKS.md](./BENCHMARKS.md)** - Benchmark documentation
+- **[PERFORMANCE_ANALYSIS.md](./PERFORMANCE_ANALYSIS.md)** - Performance baseline and optimization roadmap
+
+## Testing
+
+```sh
+moon test                    # Run all tests (329 passing)
+moon test --update          # Update test snapshots
+moon coverage analyze       # Analyze test coverage
+```
+
 ## References
 
 - [Eg-walker paper](https://arxiv.org/abs/2409.14252)
+- [MoonBit documentation](https://docs.moonbitlang.com)

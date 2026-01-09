@@ -54,9 +54,19 @@ moon info && moon fmt
 
 ### Benchmarking
 ```bash
-# Run benchmarks
-moon bench
+# Run all benchmarks (always use --release for accurate measurements)
+moon bench --release
+
+# Run benchmarks for specific package
+moon bench --package causal_graph --release
+moon bench --package branch --release
+moon bench --package merge --release
+
+# Run specific benchmark
+moon bench --package walker --release -f "linear history"
 ```
+
+See [BENCHMARKS.md](./BENCHMARKS.md) for detailed benchmark documentation and optimization guidance.
 
 ### Web Development
 ```bash
