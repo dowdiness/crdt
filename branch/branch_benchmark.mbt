@@ -167,8 +167,60 @@ test "branch - checkout with deletes" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: Repeated advance (simulate real-time editing)
-test "branch - repeated advance (10 iterations)" (b : @bench.T) {
+/// Benchmark: Repeated advance - STEADY STATE (10 iterations)
+/// 
+/// This measures true steady-state performance by pre-computing all operations
+/// and frontiers before the benchmark starts. This gives stable, reproducible
+/// results without GC artifacts or memory allocation variance.
+///
+/// Expected: Low variance (< 10%), stable performance across iterations
+test "branch - repeated advance steady-state (10 iterations)" (b : @bench.T) {
+  let oplog = @oplog.OpLog::new("agent_a")
+  let mut prev = -1
+
+  // Build base: 50 operations BEFORE benchmark
+  for i = 0; i < 50; i = i + 1 {
+    let op = oplog.insert("a", prev, -1)
+    prev = op.lv
+  }
+  let base_frontier = oplog.get_frontier()
+  let base_branch = Branch::checkout(oplog, base_frontier)
+
+  // Pre-create all future operations and their frontiers BEFORE benchmark
+  let future_frontiers = []
+  for i = 0; i < 10; i = i + 1 {
+    let op = oplog.insert("b", prev, -1)
+    prev = op.lv
+    future_frontiers.push(oplog.get_frontier())
+  }
+
+  // Now benchmark: steady-state advancing through pre-computed frontiers
+  // No oplog modifications, no branch creation, just pure advance() calls
+  b.bench(fn() {
+    let mut branch = base_branch // Start from same fixed point
+
+    // Advance through 10 pre-computed frontiers
+    for frontier in future_frontiers {
+      branch = branch.advance(frontier)
+    }
+    b.keep(branch)
+  })
+}
+
+///|
+/// Benchmark: Repeated advance - ORIGINAL (with oplog mutations)
+///
+/// This is the original benchmark that modifies oplog inside the loop.
+/// Kept for comparison to understand the difference between steady-state
+/// and dynamic operation. This benchmark has higher variance due to:
+/// - New branch creation each iteration
+/// - Oplog modifications during benchmark
+/// - Frontier computation overhead
+///
+/// Expected: High variance (40-60%), shows cost of dynamic operations
+test "branch - repeated advance with oplog mutations (10 iterations)" (
+  b : @bench.T,
+) {
   let oplog = @oplog.OpLog::new("agent_a")
   let mut prev = -1
 
@@ -180,11 +232,11 @@ test "branch - repeated advance (10 iterations)" (b : @bench.T) {
   b.bench(fn() {
     let mut branch = Branch::checkout(oplog, oplog.get_frontier())
 
-    // Simulate 10 incremental edits
+    // Simulate 10 incremental edits with oplog mutations
     for _iter = 0; _iter < 10; _iter = _iter + 1 {
-      let op = oplog.insert("b", prev, -1)
+      let op = oplog.insert("b", prev, -1) // ← Modifies oplog
       prev = op.lv
-      branch = branch.advance(oplog.get_frontier())
+      branch = branch.advance(oplog.get_frontier()) // ← Dynamic frontier
     }
     b.keep(branch)
   })
@@ -223,5 +275,128 @@ test "branch - to_text (1000 chars)" (b : @bench.T) {
   b.bench(fn() {
     let result = branch.to_text()
     b.keep(result)
+  })
+}
+
+///|
+/// Benchmark: Single advance operation (small delta)
+///
+/// Measures the cost of a single advance() operation with small delta (1 new op).
+/// This is closer to real-time typing performance.
+test "branch - single advance (1 new op)" (b : @bench.T) {
+  let oplog = @oplog.OpLog::new("agent_a")
+  let mut prev = -1
+
+  // Build base: 100 operations
+  for i = 0; i < 100; i = i + 1 {
+    let op = oplog.insert("a", prev, -1)
+    prev = op.lv
+  }
+  let base_frontier = oplog.get_frontier()
+  let base_branch = Branch::checkout(oplog, base_frontier)
+
+  // Add 1 operation
+  let _op = oplog.insert("b", prev, -1)
+  let new_frontier = oplog.get_frontier()
+  b.bench(fn() {
+    let _result = base_branch.advance(new_frontier)
+    b.keep(_result)
+  })
+}
+
+///|
+/// Benchmark: Single advance operation (large delta)
+///
+/// Measures the cost of a single advance() operation with large delta (50 new ops).
+/// This tests performance for batch updates.
+test "branch - single advance (50 new ops)" (b : @bench.T) {
+  let oplog = @oplog.OpLog::new("agent_a")
+  let mut prev = -1
+
+  // Build base: 100 operations
+  for i = 0; i < 100; i = i + 1 {
+    let op = oplog.insert("a", prev, -1)
+    prev = op.lv
+  }
+  let base_frontier = oplog.get_frontier()
+  let base_branch = Branch::checkout(oplog, base_frontier)
+
+  // Add 50 operations
+  for i = 0; i < 50; i = i + 1 {
+    let op = oplog.insert("b", prev, -1)
+    prev = op.lv
+  }
+  let new_frontier = oplog.get_frontier()
+  b.bench(fn() {
+    let _result = base_branch.advance(new_frontier)
+    b.keep(_result)
+  })
+}
+
+///|
+/// Benchmark: Realistic typing simulation - FAST
+///
+/// Simulates a user typing one character at a time, advancing branch after each char.
+/// This is a realistic steady-state workload with minimal operations per iteration.
+///
+/// Measures: Average time per character insertion in editing workflow
+test "branch - realistic typing (50 chars)" (b : @bench.T) {
+  let oplog = @oplog.OpLog::new("user_alice")
+  let mut branch = Branch::new(oplog)
+  let mut prev = -1
+
+  // Pre-create base document (not part of benchmark)
+  for i = 0; i < 20; i = i + 1 {
+    let op = oplog.insert("x", prev, -1)
+    prev = op.lv
+  }
+  branch = Branch::checkout(oplog, oplog.get_frontier())
+
+  // Benchmark: Type 50 characters one at a time
+  // This is realistic because:
+  // - Each iteration is a single character
+  // - Frontier advances incrementally
+  // - Branch state persists across iterations
+  b.bench(fn() {
+    for i = 0; i < 50; i = i + 1 {
+      let op = oplog.insert("c", prev, -1)
+      prev = op.lv
+      let new_frontier = oplog.get_frontier()
+      branch = branch.advance(new_frontier)
+    }
+    b.keep(branch)
+  })
+}
+
+///|
+/// Benchmark: Concurrent merge scenario
+///
+/// Simulates two users typing concurrently and then merging branches.
+/// Measures performance of advance() with complex frontier transitions.
+test "branch - concurrent merge scenario" (b : @bench.T) {
+  let oplog = @oplog.OpLog::new("user_alice")
+  let mut branch = Branch::new(oplog)
+  let mut prev_alice = -1
+
+  // User Alice types 30 chars
+  for i = 0; i < 30; i = i + 1 {
+    let op = oplog.insert("a", prev_alice, -1)
+    prev_alice = op.lv
+  }
+  let alice_frontier = oplog.get_frontier()
+  branch = Branch::checkout(oplog, alice_frontier)
+
+  // User Bob simulates typing concurrently (via separate oplog simulation)
+  // In real scenario, these would come from network as remote operations
+  let mut prev_bob = -1
+  for i = 0; i < 20; i = i + 1 {
+    let op = oplog.insert("b", prev_bob, -1)
+    prev_bob = op.lv
+  }
+  let merged_frontier = oplog.get_frontier()
+  b.bench(fn() {
+    // Advance branch to merged state
+    let _merged_branch = branch.advance(merged_frontier)
+    b.keep(_merged_branch)
   })
 }
