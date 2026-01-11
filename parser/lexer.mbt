@@ -1,7 +1,9 @@
 // Lexer for Lambda Calculus
 
 ///|
-pub suberror TokenizationError String
+pub suberror TokenizationError {
+  TokenizationError(String)
+}
 
 ///|
 fn is_big_alphabet(code : Int) -> Bool {

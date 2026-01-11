@@ -1,7 +1,9 @@
 // Parser for Lambda Calculus expressions
 
 ///|
-pub suberror ParseError (String, Token)
+pub suberror ParseError {
+  ParseError(String, Token)
+}
 
 ///|
 /// Parse the input string into a Term (without position information)
@@ -61,7 +63,7 @@ fn expect(parser : Parser, expected : Token) -> Parser raise ParseError {
   let current = peek(parser)
   match (current, expected) {
     (a, b) if a == b => advance(parser)
-    _ => raise ParseError(("Expected token", expected))
+    _ => raise ParseError("Expected token", expected)
   }
 }
 
@@ -175,7 +177,7 @@ pub fn parse_tree(input : String) -> TermNode raise {
             )
             (parser, node)
           }
-          token => raise ParseError(("Expected parameter after λ", token))
+          token => raise ParseError("Expected parameter after λ", token)
         }
       }
       If => {
@@ -213,13 +215,13 @@ pub fn parse_tree(input : String) -> TermNode raise {
         )
         (parser, node)
       }
-      token => raise ParseError(("Unexpected token", token))
+      token => raise ParseError("Unexpected token", token)
     }
   }
 
   let (final_parser, expr) = parse_expression(parser)
   match peek(final_parser) {
     EOF => expr
-    token => raise ParseError(("Unexpected tokens after expression", token))
+    token => raise ParseError("Unexpected tokens after expression", token)
   }
 }

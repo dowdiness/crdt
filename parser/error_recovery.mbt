@@ -46,7 +46,7 @@ pub fn parse_with_error_recovery(input : String) -> (TermNode, Array[String]) {
   // Use the standard positioned parser for now
   // In a full implementation, we'd use RecoveringParser throughout
   let tree = parse_tree(input) catch {
-    ParseError((msg, token)) => {
+    ParseError(msg, token) => {
       let error_msg = "Parse error: " + msg + " at token " + print_token(token)
       parser.record_error(error_msg)
       TermNode::error(error_msg, 0, 0)
