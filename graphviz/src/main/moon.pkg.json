@@ -1,0 +1,8 @@
+{
+  "is-main": true,
+  "import": [
+    "antisatori/graphviz/lib/parser",
+    "antisatori/graphviz/lib/layout",
+    "antisatori/graphviz/lib/svg"
+  ]
+}

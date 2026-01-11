@@ -1,0 +1,45 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "antisatori/graphviz/lib/svg"
+
+import(
+  "antisatori/graphviz/lib/layout"
+)
+
+// Values
+pub fn render_html(@layout.GraphLayout, String) -> String
+
+pub fn render_html_with_config(@layout.GraphLayout, String, SvgConfig) -> String
+
+pub fn render_svg(@layout.GraphLayout) -> String
+
+pub fn render_svg_with_config(@layout.GraphLayout, SvgConfig) -> String
+
+pub fn save_html(@layout.GraphLayout, String, String) -> Result[Unit, String]
+
+pub fn save_html_with_config(@layout.GraphLayout, String, String, SvgConfig) -> Result[Unit, String]
+
+pub fn save_svg(@layout.GraphLayout, String) -> Result[Unit, String]
+
+pub fn save_svg_with_config(@layout.GraphLayout, String, SvgConfig) -> Result[Unit, String]
+
+// Errors
+
+// Types and methods
+pub struct SvgConfig {
+  padding : Double
+  node_stroke : String
+  node_fill : String
+  node_stroke_width : Double
+  edge_stroke : String
+  edge_stroke_width : Double
+  text_color : String
+  font_size : Double
+  font_family : String
+}
+pub fn SvgConfig::default() -> Self
+pub impl Show for SvgConfig
+
+// Type aliases
+
+// Traits
+

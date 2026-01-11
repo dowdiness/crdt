@@ -1,0 +1,10 @@
+{
+  "is_main": false,
+  "import": [
+    "antisatori/graphviz/lib/layout",
+    "moonbitlang/x/fs"
+  ],
+  "test-import": [
+    "antisatori/graphviz/lib/parser"
+  ]
+}
