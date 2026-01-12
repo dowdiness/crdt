@@ -2,9 +2,9 @@
 package "dowdiness/crdt/editor"
 
 import(
-  "dowdiness/crdt/document"
-  "dowdiness/crdt/oplog"
   "dowdiness/crdt/parser"
+  "dowdiness/event-graph-walker/document"
+  "dowdiness/event-graph-walker/oplog"
 )
 
 // Values

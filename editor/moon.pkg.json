@@ -1,8 +1,8 @@
 {
   "is_main": false,
   "import": [
-    "dowdiness/crdt/document",
-    "dowdiness/crdt/oplog",
+    "dowdiness/event-graph-walker/document",
+    "dowdiness/event-graph-walker/oplog",
     "dowdiness/crdt/parser"
   ]
 }

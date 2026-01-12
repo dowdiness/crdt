@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "dowdiness/crdt/causal_graph"
+package "dowdiness/event-graph-walker/causal_graph"
 
 import(
   "moonbitlang/core/immut/hashmap"

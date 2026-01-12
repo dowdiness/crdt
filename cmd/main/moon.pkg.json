@@ -2,6 +2,6 @@
   "is-main": true,
   "import": [
     "dowdiness/crdt/editor",
-    "dowdiness/crdt/oplog"
+    "dowdiness/event-graph-walker/oplog"
   ]
 }

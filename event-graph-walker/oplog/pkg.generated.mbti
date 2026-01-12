@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "dowdiness/crdt/oplog"
+package "dowdiness/event-graph-walker/oplog"
 
 import(
-  "dowdiness/crdt/causal_graph"
+  "dowdiness/event-graph-walker/causal_graph"
   "moonbitlang/core/json"
 )
 

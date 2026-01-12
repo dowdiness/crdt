@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is an implementation of the **eg-walker CRDT algorithm** for collaborative text editing, written in **MoonBit**. The project implements a CRDT-based collaborative editor for lambda calculus expressions with integrated incremental parsing, using the FugueMax sequence CRDT and retreat-advance-apply merge strategy.
 
+**Module Structure:** The codebase is organized into two MoonBit modules:
+- **`event-graph-walker/`** - Reusable CRDT library (causal_graph, oplog, fugue, branch, document)
+- **`crdt/`** - Lambda calculus editor application (editor, parser)
+
 ## Build Commands
 
 ### Build
@@ -22,14 +26,19 @@ moon build
 
 ### Testing
 ```bash
-# Run all tests
-moon test
+# Run all tests (from crdt/ directory)
+moon test                           # Tests crdt module (226 tests)
+cd event-graph-walker && moon test # Tests event-graph-walker module (103 tests)
 
 # Run tests for specific package
 moon test parser
-moon test causal_graph
 moon test document
 moon test editor
+
+# Test event-graph-walker packages
+cd event-graph-walker
+moon test causal_graph
+moon test branch
 
 # Update test snapshots (MoonBit uses snapshot testing)
 moon test --update
@@ -56,13 +65,13 @@ moon info && moon fmt
 ### Benchmarking
 ```bash
 # Run all benchmarks (always use --release for accurate measurements)
-moon bench --release
+moon bench --release                                 # Benchmark crdt module
+cd event-graph-walker && moon bench --release      # Benchmark event-graph-walker module
 
-# Run benchmarks for specific package
+# Run benchmarks for specific package in event-graph-walker
+cd event-graph-walker
 moon bench --package causal_graph --release
 moon bench --package branch --release
-
-# Run specific benchmark
 moon bench --package walker --release -f "linear history"
 ```
 
@@ -91,9 +100,12 @@ cp target/js/release/build/crdt.d.ts web/public/
 
 ### Module Structure
 
-The codebase is organized into several MoonBit packages (each directory with `moon.pkg.json`):
+The codebase is organized into **two MoonBit modules**:
 
-- **`/` (root)** - JavaScript FFI bindings (`crdt.mbt`) that expose the editor API to JavaScript
+#### `event-graph-walker/` Module (Core CRDT Library)
+
+A reusable CRDT library implementing the eg-walker algorithm. Contains 5 packages (103 tests):
+
 - **`causal_graph/`** - Causal graph data structure for tracking operation dependencies
   - Maintains parent relationships and Lamport timestamps
   - Implements transitive closure, graph diffing, and ancestry checks
@@ -114,13 +126,20 @@ The codebase is organized into several MoonBit packages (each directory with `mo
   - `checkout()` - Reconstruct document state at any frontier using walker
   - `advance()` - Efficiently update branch with incremental operations
   - Merge operations (`branch_merge.mbt`) - Implements retreat-advance-apply merge strategy
-- **`document/`** - CRDT document model
+- **`document/`** - CRDT document model (general-purpose text document)
   - `Document` - Wraps FugueTree, OpLog, and CausalGraph together
   - Position-based operations (insert/delete at cursor position)
   - Remote operation merging
-- **`editor/`** - High-level editor abstractions
-  - `Editor` - Text editor with cursor tracking (wraps Document)
-  - `ParsedEditor` - Editor with integrated incremental parsing
+  - Reusable for any collaborative text editor application
+
+#### `crdt/` Module (Lambda Calculus Editor Application)
+
+Application layer that uses the event-graph-walker library. Contains 3 packages + root (226 tests):
+
+- **`/` (root)** - JavaScript FFI bindings (`crdt.mbt`) that expose the editor API to JavaScript
+- **`editor/`** - High-level editor abstractions (application-specific)
+  - `Editor` - Text editor with cursor tracking (wraps Document from event-graph-walker)
+  - `ParsedEditor` - Editor with integrated incremental parsing for lambda calculus
   - Text diff utilities for incremental parser integration
 - **`parser/`** - Lambda calculus parser with incremental reparsing
   - Lexer and parser for lambda calculus with arithmetic and conditionals
@@ -128,6 +147,8 @@ The codebase is organized into several MoonBit packages (each directory with `mo
   - Incremental parsing with damage tracking and parse caching
   - CRDT integration for AST updates
 - **`cmd/main/`** - Command-line entry points and REPL
+
+**Total: 329 tests** (103 in event-graph-walker + 226 in crdt)
 
 ### Key Architectural Concepts
 
@@ -221,7 +242,9 @@ The parser has extensive documentation in `parser/README.md` and `parser/docs/`.
 
 ### Working with the CRDT
 
-The CRDT implementation is split across multiple modules. Key files:
+The CRDT implementation is split across two modules:
+
+**Core CRDT library (`event-graph-walker/`):**
 - `causal_graph/graph.mbt` - Core graph operations
 - `causal_graph/walker.mbt` - Topological traversal (eg-walker)
 - `causal_graph/version_vector.mbt` - Version vector implementation for efficient frontier tracking
@@ -233,6 +256,8 @@ The CRDT implementation is split across multiple modules. Key files:
 - `branch/branch.mbt` - Branch system for efficient document snapshots
 - `branch/branch_merge.mbt` - Merge operations with retreat-advance-apply strategy
 - `document/document.mbt` - CRDT document model (wraps tree, oplog, graph)
+
+**Application layer (crdt module root):**
 - `editor/editor.mbt` - Basic editor with cursor tracking
 - `editor/parsed_editor.mbt` - Editor with incremental parser integration
 - `editor/text_diff.mbt` - Text diffing utilities
@@ -310,7 +335,10 @@ The web interface (`web/`) uses these APIs to provide a collaborative lambda cal
 - Check coverage with `moon coverage analyze`
 - Performance benchmarks in files ending with `_benchmark.mbt`
 - Parser has comprehensive edge case tests in `parser/docs/EDGE_CASE_TESTS.md`
-- Current test count: 329 tests, all passing
+- Current test count: 329 tests, all passing (103 in event-graph-walker + 226 in crdt)
+- Tests must be run in both modules:
+  - `moon test` (from crdt/ directory)
+  - `cd event-graph-walker && moon test`
 
 ## References
 

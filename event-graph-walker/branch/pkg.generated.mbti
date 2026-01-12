@@ -1,10 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "dowdiness/crdt/branch"
+package "dowdiness/event-graph-walker/branch"
 
 import(
-  "dowdiness/crdt/causal_graph"
-  "dowdiness/crdt/fugue"
-  "dowdiness/crdt/oplog"
+  "dowdiness/event-graph-walker/causal_graph"
+  "dowdiness/event-graph-walker/fugue"
+  "dowdiness/event-graph-walker/oplog"
 )
 
 // Values

@@ -1,0 +1,9 @@
+{
+  "is_main": false,
+  "import": [
+    "dowdiness/event-graph-walker/causal_graph",
+    "dowdiness/event-graph-walker/oplog",
+    "dowdiness/event-graph-walker/fugue",
+    "dowdiness/event-graph-walker/branch"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "dowdiness/event-graph-walker",
+  "version": "0.1.0",
+  "deps": {
+    "moonbitlang/quickcheck": "0.9.8"
+  },
+  "readme": "",
+  "repository": "",
+  "license": "Apache-2.0",
+  "keywords": ["crdt", "collaborative-editing", "eg-walker", "fugue"],
+  "description": "Implementation of the eg-walker CRDT algorithm with FugueMax sequence CRDT"
+}
