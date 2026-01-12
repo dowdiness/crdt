@@ -172,6 +172,208 @@
       gap: 20px;
       margin-top: 15px;
     }
+
+    /* Network panel styles */
+    .network-panel {
+      margin-bottom: 20px;
+    }
+
+    .network-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .network-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      color: white;
+      font-family: inherit;
+    }
+
+    .primary-btn {
+      background: #007acc;
+    }
+
+    .primary-btn:hover:not(:disabled) {
+      background: #0098ff;
+    }
+
+    .secondary-btn {
+      background: #666;
+    }
+
+    .secondary-btn:hover:not(:disabled) {
+      background: #777;
+    }
+
+    .network-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .network-status-text {
+      color: #858585;
+    }
+
+    .network-info {
+      font-size: 12px;
+      color: #858585;
+    }
+
+    /* Tablet and medium screens */
+    @media (max-width: 1024px) {
+      .info-panel {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+
+      .docs-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+    }
+
+    /* Mobile responsive styles */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      .subtitle {
+        font-size: 13px;
+      }
+
+      .editor-container {
+        padding: 10px;
+      }
+
+      #editor {
+        font-size: 14px;
+        min-height: 150px;
+      }
+
+      /* Stack grid panels vertically on mobile */
+      .info-panel {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+
+      .docs-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+
+      .panel {
+        padding: 12px;
+      }
+
+      .panel h2 {
+        font-size: 12px;
+      }
+
+      .panel pre {
+        font-size: 11px;
+        padding: 8px;
+      }
+
+      /* Stack network buttons vertically on small screens */
+      .network-controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .network-btn {
+        width: 100%;
+        margin-bottom: 8px;
+      }
+
+      .network-status-text {
+        text-align: center;
+        display: block;
+        margin-top: 5px;
+      }
+
+      .docs-section {
+        padding: 12px;
+      }
+
+      .docs-section h2 {
+        font-size: 16px;
+      }
+
+      .docs-section h3 {
+        font-size: 13px;
+      }
+
+      .docs-section pre {
+        font-size: 11px;
+        padding: 8px;
+        overflow-x: auto;
+      }
+
+      .docs-section code {
+        font-size: 11px;
+      }
+
+      #ast-graph {
+        max-height: 300px !important;
+      }
+
+      #ast-output {
+        font-size: 11px !important;
+        max-height: 200px !important;
+      }
+
+      .status {
+        font-size: 12px;
+        padding: 8px;
+      }
+    }
+
+    /* Extra small screens (phones in portrait) */
+    @media (max-width: 480px) {
+      body {
+        padding: 8px;
+      }
+
+      h1 {
+        font-size: 18px;
+      }
+
+      .subtitle {
+        font-size: 12px;
+      }
+
+      #editor {
+        font-size: 13px;
+        min-height: 120px;
+      }
+
+      .panel {
+        padding: 10px;
+      }
+
+      .docs-section {
+        padding: 10px;
+      }
+
+      .docs-section pre {
+        font-size: 10px;
+      }
+
+      #editor:empty:before {
+        font-size: 12px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -181,18 +383,18 @@
 
     <div id="status" class="status">Loading JavaScript...</div>
 
-    <div class="panel" style="margin-bottom: 20px;">
+    <div class="panel network-panel">
       <h2>Network Collaboration (Beta)</h2>
-      <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
-        <button id="connect-btn" style="padding: 8px 16px; background: #007acc; color: white; border: none; border-radius: 3px; cursor: pointer;">
+      <div class="network-controls">
+        <button id="connect-btn" class="network-btn primary-btn">
           Connect to Network
         </button>
-        <button id="disconnect-btn" style="padding: 8px 16px; background: #666; color: white; border: none; border-radius: 3px; cursor: pointer;" disabled>
+        <button id="disconnect-btn" class="network-btn secondary-btn" disabled>
           Disconnect
         </button>
-        <span id="network-status" style="color: #858585;">Not connected</span>
+        <span id="network-status" class="network-status-text">Not connected</span>
       </div>
-      <div style="font-size: 12px; color: #858585;">
+      <div class="network-info">
         <p>Connect to collaborate with other peers in real-time. Make sure the signaling server is running:</p>
         <pre style="margin-top: 5px;">node web/signaling-server.js</pre>
       </div>
