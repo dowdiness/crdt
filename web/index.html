@@ -94,6 +94,20 @@
       font-size: 13px;
     }
 
+    /* AST Graph SVG styling */
+    #ast-graph {
+      overflow: auto;
+      background: #1e1e1e;
+      padding: 10px;
+      border-radius: 3px;
+    }
+
+    #ast-graph svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
     .error-list {
       list-style: none;
     }
@@ -325,7 +339,7 @@
       }
 
       #ast-graph {
-        max-height: 300px !important;
+        padding: 5px;
       }
 
       #ast-output {
@@ -449,7 +463,7 @@ IfThenElse   ::= 'if' Expression 'then' Expression 'else' Expression</pre>
     <div class="info-panel">
       <div class="panel">
         <h2>AST Visualization</h2>
-        <div id="ast-graph" style="overflow: auto; max-height: 500px; background: #1e1e1e; padding: 10px; border-radius: 3px;">
+        <div id="ast-graph">
           <p style="color: #858585; text-align: center; padding: 20px;">Waiting for input...</p>
         </div>
       </div>

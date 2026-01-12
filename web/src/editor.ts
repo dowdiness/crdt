@@ -148,9 +148,8 @@ export class LambdaEditor {
       // Style the SVG for dark theme
       const svgElement = this.astGraphElement.querySelector('svg');
       if (svgElement) {
-        svgElement.style.width = '100%';
+        // Remove forced width - let CSS control sizing
         svgElement.style.height = 'auto';
-        svgElement.style.maxWidth = '100%';
 
         // Ensure dark theme compatibility
         const graphElement = svgElement.querySelector('g.graph');

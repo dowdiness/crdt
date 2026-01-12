@@ -19,3 +19,16 @@ pub fn LayoutConfig::default() -> LayoutConfig {
     edge_spacing: 10.0,
   }
 }
+
+///|
+/// Compact layout configuration for web display
+/// Reduces spacing and node sizes for more compact graphs
+pub fn LayoutConfig::compact() -> LayoutConfig {
+  {
+    node_width: 50.0,
+    node_height: 28.0,
+    layer_spacing: 50.0,
+    node_spacing: 35.0,
+    edge_spacing: 10.0,
+  }
+}

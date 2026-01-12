@@ -107,7 +107,7 @@ const antisatori$graphviz$lib$parser$$parse_attribute$46$constr$47$869 = new $64
 const antisatori$graphviz$lib$parser$$parse_statement$46$constr$47$900 = new $64$antisatori$47$graphviz$47$lib$47$parser$46$Token$ID("");
 const antisatori$graphviz$lib$parser$$parse_subgraph$46$constr$47$927 = new $64$antisatori$47$graphviz$47$lib$47$parser$46$Token$ID("");
 const antisatori$graphviz$lib$parser$$parse_graph$46$constr$47$945 = new $64$antisatori$47$graphviz$47$lib$47$parser$46$Token$ID("");
-const antisatori$graphviz$lib$layout$$default$46$record$47$1281 = { node_width: 72, node_height: 36, layer_spacing: 80, node_spacing: 50, edge_spacing: 10 };
+const antisatori$graphviz$lib$layout$$compact$46$record$47$1281 = { node_width: 50, node_height: 28, layer_spacing: 50, node_spacing: 35, edge_spacing: 10 };
 const antisatori$graphviz$lib$svg$$escape_xml$46$42$bind$124$73 = "&";
 const antisatori$graphviz$lib$svg$$escape_xml$46$42$bind$124$74 = "&amp;";
 const antisatori$graphviz$lib$svg$$escape_xml$46$42$bind$124$75 = "<";
@@ -118,7 +118,7 @@ const antisatori$graphviz$lib$svg$$escape_xml$46$42$bind$124$79 = "\"";
 const antisatori$graphviz$lib$svg$$escape_xml$46$42$bind$124$80 = "&quot;";
 const antisatori$graphviz$lib$svg$$escape_xml$46$42$bind$124$81 = "'";
 const antisatori$graphviz$lib$svg$$escape_xml$46$42$bind$124$82 = "&apos;";
-const antisatori$graphviz$lib$svg$$dark_theme$46$record$47$1283 = { padding: 20, node_stroke: "#3c3c3c", node_fill: "#252526", node_stroke_width: 2, edge_stroke: "#858585", edge_stroke_width: 1.5, text_color: "#d4d4d4", font_size: 14, font_family: "Arial, sans-serif" };
+const antisatori$graphviz$lib$svg$$dark_theme$46$record$47$1282 = { padding: 20, node_stroke: "#3c3c3c", node_fill: "#252526", node_stroke_width: 2, edge_stroke: "#858585", edge_stroke_width: 1.5, text_color: "#d4d4d4", font_size: 14, font_family: "Arial, sans-serif" };
 const moonbitlang$core$builtin$$seed = moonbitlang$core$builtin$$random_seed();
 function moonbitlang$core$abort$$abort$2$(msg) {
   return $panic();
@@ -1379,13 +1379,13 @@ function moonbitlang$core$string$$StringView$find(self, str) {
 function moonbitlang$core$string$$String$find(self, str) {
   return moonbitlang$core$string$$StringView$find({ str: self, start: 0, end: self.length }, str);
 }
-function moonbitlang$core$array$$Array$push$13$(self, value) {
-  moonbitlang$core$builtin$$JSArray$push(self, value);
-}
 function moonbitlang$core$array$$Array$push$8$(self, value) {
   moonbitlang$core$builtin$$JSArray$push(self, value);
 }
 function moonbitlang$core$array$$Array$push$6$(self, value) {
+  moonbitlang$core$builtin$$JSArray$push(self, value);
+}
+function moonbitlang$core$array$$Array$push$13$(self, value) {
   moonbitlang$core$builtin$$JSArray$push(self, value);
 }
 function moonbitlang$core$array$$Array$push$14$(self, value) {
@@ -1400,10 +1400,10 @@ function moonbitlang$core$array$$Array$push$16$(self, value) {
 function moonbitlang$core$array$$Array$push$7$(self, value) {
   moonbitlang$core$builtin$$JSArray$push(self, value);
 }
-function moonbitlang$core$array$$Array$push$17$(self, value) {
+function moonbitlang$core$array$$Array$push$9$(self, value) {
   moonbitlang$core$builtin$$JSArray$push(self, value);
 }
-function moonbitlang$core$array$$Array$push$9$(self, value) {
+function moonbitlang$core$array$$Array$push$17$(self, value) {
   moonbitlang$core$builtin$$JSArray$push(self, value);
 }
 function moonbitlang$core$array$$Array$push$5$(self, value) {
@@ -3709,7 +3709,7 @@ function antisatori$graphviz$lib$parser$$Parser$parse_stmt_list(self) {
     } else {
       const _Some = _bind;
       const _stmt = _Some;
-      moonbitlang$core$array$$Array$push$13$(statements, _stmt);
+      moonbitlang$core$array$$Array$push$14$(statements, _stmt);
       let _tmp = self.current_token;
       while (true) {
         const _param = _tmp;
@@ -4670,7 +4670,7 @@ function antisatori$graphviz$lib$layout$$route_edges(graph, node_positions, _con
           const _Some$2 = _bind$2;
           const _to_node = _Some$2;
           const layout_edge = antisatori$graphviz$lib$layout$$create_layout_edge(edge, _from_node, _to_node);
-          moonbitlang$core$array$$Array$push$14$(edges, layout_edge);
+          moonbitlang$core$array$$Array$push$13$(edges, layout_edge);
         }
       }
       _tmp = _i + 1 | 0;
@@ -4692,9 +4692,6 @@ function antisatori$graphviz$lib$layout$$compute_layout_with_config(graph, confi
   const edges = antisatori$graphviz$lib$layout$$route_edges(acyclic, node_positions, config);
   const bounds = antisatori$graphviz$lib$layout$$calculate_bounds(node_positions);
   return { nodes: node_positions, edges: edges, bounds: bounds, layers: ordered_layers, directed: graph.directed };
-}
-function antisatori$graphviz$lib$layout$$compute_layout(graph) {
-  return antisatori$graphviz$lib$layout$$compute_layout_with_config(graph, antisatori$graphviz$lib$layout$$default$46$record$47$1281);
 }
 function antisatori$graphviz$lib$svg$$render_edge(buf, edge, directed, config) {
   if (edge.waypoints.length < 2) {
@@ -4847,8 +4844,9 @@ function antisatori$graphviz$browser$$render_dot_to_svg(dot_string) {
   } else {
     const _Some = _bind;
     const _graph = _Some;
-    const layout = antisatori$graphviz$lib$layout$$compute_layout(_graph);
-    const dark_config = antisatori$graphviz$lib$svg$$dark_theme$46$record$47$1283;
+    const compact_config = antisatori$graphviz$lib$layout$$compact$46$record$47$1281;
+    const layout = antisatori$graphviz$lib$layout$$compute_layout_with_config(_graph, compact_config);
+    const dark_config = antisatori$graphviz$lib$svg$$dark_theme$46$record$47$1282;
     return antisatori$graphviz$lib$svg$$render_svg_with_config(layout, dark_config);
   }
 }

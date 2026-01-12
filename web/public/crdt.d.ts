@@ -1,4 +1,4 @@
-import type * as MoonBit from "./moonbit";
+import type * as MoonBit from "./moonbit.d.ts";
 
 export function merge_operations(_handle: MoonBit.Int,
                                  ops_json: MoonBit.String,
