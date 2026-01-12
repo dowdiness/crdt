@@ -1,4 +1,4 @@
-import type * as MoonBit from "./moonbit.d.ts";
+import type * as MoonBit from "./moonbit";
 
 export function merge_operations(_handle: MoonBit.Int,
                                  ops_json: MoonBit.String,
@@ -11,6 +11,8 @@ export function get_frontier_json(_handle: MoonBit.Int): MoonBit.String;
 export function get_operations_json(_handle: MoonBit.Int): MoonBit.String;
 
 export function get_errors_json(_handle: MoonBit.Int): MoonBit.String;
+
+export function get_ast_dot(_handle: MoonBit.Int): MoonBit.String;
 
 export function get_ast_json(_handle: MoonBit.Int): MoonBit.String;
 

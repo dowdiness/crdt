@@ -3,6 +3,7 @@
 ///|
 pub fn assign_coordinates(
   layers : Array[Array[String]],
+  nodes : Map[String, NodeInfo],
   config : LayoutConfig,
 ) -> Map[String, LayoutNode] {
   let positions : Map[String, LayoutNode] = Map::new()
@@ -14,7 +15,7 @@ pub fn assign_coordinates(
 
     // Compute X positions for nodes in this layer
     let layer_positions = compute_node_positions_in_layer(
-      layer, layer_index, y, config,
+      layer, nodes, layer_index, y, config,
     )
 
     // Add to positions map
@@ -34,6 +35,7 @@ fn compute_layer_y(layer_index : Int, config : LayoutConfig) -> Double {
 ///|
 fn compute_node_positions_in_layer(
   layer_nodes : Array[String],
+  nodes : Map[String, NodeInfo],
   layer_index : Int,
   y : Double,
   config : LayoutConfig,
@@ -55,8 +57,16 @@ fn compute_node_positions_in_layer(
   for i = 0; i < n; i = i + 1 {
     let node_id = layer_nodes[i]
     let x = start_x + i.to_double() * (config.node_width + config.node_spacing)
+
+    // Get label from NodeInfo, default to node_id if not found
+    let label = match nodes.get(node_id) {
+      Some(node_info) => node_info.label
+      None => node_id
+    }
+
     let layout_node : LayoutNode = {
       id: node_id,
+      label,
       position: { x, y },
       size: { width: config.node_width, height: config.node_height },
       layer: layer_index,

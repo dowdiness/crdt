@@ -44,6 +44,29 @@ fn test_layout(name : String, dot : String) -> Unit {
 }
 
 ///|
+/// Parse DOT string and return Graph (for JavaScript FFI)
+/// Returns empty string on parse error
+pub fn parse_dot(dot_string : String) -> String {
+  match @parser.parse_dot(dot_string) {
+    Some(graph) => @parser.format_graph(graph)
+    None => ""
+  }
+}
+
+///|
+/// Render DOT string to SVG (for JavaScript FFI)
+/// Returns SVG string, or empty string on error
+pub fn render_dot_to_svg(dot_string : String) -> String {
+  match @parser.parse_dot(dot_string) {
+    Some(graph) => {
+      let layout = @layout.compute_layout(graph)
+      @svg.render_svg(layout)
+    }
+    None => ""
+  }
+}
+
+///|
 fn main {
   // Test 1: Simple
   test_layout("Simple", "digraph { a -> b }")

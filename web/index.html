@@ -246,15 +246,24 @@ IfThenElse   ::= 'if' Expression 'then' Expression 'else' Expression</pre>
 
     <div class="info-panel">
       <div class="panel">
-        <h2>AST Structure</h2>
-        <pre id="ast-output">Waiting for input...</pre>
+        <h2>AST Visualization</h2>
+        <div id="ast-graph" style="overflow: auto; max-height: 500px; background: #1e1e1e; padding: 10px; border-radius: 3px;">
+          <p style="color: #858585; text-align: center; padding: 20px;">Waiting for input...</p>
+        </div>
       </div>
 
       <div class="panel">
-        <h2>Parse Errors</h2>
-        <ul id="error-output" class="error-list">
-          <li>No errors</li>
-        </ul>
+        <h2>AST Structure & Parse Errors</h2>
+        <div style="margin-bottom: 15px;">
+          <h3 style="color: #9cdcfe; font-size: 13px; margin-bottom: 8px;">Structure</h3>
+          <pre id="ast-output" style="background: #1e1e1e; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 12px; max-height: 300px; overflow-y: auto;">Waiting for input...</pre>
+        </div>
+        <div>
+          <h3 style="color: #9cdcfe; font-size: 13px; margin-bottom: 8px;">Errors</h3>
+          <ul id="error-output" class="error-list">
+            <li>No errors</li>
+          </ul>
+        </div>
       </div>
     </div>
   </div>

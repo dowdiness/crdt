@@ -3,6 +3,7 @@
 import { SyntaxHighlighter } from './syntax-highlighter';
 import { NetworkSync } from './network';
 import * as crdt from '../public/crdt'
+import * as graphviz from '../public/graphviz';
 
 export interface ASTNode {
   // MoonBit enum serialization:
@@ -19,7 +20,8 @@ export class LambdaEditor {
   private handle: number;
   private agentId: string;
   private editorElement: HTMLDivElement;
-  private astElement: HTMLPreElement;
+  private astGraphElement: HTMLDivElement;
+  private astOutputElement: HTMLPreElement;
   private errorElement: HTMLUListElement;
   private highlighter: SyntaxHighlighter;
   private updating: boolean = false;
@@ -39,7 +41,8 @@ export class LambdaEditor {
     }
 
     this.editorElement = document.getElementById('editor') as HTMLDivElement;
-    this.astElement = document.getElementById('ast-output') as HTMLPreElement;
+    this.astGraphElement = document.getElementById('ast-graph') as HTMLDivElement;
+    this.astOutputElement = document.getElementById('ast-output') as HTMLPreElement;
     this.errorElement = document.getElementById('error-output') as HTMLUListElement;
 
     this.highlighter = new SyntaxHighlighter();
@@ -102,7 +105,8 @@ export class LambdaEditor {
         const errors: string[] = JSON.parse(errorsJson);
 
         // Update side panels with current AST and errors
-        this.updateASTDisplay(ast);
+        this.updateASTDisplay();
+        this.updateASTStructure(ast);
         this.updateErrorsDisplay(errors);
       } catch (parseError) {
         console.error('Failed to parse AST/errors:', parseError);
@@ -127,10 +131,47 @@ export class LambdaEditor {
   }
 
 
-  private updateASTDisplay(ast: ASTNode): void {
-    const prettyPrinted = this.highlighter.printTermNode(ast);
-    const treeView = this.highlighter.formatAST(ast);
-    this.astElement.textContent = `Expression: ${prettyPrinted}\n\nTree:\n${treeView}`;
+  private async updateASTDisplay(): Promise<void> {
+    try {
+      // Get DOT representation from MoonBit
+      const dotString = crdt.get_ast_dot(this.handle);
+      console.log('[AST Display] DOT string length:', dotString.length);
+
+      console.log('[AST Display] Rendering DOT to SVG using graphviz package...');
+      // Render DOT to SVG using MoonBit graphviz package
+      const svg = graphviz.render_dot_to_svg(dotString);
+      console.log('[AST Display] SVG rendered, type:', typeof svg, 'length:', svg.length);
+
+      // Update the DOM with the SVG
+      this.astGraphElement.innerHTML = svg;
+
+      // Style the SVG for dark theme
+      const svgElement = this.astGraphElement.querySelector('svg');
+      if (svgElement) {
+        svgElement.style.width = '100%';
+        svgElement.style.height = 'auto';
+        svgElement.style.maxWidth = '100%';
+
+        // Ensure dark theme compatibility
+        const graphElement = svgElement.querySelector('g.graph');
+        if (graphElement) {
+          // Remove white background if present
+          const polygon = graphElement.querySelector('polygon');
+          if (polygon) {
+            polygon.setAttribute('fill', 'transparent');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to render AST graph:', error);
+      this.astGraphElement.innerHTML = `<p style="color: #ff0000; text-align: center; padding: 20px;">Error rendering graph: ${error}</p>`;
+    }
+  }
+
+  private updateASTStructure(ast: ASTNode): void {
+    const prettyPrinted = this.highlighter.printTermNode(ast)
+    const treeView = this.highlighter.formatAST(ast)
+    this.astOutputElement.textContent = `Expression: ${prettyPrinted}\n\nAST:\n${treeView}`
   }
 
   private updateErrorsDisplay(errors: string[]): void {
@@ -230,7 +271,8 @@ export class LambdaEditor {
       const ast: ASTNode = JSON.parse(astJson);
       const errors: string[] = JSON.parse(errorsJson);
 
-      this.updateASTDisplay(ast);
+      this.updateASTDisplay();
+      this.updateASTStructure(ast);
       this.updateErrorsDisplay(errors);
     } catch (error) {
       console.error('Error updating UI after remote change:', error);

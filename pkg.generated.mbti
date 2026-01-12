@@ -8,6 +8,8 @@ pub fn create_editor(String) -> Int
 
 pub fn delete_(Int) -> Bool
 
+pub fn get_ast_dot(Int) -> String
+
 pub fn get_ast_json(Int) -> String
 
 pub fn get_cursor(Int) -> Int

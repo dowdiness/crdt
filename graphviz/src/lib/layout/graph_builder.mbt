@@ -8,21 +8,57 @@ pub fn extract_graph(graph : @parser.Graph) -> InternalGraph {
 }
 
 ///|
+///|
+/// Extract label from attribute list, defaulting to node ID
+fn extract_label(node_id : String, attrs : @parser.AttributeList?) -> String {
+  match attrs {
+    Some(attr_list) => {
+      // Search for "label" attribute
+      for attr in attr_list.attributes {
+        if attr.key == "label" {
+          return attr.value
+        }
+      }
+      // No label found, use node ID
+      node_id
+    }
+    None => node_id
+  }
+}
+
+///|
 fn collect_nodes(
   statements : Array[@parser.Statement],
 ) -> Map[String, NodeInfo] {
   let nodes : Map[String, NodeInfo] = Map::new()
   for stmt in statements {
     match stmt {
-      @parser.NodeStmt(node_id, _attrs) =>
-        if not(nodes.contains(node_id.id)) {
-          nodes.set(node_id.id, { id: node_id.id, incoming: [], outgoing: [] })
+      @parser.NodeStmt(node_id, attrs) => {
+        let label = extract_label(node_id.id, attrs)
+        // Update node if it exists (might have been added from EdgeStmt without label)
+        // or create new node with label
+        match nodes.get(node_id.id) {
+          Some(existing_node) => {
+            // Update the existing node's label
+            existing_node.label = label
+          }
+          None => {
+            // Create new node
+            nodes.set(node_id.id, {
+              id: node_id.id,
+              label,
+              incoming: [],
+              outgoing: [],
+            })
+          }
         }
+      }
       @parser.EdgeStmt(start_node, edges, _attrs) => {
         // Add start node
         if not(nodes.contains(start_node.id)) {
           nodes.set(start_node.id, {
             id: start_node.id,
+            label: start_node.id,
             incoming: [],
             outgoing: [],
           })
@@ -33,6 +69,7 @@ fn collect_nodes(
           if not(nodes.contains(target_node.id)) {
             nodes.set(target_node.id, {
               id: target_node.id,
+              label: target_node.id,
               incoming: [],
               outgoing: [],
             })

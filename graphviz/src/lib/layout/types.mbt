@@ -29,6 +29,7 @@ pub struct Bounds {
 ///|
 pub struct LayoutNode {
   id : String // Original node ID from AST
+  label : String // Display label (defaults to id if no label attribute)
   position : Point // Top-left corner (x, y)
   size : Size // Node dimensions
   layer : Int // Vertical layer assignment (0 = top)
@@ -68,6 +69,7 @@ pub(all) struct InternalGraph {
 ///|
 pub(all) struct NodeInfo {
   id : String
+  mut label : String // Display label from DOT attributes (mutable to update from NodeStmt)
   mut incoming : Array[String] // Incoming edge sources
   mut outgoing : Array[String] // Outgoing edge targets
 } derive(Show)

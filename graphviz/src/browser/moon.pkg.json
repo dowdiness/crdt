@@ -1,5 +1,4 @@
 {
-  "is-main": true,
   "import": [
     "antisatori/graphviz/lib/parser",
     "antisatori/graphviz/lib/layout",
@@ -8,7 +7,6 @@
   "link": {
     "js": {
       "exports": [
-        "parse_dot",
         "render_dot_to_svg"
       ]
     }

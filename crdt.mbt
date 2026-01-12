@@ -110,6 +110,19 @@ pub fn get_ast_json(_handle : Int) -> String {
 }
 
 ///|
+/// Get AST as DOT format for graphviz visualization
+/// Returns a DOT language string that can be rendered by graphviz
+pub fn get_ast_dot(_handle : Int) -> String {
+  match editor.val {
+    Some(ed) => {
+      let ast = ed.get_ast()
+      @parser.term_node_to_dot(ast)
+    }
+    None => "digraph { }"
+  }
+}
+
+///|
 /// Get parse errors as JSON array
 /// Uses cached errors from ParsedEditor (O(1) after parse)
 pub fn get_errors_json(_handle : Int) -> String {

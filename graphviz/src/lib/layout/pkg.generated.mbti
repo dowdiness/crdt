@@ -6,7 +6,7 @@ import(
 )
 
 // Values
-pub fn assign_coordinates(Array[Array[String]], LayoutConfig) -> Map[String, LayoutNode]
+pub fn assign_coordinates(Array[Array[String]], Map[String, NodeInfo], LayoutConfig) -> Map[String, LayoutNode]
 
 pub fn assign_layers(InternalGraph) -> Map[String, Int]
 
@@ -90,6 +90,7 @@ pub impl Show for LayoutEdge
 
 pub struct LayoutNode {
   id : String
+  label : String
   position : Point
   size : Size
   layer : Int
@@ -100,6 +101,7 @@ pub impl Show for LayoutNode
 
 pub(all) struct NodeInfo {
   id : String
+  label : String
   mut incoming : Array[String]
   mut outgoing : Array[String]
 }

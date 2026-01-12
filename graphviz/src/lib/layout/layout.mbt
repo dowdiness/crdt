@@ -25,7 +25,7 @@ pub fn compute_layout_with_config(
   let ordered_layers = minimize_crossings(acyclic, layers, 24)
 
   // 5. Phase 4: Assign coordinates
-  let node_positions = assign_coordinates(ordered_layers, config)
+  let node_positions = assign_coordinates(ordered_layers, internal_with_adj.nodes, config)
 
   // 6. Phase 5: Route edges
   let edges = route_edges(acyclic, node_positions, config)

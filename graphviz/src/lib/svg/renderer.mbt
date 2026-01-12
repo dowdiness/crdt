@@ -30,6 +30,22 @@ pub fn SvgConfig::default() -> SvgConfig {
 }
 
 ///|
+/// Dark theme configuration for browser rendering
+pub fn SvgConfig::dark_theme() -> SvgConfig {
+  {
+    padding: 20.0,
+    node_stroke: "#3c3c3c",        // Dark border
+    node_fill: "#252526",          // Dark background
+    node_stroke_width: 2.0,
+    edge_stroke: "#858585",        // Light gray edges
+    edge_stroke_width: 1.5,
+    text_color: "#d4d4d4",         // Light text
+    font_size: 14.0,
+    font_family: "Arial, sans-serif",
+  }
+}
+
+///|
 /// Render a GraphLayout to SVG string
 pub fn render_svg(layout : @layout.GraphLayout) -> String {
   render_svg_with_config(layout, SvgConfig::default())
@@ -135,7 +151,7 @@ fn render_node(
   buf.write_string("\" font-family=\"")
   buf.write_string(config.font_family)
   buf.write_string("\">")
-  buf.write_string(escape_xml(node.id))
+  buf.write_string(escape_xml(node.label))
   buf.write_string("</text>\n")
   buf.write_string("  </g>\n")
 }

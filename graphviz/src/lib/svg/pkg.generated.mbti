@@ -36,6 +36,7 @@ pub struct SvgConfig {
   font_size : Double
   font_family : String
 }
+pub fn SvgConfig::dark_theme() -> Self
 pub fn SvgConfig::default() -> Self
 pub impl Show for SvgConfig
 
