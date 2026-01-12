@@ -1,10 +1,8 @@
 {
   "is_main": false,
   "import": [
-    "dowdiness/crdt/causal_graph",
+    "dowdiness/crdt/document",
     "dowdiness/crdt/oplog",
-    "dowdiness/crdt/fugue",
-    "dowdiness/crdt/branch",
     "dowdiness/crdt/parser"
   ]
 }

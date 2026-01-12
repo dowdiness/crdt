@@ -2,7 +2,7 @@
 package "dowdiness/crdt/editor"
 
 import(
-  "dowdiness/crdt/fugue"
+  "dowdiness/crdt/document"
   "dowdiness/crdt/oplog"
   "dowdiness/crdt/parser"
 )
@@ -13,22 +13,8 @@ pub fn compute_edit(String, String) -> @parser.Edit
 // Errors
 
 // Types and methods
-pub struct Document {
-  tree : @fugue.FugueTree
-  oplog : @oplog.OpLog
-  agent_id : String
-}
-pub fn Document::apply_remote(Self, @oplog.Op) -> Unit
-pub fn Document::delete(Self, Int) -> @oplog.Op?
-pub fn Document::get_frontier(Self) -> Array[Int]
-pub fn Document::insert(Self, Int, String) -> @oplog.Op
-pub fn Document::merge_remote(Self, Array[@oplog.Op], Array[Int]) -> Unit
-pub fn Document::new(String) -> Self
-pub fn Document::to_text(Self) -> String
-pub impl Show for Document
-
 pub struct Editor {
-  doc : Document
+  doc : @document.Document
   mut cursor : Int
 }
 pub fn Editor::apply_remote(Self, @oplog.Op) -> Unit

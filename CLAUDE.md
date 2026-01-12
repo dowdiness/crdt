@@ -28,6 +28,7 @@ moon test
 # Run tests for specific package
 moon test parser
 moon test causal_graph
+moon test document
 moon test editor
 
 # Update test snapshots (MoonBit uses snapshot testing)
@@ -113,10 +114,14 @@ The codebase is organized into several MoonBit packages (each directory with `mo
   - `checkout()` - Reconstruct document state at any frontier using walker
   - `advance()` - Efficiently update branch with incremental operations
   - Merge operations (`branch_merge.mbt`) - Implements retreat-advance-apply merge strategy
+- **`document/`** - CRDT document model
+  - `Document` - Wraps FugueTree, OpLog, and CausalGraph together
+  - Position-based operations (insert/delete at cursor position)
+  - Remote operation merging
 - **`editor/`** - High-level editor abstractions
-  - `Editor` - Basic text editor with cursor and CRDT operations
-  - `ParsedEditor` - Enhanced editor with integrated incremental parsing
-  - Text diff utilities for DOM synchronization
+  - `Editor` - Text editor with cursor tracking (wraps Document)
+  - `ParsedEditor` - Editor with integrated incremental parsing
+  - Text diff utilities for incremental parser integration
 - **`parser/`** - Lambda calculus parser with incremental reparsing
   - Lexer and parser for lambda calculus with arithmetic and conditionals
   - Error recovery for partial/invalid syntax
@@ -227,7 +232,10 @@ The CRDT implementation is split across multiple modules. Key files:
 - `fugue/tree.mbt` - Sequence CRDT implementation
 - `branch/branch.mbt` - Branch system for efficient document snapshots
 - `branch/branch_merge.mbt` - Merge operations with retreat-advance-apply strategy
-- `editor/editor.mbt` - High-level editor API
+- `document/document.mbt` - CRDT document model (wraps tree, oplog, graph)
+- `editor/editor.mbt` - Basic editor with cursor tracking
+- `editor/parsed_editor.mbt` - Editor with incremental parser integration
+- `editor/text_diff.mbt` - Text diffing utilities
 
 When adding features, consult `EG_WALKER_IMPLEMENTATION.md` and `WALKER_USAGE.md` for guidance on the eg-walker architecture.
 

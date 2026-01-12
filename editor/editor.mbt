@@ -5,14 +5,14 @@
 ///|
 /// Wraps a Document and maintains cursor position
 pub struct Editor {
-  doc : Document
+  doc : @document.Document
   mut cursor : Int // Current cursor position (0-based)
 } derive(Show)
 
 ///|
 /// Create a new editor for an agent
 pub fn Editor::new(agent_id : String) -> Editor {
-  { doc: Document::new(agent_id), cursor: 0 }
+  { doc: @document.Document::new(agent_id), cursor: 0 }
 }
 
 ///|
