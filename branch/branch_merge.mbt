@@ -130,7 +130,7 @@ pub fn merge_remote_ops(
   remote_ops : Array[@oplog.Op],
 ) -> Unit {
   // Create a Branch representing the current state
-  let branch = @branch.Branch::from_tree_and_oplog(tree, oplog)
+  let branch = Branch::from_tree_and_oplog(tree, oplog)
 
   // Use Branch::merge_remote_ops which properly uses the walker
   // This leverages the eg-walker algorithm with causal ordering

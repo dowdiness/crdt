@@ -8,6 +8,9 @@ import(
 )
 
 // Values
+pub fn merge(@fugue.FugueTree, @oplog.OpLog, Array[Int], Array[Int]) -> Unit
+
+pub fn merge_remote_ops(@fugue.FugueTree, @oplog.OpLog, Array[@oplog.Op]) -> Unit
 
 // Errors
 
@@ -31,6 +34,14 @@ pub fn Branch::new(@oplog.OpLog) -> Self
 pub fn Branch::to_text(Self) -> String
 pub fn Branch::visible_count(Self) -> Int
 pub impl Show for Branch
+
+pub struct MergeContext {
+  tree : @fugue.FugueTree
+  oplog : @oplog.OpLog
+}
+pub fn MergeContext::apply_operations(Self, Array[Int]) -> Unit
+pub fn MergeContext::new(@fugue.FugueTree, @oplog.OpLog) -> Self
+pub fn MergeContext::retreat_operations(Self, Array[Int]) -> Unit
 
 // Type aliases
 

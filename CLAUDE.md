@@ -60,7 +60,6 @@ moon bench --release
 # Run benchmarks for specific package
 moon bench --package causal_graph --release
 moon bench --package branch --release
-moon bench --package merge --release
 
 # Run specific benchmark
 moon bench --package walker --release -f "linear history"
@@ -109,10 +108,11 @@ The codebase is organized into several MoonBit packages (each directory with `mo
 - **`fugue/`** - FugueMax tree implementation (ordered sequence CRDT)
   - Tree-based structure for maintaining operation order
   - Supports efficient insert/delete with causal ordering
-- **`branch/`** - Branch/snapshot system for efficient document state reconstruction
+- **`branch/`** - Branch/snapshot system for efficient document state reconstruction and merging
   - `Branch` - Document snapshot at a specific frontier
   - `checkout()` - Reconstruct document state at any frontier using walker
   - `advance()` - Efficiently update branch with incremental operations
+  - Merge operations (`branch_merge.mbt`) - Implements retreat-advance-apply merge strategy
 - **`editor/`** - High-level editor abstractions
   - `Editor` - Basic text editor with cursor and CRDT operations
   - `ParsedEditor` - Enhanced editor with integrated incremental parsing
@@ -122,7 +122,6 @@ The codebase is organized into several MoonBit packages (each directory with `mo
   - Error recovery for partial/invalid syntax
   - Incremental parsing with damage tracking and parse caching
   - CRDT integration for AST updates
-- **`merge/`** - Branch merging functionality
 - **`cmd/main/`** - Command-line entry points and REPL
 
 ### Key Architectural Concepts
@@ -227,6 +226,7 @@ The CRDT implementation is split across multiple modules. Key files:
 - `oplog/walker.mbt` - Walker integration for collecting operations
 - `fugue/tree.mbt` - Sequence CRDT implementation
 - `branch/branch.mbt` - Branch system for efficient document snapshots
+- `branch/branch_merge.mbt` - Merge operations with retreat-advance-apply strategy
 - `editor/editor.mbt` - High-level editor API
 
 When adding features, consult `EG_WALKER_IMPLEMENTATION.md` and `WALKER_USAGE.md` for guidance on the eg-walker architecture.

@@ -190,6 +190,6 @@ pub fn Document::merge_remote(
   remote_ops : Array[@oplog.Op],
   _remote_frontier : Array[Int],
 ) -> Unit {
-  // Use the merge module's convenience function
-  @merge.merge_remote_ops(self.tree, self.oplog, remote_ops)
+  // Use the branch module's merge convenience function
+  @branch.merge_remote_ops(self.tree, self.oplog, remote_ops)
 }

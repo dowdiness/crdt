@@ -1,5 +1,5 @@
 // Benchmarks for merge algorithm performance
-// Run with: moon bench --package merge --release
+// Run with: moon bench --package branch --release
 
 ///|
 /// Benchmark: Merge small concurrent edits (2 agents, 10 ops each)

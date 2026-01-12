@@ -4,7 +4,7 @@
     "dowdiness/crdt/causal_graph",
     "dowdiness/crdt/oplog",
     "dowdiness/crdt/fugue",
-    "dowdiness/crdt/merge",
+    "dowdiness/crdt/branch",
     "dowdiness/crdt/parser"
   ]
 }
