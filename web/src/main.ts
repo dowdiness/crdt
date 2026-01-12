@@ -15,6 +15,22 @@ async function main() {
     const agentId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const editor = new LambdaEditor(agentId);
 
+    // Setup example buttons
+    const exampleButtons = document.querySelectorAll('.example-btn');
+    exampleButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const example = button.getAttribute('data-example');
+        if (example) {
+          const editorElement = document.getElementById('editor') as HTMLDivElement;
+          editorElement.textContent = example;
+          // Trigger input event to update the editor
+          editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+          // Focus the editor
+          editorElement.focus();
+        }
+      });
+    });
+
     statusElement.textContent = `Ready! ID: ${agentId}`;
     statusElement.className = 'status success';
     console.log('Editor initialized with agent ID:', agentId);

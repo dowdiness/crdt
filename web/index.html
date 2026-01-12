@@ -41,6 +41,43 @@
       margin-bottom: 20px;
     }
 
+    .examples-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #3c3c3c;
+      align-items: center;
+    }
+
+    .examples-label {
+      color: #858585;
+      font-size: 13px;
+      margin-right: 5px;
+    }
+
+    .example-btn {
+      padding: 6px 12px;
+      background: #3c3c3c;
+      color: #d4d4d4;
+      border: 1px solid #555;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      transition: background 0.2s;
+    }
+
+    .example-btn:hover {
+      background: #4c4c4c;
+      border-color: #666;
+    }
+
+    .example-btn:active {
+      background: #2c2c2c;
+    }
+
     #editor {
       min-height: 200px;
       outline: none;
@@ -270,6 +307,23 @@
         padding: 10px;
       }
 
+      .examples-bar {
+        gap: 6px;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+      }
+
+      .examples-label {
+        font-size: 12px;
+        width: 100%;
+        margin-bottom: 4px;
+      }
+
+      .example-btn {
+        font-size: 11px;
+        padding: 5px 10px;
+      }
+
       #editor {
         font-size: 14px;
         min-height: 150px;
@@ -457,6 +511,14 @@ IfThenElse   ::= 'if' Expression 'then' Expression 'else' Expression</pre>
     </div>
 
     <div class="editor-container">
+      <div class="examples-bar">
+        <span class="examples-label">Examples:</span>
+        <button class="example-btn" data-example="(\x.x) 42">Identity</button>
+        <button class="example-btn" data-example="(\f.\x.f (f x)) (\n.n + 1) 0">Church 2</button>
+        <button class="example-btn" data-example="(\x.\y.x + y) 10 5">Add</button>
+        <button class="example-btn" data-example="if 1 then 42 else 0">Conditional</button>
+        <button class="example-btn" data-example="(\f.\x.f x) (\n.n - 1) 10">Apply</button>
+      </div>
       <div id="editor" contenteditable="plaintext-only" spellcheck="false"></div>
     </div>
 
