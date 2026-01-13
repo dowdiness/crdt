@@ -2,10 +2,25 @@ import { defineConfig } from 'vite';
 import { moonbitPlugin } from './vite-plugin-moonbit';
 
 export default defineConfig({
-  plugins: [moonbitPlugin()],
+  plugins: [
+    moonbitPlugin({
+      modules: [
+        {
+          name: '@moonbit/crdt',
+          path: '..',
+          output: 'target/js/release/build/crdt.js'
+        },
+        {
+          name: '@moonbit/graphviz',
+          path: '../graphviz',
+          output: 'target/js/release/build/browser/browser.js'
+        }
+      ]
+    })
+  ],
   server: {
     fs: {
-      // Allow serving wasm from parent directory
+      // Allow serving files from parent directory
       allow: ['..']
     }
   },
@@ -13,6 +28,6 @@ export default defineConfig({
     target: 'esnext'
   },
   optimizeDeps: {
-    exclude: ['*.wasm']
+    exclude: ['*.wasm', '@moonbit/crdt', '@moonbit/graphviz']
   }
 });

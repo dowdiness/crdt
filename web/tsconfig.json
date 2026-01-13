@@ -9,8 +9,12 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "allowJs": true
+    "paths": {
+      "@moonbit/crdt": ["../target/js/release/build/crdt.d.ts"],
+      "@moonbit/crdt/moonbit": ["../target/js/release/build/moonbit.d.ts"],
+      "@moonbit/graphviz": ["../graphviz/target/js/release/build/browser/browser.d.ts"]
+    }
   },
-  "include": ["src/**/*", "public/**/*.d.ts"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "../target", "../graphviz/target"]
 }

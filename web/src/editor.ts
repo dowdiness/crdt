@@ -2,8 +2,8 @@
 
 import { SyntaxHighlighter } from './syntax-highlighter';
 import { NetworkSync } from './network';
-import * as crdt from '../public/crdt'
-import * as graphviz from '../public/graphviz';
+import * as crdt from '@moonbit/crdt';
+import * as graphviz from '@moonbit/graphviz';
 
 export interface ASTNode {
   // MoonBit enum serialization:

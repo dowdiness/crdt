@@ -5,7 +5,7 @@
  * and WebRTC for direct peer communication.
  */
 
-import * as crdt from '../public/crdt';
+import * as crdt from '@moonbit/crdt';
 
 export interface SyncMessage {
   type: 'ops' | 'frontier' | 'request_sync';

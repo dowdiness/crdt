@@ -1,90 +1,247 @@
-import { exec } from 'node:child_process';
+import { exec, spawn, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { Plugin, ViteDevServer } from 'vite';
 
 const execAsync = promisify(exec);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export function moonbitPlugin(): Plugin {
-  let isBuilding = false;
+/**
+ * Configuration for a MoonBit module
+ */
+export interface MoonBitModule {
+  /** Virtual module name for imports (e.g., '@moonbit/mymodule') */
+  name: string;
+  /** Path to the MoonBit module directory (relative to Vite root) */
+  path: string;
+  /** Path to the built JS file (relative to module path, defaults to 'target/js/release/build/{last-part-of-name}.js') */
+  output?: string;
+  /** Glob patterns to watch for changes (relative to module path, defaults to ['**\/*.mbt']) */
+  watch?: string[];
+  /** Additional build flags to pass to moon build */
+  buildFlags?: string[];
+}
+
+/**
+ * Vite plugin configuration for MoonBit
+ */
+export interface MoonBitPluginOptions {
+  /** Array of MoonBit modules to build and import */
+  modules: MoonBitModule[];
+  /** Target for moon build (defaults to 'js') */
+  target?: string;
+  /** Whether to build in release mode (defaults to true) */
+  release?: boolean;
+  /** Enable MoonBit watch mode in development (defaults to true) */
+  watch?: boolean;
+}
+
+/**
+ * Vite plugin for building and importing MoonBit modules
+ *
+ * @example
+ * ```typescript
+ * moonbitPlugin({
+ *   modules: [
+ *     {
+ *       name: '@moonbit/crdt',
+ *       path: '..',
+ *       output: 'target/js/release/build/crdt.js'
+ *     },
+ *     {
+ *       name: '@moonbit/graphviz',
+ *       path: '../graphviz',
+ *       output: 'target/js/release/build/browser/browser.js'
+ *     }
+ *   ]
+ * })
+ * ```
+ */
+export function moonbitPlugin(options: MoonBitPluginOptions): Plugin {
+  const { modules, target = 'js', release = true, watch = true } = options;
+  const watchProcesses: ChildProcess[] = [];
+
+  // Resolve absolute paths for modules
+  const resolvedModules = modules.map(mod => {
+    const modulePath = path.resolve(process.cwd(), mod.path);
+    const outputPath = mod.output || inferOutputPath(mod.name, target, release);
+    const watchPatterns = mod.watch || ['**/*.mbt'];
+
+    return {
+      ...mod,
+      absolutePath: modulePath,
+      absoluteOutputPath: path.join(modulePath, outputPath),
+      watchPatterns
+    };
+  });
+
+  // Create module name -> output path map
+  const moduleMap = new Map(
+    resolvedModules.map(mod => [mod.name, mod.absoluteOutputPath])
+  );
 
   return {
     name: 'vite-plugin-moonbit',
 
     async buildStart() {
-      // Build MoonBit code when Vite starts
-      console.log('Building MoonBit code...');
-      await buildMoonBit();
+      console.log('[MoonBit] Building modules...');
+      await buildAllModules(resolvedModules, target, release);
+    },
+
+    resolveId(id: string) {
+      // Resolve virtual module IDs
+      if (moduleMap.has(id)) {
+        return id;
+      }
+      return null;
+    },
+
+    async load(id: string) {
+      // Load MoonBit modules from build output
+      const outputPath = moduleMap.get(id);
+      if (outputPath) {
+        try {
+          const code = await readFile(outputPath, 'utf-8');
+          return { code, map: null };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          throw new Error(`Failed to load MoonBit module '${id}': ${message}`);
+        }
+      }
+      return null;
     },
 
     configureServer(server: ViteDevServer) {
-      // Watch MoonBit source files
-      const moonbitRoot = path.resolve(__dirname, '..');
-      const watchPatterns = [
-        'parser/**/*.mbt',
-        'editor/**/*.mbt',
-        'event-graph-walker/**/*.mbt',
-        'graphviz/**/*.mbt'
-      ];
+      if (watch) {
+        // Start MoonBit watch mode for each module
+        console.log('[MoonBit] Starting watch mode...');
 
-      server.watcher.add(watchPatterns.map(p => path.join(moonbitRoot, p)));
+        for (const mod of resolvedModules) {
+          const flags = [
+            'build',
+            '--target', target,
+            '--watch',
+            ...(release ? [] : ['--debug']),
+            ...(mod.buildFlags || [])
+          ];
 
-      server.watcher.on('change', async (file: string) => {
-        if (file.endsWith('.mbt') && !isBuilding) {
-          isBuilding = true;
-          console.log('MoonBit file changed, rebuilding...');
+          console.log(`[MoonBit] Watching ${mod.name}...`);
 
-          try {
-            await buildMoonBit();
-            // Trigger HMR by touching the output file
+          const watchProcess = spawn('moon', flags, {
+            cwd: mod.absolutePath,
+            stdio: ['ignore', 'pipe', 'pipe']
+          });
+
+          // Log output
+          watchProcess.stdout?.on('data', (data) => {
+            const output = data.toString().trim();
+            if (output) {
+              console.log(`[MoonBit:${mod.name}] ${output}`);
+            }
+          });
+
+          watchProcess.stderr?.on('data', (data) => {
+            const output = data.toString().trim();
+            if (output) {
+              console.error(`[MoonBit:${mod.name}] ${output}`);
+            }
+          });
+
+          watchProcesses.push(watchProcess);
+        }
+
+        // Watch output files for changes and trigger HMR
+        for (const mod of resolvedModules) {
+          server.watcher.add(mod.absoluteOutputPath);
+        }
+
+        server.watcher.on('change', async (file: string) => {
+          // Check if a MoonBit output file changed
+          const changedModule = resolvedModules.find(
+            mod => mod.absoluteOutputPath === file
+          );
+
+          if (changedModule) {
+            console.log(`[MoonBit] ${changedModule.name} rebuilt, invalidating modules...`);
+
+            // Invalidate the virtual module in Vite's module graph
+            const mod = server.moduleGraph.getModuleById(changedModule.name);
+            if (mod) {
+              server.moduleGraph.invalidateModule(mod);
+
+              // Invalidate all modules that import this MoonBit module
+              const importers = [...mod.importers];
+              for (const importer of importers) {
+                server.moduleGraph.invalidateModule(importer);
+              }
+            }
+
+            // Trigger HMR update
             server.ws.send({
               type: 'full-reload',
               path: '*'
             });
-            console.log('MoonBit rebuild complete');
-          } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            console.error('MoonBit build failed:', message);
-          } finally {
-            isBuilding = false;
+
+            console.log(`[MoonBit] ${changedModule.name} HMR complete`);
           }
-        }
-      });
+        });
+
+        // Clean up watch processes when server closes
+        server.httpServer?.on('close', () => {
+          console.log('[MoonBit] Stopping watch processes...');
+          for (const proc of watchProcesses) {
+            proc.kill();
+          }
+        });
+      }
     }
   };
 }
 
-async function buildMoonBit(): Promise<void> {
-  const projectRoot = path.resolve(__dirname, '..');
-  const graphvizRoot = path.join(projectRoot, 'graphviz');
+/**
+ * Infer output path from module name and build settings
+ */
+function inferOutputPath(moduleName: string, target: string, release: boolean): string {
+  // Extract last part of module name (e.g., '@moonbit/crdt' -> 'crdt')
+  const baseName = moduleName.split('/').pop() || 'module';
+  const mode = release ? 'release' : 'debug';
+  return `target/${target}/${mode}/build/${baseName}.js`;
+}
+
+/**
+ * Build all MoonBit modules
+ */
+async function buildAllModules(
+  modules: Array<MoonBitModule & { absolutePath: string }>,
+  target: string,
+  release: boolean
+): Promise<void> {
+  for (const mod of modules) {
+    await buildModule(mod, target, release);
+  }
+  console.log('[MoonBit] All modules built successfully');
+}
+
+/**
+ * Build a single MoonBit module
+ */
+async function buildModule(
+  mod: MoonBitModule & { absolutePath: string },
+  target: string,
+  release: boolean
+): Promise<void> {
+  const flags = [
+    '--target', target,
+    ...(release ? [] : ['--debug']),
+    ...(mod.buildFlags || [])
+  ];
+
+  const command = `moon build ${flags.join(' ')}`;
 
   try {
-    // Build crdt module
-    console.log('[MoonBit] Building crdt module...');
-    await execAsync('moon build --target js', { cwd: projectRoot });
-
-    // Build graphviz module
-    console.log('[MoonBit] Building graphviz module...');
-    await execAsync('moon build --target js', { cwd: graphvizRoot });
-
-    // Copy crdt files
-    console.log('[MoonBit] Copying crdt.js and crdt.d.ts...');
-    await execAsync('cp target/js/release/build/crdt.js target/js/release/build/crdt.d.ts web/public/', { cwd: projectRoot });
-
-    // Copy graphviz files (rename browser.* to graphviz.*)
-    console.log('[MoonBit] Copying graphviz.js and graphviz.d.ts...');
-    await execAsync('cp graphviz/target/js/release/build/browser/browser.js web/public/graphviz.js', { cwd: projectRoot });
-    await execAsync('cp graphviz/target/js/release/build/browser/browser.d.ts web/public/graphviz.d.ts', { cwd: projectRoot });
-
-    // Copy moonbit.d.ts (shared type definitions)
-    console.log('[MoonBit] Copying moonbit.d.ts...');
-    await execAsync('cp target/js/release/build/moonbit.d.ts web/public/', { cwd: projectRoot });
-
-    console.log('[MoonBit] Build complete!');
+    await execAsync(command, { cwd: mod.absolutePath });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`MoonBit build failed: ${message}`);
+    throw new Error(`Failed to build ${mod.name}: ${message}`);
   }
 }

@@ -3,10 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "moon:build": "cd .. && moon build --target js && cd graphviz && moon build --target js && cd .. && cp target/js/release/build/crdt.js target/js/release/build/crdt.d.ts web/public/ && cp graphviz/target/js/release/build/browser/browser.js web/public/graphviz.js && cp graphviz/target/js/release/build/browser/browser.d.ts web/public/graphviz.d.ts && cp target/js/release/build/moonbit.d.ts web/public/",
-    "predev": "npm run moon:build",
     "dev": "vite",
-    "prebuild": "npm run moon:build",
     "build": "vite build",
     "preview": "vite preview",
     "signaling": "node signaling-server.js"
