@@ -4,7 +4,7 @@
   "deps": {
     "moonbitlang/quickcheck": "0.9.8"
   },
-  "readme": "",
+  "readme": "README.md",
   "repository": "",
   "license": "Apache-2.0",
   "keywords": ["crdt", "collaborative-editing", "eg-walker", "fugue"],
