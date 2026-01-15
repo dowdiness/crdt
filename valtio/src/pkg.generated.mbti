@@ -1,0 +1,146 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "antisatori/valtio"
+
+// Values
+pub fn apply_remote_op(ValtioProxy, String) -> Unit
+
+pub fn counter_example() -> Unit
+
+pub fn crdt_valtio_example() -> Unit
+
+pub fn create_document(String) -> CRDTDocument
+
+pub fn create_egwalker_proxy(String, Bool) -> ValtioProxy
+
+pub fn dispose_proxy(ValtioProxy) -> Unit
+
+pub fn document_apply_remote(CRDTDocument, CRDTOperation) -> Unit
+
+pub fn document_delete(CRDTDocument, Int) -> CRDTOperation
+
+pub fn document_get_frontier(CRDTDocument) -> String
+
+pub fn document_insert(CRDTDocument, Int, String) -> CRDTOperation
+
+pub fn document_to_text(CRDTDocument) -> String
+
+pub fn from_json(String) -> ValtioProxy
+
+pub fn get_bool(ValtioProxy, String) -> Bool
+
+pub fn get_double(ValtioProxy, String) -> Double
+
+pub fn get_frontier_json(ValtioProxy) -> String
+
+pub fn get_int(ValtioProxy, String) -> Int
+
+pub fn get_pending_ops_json(ValtioProxy) -> String
+
+pub fn get_proxy(ValtioSnapshot) -> ValtioProxy
+
+pub fn get_string(ValtioProxy, String) -> String
+
+pub fn is_proxy(ValtioProxy) -> Bool
+
+pub fn js_object() -> ValtioProxy
+
+pub fn operation_from_json(String) -> CRDTOperation
+
+pub fn operation_to_json(CRDTOperation) -> String
+
+pub fn proxy(ValtioProxy) -> ValtioProxy
+
+pub fn redo(ValtioProxy) -> Unit
+
+pub fn set_bool(ValtioProxy, String, Bool) -> Unit
+
+pub fn set_double(ValtioProxy, String, Double) -> Unit
+
+pub fn set_int(ValtioProxy, String, Int) -> Unit
+
+pub fn set_proxy(ValtioProxy, String, ValtioProxy) -> Unit
+
+pub fn set_string(ValtioProxy, String, String) -> Unit
+
+pub fn snapshot(ValtioProxy) -> ValtioSnapshot
+
+pub fn subscribe(ValtioProxy, () -> Unit) -> ValtioSubscription
+
+pub fn subscribe_key(ValtioProxy, String, () -> Unit) -> ValtioSubscription
+
+pub fn subscribe_with_ops(ValtioProxy, (ValtioProxy) -> Unit) -> ValtioSubscription
+
+pub fn to_json(ValtioSnapshot) -> String
+
+pub fn todo_example() -> Unit
+
+pub fn undo(ValtioProxy) -> Unit
+
+pub fn unsubscribe(ValtioSubscription) -> Unit
+
+pub fn use_snapshot(ValtioProxy) -> ValtioSnapshot
+
+pub fn watch(() -> Unit, ValtioProxy) -> ValtioSubscription
+
+// Errors
+
+// Types and methods
+#external
+pub type CRDTDocument
+
+#external
+pub type CRDTOperation
+
+pub struct EgWalkerProxy {
+  proxy_state : ValtioProxy
+  doc : CRDTDocument
+  mut pending_ops : Array[CRDTOperation]
+  mut is_applying_remote : Bool
+  mut subscription : ValtioSubscription?
+  undo_stack : Array[UndoEntry]
+  redo_stack : Array[UndoEntry]
+  undo_enabled : Bool
+}
+pub fn EgWalkerProxy::apply_remote(Self, CRDTOperation) -> Unit
+pub fn EgWalkerProxy::apply_remote_batch(Self, Array[CRDTOperation]) -> Unit
+pub fn EgWalkerProxy::dispose(Self) -> Unit
+pub fn EgWalkerProxy::get_frontier_json(Self) -> String
+pub fn EgWalkerProxy::get_pending_ops(Self) -> Array[CRDTOperation]
+pub fn EgWalkerProxy::init(Self) -> Unit
+pub fn EgWalkerProxy::new(String, undo_enabled? : Bool) -> Self
+pub fn EgWalkerProxy::redo(Self) -> Unit
+pub fn EgWalkerProxy::undo(Self) -> Unit
+
+pub enum OpType {
+  Insert
+  Delete
+}
+
+pub struct Todo {
+  id : Int
+  text : String
+  completed : Bool
+}
+
+pub struct UndoEntry {
+  op_type : OpType
+  position : Int
+  content : String
+}
+
+#external
+pub type ValtioProxy
+
+#external
+pub type ValtioSnapshot
+
+#external
+pub type ValtioSubscription
+
+// Type aliases
+pub type SubscribeCallback = () -> Unit
+
+pub type SubscribeOpsCallback = (ValtioProxy) -> Unit
+
+// Traits
+
