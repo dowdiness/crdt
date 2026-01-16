@@ -1,4 +1,5 @@
 // Tests for damage tracking
+
 ///|
 test "DamageTracker::new from edit" {
   let edit = Edit::new(10, 15, 20)

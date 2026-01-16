@@ -1,5 +1,6 @@
 // Damage tracking for incremental parsing
 // Identifies which parts of the parse tree need reparsing after edits
+
 ///|
 /// Damage tracker that maintains damaged ranges
 pub struct DamageTracker {

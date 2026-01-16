@@ -1,4 +1,5 @@
 // Text range for tracking editing part
+
 ///|
 /// A range in the source
 pub struct Range {
@@ -45,4 +46,10 @@ pub fn Range::merge(self : Range, other : Range) -> Range {
 /// Get the length of the range
 pub fn Range::length(self : Range) -> Int {
   self.end - self.start
+}
+
+///|
+/// Get the range with the minimum length
+pub fn Range::minimum_by_length(self : Range, other : Range) -> Range {
+  @cmp.minimum_by_key(self, other, Range::length)
 }

@@ -1,0 +1,177 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/crdt/projection"
+
+import(
+  "dowdiness/crdt/parser"
+)
+
+// Values
+pub fn is_leaf_node(@parser.TermKind) -> Bool
+
+pub fn is_valid_drop(@parser.TermKind, @parser.TermKind, DropPosition) -> Bool
+
+pub fn text_lens_diff(String, String) -> Array[ProjectionEdit]
+
+pub fn text_lens_get(CanonicalModel) -> Result[String, String]
+
+pub fn text_lens_put(CanonicalModel, String) -> Result[CanonicalModel, String]
+
+pub fn tree_lens_apply_edit(CanonicalModel, TreeEditOp) -> Result[CanonicalModel, String]
+
+pub fn tree_lens_get(CanonicalModel) -> Result[@parser.TermNode?, String]
+
+// Errors
+
+// Types and methods
+pub struct CanonicalModel {
+  mut ast : @parser.TermNode?
+  node_registry : Map[NodeId, @parser.TermNode]
+  source_map : SourceMap
+  dirty_projections : Map[ProjectionId, Bool]
+  mut next_node_id : Int
+  edit_history : Array[ModelOperation]
+  mut history_position : Int
+}
+pub fn CanonicalModel::apply_operation(Self, ModelOperation) -> Unit
+pub fn CanonicalModel::from_ast(@parser.TermNode) -> Self
+pub fn CanonicalModel::get_ast(Self) -> @parser.TermNode?
+pub fn CanonicalModel::get_errors(Self) -> Array[String]
+pub fn CanonicalModel::get_node(Self, NodeId) -> @parser.TermNode?
+pub fn CanonicalModel::get_node_range(Self, NodeId) -> @parser.Range?
+pub fn CanonicalModel::get_source_map(Self) -> SourceMap
+pub fn CanonicalModel::has_errors(Self) -> Bool
+pub fn CanonicalModel::is_dirty(Self, ProjectionId) -> Bool
+pub fn CanonicalModel::mark_all_dirty(Self) -> Unit
+pub fn CanonicalModel::mark_clean(Self, ProjectionId) -> Unit
+pub fn CanonicalModel::mark_dirty(Self, ProjectionId) -> Unit
+pub fn CanonicalModel::new() -> Self
+pub fn CanonicalModel::new_node_id(Self) -> NodeId
+pub fn CanonicalModel::node_at_position(Self, Int) -> NodeId?
+pub fn CanonicalModel::node_count(Self) -> Int
+pub fn CanonicalModel::set_ast(Self, @parser.TermNode) -> Unit
+pub fn CanonicalModel::unregister_node(Self, NodeId) -> Unit
+
+pub enum DropPosition {
+  Before
+  After
+  Inside
+}
+pub impl Eq for DropPosition
+pub impl Show for DropPosition
+
+pub struct InteractiveTreeNode {
+  id : NodeId
+  kind : @parser.TermKind
+  label : String
+  children : Array[InteractiveTreeNode]
+  selected : Bool
+  editing : Bool
+  collapsed : Bool
+  drop_target : Bool
+  text_range : @parser.Range
+}
+pub fn InteractiveTreeNode::from_term_node(@parser.TermNode, SourceMap) -> Self
+pub impl Show for InteractiveTreeNode
+
+pub enum LeafValue {
+  IntValue(Int)
+  VarName(String)
+  OpSymbol(String)
+}
+pub impl Eq for LeafValue
+pub impl Show for LeafValue
+
+pub enum ModelOperation {
+  InsertNode(parent~ : NodeId, index~ : Int, node~ : @parser.TermNode)
+  DeleteNode(node_id~ : NodeId)
+  ReplaceNode(node_id~ : NodeId, new_node~ : @parser.TermNode)
+  UpdateLeaf(node_id~ : NodeId, new_value~ : LeafValue)
+  MoveNode(node_id~ : NodeId, new_parent~ : NodeId, new_index~ : Int)
+}
+pub impl Show for ModelOperation
+
+pub struct NodeId(Int)
+#deprecated
+pub fn NodeId::inner(Self) -> Int
+pub impl Compare for NodeId
+pub impl Eq for NodeId
+pub impl Hash for NodeId
+pub impl Show for NodeId
+
+pub enum ProjectionEdit {
+  TextInsert(position~ : Int, text~ : String)
+  TextDelete(start~ : Int, end~ : Int)
+  NodeSelect(node_id~ : NodeId)
+  NodeValueChange(node_id~ : NodeId, new_value~ : LeafValue)
+  StructuralChange(operation~ : ModelOperation)
+}
+pub impl Show for ProjectionEdit
+
+pub enum ProjectionId {
+  Text
+  Tree
+  Custom(String)
+}
+pub impl Eq for ProjectionId
+pub impl Hash for ProjectionId
+pub impl Show for ProjectionId
+
+pub struct SourceMap {
+  node_to_range : Map[NodeId, @parser.Range]
+  ranges : Array[(@parser.Range, NodeId)]
+}
+pub fn SourceMap::apply_edit(Self, Int, @parser.Range) -> Unit
+pub fn SourceMap::from_ast(@parser.TermNode) -> Self
+pub fn SourceMap::get_range(Self, NodeId) -> @parser.Range?
+pub fn SourceMap::innermost_node_at(Self, Int) -> NodeId?
+pub fn SourceMap::new() -> Self
+pub fn SourceMap::node_count(Self) -> Int
+pub fn SourceMap::nodes_at_position(Self, Int) -> Array[NodeId]
+pub fn SourceMap::nodes_in_range(Self, @parser.Range) -> Array[NodeId]
+pub fn SourceMap::rebuild(Self, @parser.TermNode) -> Unit
+pub impl Eq for SourceMap
+pub impl Show for SourceMap
+
+pub enum TreeEditOp {
+  Select(node_id~ : NodeId)
+  SelectRange(start~ : NodeId, end~ : NodeId)
+  StartEdit(node_id~ : NodeId)
+  CommitEdit(node_id~ : NodeId, new_value~ : String)
+  CancelEdit
+  Delete(node_id~ : NodeId)
+  WrapInLambda(node_id~ : NodeId, var_name~ : String)
+  WrapInApp(node_id~ : NodeId)
+  InsertChild(parent~ : NodeId, index~ : Int, kind~ : @parser.TermKind)
+  StartDrag(node_id~ : NodeId)
+  DragOver(target~ : NodeId, position~ : DropPosition)
+  Drop(source~ : NodeId, target~ : NodeId, position~ : DropPosition)
+  Collapse(node_id~ : NodeId)
+  Expand(node_id~ : NodeId)
+}
+pub impl Show for TreeEditOp
+
+pub struct TreeEditorState {
+  tree : InteractiveTreeNode?
+  selection : Array[NodeId]
+  editing_node : NodeId?
+  edit_value : String
+  dragging : NodeId?
+  drop_target : NodeId?
+  drop_position : DropPosition?
+}
+pub fn TreeEditorState::apply_edit(Self, TreeEditOp) -> Self
+pub fn TreeEditorState::from_model(CanonicalModel) -> Self
+pub fn TreeEditorState::new() -> Self
+
+pub enum ValidationLevel {
+  Syntactic
+  Semantic
+  Dynamic
+}
+pub impl Eq for ValidationLevel
+pub impl Show for ValidationLevel
+
+// Type aliases
+
+// Traits
+

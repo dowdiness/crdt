@@ -157,9 +157,12 @@ pub struct Range {
 pub fn Range::contains(Self, Int) -> Bool
 pub fn Range::length(Self) -> Int
 pub fn Range::merge(Self, Self) -> Self
+pub fn Range::minimum_by_length(Self, Self) -> Self
 pub fn Range::new(Int, Int) -> Self
 pub fn Range::overlaps(Self, Self) -> Bool
+pub impl Compare for Range
 pub impl Eq for Range
+pub impl Hash for Range
 pub impl Show for Range
 
 pub struct RecoveringParser {
