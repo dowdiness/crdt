@@ -1,54 +1,5 @@
 // Damage tracking for incremental parsing
 // Identifies which parts of the parse tree need reparsing after edits
-
-///|
-/// A range in the source
-pub struct Range {
-  start : Int
-  end : Int
-} derive(Show, Eq)
-
-///|
-/// Create a new range
-pub fn Range::new(start : Int, end : Int) -> Range {
-  { start, end }
-}
-
-///|
-/// Check if this range contains a position
-pub fn Range::contains(self : Range, pos : Int) -> Bool {
-  pos >= self.start && pos < self.end
-}
-
-///|
-/// Check if this range overlaps with another
-pub fn Range::overlaps(self : Range, other : Range) -> Bool {
-  self.start < other.end && other.start < self.end
-}
-
-///|
-/// Merge two ranges
-pub fn Range::merge(self : Range, other : Range) -> Range {
-  Range::new(
-    if self.start < other.start {
-      self.start
-    } else {
-      other.start
-    },
-    if self.end > other.end {
-      self.end
-    } else {
-      other.end
-    },
-  )
-}
-
-///|
-/// Get the length of the range
-pub fn Range::length(self : Range) -> Int {
-  self.end - self.start
-}
-
 ///|
 /// Damage tracker that maintains damaged ranges
 pub struct DamageTracker {
