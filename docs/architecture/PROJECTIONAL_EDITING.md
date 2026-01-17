@@ -210,6 +210,9 @@ The existing codebase has:
 | InteractiveTree | ✅ Complete | `projection/tree_editor.mbt` |
 | TreeEditorState | ✅ Complete | `projection/tree_editor.mbt` |
 | Bidirectional Sync | 🔶 Partial | — |
+| CstNode | ❌ Not started | — |
+| AstCstMap | ❌ Not started | — |
+| CST-aware algorithms | ❌ Not started | See `docs/archive/CST_INTEGRATION_PLAN.md` |
 
 ### 2.2 Proposed Architecture
 
@@ -255,18 +258,24 @@ The existing codebase has:
 
 ### 2.3 Core Data Structures
 
-#### CanonicalModel (New)
+#### CanonicalModel
 
 ```moonbit
-/// The single source of truth for the program
+/// The single source of truth for the program (current implementation)
 struct CanonicalModel {
   ast: TermNode                        // Current AST
-  cst: CstNode                         // Concrete syntax with trivia
-  ast_cst_map: AstCstMap               // NodeId ↔ CST token spans
   node_registry: Map[NodeId, TermNode] // Fast node lookup
   source_map: SourceMap                // NodeId ↔ text positions
   dirty_projections: Set[ProjectionId] // Which projections need update
+  edit_history: Array[ModelOperation]  // For undo/redo
 }
+
+/// Future extension (NOT YET IMPLEMENTED):
+/// struct CanonicalModel {
+///   ...existing fields...
+///   cst: CstNode                       // Concrete syntax with trivia
+///   ast_cst_map: AstCstMap             // NodeId ↔ CST token spans
+/// }
 
 /// Source position mapping
 struct SourceMap {
@@ -274,7 +283,7 @@ struct SourceMap {
   range_to_nodes: IntervalTree[NodeId]    // text range → AST nodes
 }
 
-/// Concrete syntax tree + mapping to AST nodes
+/// Concrete syntax tree + mapping to AST nodes (PLANNED - NOT YET IMPLEMENTED)
 struct CstNode {
   kind: CstKind
   tokens: Array[Token]
@@ -292,7 +301,7 @@ struct AstCstMap {
 }
 ```
 
-#### CST Invariants
+#### CST Invariants (PLANNED)
 
 - CST nodes preserve token order; spans are non-overlapping and cover each node's tokens.
 - Trivia (whitespace/comments) is attached to the leading token of the following CST node.
@@ -419,27 +428,36 @@ enum DropPosition {
 
 ### 2.4 Key Algorithms
 
-#### Algorithm 1: Text Edit → Model Update (CST-aware)
+#### Algorithm 1: Text Edit → Model Update
 
+**Current implementation** (AST-only, in `text_lens_put`):
 ```
 TextEditToModel(old_text, new_text, model):
   1. Compute text diff: edits = diff(old_text, new_text)
+  2. Parse new_text into new AST
+  3. Reconcile new AST with old AST to preserve node IDs
+  4. Update source_map for all nodes
+  5. Mark AST projection as dirty
+  6. Return new model
+```
 
+**Future CST-aware version** (PLANNED - NOT YET IMPLEMENTED):
+```
+TextEditToModel(old_text, new_text, model):
+  1. Compute text diff: edits = diff(old_text, new_text)
   2. Update CST tokens/trivia for each edit (local token patch)
-
   3. Determine affected CST span and map to AST nodes via ast_cst_map
      - Use the smallest enclosing CST node that fully covers the diff
-
   4. Reparse only the affected CST subtree into AST
      - Reconcile with old AST to preserve unchanged IDs
-
   5. Update ast_cst_map + source_map for changed regions
   6. Mark AST projection as dirty
   7. Return new model
 ```
 
-#### Algorithm 2: AST Edit → Model Update (CST-aware)
+#### Algorithm 2: AST Edit → Model Update
 
+**Current implementation** (AST-only, in `apply_operation`):
 ```
 ASTEditToModel(ast_operation, model):
   1. Apply operation to model.ast:
@@ -447,19 +465,23 @@ ASTEditToModel(ast_operation, model):
      - DeleteNode: Remove node and descendants
      - ReplaceNode: Substitute node preserving ID
      - MoveNode: Reparent node
+  2. Update node_registry (register new nodes, unregister deleted)
+  3. Record operation in edit_history
+  4. Mark all projections as dirty
+  5. Return success/failure
+```
 
+**Future CST-aware version** (PLANNED - NOT YET IMPLEMENTED):
+```
+ASTEditToModel(ast_operation, model):
+  1. Apply operation to model.ast (same as current)
   2. Locate affected CST span via ast_cst_map
-
   3. Regenerate only the CST subtree for that span
      - Preserve trivia outside the span
-
   4. Emit minimal text diff from CST token changes for CRDT sync
      - Whitespace-only edits are preserved as trivia, no formatting normalization
-
   5. Update ast_cst_map + source_map for changed regions
-
   6. Mark Text projection as dirty
-
   7. Return new model
 ```
 
@@ -507,24 +529,24 @@ Reconcile(old_ast, new_ast):
 ### 2.6 Handling Incomplete States
 
 ```moonbit
-/// Extended TermKind for incomplete states
+/// Extended TermKind for incomplete states (PARTIAL - Error node exists)
 enum TermKind {
   // ... existing kinds ...
 
   // Incomplete states
-  Hole                         // Empty placeholder: _
-  Error(message: String)       // Parse error
-  Partial(expected: String)    // Incomplete input
+  Hole                         // Empty placeholder: _ (PLANNED)
+  Error(message: String)       // Parse error (EXISTS in parser)
+  Partial(expected: String)    // Incomplete input (PLANNED)
 }
 
-/// CST error handling
+/// CST error handling (PLANNED - NOT YET IMPLEMENTED)
 enum CstKind {
   // ... existing kinds ...
   ErrorToken(message: String)
   PartialNode(expected: String)
 }
 
-/// Validation levels
+/// Validation levels (PLANNED)
 enum ValidationLevel {
   Syntactic   // Is it parseable?
   Semantic    // Does it type-check?
@@ -685,7 +707,7 @@ test "ASTLens roundtrip" {
 // Lens law equivalence is semantic; trivia may differ unless edits are
 // whitespace-only, in which case trivia should be preserved.
 
-// Test reconciliation preserves IDs
+// Test reconciliation preserves IDs (IMPLEMENTED - see lens_wbtest.mbt)
 test "reconcile preserves node IDs" {
   let model1 = create_model("λx.x")
   let model2 = edit_text(model1, "λx.x+1")
@@ -693,7 +715,7 @@ test "reconcile preserves node IDs" {
   assert_eq!(model1.node_registry["lam_id"], model2.node_registry["lam_id"])
 }
 
-// CST stability tests
+// CST stability tests (PLANNED - requires CST implementation)
 test "whitespace preserved across AST edit" {
   let model1 = create_model("λx.  x")
   let model2 = edit_ast(model1, WrapInLambda)
