@@ -6,9 +6,19 @@ import(
 )
 
 // Values
+pub fn[A, B, C] compose(Lens[A, B], Lens[B, C]) -> Lens[A, C]
+
+pub fn[M] identity() -> Lens[M, M]
+
 pub fn is_leaf_node(@parser.TermKind) -> Bool
 
 pub fn is_valid_drop(@parser.TermKind, @parser.TermKind, DropPosition) -> Bool
+
+pub fn[M, P] over(Lens[M, P], M, (P) -> P) -> Result[M, String]
+
+pub fn[M, P] set(Lens[M, P], M, P) -> Result[M, String]
+
+pub fn text_lens() -> Lens[CanonicalModel, String]
 
 pub fn text_lens_diff(String, String) -> Array[ProjectionEdit]
 
@@ -16,9 +26,17 @@ pub fn text_lens_get(CanonicalModel) -> Result[String, String]
 
 pub fn text_lens_put(CanonicalModel, String) -> Result[CanonicalModel, String]
 
+pub fn text_lens_with_diff() -> LensDiff[CanonicalModel, String, ProjectionEdit]
+
+pub fn tree_lens() -> Lens[CanonicalModel, @parser.TermNode?]
+
 pub fn tree_lens_apply_edit(CanonicalModel, TreeEditOp) -> Result[CanonicalModel, String]
 
 pub fn tree_lens_get(CanonicalModel) -> Result[@parser.TermNode?, String]
+
+pub fn tree_lens_put(CanonicalModel, @parser.TermNode?) -> Result[CanonicalModel, String]
+
+pub fn[M, P] view(Lens[M, P], M) -> Result[P, String]
 
 // Errors
 
@@ -81,6 +99,18 @@ pub enum LeafValue {
 }
 pub impl Eq for LeafValue
 pub impl Show for LeafValue
+
+pub struct Lens[M, P] {
+  get : (M) -> Result[P, String]
+  put : (M, P) -> Result[M, String]
+}
+pub fn[M, P] Lens::new((M) -> Result[P, String], (M, P) -> Result[M, String]) -> Self[M, P]
+
+pub struct LensDiff[M, P, E] {
+  lens : Lens[M, P]
+  diff : (P, P) -> Array[E]
+}
+pub fn[M, P, E] LensDiff::new(Lens[M, P], (P, P) -> Array[E]) -> Self[M, P, E]
 
 pub enum ModelOperation {
   InsertNode(parent~ : NodeId, index~ : Int, node~ : @parser.TermNode)
