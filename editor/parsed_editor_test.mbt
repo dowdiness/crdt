@@ -3,7 +3,7 @@
 ///|
 test "create and insert text" {
   let pe = ParsedEditor::new("agent1")
-  pe.insert("x")
+  try! pe.insert("x")
   inspect(pe.get_text(), content="x")
 
   // Get AST
@@ -15,14 +15,14 @@ test "create and insert text" {
 ///|
 test "sequential inserts update AST" {
   let pe = ParsedEditor::new("agent1")
-  pe.insert("x")
+  try! pe.insert("x")
 
   // First AST
   let ast1 = pe.get_ast()
   inspect(@parser.print_term_node(ast1), content="x")
 
   // Add more text
-  pe.insert(" + 1")
+  try! pe.insert(" + 1")
 
   // Second AST should be different
   let ast2 = pe.get_ast()
@@ -33,7 +33,7 @@ test "sequential inserts update AST" {
 ///|
 test "delete updates dirty flag" {
   let pe = ParsedEditor::new("agent1")
-  pe.insert("123")
+  try! pe.insert("123")
   inspect(pe.get_text(), content="123")
 
   // Get initial AST (123 is a valid integer)
@@ -48,7 +48,7 @@ test "delete updates dirty flag" {
 ///|
 test "parse error handling" {
   let pe = ParsedEditor::new("agent1")
-  pe.insert("λ.") // Invalid: missing parameter
+  try! pe.insert("λ.") // Invalid: missing parameter
   let _ast = pe.get_ast()
 
   // Should have error node
@@ -59,7 +59,7 @@ test "parse error handling" {
 test "cursor tracking" {
   let pe = ParsedEditor::new("agent1")
   inspect(pe.get_cursor(), content="0")
-  pe.insert("abc")
+  try! pe.insert("abc")
   inspect(pe.get_cursor(), content="3")
   pe.move_cursor(1)
   inspect(pe.get_cursor(), content="1")
@@ -71,20 +71,20 @@ test "concurrent edits converge to same AST" {
   let pe2 = ParsedEditor::new("agent2")
 
   // Initial: "x"
-  pe1.insert("x")
-  try! pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
+  try! pe1.insert("x")
+  try! pe2.merge_remote(pe1.get_operations(), try! pe1.get_frontier_raw())
 
   // Verify text convergence
   inspect(pe1.get_text(), content="x")
   inspect(pe2.get_text(), content="x")
 
   // Concurrent: pe1 adds " + 1", pe2 adds " - 2"
-  pe1.insert(" + 1")
-  pe2.insert(" - 2")
+  try! pe1.insert(" + 1")
+  try! pe2.insert(" - 2")
 
   // Merge
-  try! pe1.merge_remote(pe2.get_operations(), pe2.get_frontier())
-  try! pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
+  try! pe1.merge_remote(pe2.get_operations(), try! pe2.get_frontier_raw())
+  try! pe2.merge_remote(pe1.get_operations(), try! pe1.get_frontier_raw())
 
   // Verify text and AST convergence
   let text1 = pe1.get_text()
@@ -103,20 +103,20 @@ test "collaborative lambda editing" {
   let pe2 = ParsedEditor::new("agent2")
 
   // Agent 1 creates lambda skeleton
-  pe1.insert("λx.")
-  try! pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
+  try! pe1.insert("λx.")
+  try! pe2.merge_remote(pe1.get_operations(), try! pe1.get_frontier_raw())
 
   // Verify convergence
   inspect(pe1.get_text(), content="λx.")
   inspect(pe2.get_text(), content="λx.")
 
   // Concurrent body edits
-  pe1.insert("x + 1")
-  pe2.insert("x - 1")
+  try! pe1.insert("x + 1")
+  try! pe2.insert("x - 1")
 
   // Merge and verify both valid
-  try! pe1.merge_remote(pe2.get_operations(), pe2.get_frontier())
-  try! pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
+  try! pe1.merge_remote(pe2.get_operations(), try! pe2.get_frontier_raw())
+  try! pe2.merge_remote(pe1.get_operations(), try! pe1.get_frontier_raw())
   let text1 = pe1.get_text()
   let text2 = pe2.get_text()
   inspect(text1 == text2, content="true")
@@ -134,7 +134,7 @@ test "collaborative lambda editing" {
 ///|
 test "incremental parsing vs full reparse" {
   let pe = ParsedEditor::new("agent1")
-  pe.insert("λf.λx.if f x then x + 1 else x - 1")
+  try! pe.insert("λf.λx.if f x then x + 1 else x - 1")
 
   // Get initial AST
   let _ast1 = pe.get_ast()
@@ -142,7 +142,7 @@ test "incremental parsing vs full reparse" {
   // Make small edit at end
   pe.move_cursor(34)
   let _deleted = pe.backspace()
-  pe.insert("2")
+  try! pe.insert("2")
 
   // Get updated AST (should use incremental parsing)
   let ast2 = pe.get_ast()
@@ -167,7 +167,7 @@ test "empty document" {
 ///|
 test "backspace at start returns false" {
   let pe = ParsedEditor::new("agent1")
-  pe.insert("abc")
+  try! pe.insert("abc")
   pe.move_cursor(0)
   let result = pe.backspace()
   inspect(result, content="false")
@@ -177,7 +177,7 @@ test "backspace at start returns false" {
 ///|
 test "delete at end returns false" {
   let pe = ParsedEditor::new("agent1")
-  pe.insert("abc")
+  try! pe.insert("abc")
   pe.move_cursor(3)
   let result = pe.delete()
   inspect(result, content="false")
@@ -187,7 +187,7 @@ test "delete at end returns false" {
 ///|
 test "operations and frontier" {
   let pe = ParsedEditor::new("agent1")
-  pe.insert("x")
+  try! pe.insert("x")
   let ops = pe.get_operations()
   let frontier = pe.get_frontier()
   inspect(ops.length() > 0, content="true")
@@ -197,7 +197,7 @@ test "operations and frontier" {
 ///|
 test "lazy AST evaluation" {
   let pe = ParsedEditor::new("agent1")
-  pe.insert("x")
+  try! pe.insert("x")
 
   // First get_ast() should parse
   let _ast1 = pe.get_ast()
@@ -216,13 +216,13 @@ test "merge invalidates AST cache" {
   let pe2 = ParsedEditor::new("agent2")
 
   // Start with common base
-  pe1.insert("x")
-  try! pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
+  try! pe1.insert("x")
+  try! pe2.merge_remote(pe1.get_operations(), try! pe1.get_frontier_raw())
   let _ast1 = pe1.get_ast()
 
   // pe2 makes change and pe1 merges
-  pe2.insert("y")
-  try! pe1.merge_remote(pe2.get_operations(), pe2.get_frontier())
+  try! pe2.insert("y")
+  try! pe1.merge_remote(pe2.get_operations(), try! pe2.get_frontier_raw())
 
   // get_ast() should reparse
   let ast2 = pe1.get_ast()

@@ -22,6 +22,7 @@
         "get_errors_json",
         "get_operations_json",
         "get_frontier_json",
+        "get_frontier_raw_json",
         "get_version_vector_json",
         "merge_operations"
       ]

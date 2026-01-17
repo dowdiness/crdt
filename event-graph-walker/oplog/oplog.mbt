@@ -123,6 +123,51 @@ pub fn OpLog::get_frontier(self : OpLog) -> Array[Int] {
 }
 
 ///|
+/// Get current frontier as RawVersions for network sync
+pub fn OpLog::get_frontier_raw(
+  self : OpLog,
+) -> Array[@causal_graph.RawVersion] raise OpLogError {
+  let frontier = self.graph.get_frontier()
+  let result : Array[@causal_graph.RawVersion] = []
+  for lv in frontier {
+    match self.graph.lv_to_raw(lv) {
+      Some(raw) => result.push(raw)
+      None => raise OpLogError::MissingLocalVersion(lv=lv)
+    }
+  }
+  result
+}
+
+///|
+/// Validate that a remote batch is closed w.r.t. parents and frontier
+pub fn OpLog::validate_remote_batch(
+  self : OpLog,
+  remote_ops : Array[Op],
+  remote_frontier : Array[@causal_graph.RawVersion],
+) -> Unit raise OpLogError {
+  let mut batch : @immut/hashset.HashSet[@causal_graph.RawVersion] =
+    @immut/hashset.new()
+  for op in remote_ops {
+    let raw = @causal_graph.RawVersion::new(op.agent, op.seq)
+    batch = batch.add(raw)
+  }
+
+  for op in remote_ops {
+    for parent in op.parents {
+      if self.graph.raw_to_lv(parent) is None && not(batch.contains(parent)) {
+        raise OpLogError::MissingRemoteParent(raw=parent)
+      }
+    }
+  }
+
+  for raw in remote_frontier {
+    if self.graph.raw_to_lv(raw) is None && not(batch.contains(raw)) {
+      raise OpLogError::MissingRemoteFrontier(raw=raw)
+    }
+  }
+}
+
+///|
 /// Apply a remote operation
 pub fn OpLog::apply_remote(self : OpLog, op : Op) -> Array[Op] raise OpLogError {
   let pending = self.pending

@@ -18,6 +18,8 @@ pub fn get_errors_json(Int) -> String
 
 pub fn get_frontier_json(Int) -> String
 
+pub fn get_frontier_raw_json(Int) -> String
+
 pub fn get_operations_json(Int) -> String
 
 pub fn get_text(Int) -> String
@@ -26,7 +28,7 @@ pub fn get_version_vector_json(Int) -> String
 
 pub fn insert(Int, String) -> Unit
 
-pub fn merge_operations(Int, String, String) -> Unit
+pub fn merge_operations(Int, String, String, String) -> Unit
 
 pub fn set_cursor(Int, Int) -> Unit
 

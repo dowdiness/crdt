@@ -100,16 +100,16 @@ test "concurrent edits from two editors" {
   let bob = Editor::new("bob")
 
   // Alice types "Hello"
-  alice.insert("Hello")
+  try! alice.insert("Hello")
 
   // Bob types "World"
-  bob.insert("World")
+  try! bob.insert("World")
 
   // They exchange operations
   let alice_ops = alice.get_operations()
   let bob_ops = bob.get_operations()
-  let alice_frontier = alice.get_frontier()
-  let bob_frontier = bob.get_frontier()
+  let alice_frontier = try! alice.get_frontier_raw()
+  let bob_frontier = try! bob.get_frontier_raw()
 
   // Alice receives Bob's operations
   try! alice.merge_remote(bob_ops, bob_frontier)
@@ -136,10 +136,10 @@ test "concurrent inserts at same position" {
   let bob = Editor::new("bob")
 
   // Both start with "AC"
-  alice.insert("A")
-  alice.insert("C")
+  try! alice.insert("A")
+  try! alice.insert("C")
   let ops = alice.get_operations()
-  let frontier = alice.get_frontier()
+  let frontier = try! alice.get_frontier_raw()
   try! bob.merge_remote(ops, frontier)
 
   // Verify both have "AC"
@@ -148,15 +148,15 @@ test "concurrent inserts at same position" {
 
   // Both insert between A and C concurrently
   alice.move_cursor(1)
-  alice.insert("X")
+  try! alice.insert("X")
   bob.move_cursor(1)
-  bob.insert("Y")
+  try! bob.insert("Y")
 
   // Get the new operations (only the ones after the merge)
   let alice_new_ops = alice.get_operations()
   let bob_new_ops = bob.get_operations()
-  let alice_new_frontier = alice.get_frontier()
-  let bob_new_frontier = bob.get_frontier()
+  let alice_new_frontier = try! alice.get_frontier_raw()
+  let bob_new_frontier = try! bob.get_frontier_raw()
 
   // Cross-merge
   try! alice.merge_remote(bob_new_ops, bob_new_frontier)

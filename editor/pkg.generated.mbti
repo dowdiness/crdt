@@ -3,6 +3,7 @@ package "dowdiness/crdt/editor"
 
 import(
   "dowdiness/crdt/parser"
+  "dowdiness/event-graph-walker/causal_graph"
   "dowdiness/event-graph-walker/document"
   "dowdiness/event-graph-walker/oplog"
 )
@@ -22,11 +23,12 @@ pub fn Editor::backspace(Self) -> Bool
 pub fn Editor::delete(Self) -> Bool
 pub fn Editor::get_cursor(Self) -> Int
 pub fn Editor::get_frontier(Self) -> Array[Int]
+pub fn Editor::get_frontier_raw(Self) -> Array[@causal_graph.RawVersion] raise
 pub fn Editor::get_operations(Self) -> Array[@oplog.Op]
 pub fn Editor::get_text(Self) -> String
 pub fn Editor::insert(Self, String) -> Unit raise
 pub fn Editor::insert_at(Self, Int, String) -> Unit raise
-pub fn Editor::merge_remote(Self, Array[@oplog.Op], Array[Int]) -> Unit raise
+pub fn Editor::merge_remote(Self, Array[@oplog.Op], Array[@causal_graph.RawVersion]) -> Unit raise
 pub fn Editor::move_cursor(Self, Int) -> Unit
 pub fn Editor::new(String) -> Self
 pub impl Show for Editor
@@ -45,11 +47,12 @@ pub fn ParsedEditor::get_ast(Self) -> @parser.TermNode
 pub fn ParsedEditor::get_cursor(Self) -> Int
 pub fn ParsedEditor::get_errors(Self) -> Array[String]
 pub fn ParsedEditor::get_frontier(Self) -> Array[Int]
+pub fn ParsedEditor::get_frontier_raw(Self) -> Array[@causal_graph.RawVersion] raise
 pub fn ParsedEditor::get_operations(Self) -> Array[@oplog.Op]
 pub fn ParsedEditor::get_text(Self) -> String
 pub fn ParsedEditor::insert(Self, String) -> Unit raise
 pub fn ParsedEditor::is_parse_valid(Self) -> Bool
-pub fn ParsedEditor::merge_remote(Self, Array[@oplog.Op], Array[Int]) -> Unit raise
+pub fn ParsedEditor::merge_remote(Self, Array[@oplog.Op], Array[@causal_graph.RawVersion]) -> Unit raise
 pub fn ParsedEditor::move_cursor(Self, Int) -> Unit
 pub fn ParsedEditor::new(String) -> Self
 

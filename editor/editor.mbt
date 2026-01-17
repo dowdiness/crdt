@@ -121,7 +121,7 @@ pub fn Editor::apply_remote(self : Editor, op : @oplog.Op) -> Unit raise {
 pub fn Editor::merge_remote(
   self : Editor,
   remote_ops : Array[@oplog.Op],
-  remote_frontier : Array[Int],
+  remote_frontier : Array[@causal_graph.RawVersion],
 ) -> Unit raise {
   self.doc.merge_remote(remote_ops, remote_frontier)
   // Adjust cursor position if needed
@@ -132,6 +132,14 @@ pub fn Editor::merge_remote(
 /// Get the current frontier
 pub fn Editor::get_frontier(self : Editor) -> Array[Int] {
   self.doc.get_frontier()
+}
+
+///|
+/// Get frontier as RawVersions for network sync
+pub fn Editor::get_frontier_raw(
+  self : Editor,
+) -> Array[@causal_graph.RawVersion] raise {
+  self.doc.get_frontier_raw()
 }
 
 ///|

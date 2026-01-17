@@ -240,13 +240,14 @@ import * as crdt from '../public/crdt';
 class Sync {
   sendOps() {
     const ops = crdt.get_operations_json(this.handle);
-    const frontier = crdt.get_frontier_json(this.handle);
-    this.ws.send(JSON.stringify({ ops, frontier }));
+    const frontier = crdt.get_frontier_raw_json(this.handle);
+    const version_vector = crdt.get_version_vector_json(this.handle);
+    this.ws.send(JSON.stringify({ ops, frontier, version_vector }));
   }
 
-  receiveOps(data: { ops: string, frontier: string }) {
+  receiveOps(data: { ops: string, frontier: string, version_vector: string }) {
     // Merge remote operations
-    crdt.merge_operations(this.handle, data.ops, data.frontier);
+    crdt.merge_operations(this.handle, data.ops, data.frontier, data.version_vector);
 
     // Walker automatically ensures correct replay order!
     this.updateUI();

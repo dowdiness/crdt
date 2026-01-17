@@ -11,6 +11,7 @@ export interface SyncMessage {
   type: 'ops' | 'frontier' | 'request_sync';
   sender: string;
   ops?: string;  // JSON-encoded operations
+  frontier?: string;  // JSON-encoded RawVersion frontier
   version_vector?: string;  // JSON-encoded version vector
 }
 
@@ -86,10 +87,12 @@ export class NetworkSync {
    */
   broadcastOperations(): void {
     const ops = crdt.get_operations_json(this.handle);
+    const frontier = crdt.get_frontier_raw_json(this.handle);
     const version_vector = crdt.get_version_vector_json(this.handle);
 
     console.log('[NetworkSync] Broadcasting operations:', {
       ops: ops.substring(0, 100) + '...',
+      frontier: frontier.substring(0, 100) + '...',
       version_vector,
       peers: this.peers.size
     });
@@ -98,6 +101,7 @@ export class NetworkSync {
       type: 'ops',
       sender: this.agentId,
       ops,
+      frontier,
       version_vector
     };
 
@@ -110,13 +114,19 @@ export class NetworkSync {
   /**
    * Handle incoming operations from remote peer
    */
-  private handleRemoteOps(ops: string, version_vector: string, sender: string): void {
+  private handleRemoteOps(
+    ops: string,
+    frontier: string,
+    version_vector: string | undefined,
+    sender: string
+  ): void {
     console.log(`[NetworkSync] Received ops from ${sender}`);
     console.log('Remote ops:', ops);
+    console.log('Remote frontier:', frontier);
     console.log('Remote version_vector:', version_vector);
 
     // Merge remote operations into local state
-    crdt.merge_operations(this.handle, ops, version_vector);
+    crdt.merge_operations(this.handle, ops, frontier, version_vector ?? '{}');
 
     // Notify UI of change
     if (this.onTextChange) {
@@ -317,11 +327,16 @@ export class NetworkSync {
 
         switch (message.type) {
           case 'ops':
-            if (message.ops && message.version_vector) {
+            if (message.ops && message.frontier) {
               console.log(`[NetworkSync] Processing ops from ${message.sender}`);
-              this.handleRemoteOps(message.ops, message.version_vector, message.sender);
+              this.handleRemoteOps(
+                message.ops,
+                message.frontier,
+                message.version_vector,
+                message.sender
+              );
             } else {
-              console.warn('[NetworkSync] Received ops message without ops or version_vector');
+              console.warn('[NetworkSync] Received ops message without ops or frontier');
             }
             break;
 
@@ -329,12 +344,14 @@ export class NetworkSync {
             console.log(`[NetworkSync] Received sync request from ${message.sender}`);
             // Send full state
             const ops = crdt.get_operations_json(this.handle);
+            const frontier = crdt.get_frontier_raw_json(this.handle);
             const version_vector = crdt.get_version_vector_json(this.handle);
             console.log(`[NetworkSync] Sending full state: ${ops.length} bytes`);
             channel.send(JSON.stringify({
               type: 'ops',
               sender: this.agentId,
               ops,
+              frontier,
               version_vector
             }));
             break;
@@ -389,12 +406,14 @@ export class NetworkSync {
     const peer = this.peers.get(peerId);
     if (peer && peer.dataChannel && peer.dataChannel.readyState === 'open') {
       const ops = crdt.get_operations_json(this.handle);
+      const frontier = crdt.get_frontier_raw_json(this.handle);
       const version_vector = crdt.get_version_vector_json(this.handle);
 
       peer.dataChannel.send(JSON.stringify({
         type: 'ops',
         sender: this.agentId,
         ops,
+        frontier,
         version_vector
       }));
     }

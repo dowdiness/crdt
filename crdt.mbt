@@ -153,6 +153,18 @@ pub fn get_frontier_json(_handle : Int) -> String {
 }
 
 ///|
+/// Get frontier (RawVersions) as JSON for network sync
+pub fn get_frontier_raw_json(_handle : Int) -> String {
+  match editor.val {
+    Some(editor) =>
+      editor.get_frontier_raw().to_json().stringify() catch {
+        _ => "[]"
+      }
+    None => "[]"
+  }
+}
+
+///|
 /// Get version vector as JSON
 /// Returns a JSON object mapping agent IDs to sequence numbers
 /// Example: {"alice": 5, "bob": 3}
@@ -185,6 +197,20 @@ fn parse_ops_from_json(json_str : String) -> Array[@oplog.Op] {
 }
 
 ///|
+/// Parse RawVersion frontier from JSON
+/// Uses @json.from_json with FromJson trait
+fn parse_frontier_raw_from_json(
+  json_str : String,
+) -> Array[@causal_graph.RawVersion] {
+  try {
+    let json_val = @json.parse(json_str)
+    @json.from_json(json_val)
+  } catch {
+    _ => [] // Return empty array on any error
+  }
+}
+
+///|
 /// Parse version vector from JSON
 /// Uses @json.from_json with FromJson trait
 fn parse_version_vector_from_json(
@@ -206,6 +232,7 @@ fn parse_version_vector_from_json(
 pub fn merge_operations(
   _handle : Int,
   ops_json : String,
+  frontier_json : String,
   version_vector_json : String,
 ) -> Unit {
   match editor.val {
@@ -232,10 +259,11 @@ pub fn merge_operations(
       // Serialization uses ToJson trait (.to_json().to_string())
       // Deserialization uses @json.parse + manual field extraction
       let remote_ops = parse_ops_from_json(ops_json)
+      let remote_frontier = parse_frontier_raw_from_json(frontier_json)
 
       // Use ParsedEditor's merge_remote which calls Editor::merge_remote
       // which calls Document::merge_remote which uses the merge module
-      try! ed.merge_remote(remote_ops, [])
+      try! ed.merge_remote(remote_ops, remote_frontier)
 
       // ParsedEditor::merge_remote already marks as dirty for reparsing
     }

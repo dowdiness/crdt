@@ -37,9 +37,10 @@ pub struct Document {
 - `insert(position, text)` - Insert text at cursor position
 - `delete(position)` - Delete character at cursor position
 - `apply_remote(op)` - Apply operations from remote peers
-- `merge_remote(ops, frontier)` - Merge multiple remote operations
+- `merge_remote(ops, frontier)` - Merge multiple remote operations (frontier uses RawVersions)
 - `to_text()` - Get current document text
-- `get_frontier()` - Get version vector for network sync
+- `get_frontier()` - Get local LVs for internal operations
+- `get_frontier_raw()` - Get RawVersions for network sync
 
 #### OpLog
 Maintains append-only operation history with causal dependency tracking.
@@ -176,6 +177,7 @@ doc.apply_remote(remote_op)
 
 // Or merge multiple operations
 let remote_ops = [...]  // From peer
+let remote_frontier = [...]  // RawVersions from peer
 doc.merge_remote(remote_ops, remote_frontier)
 ```
 

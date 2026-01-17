@@ -142,7 +142,7 @@ pub fn ParsedEditor::is_parse_valid(self : ParsedEditor) -> Bool {
 pub fn ParsedEditor::merge_remote(
   self : ParsedEditor,
   ops : Array[@oplog.Op],
-  frontier : Array[Int],
+  frontier : Array[@causal_graph.RawVersion],
 ) -> Unit raise {
   self.editor.merge_remote(ops, frontier)
   self.parse_dirty = true
@@ -158,4 +158,12 @@ pub fn ParsedEditor::get_operations(self : ParsedEditor) -> Array[@oplog.Op] {
 /// Get the current version frontier
 pub fn ParsedEditor::get_frontier(self : ParsedEditor) -> Array[Int] {
   self.editor.get_frontier()
+}
+
+///|
+/// Get frontier as RawVersions for network sync
+pub fn ParsedEditor::get_frontier_raw(
+  self : ParsedEditor,
+) -> Array[@causal_graph.RawVersion] raise {
+  self.editor.get_frontier_raw()
 }

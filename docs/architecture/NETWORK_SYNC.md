@@ -248,21 +248,23 @@ pm2 start signaling-server.js --name crdt-signaling
 You can implement your own network layer by:
 
 1. Getting operations: `crdt.get_operations_json(handle)`
-2. Getting version vector: `crdt.get_version_vector_json(handle)`
+2. Getting frontier: `crdt.get_frontier_raw_json(handle)`
+3. Getting version vector: `crdt.get_version_vector_json(handle)`
 3. Broadcasting via your transport (WebSocket, HTTP, etc.)
-4. Receiving operations and calling: `crdt.merge_operations(handle, ops, version_vector)`
+4. Receiving operations and calling: `crdt.merge_operations(handle, ops, frontier, version_vector)`
 
 Example:
 
 ```typescript
 // Send operations
 const ops = crdt.get_operations_json(handle);
+const frontier = crdt.get_frontier_raw_json(handle);
 const version_vector = crdt.get_version_vector_json(handle);
-myTransport.send({ ops, version_vector });
+myTransport.send({ ops, frontier, version_vector });
 
 // Receive operations
 myTransport.onMessage((data) => {
-  crdt.merge_operations(handle, data.ops, data.version_vector);
+  crdt.merge_operations(handle, data.ops, data.frontier, data.version_vector);
   updateUI();
 });
 ```

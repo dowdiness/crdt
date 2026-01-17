@@ -109,7 +109,7 @@ pub fn from_frontier(graph : CausalGraph, frontier : Array[Int]) -> VersionVecto
 
 **Network Integration Completed:**
 - Network sync now uses version vectors instead of frontiers (`web/src/network.ts`)
-- `merge_operations()` accepts version vector for optimization
+- `merge_operations()` accepts frontier for consistency checks and version vector for optimization
 - Early return optimization when `remote_vv <= local_vv` (already synced)
 - 329 tests passing including 25 property-based tests with Arbitrary/Shrink traits
 
@@ -218,7 +218,7 @@ pub fn Branch::advance(self : Branch, target_frontier : Array[Int]) -> Branch
 - ✅ Added WebSocket signaling server (`web/signaling-server.js`)
 - ✅ Integrated version vectors for efficient sync
 - ✅ Added `broadcastOperations()` and `handleRemoteOps()`
-- ✅ Updated to use `get_version_vector_json()` and optimized `merge_operations()`
+- ✅ Updated to use RawVersion frontier and optimized `merge_operations()`
 - ✅ Deployed signaling server guides (Cloudflare Durable Objects)
 
 **Remaining:**
@@ -237,6 +237,9 @@ pub fn get_operations_json(_handle: Int) -> String
 /// Get frontier as JSON
 pub fn get_frontier_json(_handle: Int) -> String
 
+/// Get frontier (RawVersions) as JSON
+pub fn get_frontier_raw_json(_handle: Int) -> String
+
 /// Get version vector as JSON (for network sync)
 pub fn get_version_vector_json(_handle: Int) -> String
 
@@ -244,6 +247,7 @@ pub fn get_version_vector_json(_handle: Int) -> String
 pub fn merge_operations(
   _handle: Int,
   ops_json: String,
+  frontier_json: String,
   version_vector_json: String
 ) -> Unit
 

@@ -32,6 +32,16 @@ pub fn Document::get_frontier(self : Document) -> Array[Int] {
   self.oplog.get_frontier()
 }
 
+///|
+/// Get frontier as RawVersions for network sync
+pub fn Document::get_frontier_raw(
+  self : Document,
+) -> Array[@causal_graph.RawVersion] raise DocumentError {
+  self.oplog.get_frontier_raw() catch {
+    e => raise DocumentError::OpLog(e)
+  }
+}
+
 ///| Map a user position (0-based cursor position) to the LV at that position
 
 ///|
@@ -227,8 +237,11 @@ pub fn Document::apply_remote(
 pub fn Document::merge_remote(
   self : Document,
   remote_ops : Array[@oplog.Op],
-  _remote_frontier : Array[Int],
+  remote_frontier : Array[@causal_graph.RawVersion],
 ) -> Unit raise DocumentError {
+  self.oplog.validate_remote_batch(remote_ops, remote_frontier) catch {
+    e => raise DocumentError::OpLog(e)
+  }
   // Use the branch module's merge convenience function
   @branch.merge_remote_ops(self.tree, self.oplog, remote_ops) catch {
     e => raise DocumentError::Branch(e)
