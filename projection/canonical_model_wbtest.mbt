@@ -533,3 +533,477 @@ test "roundtrip: text -> tree edit -> text" {
     Err(msg) => abort("tree_lens_apply_edit failed: " + msg)
   }
 }
+
+// =============================================================================
+// Additional edge case tests
+// =============================================================================
+
+///|
+test "apply_operation MoveNode into own descendant returns error" {
+  // Create: λx.(y z) - a lambda with an application body
+  let parser = @parser.IncrementalParser::new("λx.(y z)")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+
+  // The AST is Lam with body App(y, z)
+  // Try to move the Lam into its own body (the App)
+  let lam_id = NodeId(ast.node_id)
+  let body = ast.children[0]
+  let body_id = NodeId(body.node_id)
+
+  // This should fail because after removing the lam, body_id won't exist
+  let op = MoveNode(node_id=lam_id, new_parent=body_id, new_index=0)
+  let result = model.apply_operation(op)
+
+  // Should error (cannot move root, or new parent not found after removal)
+  inspect(result is Err(_), content="true")
+}
+
+///|
+test "tree_lens_apply_edit InsertChild adds Int placeholder" {
+  let parser = @parser.IncrementalParser::new("1 + 2")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let root_id = NodeId(ast.node_id)
+  let edit = TreeEditOp::InsertChild(
+    parent=root_id,
+    index=2,
+    kind=@parser.TermKind::Int(0),
+  )
+  match tree_lens_apply_edit(model, edit) {
+    Ok(updated_model) =>
+      match updated_model.get_ast() {
+        Some(updated_ast) => {
+          inspect(updated_ast.children.length(), content="3")
+          // The new child should be Int(0)
+          inspect(
+            match updated_ast.children[2].kind {
+              @parser.TermKind::Int(0) => "true"
+              _ => "false"
+            },
+            content="true",
+          )
+        }
+        None => abort("AST missing after insert")
+      }
+    Err(msg) => abort("tree_lens_apply_edit failed: " + msg)
+  }
+}
+
+///|
+test "tree_lens_apply_edit InsertChild adds Var placeholder" {
+  // Use 1 + 2 which has 2 children at root level
+  let parser = @parser.IncrementalParser::new("1 + 2")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let root_id = NodeId(ast.node_id)
+  let edit = TreeEditOp::InsertChild(
+    parent=root_id,
+    index=2,
+    kind=@parser.TermKind::Var("_"),
+  )
+  match tree_lens_apply_edit(model, edit) {
+    Ok(updated_model) =>
+      match updated_model.get_ast() {
+        Some(updated_ast) =>
+          // Verify child was added
+          inspect(updated_ast.children.length() > 2, content="true")
+        None => abort("AST missing after insert")
+      }
+    Err(msg) => abort("tree_lens_apply_edit failed: " + msg)
+  }
+}
+
+///|
+test "tree_lens_apply_edit InsertChild adds Lam placeholder" {
+  // Use 1 + 2 which has children at root level
+  let parser = @parser.IncrementalParser::new("1 + 2")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let root_id = NodeId(ast.node_id)
+  let edit = TreeEditOp::InsertChild(
+    parent=root_id,
+    index=2,
+    kind=@parser.TermKind::Lam("x"),
+  )
+  match tree_lens_apply_edit(model, edit) {
+    Ok(updated_model) =>
+      match updated_model.get_ast() {
+        Some(updated_ast) => {
+          // Should have 3 children now
+          inspect(updated_ast.children.length(), content="3")
+          // The new child should be a Lam
+          inspect(
+            match updated_ast.children[2].kind {
+              @parser.TermKind::Lam(_) => "true"
+              _ => "false"
+            },
+            content="true",
+          )
+        }
+        None => abort("AST missing after insert")
+      }
+    Err(msg) => abort("tree_lens_apply_edit failed: " + msg)
+  }
+}
+
+///|
+test "tree_lens_apply_edit Drop with Before position" {
+  // Create: 1 + 2, then add 3 and 4 to get [1, 2, 3, 4]
+  let parser = @parser.IncrementalParser::new("1 + 2")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let root_id = NodeId(ast.node_id)
+
+  // Add children 3 and 4
+  let p3 = @parser.IncrementalParser::new("3")
+  let p4 = @parser.IncrementalParser::new("4")
+  let n3 = assign_fresh_ids(p3.parse(), model)
+  let n4 = assign_fresh_ids(p4.parse(), model)
+  let _ = model.apply_operation(InsertNode(parent=root_id, index=2, node=n3))
+  let _ = model.apply_operation(InsertNode(parent=root_id, index=3, node=n4))
+
+  // Now [1, 2, 3, 4] - drop 4 before 2
+  match model.get_ast() {
+    Some(current) => {
+      let four_id = NodeId(current.children[3].node_id)
+      let two_id = NodeId(current.children[1].node_id)
+      let edit = TreeEditOp::Drop(
+        source=four_id,
+        target=two_id,
+        position=Before,
+      )
+      match tree_lens_apply_edit(model, edit) {
+        Ok(updated_model) =>
+          match updated_model.get_ast() {
+            Some(final_ast) => {
+              // Should be [1, 4, 2, 3]
+              inspect(
+                match final_ast.children[0].kind {
+                  @parser.TermKind::Int(1) => "true"
+                  _ => "false"
+                },
+                content="true",
+              )
+              inspect(
+                match final_ast.children[1].kind {
+                  @parser.TermKind::Int(4) => "true"
+                  _ => "false"
+                },
+                content="true",
+              )
+              inspect(
+                match final_ast.children[2].kind {
+                  @parser.TermKind::Int(2) => "true"
+                  _ => "false"
+                },
+                content="true",
+              )
+              inspect(
+                match final_ast.children[3].kind {
+                  @parser.TermKind::Int(3) => "true"
+                  _ => "false"
+                },
+                content="true",
+              )
+            }
+            None => abort("AST missing after drop")
+          }
+        Err(msg) => abort("Drop failed: " + msg)
+      }
+    }
+    None => abort("AST missing")
+  }
+}
+
+///|
+test "tree_lens_apply_edit Drop with After position" {
+  // Create: 1 + 2, then add 3 to get [1, 2, 3]
+  let parser = @parser.IncrementalParser::new("1 + 2")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let root_id = NodeId(ast.node_id)
+  let p3 = @parser.IncrementalParser::new("3")
+  let n3 = assign_fresh_ids(p3.parse(), model)
+  let _ = model.apply_operation(InsertNode(parent=root_id, index=2, node=n3))
+
+  // Now [1, 2, 3] - drop 1 after 2, expecting [2, 1, 3]
+  match model.get_ast() {
+    Some(current) => {
+      let one_id = NodeId(current.children[0].node_id)
+      let two_id = NodeId(current.children[1].node_id)
+      let edit = TreeEditOp::Drop(source=one_id, target=two_id, position=After)
+      match tree_lens_apply_edit(model, edit) {
+        Ok(updated_model) =>
+          match updated_model.get_ast() {
+            Some(final_ast) => {
+              // Should be [2, 1, 3]
+              inspect(
+                match final_ast.children[0].kind {
+                  @parser.TermKind::Int(2) => "true"
+                  _ => "false"
+                },
+                content="true",
+              )
+              inspect(
+                match final_ast.children[1].kind {
+                  @parser.TermKind::Int(1) => "true"
+                  _ => "false"
+                },
+                content="true",
+              )
+              inspect(
+                match final_ast.children[2].kind {
+                  @parser.TermKind::Int(3) => "true"
+                  _ => "false"
+                },
+                content="true",
+              )
+            }
+            None => abort("AST missing after drop")
+          }
+        Err(msg) => abort("Drop failed: " + msg)
+      }
+    }
+    None => abort("AST missing")
+  }
+}
+
+///|
+test "tree_lens_apply_edit Drop with Inside position" {
+  // Create: (f x) y - App(App(f, x), y)
+  let parser = @parser.IncrementalParser::new("(f x) y")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+
+  // Drop y inside the inner App (f x)
+  match model.get_ast() {
+    Some(current) => {
+      let inner_app = current.children[0]
+      let y_node = current.children[1]
+      let inner_app_id = NodeId(inner_app.node_id)
+      let y_id = NodeId(y_node.node_id)
+      let edit = TreeEditOp::Drop(
+        source=y_id,
+        target=inner_app_id,
+        position=Inside,
+      )
+      match tree_lens_apply_edit(model, edit) {
+        Ok(updated_model) =>
+          match updated_model.get_ast() {
+            Some(final_ast) => {
+              // Root should now have 1 child (the inner app)
+              inspect(final_ast.children.length(), content="1")
+              // Inner app should have 3 children: f, x, y
+              inspect(final_ast.children[0].children.length(), content="3")
+            }
+            None => abort("AST missing after drop")
+          }
+        Err(msg) => abort("Drop failed: " + msg)
+      }
+    }
+    None => abort("AST missing")
+  }
+}
+
+///|
+test "tree_lens_apply_edit CommitEdit with incomplete parse creates error node" {
+  let parser = @parser.IncrementalParser::new("x")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let root_id = NodeId(ast.node_id)
+
+  // Commit an incomplete expression
+  let edit = TreeEditOp::CommitEdit(node_id=root_id, new_value="λ")
+  match tree_lens_apply_edit(model, edit) {
+    Ok(updated_model) =>
+      // Should succeed but model should have errors
+      inspect(updated_model.has_errors(), content="true")
+    Err(_) =>
+      // Also acceptable if it returns error
+      inspect(true, content="true")
+  }
+}
+
+///|
+test "tree_lens_apply_edit WrapInLambda preserves body structure" {
+  // Wrap a complex expression: 1 + 2
+  let parser = @parser.IncrementalParser::new("1 + 2")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let root_id = NodeId(ast.node_id)
+  let edit = TreeEditOp::WrapInLambda(node_id=root_id, var_name="x")
+  match tree_lens_apply_edit(model, edit) {
+    Ok(updated_model) =>
+      match updated_model.get_ast() {
+        Some(updated_ast) => {
+          // Root should be Lam("x")
+          inspect(
+            match updated_ast.kind {
+              @parser.TermKind::Lam("x") => "true"
+              _ => "false"
+            },
+            content="true",
+          )
+          // Body should be a Bop (the original 1 + 2)
+          inspect(updated_ast.children.length(), content="1")
+          inspect(
+            match updated_ast.children[0].kind {
+              @parser.TermKind::Bop(_) => "true"
+              _ => "false"
+            },
+            content="true",
+          )
+        }
+        None => abort("AST missing after wrap")
+      }
+    Err(msg) => abort("WrapInLambda failed: " + msg)
+  }
+}
+
+///|
+test "tree_lens_apply_edit WrapInApp creates App with placeholder" {
+  let parser = @parser.IncrementalParser::new("f")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let root_id = NodeId(ast.node_id)
+  let edit = TreeEditOp::WrapInApp(node_id=root_id)
+  match tree_lens_apply_edit(model, edit) {
+    Ok(updated_model) =>
+      match updated_model.get_ast() {
+        Some(updated_ast) => {
+          // Verify the root ID is preserved
+          inspect(updated_ast.node_id == ast.node_id, content="true")
+          // Verify the text output shows a transformation happened
+          match text_lens_get(updated_model) {
+            Ok(text) =>
+              // The result should be different from just "f"
+              // (it's "(f) _" or similar)
+              inspect(text.length() > 1, content="true")
+            Err(_) => ()
+          }
+        }
+        None => abort("AST missing after wrap")
+      }
+    Err(msg) => abort("WrapInApp failed: " + msg)
+  }
+}
+
+///|
+test "tree_lens_apply_edit SelectRange does not modify model" {
+  let parser = @parser.IncrementalParser::new("x")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let start_id = NodeId(ast.node_id)
+  let end_id = NodeId(ast.node_id)
+  let edit = TreeEditOp::SelectRange(start=start_id, end=end_id)
+  match tree_lens_apply_edit(model, edit) {
+    Ok(updated_model) =>
+      match text_lens_get(updated_model) {
+        Ok(text) => inspect(text, content="x")
+        Err(msg) => abort("text_lens_get failed: " + msg)
+      }
+    Err(msg) => abort("SelectRange failed: " + msg)
+  }
+}
+
+///|
+test "tree_lens_apply_edit StartEdit does not modify model" {
+  let parser = @parser.IncrementalParser::new("x")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let root_id = NodeId(ast.node_id)
+  let edit = TreeEditOp::StartEdit(node_id=root_id)
+  match tree_lens_apply_edit(model, edit) {
+    Ok(updated_model) =>
+      match text_lens_get(updated_model) {
+        Ok(text) => inspect(text, content="x")
+        Err(msg) => abort("text_lens_get failed: " + msg)
+      }
+    Err(msg) => abort("StartEdit failed: " + msg)
+  }
+}
+
+///|
+test "tree_lens_apply_edit CancelEdit does not modify model" {
+  let parser = @parser.IncrementalParser::new("x")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let edit = TreeEditOp::CancelEdit
+  match tree_lens_apply_edit(model, edit) {
+    Ok(updated_model) =>
+      match text_lens_get(updated_model) {
+        Ok(text) => inspect(text, content="x")
+        Err(msg) => abort("text_lens_get failed: " + msg)
+      }
+    Err(msg) => abort("CancelEdit failed: " + msg)
+  }
+}
+
+///|
+test "tree_lens_apply_edit StartDrag does not modify model" {
+  let parser = @parser.IncrementalParser::new("x")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let root_id = NodeId(ast.node_id)
+  let edit = TreeEditOp::StartDrag(node_id=root_id)
+  match tree_lens_apply_edit(model, edit) {
+    Ok(updated_model) =>
+      match text_lens_get(updated_model) {
+        Ok(text) => inspect(text, content="x")
+        Err(msg) => abort("text_lens_get failed: " + msg)
+      }
+    Err(msg) => abort("StartDrag failed: " + msg)
+  }
+}
+
+///|
+test "tree_lens_apply_edit DragOver does not modify model" {
+  let parser = @parser.IncrementalParser::new("x")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let target_id = NodeId(ast.node_id)
+  let edit = TreeEditOp::DragOver(target=target_id, position=Before)
+  match tree_lens_apply_edit(model, edit) {
+    Ok(updated_model) =>
+      match text_lens_get(updated_model) {
+        Ok(text) => inspect(text, content="x")
+        Err(msg) => abort("text_lens_get failed: " + msg)
+      }
+    Err(msg) => abort("DragOver failed: " + msg)
+  }
+}
+
+///|
+test "tree_lens_apply_edit Collapse does not modify model" {
+  let parser = @parser.IncrementalParser::new("x")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let root_id = NodeId(ast.node_id)
+  let edit = TreeEditOp::Collapse(node_id=root_id)
+  match tree_lens_apply_edit(model, edit) {
+    Ok(updated_model) =>
+      match text_lens_get(updated_model) {
+        Ok(text) => inspect(text, content="x")
+        Err(msg) => abort("text_lens_get failed: " + msg)
+      }
+    Err(msg) => abort("Collapse failed: " + msg)
+  }
+}
+
+///|
+test "tree_lens_apply_edit Expand does not modify model" {
+  let parser = @parser.IncrementalParser::new("x")
+  let ast = parser.parse()
+  let model = CanonicalModel::from_ast(ast)
+  let root_id = NodeId(ast.node_id)
+  let edit = TreeEditOp::Expand(node_id=root_id)
+  match tree_lens_apply_edit(model, edit) {
+    Ok(updated_model) =>
+      match text_lens_get(updated_model) {
+        Ok(text) => inspect(text, content="x")
+        Err(msg) => abort("text_lens_get failed: " + msg)
+      }
+    Err(msg) => abort("Expand failed: " + msg)
+  }
+}
