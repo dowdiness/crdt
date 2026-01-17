@@ -239,6 +239,8 @@ The existing codebase has:
 │  │  ┌──────────────────────────────────────────────────────┐   │   │
 │  │  │  CanonicalModel                                       │   │   │
 │  │  │  ├─ ast: TermNode (with persistent node IDs)         │   │   │
+│  │  │  ├─ cst: CstNode (tokens + trivia)                   │   │   │
+│  │  │  ├─ ast_cst_map: NodeId → CstSpan                    │   │   │
 │  │  │  ├─ source_map: NodeId → (start, end) positions      │   │   │
 │  │  │  └─ edit_history: Array[ModelOperation]              │   │   │
 │  │  └──────────────────────────────────────────────────────┘   │   │
@@ -259,6 +261,8 @@ The existing codebase has:
 /// The single source of truth for the program
 struct CanonicalModel {
   ast: TermNode                        // Current AST
+  cst: CstNode                         // Concrete syntax with trivia
+  ast_cst_map: AstCstMap               // NodeId ↔ CST token spans
   node_registry: Map[NodeId, TermNode] // Fast node lookup
   source_map: SourceMap                // NodeId ↔ text positions
   dirty_projections: Set[ProjectionId] // Which projections need update
@@ -267,9 +271,38 @@ struct CanonicalModel {
 /// Source position mapping
 struct SourceMap {
   node_to_range: Map[NodeId, (Int, Int)]  // AST node → text range
-  range_to_node: IntervalTree[NodeId]     // text range → AST nodes
+  range_to_nodes: IntervalTree[NodeId]    // text range → AST nodes
+}
+
+/// Concrete syntax tree + mapping to AST nodes
+struct CstNode {
+  kind: CstKind
+  tokens: Array[Token]
+  children: Array[CstNode]
+}
+
+struct CstSpan {
+  start_token: Int
+  end_token: Int
+}
+
+struct AstCstMap {
+  ast_to_cst: Map[NodeId, CstSpan]
+  cst_to_ast: IntervalTree[NodeId]
 }
 ```
+
+#### CST Invariants
+
+- CST nodes preserve token order; spans are non-overlapping and cover each node's tokens.
+- Trivia (whitespace/comments) is attached to the leading token of the following CST node.
+- `ast_cst_map` points to the smallest enclosing CST node that fully represents the AST node.
+
+#### Formatting Policy
+
+- Local-only formatting: regenerations are limited to the affected CST subtree.
+- Trivia outside the affected span is preserved verbatim.
+- Whole-file normalization is opt-in and treated as an explicit formatting action.
 
 #### ModelOperation (Edit Algebra)
 
@@ -386,26 +419,26 @@ enum DropPosition {
 
 ### 2.4 Key Algorithms
 
-#### Algorithm 1: Text Edit → Model Update
+#### Algorithm 1: Text Edit → Model Update (CST-aware)
 
 ```
 TextEditToModel(old_text, new_text, model):
   1. Compute text diff: edits = diff(old_text, new_text)
 
-  2. For each edit in edits:
-     a. Find affected AST nodes via source_map
-     b. If edit is within a leaf node (Int, Var):
-        - Update leaf value
-     c. If edit crosses node boundaries:
-        - Reparse affected region
-        - Reconcile new AST with old AST (preserve unchanged node IDs)
+  2. Update CST tokens/trivia for each edit (local token patch)
 
-  3. Update source_map with new positions
-  4. Mark AST projection as dirty
-  5. Return new model
+  3. Determine affected CST span and map to AST nodes via ast_cst_map
+     - Use the smallest enclosing CST node that fully covers the diff
+
+  4. Reparse only the affected CST subtree into AST
+     - Reconcile with old AST to preserve unchanged IDs
+
+  5. Update ast_cst_map + source_map for changed regions
+  6. Mark AST projection as dirty
+  7. Return new model
 ```
 
-#### Algorithm 2: AST Edit → Model Update
+#### Algorithm 2: AST Edit → Model Update (CST-aware)
 
 ```
 ASTEditToModel(ast_operation, model):
@@ -415,15 +448,19 @@ ASTEditToModel(ast_operation, model):
      - ReplaceNode: Substitute node preserving ID
      - MoveNode: Reparent node
 
-  2. Regenerate source text: new_text = unparse(model.ast)
+  2. Locate affected CST span via ast_cst_map
 
-  3. Compute text diff for CRDT sync
+  3. Regenerate only the CST subtree for that span
+     - Preserve trivia outside the span
 
-  4. Update source_map
+  4. Emit minimal text diff from CST token changes for CRDT sync
+     - Whitespace-only edits are preserved as trivia, no formatting normalization
 
-  5. Mark Text projection as dirty
+  5. Update ast_cst_map + source_map for changed regions
 
-  6. Return new model
+  6. Mark Text projection as dirty
+
+  7. Return new model
 ```
 
 #### Algorithm 3: AST Reconciliation (Preserve Node IDs)
@@ -457,7 +494,8 @@ Reconcile(old_ast, new_ast):
 ```
 
 **Synchronization Rules**:
-1. Only ONE projection can be "editing" at a time (focus-based)
+1. Temporary simplification: locally only one projection can be "editing"
+   at a time (focus-based). This will be relaxed for concurrent projections.
 2. When projection P₁ edits:
    - Transform edit to ModelOperation
    - Apply to CanonicalModel
@@ -477,6 +515,13 @@ enum TermKind {
   Hole                         // Empty placeholder: _
   Error(message: String)       // Parse error
   Partial(expected: String)    // Incomplete input
+}
+
+/// CST error handling
+enum CstKind {
+  // ... existing kinds ...
+  ErrorToken(message: String)
+  PartialNode(expected: String)
 }
 
 /// Validation levels
@@ -637,12 +682,28 @@ test "ASTLens roundtrip" {
   assert_eq!(TextLens::get(model), TextLens::get(model2))
 }
 
+// Lens law equivalence is semantic; trivia may differ unless edits are
+// whitespace-only, in which case trivia should be preserved.
+
 // Test reconciliation preserves IDs
 test "reconcile preserves node IDs" {
   let model1 = create_model("λx.x")
   let model2 = edit_text(model1, "λx.x+1")
   // λ and x nodes should keep same IDs
   assert_eq!(model1.node_registry["lam_id"], model2.node_registry["lam_id"])
+}
+
+// CST stability tests
+test "whitespace preserved across AST edit" {
+  let model1 = create_model("λx.  x")
+  let model2 = edit_ast(model1, WrapInLambda)
+  assert_eq!(TextLens::get(model2).contains("  "), true)
+}
+
+test "comments preserved across text edit" {
+  let model1 = create_model("x /*c*/ + 1")
+  let model2 = edit_text(model1, "x /*c*/ + 2")
+  assert_eq!(TextLens::get(model2).contains("/*c*/"), true)
 }
 ```
 
@@ -702,8 +763,13 @@ Based on user input:
 | Decision | Choice | Implication |
 |----------|--------|-------------|
 | **Canonical model** | AST-first | AST is truth, text is derived via unparser |
-| **CRDT granularity** | Text CRDT only | Keep existing FugueMax, regenerate AST per-peer |
+| **CRDT granularity** | Text CRDT only (temporary) | Keep existing FugueMax, regenerate AST per-peer |
 | **Error handling** | Error nodes | Invalid regions become `TermKind::Error` nodes |
+
+### Temporary Constraints
+
+- Local single-projection edit lock to simplify conflict handling.
+- Text CRDT only while CST-based transformations mature.
 
 ### Architecture Consequence
 
