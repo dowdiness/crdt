@@ -40,6 +40,22 @@ pub fn MergeContext::apply_operations(
       Some(op) =>
         match op.content {
           @oplog.Insert(text) => {
+            let origin_left = match op.origin_left {
+              None => -1
+              Some(raw) =>
+                match self.oplog.graph.raw_to_lv(raw) {
+                  Some(mapped) => mapped
+                  None => -1
+                }
+            }
+            let origin_right = match op.origin_right {
+              None => -1
+              Some(raw) =>
+                match self.oplog.graph.raw_to_lv(raw) {
+                  Some(mapped) => mapped
+                  None => -1
+                }
+            }
             // Get Lamport timestamp and agent from causal graph for proper ordering
             let (timestamp, agent) = match self.oplog.graph.get_entry(op.lv) {
               Some(entry) => (entry.lamport, entry.agent)
@@ -50,15 +66,21 @@ pub fn MergeContext::apply_operations(
             self.tree.insert(
               op.lv,
               text,
-              op.origin_left,
-              op.origin_right,
+              origin_left,
+              origin_right,
               timestamp,
               agent,
             )
           }
           @oplog.Delete =>
-            // Mark item as deleted
-            self.tree.delete(op.origin_left)
+            match op.origin_left {
+              None => ()
+              Some(raw) =>
+                match self.oplog.graph.raw_to_lv(raw) {
+                  Some(mapped) => self.tree.delete(mapped)
+                  None => ()
+                }
+            }
         }
       None => () // Operation not found, skip
     }

@@ -11,24 +11,24 @@ pub enum OpContent {
 /// Operation structure with causal and FugueMax metadata
 pub struct Op {
   lv : Int // Local version when this op was created
-  parents : Array[Int] // Causal dependencies (frontier)
+  parents : Array[@causal_graph.RawVersion] // Causal dependencies (frontier)
   agent : String // Agent that created this operation
   seq : Int // Sequence number for this agent
   content : OpContent // Operation content
-  origin_left : Int // FugueMax: LV of item to the left (-1 for start)
-  origin_right : Int // FugueMax: LV of item to the right (-1 for end)
+  origin_left : @causal_graph.RawVersion? // FugueMax: item to the left
+  origin_right : @causal_graph.RawVersion? // FugueMax: item to the right
 } derive(Show, FromJson, ToJson)
 
 ///|
 /// Create a new insert operation
 pub fn Op::new_insert(
   lv : Int,
-  parents : Array[Int],
+  parents : Array[@causal_graph.RawVersion],
   agent : String,
   seq : Int,
   text : String,
-  origin_left : Int,
-  origin_right : Int,
+  origin_left : @causal_graph.RawVersion?,
+  origin_right : @causal_graph.RawVersion?,
 ) -> Op {
   { lv, parents, agent, seq, content: Insert(text), origin_left, origin_right }
 }
@@ -37,12 +37,12 @@ pub fn Op::new_insert(
 /// Create a new delete operation
 pub fn Op::new_delete(
   lv : Int,
-  parents : Array[Int],
+  parents : Array[@causal_graph.RawVersion],
   agent : String,
   seq : Int,
-  origin_left : Int,
+  origin_left : @causal_graph.RawVersion?,
 ) -> Op {
-  { lv, parents, agent, seq, content: Delete, origin_left, origin_right: -1 }
+  { lv, parents, agent, seq, content: Delete, origin_left, origin_right: None }
 }
 
 ///|

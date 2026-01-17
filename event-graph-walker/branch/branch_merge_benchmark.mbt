@@ -1,6 +1,20 @@
 // Benchmarks for merge algorithm performance
 // Run with: moon bench --package branch --release
 
+fn resolve_origin(
+  oplog : @oplog.OpLog,
+  raw : @causal_graph.RawVersion?,
+) -> Int {
+  match raw {
+    None => -1
+    Some(rv) =>
+      match oplog.graph.raw_to_lv(rv) {
+        Some(lv) => lv
+        None => -1
+      }
+  }
+}
+
 ///|
 /// Benchmark: Merge small concurrent edits (2 agents, 10 ops each)
 test "merge - concurrent edits (2 agents x 10)" (b : @bench.T) {
@@ -13,7 +27,14 @@ test "merge - concurrent edits (2 agents x 10)" (b : @bench.T) {
     let mut prev_a = -1
     for i = 0; i < 10; i = i + 1 {
       let op = oplog_a.insert("a", prev_a, -1)
-      tree_a.insert(op.lv, "a", op.origin_left, op.origin_right, i, "agent_a")
+      tree_a.insert(
+        op.lv,
+        "a",
+        resolve_origin(oplog_a, op.origin_left),
+        resolve_origin(oplog_a, op.origin_right),
+        i,
+        "agent_a",
+      )
       prev_a = op.lv
     }
 
@@ -44,7 +65,14 @@ test "merge - concurrent edits (2 agents x 50)" (b : @bench.T) {
     let mut prev_a = -1
     for i = 0; i < 50; i = i + 1 {
       let op = oplog_a.insert("a", prev_a, -1)
-      tree_a.insert(op.lv, "a", op.origin_left, op.origin_right, i, "agent_a")
+      tree_a.insert(
+        op.lv,
+        "a",
+        resolve_origin(oplog_a, op.origin_left),
+        resolve_origin(oplog_a, op.origin_right),
+        i,
+        "agent_a",
+      )
       prev_a = op.lv
     }
 
@@ -75,7 +103,14 @@ test "merge - concurrent edits (2 agents x 200)" (b : @bench.T) {
     let mut prev_a = -1
     for i = 0; i < 200; i = i + 1 {
       let op = oplog_a.insert("a", prev_a, -1)
-      tree_a.insert(op.lv, "a", op.origin_left, op.origin_right, i, "agent_a")
+      tree_a.insert(
+        op.lv,
+        "a",
+        resolve_origin(oplog_a, op.origin_left),
+        resolve_origin(oplog_a, op.origin_right),
+        i,
+        "agent_a",
+      )
       prev_a = op.lv
     }
 
@@ -105,7 +140,14 @@ test "merge - many agents (5 agents x 20)" (b : @bench.T) {
     let mut prev = -1
     for i = 0; i < 20; i = i + 1 {
       let op = oplog_main.insert("m", prev, -1)
-      tree.insert(op.lv, "m", op.origin_left, op.origin_right, i, "agent_main")
+      tree.insert(
+        op.lv,
+        "m",
+        resolve_origin(oplog_main, op.origin_left),
+        resolve_origin(oplog_main, op.origin_right),
+        i,
+        "agent_main",
+      )
       prev = op.lv
     }
 
@@ -146,18 +188,37 @@ test "merge - with deletes (50 inserts, 25 deletes)" (b : @bench.T) {
 
     // Agent A: 50 inserts
     let mut prev_a = -1
-    let lvs_a = []
+    let ops_a : Array[@oplog.Op] = []
     for i = 0; i < 50; i = i + 1 {
       let op = oplog_a.insert("a", prev_a, -1)
-      tree_a.insert(op.lv, "a", op.origin_left, op.origin_right, i, "agent_a")
-      lvs_a.push(op.lv)
+      tree_a.insert(
+        op.lv,
+        "a",
+        resolve_origin(oplog_a, op.origin_left),
+        resolve_origin(oplog_a, op.origin_right),
+        i,
+        "agent_a",
+      )
+      ops_a.push(op)
       prev_a = op.lv
+    }
+
+    for op in ops_a {
+      ignore(oplog_b.apply_remote(op))
     }
 
     // Agent B: 25 deletes of A's characters
     let ops_from_b = []
     for i = 0; i < 25; i = i + 1 {
-      let op = oplog_b.delete(lvs_a[i * 2])
+      let raw = @causal_graph.RawVersion::new(
+        ops_a[i * 2].agent,
+        ops_a[i * 2].seq,
+      )
+      let target_lv = match oplog_b.graph.raw_to_lv(raw) {
+        Some(lv) => lv
+        None => continue
+      }
+      let op = oplog_b.delete(target_lv)
       ops_from_b.push(op)
     }
 
@@ -178,7 +239,14 @@ test "merge - graph_diff advance (20 ops)" (b : @bench.T) {
     let mut prev = -1
     for i = 0; i < 50; i = i + 1 {
       let op = oplog.insert("a", prev, -1)
-      tree.insert(op.lv, "a", op.origin_left, op.origin_right, i, "agent_a")
+      tree.insert(
+        op.lv,
+        "a",
+        resolve_origin(oplog, op.origin_left),
+        resolve_origin(oplog, op.origin_right),
+        i,
+        "agent_a",
+      )
       prev = op.lv
     }
     let from_frontier = oplog.get_frontier()
@@ -189,8 +257,8 @@ test "merge - graph_diff advance (20 ops)" (b : @bench.T) {
       tree.insert(
         op.lv,
         "b",
-        op.origin_left,
-        op.origin_right,
+        resolve_origin(oplog, op.origin_left),
+        resolve_origin(oplog, op.origin_right),
         i + 50,
         "agent_a",
       )
@@ -209,12 +277,13 @@ test "merge - graph_diff advance (20 ops)" (b : @bench.T) {
               tree2.insert(
                 op.lv,
                 text,
-                op.origin_left,
-                op.origin_right,
+                resolve_origin(oplog, op.origin_left),
+                resolve_origin(oplog, op.origin_right),
                 i,
                 "agent_a",
               )
-            @oplog.Delete => tree2.delete(op.origin_left)
+            @oplog.Delete =>
+              tree2.delete(resolve_origin(oplog, op.origin_left))
           }
         None => ()
       }
@@ -236,7 +305,14 @@ test "merge - repeated small (10 iterations x 5 ops)" (b : @bench.T) {
     let mut prev_a = -1
     for i = 0; i < 20; i = i + 1 {
       let op = oplog_a.insert("a", prev_a, -1)
-      tree.insert(op.lv, "a", op.origin_left, op.origin_right, i, "agent_a")
+      tree.insert(
+        op.lv,
+        "a",
+        resolve_origin(oplog_a, op.origin_left),
+        resolve_origin(oplog_a, op.origin_right),
+        i,
+        "agent_a",
+      )
       prev_a = op.lv
     }
 

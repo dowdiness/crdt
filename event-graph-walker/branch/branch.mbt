@@ -207,76 +207,9 @@ pub fn Branch::merge_remote_ops(
   self : Branch,
   remote_ops : Array[@oplog.Op],
 ) -> Branch {
-  // Build a mapping from remote LVs to local LVs as we add operations
-  let mut lv_map : @immut/hashmap.HashMap[Int, Int] = @immut/hashmap.new()
-
-  // Add remote operations to oplog with LV translation
+  // Add remote operations to oplog (buffering if parents are missing)
   for remote_op in remote_ops {
-    // Check if we already have this operation (agent, seq)
-    let raw_version = @causal_graph.RawVersion::new(
-      remote_op.agent,
-      remote_op.seq,
-    )
-    match self.oplog.graph.raw_to_lv(raw_version) {
-      Some(existing_lv) => {
-        // We already have this operation, just record the LV mapping and skip
-        lv_map = lv_map.add(remote_op.lv, existing_lv)
-        continue
-      }
-      None => () // New operation, proceed to add it
-    }
-
-    // Translate origin_left and origin_right from remote LV space to local LV space
-    let local_origin_left = if remote_op.origin_left == -1 {
-      -1
-    } else {
-      match lv_map.get(remote_op.origin_left) {
-        Some(local_lv) => local_lv
-        None => remote_op.origin_left // Fallback: use as-is
-      }
-    }
-    let local_origin_right = if remote_op.origin_right == -1 {
-      -1
-    } else {
-      match lv_map.get(remote_op.origin_right) {
-        Some(local_lv) => local_lv
-        None => remote_op.origin_right // Fallback: use as-is
-      }
-    }
-
-    // Add version to graph
-    let local_lv = self.oplog.graph.add_version(
-      remote_op.parents,
-      remote_op.agent,
-    )
-
-    // Create operation with translated origins and local LV
-    let local_op = match remote_op.content {
-      @oplog.Insert(text) =>
-        @oplog.Op::new_insert(
-          local_lv,
-          remote_op.parents,
-          remote_op.agent,
-          remote_op.seq,
-          text,
-          local_origin_left,
-          local_origin_right,
-        )
-      @oplog.Delete =>
-        @oplog.Op::new_delete(
-          local_lv,
-          remote_op.parents,
-          remote_op.agent,
-          remote_op.seq,
-          local_origin_left,
-        )
-    }
-
-    // Add to operations
-    self.oplog.add_op(local_op)
-
-    // Record the mapping from remote LV to local LV
-    lv_map = lv_map.add(remote_op.lv, local_lv)
+    ignore(self.oplog.apply_remote(remote_op))
   }
 
   // Get the new frontier after adding remote ops
@@ -297,6 +230,22 @@ fn apply_operation_to_tree(
   op : @oplog.Op,
   oplog : @oplog.OpLog,
 ) -> Unit {
+  let origin_left = match op.origin_left {
+    None => -1
+    Some(raw) =>
+      match oplog.graph.raw_to_lv(raw) {
+        Some(lv) => lv
+        None => -1
+      }
+  }
+  let origin_right = match op.origin_right {
+    None => -1
+    Some(raw) =>
+      match oplog.graph.raw_to_lv(raw) {
+        Some(lv) => lv
+        None => -1
+      }
+  }
   match op.content {
     @oplog.Insert(text) => {
       // Get Lamport timestamp and agent from causal graph
@@ -309,14 +258,16 @@ fn apply_operation_to_tree(
       tree.insert(
         op.lv,
         text,
-        op.origin_left,
-        op.origin_right,
+        origin_left,
+        origin_right,
         timestamp,
         agent,
       )
     }
     @oplog.Delete =>
-      // Mark item as deleted
-      tree.delete(op.origin_left)
+      if origin_left != -1 {
+        // Mark item as deleted
+        tree.delete(origin_left)
+      }
   }
 }

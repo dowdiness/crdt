@@ -52,6 +52,9 @@ pub struct OpLog {
 }
 ```
 
+**Note:** Operations should carry globally stable IDs (RawVersion) for
+parents and FugueMax anchors; OpLog maps those IDs to local LVs on receipt.
+
 #### CausalGraph
 Tracks causality between operations using parents and version information.
 
@@ -96,7 +99,9 @@ The core algorithm that traverses the operation graph in topological (causal) or
 - `OpLog::walk_and_collect(frontier)` - Collects actual operations at a frontier
 - `OpLog::diff_and_collect(from, to)` - Computes diff between two frontiers
 
-Uses **Kahn's algorithm** for topological sorting, ensuring operations are replayed in order that respects causal dependencies.
+Uses topological sorting that preserves causal order without reordering by
+local LV; the paper suggests a DFS-based ordering that keeps branches
+consecutive when possible.
 
 ### 2. Branch System
 **Location:** `branch/branch.mbt`
@@ -189,6 +194,10 @@ let old_branch = @branch.Branch::checkout(doc.oplog, previous_frontier)
 // Advance to new frontier
 let new_branch = branch.advance(target_frontier)
 ```
+
+**Remote ops:** When applying remote operations, buffer ops whose parents
+are missing until all parent RawVersions are present, then map RawVersion
+parents and anchors to local LVs before inserting into the causal graph.
 
 ## Key Features
 

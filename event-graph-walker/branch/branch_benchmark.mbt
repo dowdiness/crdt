@@ -131,7 +131,7 @@ test "branch - checkout with concurrent branches" (b : @bench.T) {
     let op = oplog_b.insert("b", prev_b, -1)
     prev_b = op.lv
     // Apply to oplog_a
-    oplog_a.apply_remote(op)
+    ignore(oplog_a.apply_remote(op))
   }
   let frontier = oplog_a.get_frontier()
   b.bench(fn() {

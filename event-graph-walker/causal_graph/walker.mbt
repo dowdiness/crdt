@@ -134,12 +134,17 @@ fn topological_sort(
   // Queue for versions with in-degree 0 (no dependencies)
   let queue = @queue.Queue::new()
 
-  // Find initial versions with in-degree 0
+  // Find initial versions with in-degree 0, enqueue in deterministic order
+  let ready : Array[Int] = []
   for lv in versions.iter() {
     match in_degree.get(lv) {
-      Some(0) | None => queue.push(lv)
+      Some(0) | None => ready.push(lv)
       _ => ()
     }
+  }
+  ready.sort()
+  for lv in ready {
+    queue.push(lv)
   }
 
   // Result array
@@ -154,8 +159,10 @@ fn topological_sort(
 
         // Look up children directly from map (O(1) instead of O(n))
         match children.get(current) {
-          Some(child_list) =>
-            for child in child_list {
+          Some(child_list) => {
+            let sorted_children = child_list.copy()
+            sorted_children.sort()
+            for child in sorted_children {
               // Decrement in-degree
               match in_degree.get(child) {
                 Some(degree) => {
@@ -170,6 +177,7 @@ fn topological_sort(
                 None => ()
               }
             }
+          }
           None => () // No children, continue
         }
       }
@@ -177,9 +185,6 @@ fn topological_sort(
     }
   }
 
-  // Sort result by LV to ensure deterministic order for concurrent operations
-  // (operations with the same dependencies should have consistent ordering)
-  result.sort()
   result
 }
 

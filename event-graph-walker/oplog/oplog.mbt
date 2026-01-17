@@ -4,6 +4,7 @@
 /// OpLog - stores operations with causal graph
 pub struct OpLog {
   mut operations : Array[Op] // All operations in LV order
+  mut pending : Array[Op] // Remote ops waiting for missing parents
   graph : @causal_graph.CausalGraph // The causal graph
   agent_id : String // This agent's ID
 } derive(Show)
@@ -11,7 +12,12 @@ pub struct OpLog {
 ///|
 /// Create a new OpLog
 pub fn OpLog::new(agent_id : String) -> OpLog {
-  { operations: [], graph: @causal_graph.CausalGraph::new(), agent_id }
+  {
+    operations: [],
+    pending: [],
+    graph: @causal_graph.CausalGraph::new(),
+    agent_id,
+  }
 }
 
 ///|
@@ -31,6 +37,13 @@ pub fn OpLog::insert(
   origin_right : Int,
 ) -> Op {
   let parents = self.graph.get_frontier()
+  let parents_raw : Array[@causal_graph.RawVersion] = []
+  for lv in parents {
+    match self.graph.lv_to_raw(lv) {
+      Some(raw) => parents_raw.push(raw)
+      None => () // Should not happen for local ops; skip to avoid raising.
+    }
+  }
   let lv = self.graph.add_version(parents, self.agent_id)
 
   // Get the seq for this operation from the graph
@@ -38,14 +51,16 @@ pub fn OpLog::insert(
     Some(raw) => raw.seq
     None => 0 // Shouldn't happen, but fallback to 0
   }
+  let origin_left_raw = self.raw_from_lv(origin_left)
+  let origin_right_raw = self.raw_from_lv(origin_right)
   let op = Op::new_insert(
     lv,
-    parents,
+    parents_raw,
     self.agent_id,
     seq,
     text,
-    origin_left,
-    origin_right,
+    origin_left_raw,
+    origin_right_raw,
   )
   self.add_op(op)
   op
@@ -55,6 +70,13 @@ pub fn OpLog::insert(
 /// Create and add a delete operation
 pub fn OpLog::delete(self : OpLog, origin_left : Int) -> Op {
   let parents = self.graph.get_frontier()
+  let parents_raw : Array[@causal_graph.RawVersion] = []
+  for lv in parents {
+    match self.graph.lv_to_raw(lv) {
+      Some(raw) => parents_raw.push(raw)
+      None => () // Should not happen for local ops; skip to avoid raising.
+    }
+  }
   let lv = self.graph.add_version(parents, self.agent_id)
 
   // Get the seq for this operation from the graph
@@ -62,7 +84,8 @@ pub fn OpLog::delete(self : OpLog, origin_left : Int) -> Op {
     Some(raw) => raw.seq
     None => 0 // Shouldn't happen, but fallback to 0
   }
-  let op = Op::new_delete(lv, parents, self.agent_id, seq, origin_left)
+  let origin_left_raw = self.raw_from_lv(origin_left)
+  let op = Op::new_delete(lv, parents_raw, self.agent_id, seq, origin_left_raw)
   self.add_op(op)
   op
 }
@@ -97,12 +120,70 @@ pub fn OpLog::get_frontier(self : OpLog) -> Array[Int] {
 
 ///|
 /// Apply a remote operation
-pub fn OpLog::apply_remote(self : OpLog, op : Op) -> Unit {
-  // Add version to graph using the operation's actual agent
-  // This assigns a local LV that may differ from the sender's LV
-  let local_lv = self.graph.add_version(op.parents, op.agent)
+pub fn OpLog::apply_remote(self : OpLog, op : Op) -> Array[Op] {
+  let pending = self.pending
+  pending.push(op)
+  self.pending = pending
+  self.drain_pending()
+}
 
-  // Create a new operation with the local LV
+///|
+/// Convert LV to RawVersion? with sentinel handling
+fn OpLog::raw_from_lv(self : OpLog, lv : Int) -> @causal_graph.RawVersion? {
+  if lv == -1 {
+    None
+  } else {
+    self.graph.lv_to_raw(lv)
+  }
+}
+
+///|
+/// Convert RawVersion? to LV, returning None if missing
+fn OpLog::lv_from_raw(self : OpLog, raw : @causal_graph.RawVersion?) -> Int? {
+  match raw {
+    None => Some(-1)
+    Some(rv) => self.graph.raw_to_lv(rv)
+  }
+}
+
+///|
+/// Try to add a remote op; returns (keep_pending, local_op)
+fn OpLog::try_apply_remote(self : OpLog, op : Op) -> (Bool, Op?) {
+  let raw = @causal_graph.RawVersion::new(op.agent, op.seq)
+  match self.graph.raw_to_lv(raw) {
+    Some(_) => return (false, None)
+    None => ()
+  }
+
+  let local_parents : Array[Int] = []
+  for parent in op.parents {
+    match self.graph.raw_to_lv(parent) {
+      Some(lv) => local_parents.push(lv)
+      None => return (true, None)
+    }
+  }
+
+  let local_origin_left = match self.lv_from_raw(op.origin_left) {
+    Some(lv) => lv
+    None => return (true, None)
+  }
+  let local_origin_right = match self.lv_from_raw(op.origin_right) {
+    Some(lv) => lv
+    None => return (true, None)
+  }
+  ignore(local_origin_left)
+  ignore(local_origin_right)
+
+  if op.content is Delete && op.origin_left is None {
+    return (false, None)
+  }
+
+  let local_lv = self.graph.add_version_with_seq(
+    local_parents,
+    op.agent,
+    op.seq,
+  )
+
   let local_op = match op.content {
     Insert(text) =>
       Op::new_insert(
@@ -118,6 +199,35 @@ pub fn OpLog::apply_remote(self : OpLog, op : Op) -> Unit {
       Op::new_delete(local_lv, op.parents, op.agent, op.seq, op.origin_left)
   }
 
-  // Add operation
   self.add_op(local_op)
+  (false, Some(local_op))
+}
+
+///|
+/// Drain pending operations that now have all dependencies
+fn OpLog::drain_pending(self : OpLog) -> Array[Op] {
+  let applied : Array[Op] = []
+  let mut pending = self.pending
+  let mut progress = true
+  while progress {
+    progress = false
+    let remaining : Array[Op] = []
+    for op in pending {
+      let (keep_pending, local_op) = self.try_apply_remote(op)
+      if keep_pending {
+        remaining.push(op)
+      } else {
+        match local_op {
+          Some(applied_op) => {
+            applied.push(applied_op)
+            progress = true
+          }
+          None => ()
+        }
+      }
+    }
+    pending = remaining
+  }
+  self.pending = pending
+  applied
 }

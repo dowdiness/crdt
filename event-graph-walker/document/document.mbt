@@ -159,27 +159,49 @@ pub fn Document::delete(self : Document, position : Int) -> @oplog.Op? {
 ///|
 /// Apply a remote operation to this document
 pub fn Document::apply_remote(self : Document, op : @oplog.Op) -> Unit {
-  // Add to oplog
-  self.oplog.apply_remote(op)
+  // Add to oplog (buffering if parents are missing)
+  let applied_ops = self.oplog.apply_remote(op)
 
-  // Apply to tree based on operation type
-  match op.content {
-    @oplog.Insert(text) => {
-      // Get Lamport timestamp and agent from causal graph for proper ordering
-      let (timestamp, agent) = match self.oplog.graph.get_entry(op.lv) {
-        Some(entry) => (entry.lamport, entry.agent)
-        None => (0, "unknown") // Fallback
-      }
-      self.tree.insert(
-        op.lv,
-        text,
-        op.origin_left,
-        op.origin_right,
-        timestamp,
-        agent,
-      )
+  // Apply any newly-resolved operations to the tree
+  for applied in applied_ops {
+    let origin_left = match applied.origin_left {
+      None => -1
+      Some(raw) =>
+        match self.oplog.graph.raw_to_lv(raw) {
+          Some(lv) => lv
+          None => -1
+        }
     }
-    @oplog.Delete => self.tree.delete(op.origin_left)
+    let origin_right = match applied.origin_right {
+      None => -1
+      Some(raw) =>
+        match self.oplog.graph.raw_to_lv(raw) {
+          Some(lv) => lv
+          None => -1
+        }
+    }
+
+    match applied.content {
+      @oplog.Insert(text) => {
+        // Get Lamport timestamp and agent from causal graph for proper ordering
+        let (timestamp, agent) = match self.oplog.graph.get_entry(applied.lv) {
+          Some(entry) => (entry.lamport, entry.agent)
+          None => (0, "unknown") // Fallback
+        }
+        self.tree.insert(
+          applied.lv,
+          text,
+          origin_left,
+          origin_right,
+          timestamp,
+          agent,
+        )
+      }
+      @oplog.Delete =>
+        if origin_left != -1 {
+          self.tree.delete(origin_left)
+        }
+    }
   }
 }
 

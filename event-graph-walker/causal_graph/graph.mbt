@@ -99,6 +99,51 @@ pub fn CausalGraph::add_version(
 }
 
 ///|
+/// Add a new version with an explicit sequence number
+pub fn CausalGraph::add_version_with_seq(
+  self : CausalGraph,
+  parents : Frontier,
+  agent : String,
+  seq : Int,
+) -> Int {
+  // Calculate Lamport timestamp (max of parents + 1)
+  let lamport = if parents.is_empty() {
+    0
+  } else {
+    let max_parent_lamport = parents
+      .iter()
+      .map(fn(lv) {
+        match self.entries.get(lv) {
+          Some(entry) => entry.lamport
+          None => 0
+        }
+      })
+      .fold(fn(max, curr) { if curr > max { curr } else { max } }, init=0)
+    max_parent_lamport + 1
+  }
+
+  // Create entry
+  let lv = self.next_lv
+  let entry = { parents, agent, seq, lamport }
+
+  // Update graph
+  self.entries = self.entries.add(lv, entry)
+  self.version_map = self.version_map.add(RawVersion::new(agent, seq), lv)
+  self.next_lv = lv + 1
+
+  let current_seq = match self.agent_seqs.get(agent) {
+    Some(s) => s
+    None => -1
+  }
+  let next_seq = if seq > current_seq { seq } else { current_seq }
+  self.agent_seqs = self.agent_seqs.add(agent, next_seq)
+
+  // Update frontier
+  self.update_frontier(lv, parents)
+  lv
+}
+
+///|
 /// Update frontier after adding a version
 fn CausalGraph::update_frontier(
   self : CausalGraph,

@@ -19,7 +19,7 @@ pub type AgentId = String
 pub struct RawVersion {
   agent : String
   seq : Int
-} derive(Eq, Compare, Show)
+} derive(Eq, Compare, Show, ToJson, FromJson)
 
 ///|
 /// Create a new RawVersion

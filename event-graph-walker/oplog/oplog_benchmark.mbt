@@ -68,7 +68,7 @@ test "oplog - apply_remote (50 ops)" (b : @bench.T) {
   b.bench(fn() {
     let oplog = OpLog::new("agent_a")
     for op in remote_ops {
-      oplog.apply_remote(op)
+      ignore(oplog.apply_remote(op))
     }
     b.keep(oplog)
   })
@@ -119,7 +119,7 @@ test "oplog - get_frontier (5 agents)" (b : @bench.T) {
     let mut prev = -1
     for i = 0; i < 20; i = i + 1 {
       let op = remote_oplog.insert(agent, prev, -1)
-      oplog.apply_remote(op)
+      ignore(oplog.apply_remote(op))
       prev = op.lv
     }
   }
@@ -155,14 +155,14 @@ test "oplog - walk_and_collect (concurrent)" (b : @bench.T) {
   let mut prev_a = -1
   for i = 0; i < 50; i = i + 1 {
     let op = oplog_a.insert("a", prev_a, -1)
-    oplog.apply_remote(op)
+    ignore(oplog.apply_remote(op))
     prev_a = op.lv
   }
   let oplog_b = OpLog::new("agent_b")
   let mut prev_b = -1
   for i = 0; i < 50; i = i + 1 {
     let op = oplog_b.insert("b", prev_b, -1)
-    oplog.apply_remote(op)
+    ignore(oplog.apply_remote(op))
     prev_b = op.lv
   }
   let frontier = oplog.get_frontier()
