@@ -58,7 +58,7 @@ pub fn MergeContext::apply_operations(
             }
             // Get Lamport timestamp and agent from causal graph for proper ordering
             let (timestamp, agent) = match self.oplog.graph.get_entry(op.lv) {
-              Some(entry) => (entry.lamport, entry.agent)
+              Some(entry) => (entry.timestamp, entry.agent)
               None => (0, "unknown") // Fallback
             }
 

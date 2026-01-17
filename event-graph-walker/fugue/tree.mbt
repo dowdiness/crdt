@@ -1,4 +1,6 @@
 ///| FugueMax tree implementation
+//  maximal non-interleaving list
+// https://arxiv.org/abs/2305.00583
 
 ///|
 /// FugueTree - maintains ordered sequence with CRDT properties
@@ -9,8 +11,27 @@ pub struct FugueTree {
 } derive(Show)
 
 ///|
-/// Create a new empty FugueTree
-pub fn FugueTree::new() -> FugueTree {
+/// Creates a default empty FugueTree with a virtual root node.
+///
+/// Returns a new `FugueTree` instance initialized with:
+///
+/// * An empty immutable hashmap containing only the virtual root item
+/// * A root ID set to -1 (representing the virtual start of the sequence)
+/// * A length of 0 (no actual content items)
+///
+/// The virtual root item serves as the anchor point for the tree structure and
+/// has ID -1, empty content, no parent, Left side orientation, timestamp 0, and
+/// agent "root".
+///
+/// Example:
+///
+/// ```moonbit
+/// let tree = FugueTree::default()
+/// inspect(tree.visible_count(), content="0")
+/// inspect(tree.to_text(), content="")
+/// ```
+///
+impl Default for FugueTree with default() -> FugueTree {
   let root_item = Item::new(-1, "", -1, Left, 0, "root") // Virtual root
   let mut items = @immut/hashmap.new()
   items = items.add(-1, root_item)
@@ -18,8 +39,15 @@ pub fn FugueTree::new() -> FugueTree {
 }
 
 ///|
+/// Create a new empty FugueTree
+pub fn FugueTree::new() -> FugueTree {
+  FugueTree::default()
+}
+
+///|
 /// Get item by ID
-pub fn FugueTree::get_item(self : FugueTree, id : Int) -> Item? {
+#alias("_[_]")
+pub fn FugueTree::get(self : FugueTree, id : Int) -> Item? {
   self.items.get(id)
 }
 
@@ -73,7 +101,7 @@ fn FugueTree::traverse_tree(
 
   // Visit current node (if not root and visible)
   if node_id != -1 {
-    match self.get_item(node_id) {
+    match self[node_id] {
       Some(item) => if item.is_visible() { result.push((node_id, item)) }
       None => ()
     }
@@ -84,7 +112,7 @@ fn FugueTree::traverse_tree(
   sorted_right.sort_by(compare_children)
   sorted_right
   .iter()
-  .each(fn(child) {
+  .each(child => {
     let (child_id, _) = child
     // Don't traverse back to parent (prevents cycles)
     if child_id != node_id {
@@ -156,7 +184,7 @@ pub fn FugueTree::visible_count(self : FugueTree) -> Int {
 pub fn FugueTree::to_text(self : FugueTree) -> String {
   self
   .get_visible_items()
-  .fold(init="", fn(acc, entry) {
+  .fold(init="", (acc, entry) => {
     let (_, item) = entry
     acc + item.content
   })
@@ -200,7 +228,7 @@ pub fn FugueTree::is_ancestor(
   if ancestor_id == descendant_id {
     return true
   }
-  loop self.get_item(descendant_id) {
+  loop self[descendant_id] {
     Some(item) => {
       if item.parent == ancestor_id {
         return true
@@ -208,7 +236,7 @@ pub fn FugueTree::is_ancestor(
       if item.parent == -1 {
         return false // Reached root without finding ancestor
       }
-      continue self.get_item(item.parent)
+      continue self[item.parent]
     }
     None => break false
   }
@@ -238,7 +266,7 @@ pub fn FugueTree::insert(
 ///|
 /// Delete an item (mark as deleted)
 pub fn FugueTree::delete(self : FugueTree, id : Int) -> Unit raise FugueError {
-  match self.get_item(id) {
+  match self[id] {
     Some(item) => {
       let deleted_item = item.mark_deleted()
       self.items = self.items.add(id, deleted_item)

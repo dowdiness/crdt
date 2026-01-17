@@ -32,6 +32,7 @@ test "delete item" {
   tree.insert(0, "A", -1, -1, 0, "agent0")
   tree.insert(1, "B", 0, -1, 1, "agent0")
   tree.insert(2, "C", 1, -1, 2, "agent0")
+  inspect(tree.visible_count(), content="3")
   try! tree.delete(1) // Delete "B"
   inspect(tree.visible_count(), content="2")
   inspect(
@@ -45,7 +46,7 @@ test "delete item" {
 test "get item by id" {
   let tree = FugueTree::new()
   tree.insert(0, "A", -1, -1, 0, "agent0")
-  match tree.get_item(0) {
+  match tree[0] {
     Some(item) => {
       inspect(item.content, content="A")
       inspect(item.deleted, content="false")

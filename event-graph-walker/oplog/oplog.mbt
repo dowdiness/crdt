@@ -132,7 +132,7 @@ pub fn OpLog::get_frontier_raw(
   for lv in frontier {
     match self.graph.lv_to_raw(lv) {
       Some(raw) => result.push(raw)
-      None => raise OpLogError::MissingLocalVersion(lv=lv)
+      None => raise OpLogError::MissingLocalVersion(lv~)
     }
   }
   result
@@ -145,13 +145,11 @@ pub fn OpLog::validate_remote_batch(
   remote_ops : Array[Op],
   remote_frontier : Array[@causal_graph.RawVersion],
 ) -> Unit raise OpLogError {
-  let mut batch : @immut/hashset.HashSet[@causal_graph.RawVersion] =
-    @immut/hashset.new()
+  let mut batch : @immut/hashset.HashSet[@causal_graph.RawVersion] = @immut/hashset.new()
   for op in remote_ops {
     let raw = @causal_graph.RawVersion::new(op.agent, op.seq)
     batch = batch.add(raw)
   }
-
   for op in remote_ops {
     for parent in op.parents {
       if self.graph.raw_to_lv(parent) is None && not(batch.contains(parent)) {
@@ -159,10 +157,9 @@ pub fn OpLog::validate_remote_batch(
       }
     }
   }
-
   for raw in remote_frontier {
     if self.graph.raw_to_lv(raw) is None && not(batch.contains(raw)) {
-      raise OpLogError::MissingRemoteFrontier(raw=raw)
+      raise OpLogError::MissingRemoteFrontier(raw~)
     }
   }
 }

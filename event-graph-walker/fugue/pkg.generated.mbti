@@ -21,8 +21,9 @@ pub struct FugueTree {
 pub fn FugueTree::add_item(Self, Item) -> Unit
 pub fn FugueTree::delete(Self, Int) -> Unit raise FugueError
 pub fn FugueTree::find_parent_and_side(Self, Int, Int) -> (Int, Side)
+#alias("_[_]")
+pub fn FugueTree::get(Self, Int) -> Item?
 pub fn FugueTree::get_all_items(Self) -> Array[(Int, Item)]
-pub fn FugueTree::get_item(Self, Int) -> Item?
 pub fn FugueTree::get_visible_items(Self) -> Array[(Int, Item)]
 pub fn FugueTree::insert(Self, Int, String, Int, Int, Int, String) -> Unit
 pub fn FugueTree::is_ancestor(Self, Int, Int) -> Bool
@@ -43,7 +44,6 @@ pub struct Item {
 pub fn Item::is_visible(Self) -> Bool
 pub fn Item::mark_deleted(Self) -> Self
 pub fn Item::new(Int, String, Int, Side, Int, String) -> Self
-pub fn Item::new_deleted(Int, String, Int, Side, Int, String) -> Self
 pub impl Show for Item
 
 pub enum Side {

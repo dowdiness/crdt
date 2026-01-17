@@ -8,7 +8,7 @@ pub struct GraphEntry {
   parents : Array[Int] // Causal dependencies (LVs)
   agent : String // Agent that created this operation
   seq : Int // Sequence number for this agent
-  lamport : Int // Lamport timestamp for total ordering
+  timestamp : Int // Lamport timestamp for total ordering
 } derive(Show)
 
 ///|
@@ -67,21 +67,21 @@ pub fn CausalGraph::add_version(
     }
   }
   // Calculate Lamport timestamp (max of parents + 1)
-  let lamport = if parents.is_empty() {
+  let timestamp = if parents.is_empty() {
     0
   } else {
-    let max_parent_lamport = parents
+    let max_parent_timestamp = parents
       .iter()
       .map(fn(lv) {
         match self.entries.get(lv) {
-          Some(entry) => entry.lamport
+          Some(entry) => entry.timestamp
           // Logically unreachable: parent validation above ensures all parents exist.
           // Default to 0 as defensive fallback.
           None => 0
         }
       })
       .fold(fn(max, curr) { if curr > max { curr } else { max } }, init=0)
-    max_parent_lamport + 1
+    max_parent_timestamp + 1
   }
 
   // Get next sequence for this agent
@@ -92,7 +92,7 @@ pub fn CausalGraph::add_version(
 
   // Create entry
   let lv = self.next_lv
-  let entry = { parents, agent, seq, lamport }
+  let entry = { parents, agent, seq, timestamp }
 
   // Update graph
   self.entries = self.entries.add(lv, entry)
@@ -119,26 +119,24 @@ pub fn CausalGraph::add_version_with_seq(
     }
   }
   // Calculate Lamport timestamp (max of parents + 1)
-  let lamport = if parents.is_empty() {
+  let timestamp = if parents.is_empty() {
     0
   } else {
-    let max_parent_lamport = parents
+    let max_parent_timestamp = parents
       .iter()
-      .map(fn(lv) {
-        match self.entries.get(lv) {
-          Some(entry) => entry.lamport
-          // Logically unreachable: parent validation above ensures all parents exist.
-          // Default to 0 as defensive fallback.
-          None => 0
-        }
+      .map(lv => match self.entries.get(lv) {
+        Some(entry) => entry.timestamp
+        // Logically unreachable: parent validation above ensures all parents exist.
+        // Default to 0 as defensive fallback.
+        None => 0
       })
-      .fold(fn(max, curr) { if curr > max { curr } else { max } }, init=0)
-    max_parent_lamport + 1
+      .fold((max, curr) => if curr > max { curr } else { max }, init=0)
+    max_parent_timestamp + 1
   }
 
   // Create entry
   let lv = self.next_lv
-  let entry = { parents, agent, seq, lamport }
+  let entry = { parents, agent, seq, timestamp }
 
   // Update graph
   self.entries = self.entries.add(lv, entry)

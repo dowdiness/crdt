@@ -33,19 +33,6 @@ pub fn Item::new(
 }
 
 ///|
-/// Create a deleted item
-pub fn Item::new_deleted(
-  id : Int,
-  content : String,
-  parent : Int,
-  side : Side,
-  timestamp : Int,
-  agent : String,
-) -> Item {
-  { id, content, parent, side, deleted: true, timestamp, agent }
-}
-
-///|
 /// Mark item as deleted
 pub fn Item::mark_deleted(self : Item) -> Item {
   { ..self, deleted: true }

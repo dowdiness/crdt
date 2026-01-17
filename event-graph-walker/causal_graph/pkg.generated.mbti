@@ -41,7 +41,7 @@ pub struct GraphEntry {
   parents : Array[Int]
   agent : String
   seq : Int
-  lamport : Int
+  timestamp : Int
 }
 pub impl Show for GraphEntry
 
