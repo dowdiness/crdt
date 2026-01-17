@@ -100,7 +100,7 @@ fn execute_command(state : ReplState, line : String) -> Bool {
       for i = 2; i < parts.length(); i = i + 1 {
         text = text + " " + parts[i]
       }
-      state.editor.insert(text)
+      try! state.editor.insert(text)
       println("Inserted: \"\{text}\"")
     }
     return true

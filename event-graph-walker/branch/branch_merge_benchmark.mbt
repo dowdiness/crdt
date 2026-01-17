@@ -1,10 +1,8 @@
 // Benchmarks for merge algorithm performance
 // Run with: moon bench --package branch --release
 
-fn resolve_origin(
-  oplog : @oplog.OpLog,
-  raw : @causal_graph.RawVersion?,
-) -> Int {
+///|
+fn resolve_origin(oplog : @oplog.OpLog, raw : @causal_graph.RawVersion?) -> Int {
   match raw {
     None => -1
     Some(rv) =>
@@ -26,7 +24,7 @@ test "merge - concurrent edits (2 agents x 10)" (b : @bench.T) {
     // Agent A inserts 10 characters
     let mut prev_a = -1
     for i = 0; i < 10; i = i + 1 {
-      let op = oplog_a.insert("a", prev_a, -1)
+      let op = try! oplog_a.insert("a", prev_a, -1)
       tree_a.insert(
         op.lv,
         "a",
@@ -42,13 +40,13 @@ test "merge - concurrent edits (2 agents x 10)" (b : @bench.T) {
     let mut prev_b = -1
     let ops_from_b = []
     for i = 0; i < 10; i = i + 1 {
-      let op = oplog_b.insert("b", prev_b, -1)
+      let op = try! oplog_b.insert("b", prev_b, -1)
       ops_from_b.push(op)
       prev_b = op.lv
     }
 
     // Merge B's operations into A
-    merge_remote_ops(tree_a, oplog_a, ops_from_b)
+    try! merge_remote_ops(tree_a, oplog_a, ops_from_b)
     b.keep(tree_a)
   })
 }
@@ -64,7 +62,7 @@ test "merge - concurrent edits (2 agents x 50)" (b : @bench.T) {
     // Agent A inserts 50 characters
     let mut prev_a = -1
     for i = 0; i < 50; i = i + 1 {
-      let op = oplog_a.insert("a", prev_a, -1)
+      let op = try! oplog_a.insert("a", prev_a, -1)
       tree_a.insert(
         op.lv,
         "a",
@@ -80,13 +78,13 @@ test "merge - concurrent edits (2 agents x 50)" (b : @bench.T) {
     let mut prev_b = -1
     let ops_from_b = []
     for i = 0; i < 50; i = i + 1 {
-      let op = oplog_b.insert("b", prev_b, -1)
+      let op = try! oplog_b.insert("b", prev_b, -1)
       ops_from_b.push(op)
       prev_b = op.lv
     }
 
     // Merge B's operations into A
-    merge_remote_ops(tree_a, oplog_a, ops_from_b)
+    try! merge_remote_ops(tree_a, oplog_a, ops_from_b)
     b.keep(tree_a)
   })
 }
@@ -102,7 +100,7 @@ test "merge - concurrent edits (2 agents x 200)" (b : @bench.T) {
     // Agent A inserts 200 characters
     let mut prev_a = -1
     for i = 0; i < 200; i = i + 1 {
-      let op = oplog_a.insert("a", prev_a, -1)
+      let op = try! oplog_a.insert("a", prev_a, -1)
       tree_a.insert(
         op.lv,
         "a",
@@ -118,13 +116,13 @@ test "merge - concurrent edits (2 agents x 200)" (b : @bench.T) {
     let mut prev_b = -1
     let ops_from_b = []
     for i = 0; i < 200; i = i + 1 {
-      let op = oplog_b.insert("b", prev_b, -1)
+      let op = try! oplog_b.insert("b", prev_b, -1)
       ops_from_b.push(op)
       prev_b = op.lv
     }
 
     // Merge B's operations into A
-    merge_remote_ops(tree_a, oplog_a, ops_from_b)
+    try! merge_remote_ops(tree_a, oplog_a, ops_from_b)
     b.keep(tree_a)
   })
 }
@@ -139,7 +137,7 @@ test "merge - many agents (5 agents x 20)" (b : @bench.T) {
     // Main agent: 20 operations
     let mut prev = -1
     for i = 0; i < 20; i = i + 1 {
-      let op = oplog_main.insert("m", prev, -1)
+      let op = try! oplog_main.insert("m", prev, -1)
       tree.insert(
         op.lv,
         "m",
@@ -168,11 +166,11 @@ test "merge - many agents (5 agents x 20)" (b : @bench.T) {
         } else {
           "d"
         }
-        let op = oplog_remote.insert(ch, prev_remote, -1)
+        let op = try! oplog_remote.insert(ch, prev_remote, -1)
         ops.push(op)
         prev_remote = op.lv
       }
-      merge_remote_ops(tree, oplog_main, ops)
+      try! merge_remote_ops(tree, oplog_main, ops)
     }
     b.keep(tree)
   })
@@ -190,7 +188,7 @@ test "merge - with deletes (50 inserts, 25 deletes)" (b : @bench.T) {
     let mut prev_a = -1
     let ops_a : Array[@oplog.Op] = []
     for i = 0; i < 50; i = i + 1 {
-      let op = oplog_a.insert("a", prev_a, -1)
+      let op = try! oplog_a.insert("a", prev_a, -1)
       tree_a.insert(
         op.lv,
         "a",
@@ -202,9 +200,8 @@ test "merge - with deletes (50 inserts, 25 deletes)" (b : @bench.T) {
       ops_a.push(op)
       prev_a = op.lv
     }
-
     for op in ops_a {
-      ignore(oplog_b.apply_remote(op))
+      ignore(try! oplog_b.apply_remote(op))
     }
 
     // Agent B: 25 deletes of A's characters
@@ -218,12 +215,12 @@ test "merge - with deletes (50 inserts, 25 deletes)" (b : @bench.T) {
         Some(lv) => lv
         None => continue
       }
-      let op = oplog_b.delete(target_lv)
+      let op = try! oplog_b.delete(target_lv)
       ops_from_b.push(op)
     }
 
     // Merge B's deletes into A
-    merge_remote_ops(tree_a, oplog_a, ops_from_b)
+    try! merge_remote_ops(tree_a, oplog_a, ops_from_b)
     b.keep(tree_a)
   })
 }
@@ -238,7 +235,7 @@ test "merge - graph_diff advance (20 ops)" (b : @bench.T) {
     // Build base: 50 operations
     let mut prev = -1
     for i = 0; i < 50; i = i + 1 {
-      let op = oplog.insert("a", prev, -1)
+      let op = try! oplog.insert("a", prev, -1)
       tree.insert(
         op.lv,
         "a",
@@ -253,7 +250,7 @@ test "merge - graph_diff advance (20 ops)" (b : @bench.T) {
 
     // Add 20 more operations
     for i = 0; i < 20; i = i + 1 {
-      let op = oplog.insert("b", prev, -1)
+      let op = try! oplog.insert("b", prev, -1)
       tree.insert(
         op.lv,
         "b",
@@ -283,12 +280,12 @@ test "merge - graph_diff advance (20 ops)" (b : @bench.T) {
                 "agent_a",
               )
             @oplog.Delete =>
-              tree2.delete(resolve_origin(oplog, op.origin_left))
+              try! tree2.delete(resolve_origin(oplog, op.origin_left))
           }
         None => ()
       }
     }
-    merge(tree2, oplog, from_frontier, to_frontier)
+    try! merge(tree2, oplog, from_frontier, to_frontier)
     b.keep(tree2)
   })
 }
@@ -304,7 +301,7 @@ test "merge - repeated small (10 iterations x 5 ops)" (b : @bench.T) {
     // Build base
     let mut prev_a = -1
     for i = 0; i < 20; i = i + 1 {
-      let op = oplog_a.insert("a", prev_a, -1)
+      let op = try! oplog_a.insert("a", prev_a, -1)
       tree.insert(
         op.lv,
         "a",
@@ -321,11 +318,11 @@ test "merge - repeated small (10 iterations x 5 ops)" (b : @bench.T) {
     for _round = 0; _round < 10; _round = _round + 1 {
       let ops_from_b = []
       for i = 0; i < 5; i = i + 1 {
-        let op = oplog_b.insert("b", prev_b, -1)
+        let op = try! oplog_b.insert("b", prev_b, -1)
         ops_from_b.push(op)
         prev_b = op.lv
       }
-      merge_remote_ops(tree, oplog_a, ops_from_b)
+      try! merge_remote_ops(tree, oplog_a, ops_from_b)
     }
     b.keep(tree)
   })
@@ -341,13 +338,13 @@ test "merge - context apply operations (50 ops)" (b : @bench.T) {
   let mut prev = -1
   let lvs = []
   for i = 0; i < 50; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     lvs.push(op.lv)
     prev = op.lv
   }
   b.bench(fn() {
     let ctx = MergeContext::new(tree, oplog)
-    ctx.apply_operations(lvs)
+    try! ctx.apply_operations(lvs)
     b.keep(ctx)
   })
 }

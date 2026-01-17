@@ -10,6 +10,11 @@ import(
 // Values
 
 // Errors
+pub(all) suberror CausalGraphError {
+  MissingParent(lv~ : Int)
+  MissingEntry(lv~ : Int)
+}
+pub impl Show for CausalGraphError
 
 // Types and methods
 pub struct CausalGraph {
@@ -19,7 +24,8 @@ pub struct CausalGraph {
   mut frontier : Array[Int]
   mut agent_seqs : @hashmap.HashMap[String, Int]
 }
-pub fn CausalGraph::add_version(Self, Array[Int], String) -> Int
+pub fn CausalGraph::add_version(Self, Array[Int], String) -> Int raise CausalGraphError
+pub fn CausalGraph::add_version_with_seq(Self, Array[Int], String, Int) -> Int raise CausalGraphError
 pub fn CausalGraph::diff_frontiers_lvs(Self, Array[Int], Array[Int]) -> (Array[Int], Array[Int])
 pub fn CausalGraph::get_entry(Self, Int) -> GraphEntry?
 pub fn CausalGraph::get_frontier(Self) -> Array[Int]
@@ -49,6 +55,8 @@ pub impl Compare for RawVersion
 pub impl Eq for RawVersion
 pub impl Hash for RawVersion
 pub impl Show for RawVersion
+pub impl ToJson for RawVersion
+pub impl @json.FromJson for RawVersion
 
 pub struct VersionVector {
   map : Map[String, Int]

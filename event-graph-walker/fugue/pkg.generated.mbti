@@ -8,6 +8,9 @@ import(
 // Values
 
 // Errors
+pub(all) suberror FugueError {
+  MissingItem(id~ : Int)
+}
 
 // Types and methods
 pub struct FugueTree {
@@ -16,7 +19,7 @@ pub struct FugueTree {
   mut length : Int
 }
 pub fn FugueTree::add_item(Self, Item) -> Unit
-pub fn FugueTree::delete(Self, Int) -> Unit
+pub fn FugueTree::delete(Self, Int) -> Unit raise FugueError
 pub fn FugueTree::find_parent_and_side(Self, Int, Int) -> (Int, Side)
 pub fn FugueTree::get_all_items(Self) -> Array[(Int, Item)]
 pub fn FugueTree::get_item(Self, Int) -> Item?

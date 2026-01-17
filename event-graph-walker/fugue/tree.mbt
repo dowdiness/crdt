@@ -237,12 +237,12 @@ pub fn FugueTree::insert(
 
 ///|
 /// Delete an item (mark as deleted)
-pub fn FugueTree::delete(self : FugueTree, id : Int) -> Unit {
+pub fn FugueTree::delete(self : FugueTree, id : Int) -> Unit raise FugueError {
   match self.get_item(id) {
     Some(item) => {
       let deleted_item = item.mark_deleted()
       self.items = self.items.add(id, deleted_item)
     }
-    None => () // Item doesn't exist, nothing to delete
+    None => raise FugueError::MissingItem(id~)
   }
 }

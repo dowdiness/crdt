@@ -32,7 +32,7 @@ test "delete item" {
   tree.insert(0, "A", -1, -1, 0, "agent0")
   tree.insert(1, "B", 0, -1, 1, "agent0")
   tree.insert(2, "C", 1, -1, 2, "agent0")
-  tree.delete(1) // Delete "B"
+  try! tree.delete(1) // Delete "B"
   inspect(tree.visible_count(), content="2")
   inspect(
     tree.get_visible_items(),
@@ -224,7 +224,7 @@ test "delete in concurrent scenario" {
   tree.insert(2, "C", 1, -1, 2, "agent0")
 
   // Concurrent: delete B and insert X between A and C
-  tree.delete(1)
+  try! tree.delete(1)
   tree.insert(3, "X", 0, 2, 3, "agent1")
   let text = tree.to_text()
   // B is deleted, X is inserted

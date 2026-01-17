@@ -51,7 +51,7 @@ pub fn Branch::from_tree_and_oplog(
 pub fn Branch::checkout(
   oplog : @oplog.OpLog,
   frontier : @causal_graph.Frontier,
-) -> Branch {
+) -> Branch raise BranchError {
   // Create empty tree
   let tree = @fugue.FugueTree::new()
 
@@ -81,7 +81,7 @@ pub fn Branch::checkout(
 pub fn Branch::advance(
   self : Branch,
   target_frontier : @causal_graph.Frontier,
-) -> Branch {
+) -> Branch raise BranchError {
   // Calculate what operations to apply
   let (retreat_ops, advance_ops) = self.oplog.diff_and_collect(
     self.frontier,
@@ -173,7 +173,7 @@ pub fn Branch::at_version_vector(
 pub fn Branch::advance_to_version_vector(
   self : Branch,
   vv : @causal_graph.VersionVector,
-) -> Branch {
+) -> Branch raise BranchError {
   let frontier = vv.to_frontier(self.oplog.graph)
   self.advance(frontier)
 }
@@ -186,7 +186,7 @@ pub fn Branch::advance_to_version_vector(
 pub fn Branch::checkout_version_vector(
   oplog : @oplog.OpLog,
   vv : @causal_graph.VersionVector,
-) -> Branch {
+) -> Branch raise BranchError {
   let frontier = vv.to_frontier(oplog.graph)
   Branch::checkout(oplog, frontier)
 }
@@ -206,10 +206,13 @@ pub fn Branch::checkout_version_vector(
 pub fn Branch::merge_remote_ops(
   self : Branch,
   remote_ops : Array[@oplog.Op],
-) -> Branch {
+) -> Branch raise BranchError {
   // Add remote operations to oplog (buffering if parents are missing)
   for remote_op in remote_ops {
-    ignore(self.oplog.apply_remote(remote_op))
+    let _ = self.oplog.apply_remote(remote_op) catch {
+      e => raise BranchError::OpLog(e)
+    }
+
   }
 
   // Get the new frontier after adding remote ops
@@ -229,13 +232,13 @@ fn apply_operation_to_tree(
   tree : @fugue.FugueTree,
   op : @oplog.Op,
   oplog : @oplog.OpLog,
-) -> Unit {
+) -> Unit raise BranchError {
   let origin_left = match op.origin_left {
     None => -1
     Some(raw) =>
       match oplog.graph.raw_to_lv(raw) {
         Some(lv) => lv
-        None => -1
+        None => raise BranchError::MissingOrigin(raw~)
       }
   }
   let origin_right = match op.origin_right {
@@ -243,7 +246,7 @@ fn apply_operation_to_tree(
     Some(raw) =>
       match oplog.graph.raw_to_lv(raw) {
         Some(lv) => lv
-        None => -1
+        None => raise BranchError::MissingOrigin(raw~)
       }
   }
   match op.content {
@@ -255,19 +258,14 @@ fn apply_operation_to_tree(
       }
 
       // Insert into tree with FugueMax algorithm
-      tree.insert(
-        op.lv,
-        text,
-        origin_left,
-        origin_right,
-        timestamp,
-        agent,
-      )
+      tree.insert(op.lv, text, origin_left, origin_right, timestamp, agent)
     }
     @oplog.Delete =>
       if origin_left != -1 {
         // Mark item as deleted
-        tree.delete(origin_left)
+        tree.delete(origin_left) catch {
+          e => raise BranchError::Fugue(e)
+        }
       }
   }
 }

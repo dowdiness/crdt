@@ -184,7 +184,6 @@ fn topological_sort(
       None => break
     }
   }
-
   result
 }
 

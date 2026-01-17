@@ -9,22 +9,27 @@ import(
 // Values
 
 // Errors
+pub(all) suberror OpLogError {
+  MissingLocalVersion(lv~ : Int)
+  MissingOrigin
+  CausalGraphError(error~ : @causal_graph.CausalGraphError)
+}
 
 // Types and methods
 pub struct Op {
   lv : Int
-  parents : Array[Int]
+  parents : Array[@causal_graph.RawVersion]
   agent : String
   seq : Int
   content : OpContent
-  origin_left : Int
-  origin_right : Int
+  origin_left : @causal_graph.RawVersion?
+  origin_right : @causal_graph.RawVersion?
 }
 pub fn Op::get_insert_text(Self) -> String?
 pub fn Op::is_delete(Self) -> Bool
 pub fn Op::is_insert(Self) -> Bool
-pub fn Op::new_delete(Int, Array[Int], String, Int, Int) -> Self
-pub fn Op::new_insert(Int, Array[Int], String, Int, String, Int, Int) -> Self
+pub fn Op::new_delete(Int, Array[@causal_graph.RawVersion], String, Int, @causal_graph.RawVersion?) -> Self
+pub fn Op::new_insert(Int, Array[@causal_graph.RawVersion], String, Int, String, @causal_graph.RawVersion?, @causal_graph.RawVersion?) -> Self
 pub impl Show for Op
 pub impl ToJson for Op
 pub impl @json.FromJson for Op
@@ -40,17 +45,18 @@ pub impl @json.FromJson for OpContent
 
 pub struct OpLog {
   mut operations : Array[Op]
+  mut pending : Array[Op]
   graph : @causal_graph.CausalGraph
   agent_id : String
 }
 pub fn OpLog::add_op(Self, Op) -> Unit
-pub fn OpLog::apply_remote(Self, Op) -> Unit
-pub fn OpLog::delete(Self, Int) -> Op
+pub fn OpLog::apply_remote(Self, Op) -> Array[Op] raise OpLogError
+pub fn OpLog::delete(Self, Int) -> Op raise OpLogError
 pub fn OpLog::diff_and_collect(Self, Array[Int], Array[Int]) -> (Array[Op], Array[Op])
 pub fn OpLog::get_all_ops(Self) -> Array[Op]
 pub fn OpLog::get_frontier(Self) -> Array[Int]
 pub fn OpLog::get_op(Self, Int) -> Op?
-pub fn OpLog::insert(Self, String, Int, Int) -> Op
+pub fn OpLog::insert(Self, String, Int, Int) -> Op raise OpLogError
 pub fn OpLog::new(String) -> Self
 pub fn OpLog::op_count(Self) -> Int
 pub fn OpLog::walk_and_collect(Self, Array[Int]) -> Array[Op]

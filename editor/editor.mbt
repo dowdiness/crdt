@@ -46,7 +46,7 @@ pub fn Editor::move_cursor(self : Editor, position : Int) -> Unit {
 
 ///|
 /// After insertion, cursor moves to after the inserted text
-pub fn Editor::insert(self : Editor, text : String) -> Unit {
+pub fn Editor::insert(self : Editor, text : String) -> Unit raise {
   let _op = self.doc.insert(self.cursor, text)
   self.cursor = self.cursor + text.length()
 }
@@ -57,7 +57,11 @@ pub fn Editor::insert(self : Editor, text : String) -> Unit {
 
 ///|
 /// Cursor does not move
-pub fn Editor::insert_at(self : Editor, position : Int, text : String) -> Unit {
+pub fn Editor::insert_at(
+  self : Editor,
+  position : Int,
+  text : String,
+) -> Unit raise {
   let _op = self.doc.insert(position, text)
 
 }
@@ -69,9 +73,11 @@ pub fn Editor::insert_at(self : Editor, position : Int, text : String) -> Unit {
 ///|
 /// Returns true if successful, false if nothing to delete
 pub fn Editor::delete(self : Editor) -> Bool {
-  match self.doc.delete(self.cursor) {
-    Some(_op) => true
-    None => false
+  try self.doc.delete(self.cursor) catch {
+    @document.DocumentError::InvalidPosition(pos=_) => false
+    _ => false
+  } noraise {
+    _ => true
   }
 }
 
@@ -84,13 +90,18 @@ pub fn Editor::delete(self : Editor) -> Bool {
 pub fn Editor::backspace(self : Editor) -> Bool {
   if self.cursor > 0 {
     self.cursor = self.cursor - 1
-    match self.doc.delete(self.cursor) {
-      Some(_op) => true
-      None => {
+    try self.doc.delete(self.cursor) catch {
+      @document.DocumentError::InvalidPosition(pos=_) => {
         // Restore cursor if delete failed
         self.cursor = self.cursor + 1
         false
       }
+      _ => {
+        self.cursor = self.cursor + 1
+        false
+      }
+    } noraise {
+      _ => true
     }
   } else {
     false
@@ -99,7 +110,7 @@ pub fn Editor::backspace(self : Editor) -> Bool {
 
 ///|
 /// Apply a remote operation to this editor
-pub fn Editor::apply_remote(self : Editor, op : @oplog.Op) -> Unit {
+pub fn Editor::apply_remote(self : Editor, op : @oplog.Op) -> Unit raise {
   self.doc.apply_remote(op)
   // Adjust cursor position if needed
   self.adjust_cursor()
@@ -111,7 +122,7 @@ pub fn Editor::merge_remote(
   self : Editor,
   remote_ops : Array[@oplog.Op],
   remote_frontier : Array[Int],
-) -> Unit {
+) -> Unit raise {
   self.doc.merge_remote(remote_ops, remote_frontier)
   // Adjust cursor position if needed
   self.adjust_cursor()

@@ -8,7 +8,7 @@ test "Web scenario: error persistence bug" {
 
   // Type "x"
   match editor_ref.val {
-    Some(ed) => ed.insert("x")
+    Some(ed) => try! ed.insert("x")
     None => ()
   }
 
@@ -27,7 +27,7 @@ test "Web scenario: error persistence bug" {
 
   // Type "+" making it "x+"
   match editor_ref.val {
-    Some(ed) => ed.insert("+")
+    Some(ed) => try! ed.insert("+")
     None => ()
   }
 
@@ -46,7 +46,7 @@ test "Web scenario: error persistence bug" {
 
   // Type " 1" making it "x+ 1"
   match editor_ref.val {
-    Some(ed) => ed.insert(" 1")
+    Some(ed) => try! ed.insert(" 1")
     None => ()
   }
 

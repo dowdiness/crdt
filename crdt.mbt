@@ -18,7 +18,7 @@ pub fn create_editor(agent_id : String) -> Int {
 /// Insert text at cursor position
 pub fn insert(_handle : Int, text : String) -> Unit {
   match editor.val {
-    Some(editor) => editor.insert(text)
+    Some(editor) => try! editor.insert(text)
     None => ()
   }
 }
@@ -71,7 +71,7 @@ pub fn set_text(_handle : Int, new_text : String) -> Unit {
 
       // Insert new text
       if new_text.length() > 0 {
-        ed.insert(new_text)
+        try! ed.insert(new_text)
       }
     }
     None => ()
@@ -235,7 +235,7 @@ pub fn merge_operations(
 
       // Use ParsedEditor's merge_remote which calls Editor::merge_remote
       // which calls Document::merge_remote which uses the merge module
-      ed.merge_remote(remote_ops, [])
+      try! ed.merge_remote(remote_ops, [])
 
       // ParsedEditor::merge_remote already marks as dirty for reparsing
     }

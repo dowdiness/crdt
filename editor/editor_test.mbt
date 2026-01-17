@@ -9,7 +9,7 @@ test "create new editor" {
 ///|
 test "insert at cursor" {
   let editor = Editor::new("alice")
-  editor.insert("Hello")
+  try! editor.insert("Hello")
   inspect(editor.get_text(), content="Hello")
   inspect(editor.get_cursor(), content="5")
 }
@@ -17,9 +17,9 @@ test "insert at cursor" {
 ///|
 test "multiple inserts" {
   let editor = Editor::new("alice")
-  editor.insert("Hello")
-  editor.insert(" ")
-  editor.insert("World")
+  try! editor.insert("Hello")
+  try! editor.insert(" ")
+  try! editor.insert("World")
   inspect(editor.get_text(), content="Hello World")
   inspect(editor.get_cursor(), content="11")
 }
@@ -27,26 +27,26 @@ test "multiple inserts" {
 ///|
 test "insert at specific position" {
   let editor = Editor::new("alice")
-  editor.insert("Heo")
+  try! editor.insert("Heo")
   editor.move_cursor(2)
-  editor.insert("ll")
+  try! editor.insert("ll")
   inspect(editor.get_text(), content="Hello")
 }
 
 ///|
 test "move cursor" {
   let editor = Editor::new("alice")
-  editor.insert("Hello")
+  try! editor.insert("Hello")
   editor.move_cursor(0)
   inspect(editor.get_cursor(), content="0")
-  editor.insert("X")
+  try! editor.insert("X")
   inspect(editor.get_text(), content="HelloX")
 }
 
 ///|
 test "delete at cursor" {
   let editor = Editor::new("alice")
-  editor.insert("Hello")
+  try! editor.insert("Hello")
   editor.move_cursor(1)
   let success = editor.delete()
   inspect(success, content="true")
@@ -56,7 +56,7 @@ test "delete at cursor" {
 ///|
 test "backspace" {
   let editor = Editor::new("alice")
-  editor.insert("Hello")
+  try! editor.insert("Hello")
   let success = editor.backspace()
   inspect(success, content="true")
   inspect(editor.get_text(), content="Hell")
@@ -66,7 +66,7 @@ test "backspace" {
 ///|
 test "backspace at start" {
   let editor = Editor::new("alice")
-  editor.insert("H")
+  try! editor.insert("H")
   editor.move_cursor(0)
   let success = editor.backspace()
   inspect(success, content="false")
@@ -76,7 +76,7 @@ test "backspace at start" {
 ///|
 test "delete beyond end" {
   let editor = Editor::new("alice")
-  editor.insert("Hi")
+  try! editor.insert("Hi")
   editor.move_cursor(10) // Move beyond end
   let success = editor.delete()
   inspect(success, content="false")
@@ -86,7 +86,7 @@ test "delete beyond end" {
 ///|
 test "cursor bounds checking" {
   let editor = Editor::new("alice")
-  editor.insert("Hello")
+  try! editor.insert("Hello")
   editor.move_cursor(-5) // Should clamp to 0
   inspect(editor.get_cursor(), content="0")
   editor.move_cursor(100) // Should clamp to length
@@ -112,10 +112,10 @@ test "concurrent edits from two editors" {
   let bob_frontier = bob.get_frontier()
 
   // Alice receives Bob's operations
-  alice.merge_remote(bob_ops, bob_frontier)
+  try! alice.merge_remote(bob_ops, bob_frontier)
 
   // Bob receives Alice's operations
-  bob.merge_remote(alice_ops, alice_frontier)
+  try! bob.merge_remote(alice_ops, alice_frontier)
 
   // Both should have converged to same text
   let alice_text = alice.get_text()
@@ -140,7 +140,7 @@ test "concurrent inserts at same position" {
   alice.insert("C")
   let ops = alice.get_operations()
   let frontier = alice.get_frontier()
-  bob.merge_remote(ops, frontier)
+  try! bob.merge_remote(ops, frontier)
 
   // Verify both have "AC"
   inspect(alice.get_text(), content="AC")
@@ -159,8 +159,8 @@ test "concurrent inserts at same position" {
   let bob_new_frontier = bob.get_frontier()
 
   // Cross-merge
-  alice.merge_remote(bob_new_ops, bob_new_frontier)
-  bob.merge_remote(alice_new_ops, alice_new_frontier)
+  try! alice.merge_remote(bob_new_ops, bob_new_frontier)
+  try! bob.merge_remote(alice_new_ops, alice_new_frontier)
 
   // Both should converge to same text
   let alice_text = alice.get_text()

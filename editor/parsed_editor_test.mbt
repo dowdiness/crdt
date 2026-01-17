@@ -72,7 +72,7 @@ test "concurrent edits converge to same AST" {
 
   // Initial: "x"
   pe1.insert("x")
-  pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
+  try! pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
 
   // Verify text convergence
   inspect(pe1.get_text(), content="x")
@@ -83,8 +83,8 @@ test "concurrent edits converge to same AST" {
   pe2.insert(" - 2")
 
   // Merge
-  pe1.merge_remote(pe2.get_operations(), pe2.get_frontier())
-  pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
+  try! pe1.merge_remote(pe2.get_operations(), pe2.get_frontier())
+  try! pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
 
   // Verify text and AST convergence
   let text1 = pe1.get_text()
@@ -104,7 +104,7 @@ test "collaborative lambda editing" {
 
   // Agent 1 creates lambda skeleton
   pe1.insert("λx.")
-  pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
+  try! pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
 
   // Verify convergence
   inspect(pe1.get_text(), content="λx.")
@@ -115,8 +115,8 @@ test "collaborative lambda editing" {
   pe2.insert("x - 1")
 
   // Merge and verify both valid
-  pe1.merge_remote(pe2.get_operations(), pe2.get_frontier())
-  pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
+  try! pe1.merge_remote(pe2.get_operations(), pe2.get_frontier())
+  try! pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
   let text1 = pe1.get_text()
   let text2 = pe2.get_text()
   inspect(text1 == text2, content="true")
@@ -217,12 +217,12 @@ test "merge invalidates AST cache" {
 
   // Start with common base
   pe1.insert("x")
-  pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
+  try! pe2.merge_remote(pe1.get_operations(), pe1.get_frontier())
   let _ast1 = pe1.get_ast()
 
   // pe2 makes change and pe1 merges
   pe2.insert("y")
-  pe1.merge_remote(pe2.get_operations(), pe2.get_frontier())
+  try! pe1.merge_remote(pe2.get_operations(), pe2.get_frontier())
 
   // get_ast() should reparse
   let ast2 = pe1.get_ast()

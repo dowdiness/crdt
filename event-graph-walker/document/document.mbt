@@ -72,7 +72,7 @@ pub fn Document::insert(
   self : Document,
   position : Int,
   text : String,
-) -> @oplog.Op {
+) -> @oplog.Op raise DocumentError {
   // Insert each character one by one
   let mut current_pos = position
   let mut last_op : @oplog.Op? = None
@@ -106,7 +106,9 @@ pub fn Document::insert(
     }
 
     // Create and apply the operation for this character
-    let op = self.oplog.insert(ch, origin_left, origin_right)
+    let op = self.oplog.insert(ch, origin_left, origin_right) catch {
+      e => raise DocumentError::OpLog(e)
+    }
 
     // Get Lamport timestamp and agent from causal graph for proper ordering
     let (timestamp, agent) = match self.oplog.graph.get_entry(op.lv) {
@@ -126,7 +128,9 @@ pub fn Document::insert(
     None =>
       // Empty string inserted - create a no-op
       // This shouldn't happen in practice, but we need to return something
-      self.oplog.insert("", -1, -1)
+      self.oplog.insert("", -1, -1) catch {
+        e => raise DocumentError::OpLog(e)
+      }
   }
 }
 
@@ -136,31 +140,43 @@ pub fn Document::insert(
 
 ///|
 /// Returns Some(operation) if successful, None if position is invalid
-pub fn Document::delete(self : Document, position : Int) -> @oplog.Op? {
+pub fn Document::delete(
+  self : Document,
+  position : Int,
+) -> @oplog.Op raise DocumentError {
   if position < 0 {
-    return None
+    raise DocumentError::InvalidPosition(pos=position)
   }
 
   // Get all visible items in proper tree order
   let items_list = self.tree.get_visible_items()
   if position >= items_list.length() {
-    return None
+    raise DocumentError::InvalidPosition(pos=position)
   }
 
   // Get the LV of the item to delete
   let (target_lv, _) = items_list[position]
 
   // Create and apply delete operation
-  let op = self.oplog.delete(target_lv)
-  self.tree.delete(target_lv)
-  Some(op)
+  let op = self.oplog.delete(target_lv) catch {
+    e => raise DocumentError::OpLog(e)
+  }
+  self.tree.delete(target_lv) catch {
+    e => raise DocumentError::Fugue(e)
+  }
+  op
 }
 
 ///|
 /// Apply a remote operation to this document
-pub fn Document::apply_remote(self : Document, op : @oplog.Op) -> Unit {
+pub fn Document::apply_remote(
+  self : Document,
+  op : @oplog.Op,
+) -> Unit raise DocumentError {
   // Add to oplog (buffering if parents are missing)
-  let applied_ops = self.oplog.apply_remote(op)
+  let applied_ops = self.oplog.apply_remote(op) catch {
+    e => raise DocumentError::OpLog(e)
+  }
 
   // Apply any newly-resolved operations to the tree
   for applied in applied_ops {
@@ -169,7 +185,7 @@ pub fn Document::apply_remote(self : Document, op : @oplog.Op) -> Unit {
       Some(raw) =>
         match self.oplog.graph.raw_to_lv(raw) {
           Some(lv) => lv
-          None => -1
+          None => raise DocumentError::MissingOrigin(raw~)
         }
     }
     let origin_right = match applied.origin_right {
@@ -177,10 +193,9 @@ pub fn Document::apply_remote(self : Document, op : @oplog.Op) -> Unit {
       Some(raw) =>
         match self.oplog.graph.raw_to_lv(raw) {
           Some(lv) => lv
-          None => -1
+          None => raise DocumentError::MissingOrigin(raw~)
         }
     }
-
     match applied.content {
       @oplog.Insert(text) => {
         // Get Lamport timestamp and agent from causal graph for proper ordering
@@ -199,7 +214,9 @@ pub fn Document::apply_remote(self : Document, op : @oplog.Op) -> Unit {
       }
       @oplog.Delete =>
         if origin_left != -1 {
-          self.tree.delete(origin_left)
+          self.tree.delete(origin_left) catch {
+            e => raise DocumentError::Fugue(e)
+          }
         }
     }
   }
@@ -211,7 +228,9 @@ pub fn Document::merge_remote(
   self : Document,
   remote_ops : Array[@oplog.Op],
   _remote_frontier : Array[Int],
-) -> Unit {
+) -> Unit raise DocumentError {
   // Use the branch module's merge convenience function
-  @branch.merge_remote_ops(self.tree, self.oplog, remote_ops)
+  @branch.merge_remote_ops(self.tree, self.oplog, remote_ops) catch {
+    e => raise DocumentError::Branch(e)
+  }
 }

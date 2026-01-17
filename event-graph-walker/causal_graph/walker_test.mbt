@@ -13,7 +13,7 @@ test "walk single operation" {
   let graph = CausalGraph::new()
 
   // Add single operation with no parents
-  let lv0 = graph.add_version([], "agent-1")
+  let lv0 = try! graph.add_version([], "agent-1")
   let result = graph.walk_from_frontier([lv0])
   inspect(result.length(), content="1")
   inspect(result[0], content="0")
@@ -24,10 +24,10 @@ test "walk linear history" {
   let graph = CausalGraph::new()
 
   // Create linear chain: 0 -> 1 -> 2 -> 3
-  let lv0 = graph.add_version([], "agent-1")
-  let lv1 = graph.add_version([lv0], "agent-1")
-  let lv2 = graph.add_version([lv1], "agent-1")
-  let lv3 = graph.add_version([lv2], "agent-1")
+  let lv0 = try! graph.add_version([], "agent-1")
+  let lv1 = try! graph.add_version([lv0], "agent-1")
+  let lv2 = try! graph.add_version([lv1], "agent-1")
+  let lv3 = try! graph.add_version([lv2], "agent-1")
   let result = graph.walk_from_frontier([lv3])
 
   // Should get all operations in order
@@ -48,10 +48,10 @@ test "walk diamond pattern (concurrent operations)" {
   //   1   2
   //    \ /
   //     3
-  let lv0 = graph.add_version([], "agent-1")
-  let lv1 = graph.add_version([lv0], "agent-1")
-  let lv2 = graph.add_version([lv0], "agent-2")
-  let lv3 = graph.add_version([lv1, lv2], "agent-1")
+  let lv0 = try! graph.add_version([], "agent-1")
+  let lv1 = try! graph.add_version([lv0], "agent-1")
+  let lv2 = try! graph.add_version([lv0], "agent-2")
+  let lv3 = try! graph.add_version([lv1, lv2], "agent-1")
   let result = graph.walk_from_frontier([lv3])
 
   // Should get all 4 operations
@@ -87,13 +87,13 @@ test "walk complex branching" {
   //     3   4 5
   //      \ /
   //       6
-  let lv0 = graph.add_version([], "agent-1")
-  let lv1 = graph.add_version([lv0], "agent-1")
-  let lv2 = graph.add_version([lv0], "agent-2")
-  let lv3 = graph.add_version([lv1], "agent-1")
-  let lv4 = graph.add_version([lv2], "agent-2")
-  let _lv5 = graph.add_version([lv2], "agent-3")
-  let lv6 = graph.add_version([lv3, lv4], "agent-1")
+  let lv0 = try! graph.add_version([], "agent-1")
+  let lv1 = try! graph.add_version([lv0], "agent-1")
+  let lv2 = try! graph.add_version([lv0], "agent-2")
+  let lv3 = try! graph.add_version([lv1], "agent-1")
+  let lv4 = try! graph.add_version([lv2], "agent-2")
+  let _lv5 = try! graph.add_version([lv2], "agent-3")
+  let lv6 = try! graph.add_version([lv3, lv4], "agent-1")
   let result = graph.walk_from_frontier([lv6])
 
   // Should get operations 0,1,2,3,4,6 (not 5, as it's not in the path to 6)
@@ -138,11 +138,11 @@ test "walk with multiple frontier versions" {
   //   1   2
   //   |   |
   //   3   4
-  let lv0 = graph.add_version([], "agent-1")
-  let lv1 = graph.add_version([lv0], "agent-1")
-  let lv2 = graph.add_version([lv0], "agent-2")
-  let lv3 = graph.add_version([lv1], "agent-1")
-  let lv4 = graph.add_version([lv2], "agent-2")
+  let lv0 = try! graph.add_version([], "agent-1")
+  let lv1 = try! graph.add_version([lv0], "agent-1")
+  let lv2 = try! graph.add_version([lv0], "agent-2")
+  let lv3 = try! graph.add_version([lv1], "agent-1")
+  let lv4 = try! graph.add_version([lv2], "agent-2")
 
   // Walk from frontier [3, 4] (both branches)
   let result = graph.walk_from_frontier([lv3, lv4])
@@ -166,13 +166,13 @@ test "diff_frontiers_lvs for incremental update" {
   let graph = CausalGraph::new()
 
   // Create initial operations
-  let _lv0 = graph.add_version([], "agent-1")
-  let _lv1 = graph.add_version([0], "agent-1")
+  let _lv0 = try! graph.add_version([], "agent-1")
+  let _lv1 = try! graph.add_version([0], "agent-1")
   let frontier1 = graph.get_frontier()
 
   // Add more operations
-  let _lv2 = graph.add_version([1], "agent-1")
-  let _lv3 = graph.add_version([2], "agent-1")
+  let _lv2 = try! graph.add_version([1], "agent-1")
+  let _lv3 = try! graph.add_version([2], "agent-1")
   let frontier2 = graph.get_frontier()
 
   // Calculate diff
@@ -197,10 +197,10 @@ test "topological sort determinism" {
   let graph = CausalGraph::new()
 
   // Create concurrent operations with same parent
-  let lv0 = graph.add_version([], "agent-1")
-  let lv1 = graph.add_version([lv0], "agent-2")
-  let lv2 = graph.add_version([lv0], "agent-3")
-  let lv3 = graph.add_version([lv0], "agent-1")
+  let lv0 = try! graph.add_version([], "agent-1")
+  let lv1 = try! graph.add_version([lv0], "agent-2")
+  let lv2 = try! graph.add_version([lv0], "agent-3")
+  let lv3 = try! graph.add_version([lv0], "agent-1")
   let result = graph.walk_from_frontier([lv1, lv2, lv3])
 
   // lv0 must be first

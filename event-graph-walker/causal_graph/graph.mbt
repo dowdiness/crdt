@@ -60,7 +60,12 @@ pub fn CausalGraph::add_version(
   self : CausalGraph,
   parents : Frontier,
   agent : String,
-) -> Int {
+) -> Int raise CausalGraphError {
+  for parent in parents {
+    if self.entries.get(parent) is None {
+      raise CausalGraphError::MissingParent(lv=parent)
+    }
+  }
   // Calculate Lamport timestamp (max of parents + 1)
   let lamport = if parents.is_empty() {
     0
@@ -70,6 +75,8 @@ pub fn CausalGraph::add_version(
       .map(fn(lv) {
         match self.entries.get(lv) {
           Some(entry) => entry.lamport
+          // Logically unreachable: parent validation above ensures all parents exist.
+          // Default to 0 as defensive fallback.
           None => 0
         }
       })
@@ -105,7 +112,12 @@ pub fn CausalGraph::add_version_with_seq(
   parents : Frontier,
   agent : String,
   seq : Int,
-) -> Int {
+) -> Int raise CausalGraphError {
+  for parent in parents {
+    if self.entries.get(parent) is None {
+      raise CausalGraphError::MissingParent(lv=parent)
+    }
+  }
   // Calculate Lamport timestamp (max of parents + 1)
   let lamport = if parents.is_empty() {
     0
@@ -115,6 +127,8 @@ pub fn CausalGraph::add_version_with_seq(
       .map(fn(lv) {
         match self.entries.get(lv) {
           Some(entry) => entry.lamport
+          // Logically unreachable: parent validation above ensures all parents exist.
+          // Default to 0 as defensive fallback.
           None => 0
         }
       })
@@ -130,7 +144,6 @@ pub fn CausalGraph::add_version_with_seq(
   self.entries = self.entries.add(lv, entry)
   self.version_map = self.version_map.add(RawVersion::new(agent, seq), lv)
   self.next_lv = lv + 1
-
   let current_seq = match self.agent_seqs.get(agent) {
     Some(s) => s
     None => -1

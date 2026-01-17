@@ -17,16 +17,16 @@ pub struct Editor {
   doc : @document.Document
   mut cursor : Int
 }
-pub fn Editor::apply_remote(Self, @oplog.Op) -> Unit
+pub fn Editor::apply_remote(Self, @oplog.Op) -> Unit raise
 pub fn Editor::backspace(Self) -> Bool
 pub fn Editor::delete(Self) -> Bool
 pub fn Editor::get_cursor(Self) -> Int
 pub fn Editor::get_frontier(Self) -> Array[Int]
 pub fn Editor::get_operations(Self) -> Array[@oplog.Op]
 pub fn Editor::get_text(Self) -> String
-pub fn Editor::insert(Self, String) -> Unit
-pub fn Editor::insert_at(Self, Int, String) -> Unit
-pub fn Editor::merge_remote(Self, Array[@oplog.Op], Array[Int]) -> Unit
+pub fn Editor::insert(Self, String) -> Unit raise
+pub fn Editor::insert_at(Self, Int, String) -> Unit raise
+pub fn Editor::merge_remote(Self, Array[@oplog.Op], Array[Int]) -> Unit raise
 pub fn Editor::move_cursor(Self, Int) -> Unit
 pub fn Editor::new(String) -> Self
 pub impl Show for Editor
@@ -47,9 +47,9 @@ pub fn ParsedEditor::get_errors(Self) -> Array[String]
 pub fn ParsedEditor::get_frontier(Self) -> Array[Int]
 pub fn ParsedEditor::get_operations(Self) -> Array[@oplog.Op]
 pub fn ParsedEditor::get_text(Self) -> String
-pub fn ParsedEditor::insert(Self, String) -> Unit
+pub fn ParsedEditor::insert(Self, String) -> Unit raise
 pub fn ParsedEditor::is_parse_valid(Self) -> Bool
-pub fn ParsedEditor::merge_remote(Self, Array[@oplog.Op], Array[Int]) -> Unit
+pub fn ParsedEditor::merge_remote(Self, Array[@oplog.Op], Array[Int]) -> Unit raise
 pub fn ParsedEditor::move_cursor(Self, Int) -> Unit
 pub fn ParsedEditor::new(String) -> Self
 

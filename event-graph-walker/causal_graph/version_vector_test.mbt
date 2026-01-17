@@ -148,9 +148,9 @@ test "version vector to string" {
 ///|
 test "from_frontier - simple linear history" {
   let graph = CausalGraph::new()
-  let lv0 = graph.add_version([], "alice")
-  let lv1 = graph.add_version([lv0], "alice")
-  let lv2 = graph.add_version([lv1], "alice")
+  let lv0 = try! graph.add_version([], "alice")
+  let lv1 = try! graph.add_version([lv0], "alice")
+  let lv2 = try! graph.add_version([lv1], "alice")
   let frontier = [lv2]
   let vv = VersionVector::from_frontier(graph, frontier)
   inspect(vv.get("alice"), content="Some(2)")
@@ -159,10 +159,10 @@ test "from_frontier - simple linear history" {
 ///|
 test "from_frontier - multiple agents" {
   let graph = CausalGraph::new()
-  let lv0 = graph.add_version([], "alice")
-  let lv1 = graph.add_version([lv0], "alice")
-  let lv2 = graph.add_version([], "bob")
-  let lv3 = graph.add_version([lv2], "bob")
+  let lv0 = try! graph.add_version([], "alice")
+  let lv1 = try! graph.add_version([lv0], "alice")
+  let lv2 = try! graph.add_version([], "bob")
+  let lv3 = try! graph.add_version([lv2], "bob")
   let frontier = [lv1, lv3]
   let vv = VersionVector::from_frontier(graph, frontier)
   inspect(vv.get("alice"), content="Some(1)")
@@ -172,10 +172,10 @@ test "from_frontier - multiple agents" {
 ///|
 test "from_frontier - concurrent branches" {
   let graph = CausalGraph::new()
-  let lv0 = graph.add_version([], "alice")
-  let lv1 = graph.add_version([lv0], "alice")
-  let lv2 = graph.add_version([lv0], "bob")
-  let lv3 = graph.add_version([lv2], "bob")
+  let lv0 = try! graph.add_version([], "alice")
+  let lv1 = try! graph.add_version([lv0], "alice")
+  let lv2 = try! graph.add_version([lv0], "bob")
+  let lv3 = try! graph.add_version([lv2], "bob")
   let frontier = [lv1, lv3]
   let vv = VersionVector::from_frontier(graph, frontier)
   inspect(vv.get("alice"), content="Some(1)")
@@ -185,9 +185,9 @@ test "from_frontier - concurrent branches" {
 ///|
 test "to_frontier - single agent" {
   let graph = CausalGraph::new()
-  let lv0 = graph.add_version([], "alice")
-  let lv1 = graph.add_version([lv0], "alice")
-  let lv2 = graph.add_version([lv1], "alice")
+  let lv0 = try! graph.add_version([], "alice")
+  let lv1 = try! graph.add_version([lv0], "alice")
+  let lv2 = try! graph.add_version([lv1], "alice")
   let vv = VersionVector::new().set("alice", 2)
   let frontier = vv.to_frontier(graph)
   inspect(frontier.length(), content="1")
@@ -197,10 +197,10 @@ test "to_frontier - single agent" {
 ///|
 test "to_frontier - multiple agents" {
   let graph = CausalGraph::new()
-  let lv0 = graph.add_version([], "alice")
-  let lv1 = graph.add_version([lv0], "alice")
-  let lv2 = graph.add_version([], "bob")
-  let lv3 = graph.add_version([lv2], "bob")
+  let lv0 = try! graph.add_version([], "alice")
+  let lv1 = try! graph.add_version([lv0], "alice")
+  let lv2 = try! graph.add_version([], "bob")
+  let lv3 = try! graph.add_version([lv2], "bob")
   let vv = VersionVector::new().set("alice", 1).set("bob", 1)
   let frontier = vv.to_frontier(graph)
   inspect(frontier.length(), content="2")
@@ -211,11 +211,11 @@ test "to_frontier - multiple agents" {
 ///|
 test "roundtrip - frontier to version vector and back" {
   let graph = CausalGraph::new()
-  let lv0 = graph.add_version([], "alice")
-  let lv1 = graph.add_version([lv0], "alice")
-  let lv2 = graph.add_version([], "bob")
-  let lv3 = graph.add_version([lv2], "bob")
-  let lv4 = graph.add_version([lv1, lv3], "charlie")
+  let lv0 = try! graph.add_version([], "alice")
+  let lv1 = try! graph.add_version([lv0], "alice")
+  let lv2 = try! graph.add_version([], "bob")
+  let lv3 = try! graph.add_version([lv2], "bob")
+  let lv4 = try! graph.add_version([lv1, lv3], "charlie")
   let original_frontier = [lv4]
   let vv = VersionVector::from_frontier(graph, original_frontier)
   let recovered_frontier = vv.to_frontier(graph)

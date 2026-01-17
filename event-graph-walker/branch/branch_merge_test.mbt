@@ -1,9 +1,6 @@
-///| Tests for merge module
-
-fn resolve_origin(
-  oplog : @oplog.OpLog,
-  raw : @causal_graph.RawVersion?,
-) -> Int {
+///|
+/// Tests for merge module
+fn resolve_origin(oplog : @oplog.OpLog, raw : @causal_graph.RawVersion?) -> Int {
   match raw {
     None => -1
     Some(rv) =>
@@ -14,6 +11,7 @@ fn resolve_origin(
   }
 }
 
+///|
 fn resolve_op_lv(oplog : @oplog.OpLog, op : @oplog.Op) -> Int? {
   let raw = @causal_graph.RawVersion::new(op.agent, op.seq)
   oplog.graph.raw_to_lv(raw)
@@ -28,7 +26,7 @@ test "merge_remote_ops - basic concurrent inserts" {
   let tree_b = @fugue.FugueTree::new()
 
   // Agent A inserts "He"
-  let op_a1 = oplog_a.insert("H", -1, -1)
+  let op_a1 = try! oplog_a.insert("H", -1, -1)
   tree_a.insert(
     op_a1.lv,
     "H",
@@ -37,7 +35,7 @@ test "merge_remote_ops - basic concurrent inserts" {
     0,
     "agent_a",
   )
-  let op_a2 = oplog_a.insert("e", op_a1.lv, -1)
+  let op_a2 = try! oplog_a.insert("e", op_a1.lv, -1)
   tree_a.insert(
     op_a2.lv,
     "e",
@@ -48,7 +46,7 @@ test "merge_remote_ops - basic concurrent inserts" {
   )
 
   // Agent B concurrently inserts "Wo" (starting from same state)
-  let op_b1 = oplog_b.insert("W", -1, -1)
+  let op_b1 = try! oplog_b.insert("W", -1, -1)
   tree_b.insert(
     op_b1.lv,
     "W",
@@ -57,7 +55,7 @@ test "merge_remote_ops - basic concurrent inserts" {
     0,
     "agent_b",
   )
-  let op_b2 = oplog_b.insert("o", op_b1.lv, -1)
+  let op_b2 = try! oplog_b.insert("o", op_b1.lv, -1)
   tree_b.insert(
     op_b2.lv,
     "o",
@@ -69,7 +67,7 @@ test "merge_remote_ops - basic concurrent inserts" {
 
   // Now merge B's operations into A
   let ops_from_b = [op_b1, op_b2]
-  merge_remote_ops(tree_a, oplog_a, ops_from_b)
+  try! merge_remote_ops(tree_a, oplog_a, ops_from_b)
 
   // Both agents should converge
   let text_a = tree_a.to_text()
@@ -77,7 +75,7 @@ test "merge_remote_ops - basic concurrent inserts" {
 
   // Merge A's operations into B
   let ops_from_a = [op_a1, op_a2]
-  merge_remote_ops(tree_b, oplog_b, ops_from_a)
+  try! merge_remote_ops(tree_b, oplog_b, ops_from_a)
   let text_b = tree_b.to_text()
   inspect(text_b, content="HeWo") // Should converge to same result
 }
@@ -90,7 +88,7 @@ test "merge_remote_ops - insert and delete" {
   let tree_b = @fugue.FugueTree::new()
 
   // Agent A inserts "ABC"
-  let op_a1 = oplog_a.insert("A", -1, -1)
+  let op_a1 = try! oplog_a.insert("A", -1, -1)
   tree_a.insert(
     op_a1.lv,
     "A",
@@ -99,7 +97,7 @@ test "merge_remote_ops - insert and delete" {
     0,
     "agent_a",
   )
-  let op_a2 = oplog_a.insert("B", op_a1.lv, -1)
+  let op_a2 = try! oplog_a.insert("B", op_a1.lv, -1)
   tree_a.insert(
     op_a2.lv,
     "B",
@@ -108,7 +106,7 @@ test "merge_remote_ops - insert and delete" {
     1,
     "agent_a",
   )
-  let op_a3 = oplog_a.insert("C", op_a2.lv, -1)
+  let op_a3 = try! oplog_a.insert("C", op_a2.lv, -1)
   tree_a.insert(
     op_a3.lv,
     "C",
@@ -120,7 +118,7 @@ test "merge_remote_ops - insert and delete" {
 
   // Agent B gets A's state
   let ops_from_a = [op_a1, op_a2, op_a3]
-  merge_remote_ops(tree_b, oplog_b, ops_from_a)
+  try! merge_remote_ops(tree_b, oplog_b, ops_from_a)
   inspect(tree_b.to_text(), content="ABC")
 
   // Agent B deletes "B"
@@ -128,7 +126,7 @@ test "merge_remote_ops - insert and delete" {
     Some(lv) => lv
     None => fail("missing op_a2 in oplog_b")
   }
-  let op_b1 = oplog_b.delete(local_a2_lv)
+  let op_b1 = try! oplog_b.delete(local_a2_lv)
   let delete_target = resolve_origin(oplog_b, op_b1.origin_left)
   if delete_target != -1 {
     tree_b.delete(delete_target)
@@ -137,7 +135,7 @@ test "merge_remote_ops - insert and delete" {
 
   // Merge B's delete back to A
   let ops_from_b = [op_b1]
-  merge_remote_ops(tree_a, oplog_a, ops_from_b)
+  try! merge_remote_ops(tree_a, oplog_a, ops_from_b)
   inspect(tree_a.to_text(), content="AC")
 
   // Verify both converged
@@ -150,7 +148,7 @@ test "merge - simple merge using graph_diff" {
   let tree = @fugue.FugueTree::new()
 
   // Insert "Hello"
-  let op1 = oplog.insert("H", -1, -1)
+  let op1 = try! oplog.insert("H", -1, -1)
   tree.insert(
     op1.lv,
     "H",
@@ -159,7 +157,7 @@ test "merge - simple merge using graph_diff" {
     0,
     "agent_a",
   )
-  let op2 = oplog.insert("e", op1.lv, -1)
+  let op2 = try! oplog.insert("e", op1.lv, -1)
   tree.insert(
     op2.lv,
     "e",
@@ -173,7 +171,7 @@ test "merge - simple merge using graph_diff" {
   inspect(text_before, content="He")
 
   // Add more operations
-  let op3 = oplog.insert("l", op2.lv, -1)
+  let op3 = try! oplog.insert("l", op2.lv, -1)
   tree.insert(
     op3.lv,
     "l",
@@ -182,7 +180,7 @@ test "merge - simple merge using graph_diff" {
     2,
     "agent_a",
   )
-  let op4 = oplog.insert("l", op3.lv, -1)
+  let op4 = try! oplog.insert("l", op3.lv, -1)
   tree.insert(
     op4.lv,
     "l",
@@ -191,7 +189,7 @@ test "merge - simple merge using graph_diff" {
     3,
     "agent_a",
   )
-  let op5 = oplog.insert("o", op4.lv, -1)
+  let op5 = try! oplog.insert("o", op4.lv, -1)
   tree.insert(
     op5.lv,
     "o",

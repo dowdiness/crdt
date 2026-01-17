@@ -8,7 +8,7 @@ test "oplog - insert (100 ops)" (b : @bench.T) {
     let oplog = OpLog::new("agent_a")
     let mut prev = -1
     for i = 0; i < 100; i = i + 1 {
-      let op = oplog.insert("a", prev, -1)
+      let op = try! oplog.insert("a", prev, -1)
       prev = op.lv
     }
     b.keep(oplog)
@@ -22,7 +22,7 @@ test "oplog - insert (1000 ops)" (b : @bench.T) {
     let oplog = OpLog::new("agent_a")
     let mut prev = -1
     for i = 0; i < 1000; i = i + 1 {
-      let op = oplog.insert("a", prev, -1)
+      let op = try! oplog.insert("a", prev, -1)
       prev = op.lv
     }
     b.keep(oplog)
@@ -39,14 +39,14 @@ test "oplog - insert and delete mix (100 ops)" (b : @bench.T) {
 
     // Insert 100 characters
     for i = 0; i < 100; i = i + 1 {
-      let op = oplog.insert("a", prev, -1)
+      let op = try! oplog.insert("a", prev, -1)
       lvs.push(op.lv)
       prev = op.lv
     }
 
     // Delete every other character
     for i = 0; i < lvs.length(); i = i + 2 {
-      let _del = oplog.delete(lvs[i])
+      let _del = try! oplog.delete(lvs[i])
 
     }
     b.keep(oplog)
@@ -61,14 +61,14 @@ test "oplog - apply_remote (50 ops)" (b : @bench.T) {
   let mut prev = -1
   let remote_ops = []
   for i = 0; i < 50; i = i + 1 {
-    let op = remote_oplog.insert("b", prev, -1)
+    let op = try! remote_oplog.insert("b", prev, -1)
     remote_ops.push(op)
     prev = op.lv
   }
   b.bench(fn() {
     let oplog = OpLog::new("agent_a")
     for op in remote_ops {
-      ignore(oplog.apply_remote(op))
+      ignore(try! oplog.apply_remote(op))
     }
     b.keep(oplog)
   })
@@ -80,7 +80,7 @@ test "oplog - get_op (1000 ops)" (b : @bench.T) {
   let oplog = OpLog::new("agent_a")
   let mut prev = -1
   for i = 0; i < 1000; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     prev = op.lv
   }
   b.bench(fn() {
@@ -98,7 +98,7 @@ test "oplog - get_frontier (single agent)" (b : @bench.T) {
   let oplog = OpLog::new("agent_a")
   let mut prev = -1
   for i = 0; i < 100; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     prev = op.lv
   }
   b.bench(fn() {
@@ -118,8 +118,8 @@ test "oplog - get_frontier (5 agents)" (b : @bench.T) {
     let remote_oplog = OpLog::new(agent)
     let mut prev = -1
     for i = 0; i < 20; i = i + 1 {
-      let op = remote_oplog.insert(agent, prev, -1)
-      ignore(oplog.apply_remote(op))
+      let op = try! remote_oplog.insert(agent, prev, -1)
+      ignore(try! oplog.apply_remote(op))
       prev = op.lv
     }
   }
@@ -135,7 +135,7 @@ test "oplog - walk_and_collect (100 ops)" (b : @bench.T) {
   let oplog = OpLog::new("agent_a")
   let mut prev = -1
   for i = 0; i < 100; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     prev = op.lv
   }
   let frontier = oplog.get_frontier()
@@ -154,15 +154,15 @@ test "oplog - walk_and_collect (concurrent)" (b : @bench.T) {
   let oplog_a = OpLog::new("agent_a")
   let mut prev_a = -1
   for i = 0; i < 50; i = i + 1 {
-    let op = oplog_a.insert("a", prev_a, -1)
-    ignore(oplog.apply_remote(op))
+    let op = try! oplog_a.insert("a", prev_a, -1)
+    ignore(try! oplog.apply_remote(op))
     prev_a = op.lv
   }
   let oplog_b = OpLog::new("agent_b")
   let mut prev_b = -1
   for i = 0; i < 50; i = i + 1 {
-    let op = oplog_b.insert("b", prev_b, -1)
-    ignore(oplog.apply_remote(op))
+    let op = try! oplog_b.insert("b", prev_b, -1)
+    ignore(try! oplog.apply_remote(op))
     prev_b = op.lv
   }
   let frontier = oplog.get_frontier()
@@ -180,14 +180,14 @@ test "oplog - diff_and_collect (advance 20)" (b : @bench.T) {
 
   // Build base: 100 operations
   for i = 0; i < 100; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     prev = op.lv
   }
   let from_frontier = oplog.get_frontier()
 
   // Add 20 more operations
   for i = 0; i < 20; i = i + 1 {
-    let op = oplog.insert("b", prev, -1)
+    let op = try! oplog.insert("b", prev, -1)
     prev = op.lv
   }
   let to_frontier = oplog.get_frontier()
@@ -206,14 +206,14 @@ test "oplog - walk_filtered (inserts only)" (b : @bench.T) {
 
   // Insert 50 characters
   for i = 0; i < 50; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     lvs.push(op.lv)
     prev = op.lv
   }
 
   // Delete 25 characters
   for i = 0; i < 25; i = i + 1 {
-    let _del = oplog.delete(lvs[i])
+    let _del = try! oplog.delete(lvs[i])
 
   }
   let frontier = oplog.get_frontier()
@@ -237,7 +237,7 @@ test "oplog - sequential typing (500 chars)" (b : @bench.T) {
 
     // Simulate typing a 500-character document
     for i = 0; i < 500; i = i + 1 {
-      let op = oplog.insert("x", prev, -1)
+      let op = try! oplog.insert("x", prev, -1)
       prev = op.lv
     }
     b.keep(oplog)
@@ -254,7 +254,7 @@ test "oplog - random position inserts (100 ops)" (b : @bench.T) {
     // Insert at various positions
     for i = 0; i < 100; i = i + 1 {
       let pos = if lvs.length() == 0 { -1 } else { lvs[i % lvs.length()] }
-      let op = oplog.insert("x", pos, -1)
+      let op = try! oplog.insert("x", pos, -1)
       lvs.push(op.lv)
     }
     b.keep(oplog)

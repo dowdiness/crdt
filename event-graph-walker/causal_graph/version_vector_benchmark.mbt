@@ -172,7 +172,7 @@ test "version_vector - from_frontier (10 ops)" (b : @bench.T) {
   let mut prev = -1
   for i = 0; i < 10; i = i + 1 {
     let parents = if prev == -1 { [] } else { [prev] }
-    prev = graph.add_version(parents, "agent_a")
+    prev = try! graph.add_version(parents, "agent_a")
   }
   let frontier = [prev]
   b.bench(fn() {
@@ -191,7 +191,7 @@ test "version_vector - from_frontier (100 ops, 5 agents)" (b : @bench.T) {
     let mut prev = -1
     for i = 0; i < 20; i = i + 1 {
       let parents = if prev == -1 { [] } else { [prev] }
-      prev = graph.add_version(parents, agent)
+      prev = try! graph.add_version(parents, agent)
     }
     frontiers.push(prev)
   }
@@ -210,7 +210,7 @@ test "version_vector - to_frontier (5 agents)" (b : @bench.T) {
     let mut prev = -1
     for i = 0; i < 20; i = i + 1 {
       let parents = if prev == -1 { [] } else { [prev] }
-      prev = graph.add_version(parents, agent)
+      prev = try! graph.add_version(parents, agent)
     }
   }
   let vv = VersionVector::new()
@@ -235,7 +235,7 @@ test "version_vector - roundtrip (5 agents)" (b : @bench.T) {
     let mut prev = -1
     for i = 0; i < 20; i = i + 1 {
       let parents = if prev == -1 { [] } else { [prev] }
-      prev = graph.add_version(parents, agent)
+      prev = try! graph.add_version(parents, agent)
     }
     frontiers.push(prev)
   }

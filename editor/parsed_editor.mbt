@@ -31,7 +31,7 @@ pub fn ParsedEditor::new(agent_id : String) -> ParsedEditor {
 ///|
 /// Insert text at the current cursor position
 /// Marks AST as dirty for lazy reparsing
-pub fn ParsedEditor::insert(self : ParsedEditor, text : String) -> Unit {
+pub fn ParsedEditor::insert(self : ParsedEditor, text : String) -> Unit raise {
   self.editor.insert(text)
   self.parse_dirty = true
 }
@@ -143,7 +143,7 @@ pub fn ParsedEditor::merge_remote(
   self : ParsedEditor,
   ops : Array[@oplog.Op],
   frontier : Array[Int],
-) -> Unit {
+) -> Unit raise {
   self.editor.merge_remote(ops, frontier)
   self.parse_dirty = true
 }

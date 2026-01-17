@@ -29,7 +29,7 @@ pub fn MergeContext::new(
 pub fn MergeContext::apply_operations(
   self : MergeContext,
   operations : Array[Int],
-) -> Unit {
+) -> Unit raise BranchError {
   // Sort operations by LV (which gives us topological order due to the way LVs are assigned)
   let sorted_ops = operations.copy()
   sorted_ops.sort()
@@ -45,7 +45,7 @@ pub fn MergeContext::apply_operations(
               Some(raw) =>
                 match self.oplog.graph.raw_to_lv(raw) {
                   Some(mapped) => mapped
-                  None => -1
+                  None => raise BranchError::MissingOrigin(raw~)
                 }
             }
             let origin_right = match op.origin_right {
@@ -53,7 +53,7 @@ pub fn MergeContext::apply_operations(
               Some(raw) =>
                 match self.oplog.graph.raw_to_lv(raw) {
                   Some(mapped) => mapped
-                  None => -1
+                  None => raise BranchError::MissingOrigin(raw~)
                 }
             }
             // Get Lamport timestamp and agent from causal graph for proper ordering
@@ -77,12 +77,15 @@ pub fn MergeContext::apply_operations(
               None => ()
               Some(raw) =>
                 match self.oplog.graph.raw_to_lv(raw) {
-                  Some(mapped) => self.tree.delete(mapped)
-                  None => ()
+                  Some(mapped) =>
+                    self.tree.delete(mapped) catch {
+                      e => raise BranchError::Fugue(e)
+                    }
+                  None => raise BranchError::MissingOrigin(raw~)
                 }
             }
         }
-      None => () // Operation not found, skip
+      None => raise BranchError::MissingOp(lv~)
     }
   }
 }
@@ -96,11 +99,13 @@ pub fn MergeContext::apply_operations(
 pub fn MergeContext::retreat_operations(
   self : MergeContext,
   operations : Array[Int],
-) -> Unit {
+) -> Unit raise BranchError {
   // For simplicity, we mark retreated items as deleted
   // A more sophisticated implementation would actually remove them
   for lv in operations {
-    self.tree.delete(lv)
+    self.tree.delete(lv) catch {
+      e => raise BranchError::Fugue(e)
+    }
   }
 }
 
@@ -121,7 +126,7 @@ pub fn merge(
   oplog : @oplog.OpLog,
   current_frontier : Array[Int],
   target_frontier : Array[Int],
-) -> Unit {
+) -> Unit raise BranchError {
   // Calculate retreat and advance sets
   let (retreat_ops, advance_ops) = oplog.graph.graph_diff(
     current_frontier, target_frontier,
@@ -150,7 +155,7 @@ pub fn merge_remote_ops(
   tree : @fugue.FugueTree,
   oplog : @oplog.OpLog,
   remote_ops : Array[@oplog.Op],
-) -> Unit {
+) -> Unit raise BranchError {
   // Create a Branch representing the current state
   let branch = Branch::from_tree_and_oplog(tree, oplog)
 

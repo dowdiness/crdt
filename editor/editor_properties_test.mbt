@@ -17,7 +17,7 @@ test "property: insert updates length correctly" {
   let texts : Array[String] = @quickcheck.samples(20)
   for text in texts {
     let editor = Editor::new("test-agent")
-    editor.insert(text)
+    try! editor.insert(text)
     assert_eq(editor.get_text().length(), text.length())
   }
 }
@@ -28,7 +28,7 @@ test "property: cursor bounds after insert" {
   let texts : Array[String] = @quickcheck.samples(20)
   for text in texts {
     let editor = Editor::new("test-agent")
-    editor.insert(text)
+    try! editor.insert(text)
     let cursor = editor.get_cursor()
     let len = editor.get_text().length()
     assert_true(cursor >= 0)
@@ -42,7 +42,7 @@ test "property: inserting empty string is no-op" {
   let editor = Editor::new("test-agent")
   let before_text = editor.get_text()
   let before_cursor = editor.get_cursor()
-  editor.insert("")
+  try! editor.insert("")
   assert_eq(editor.get_text(), before_text)
   assert_eq(editor.get_cursor(), before_cursor)
 }
@@ -74,7 +74,7 @@ test "property: insert then delete all gives empty" {
       continue
     }
     let editor = Editor::new("test-agent")
-    editor.insert(text)
+    try! editor.insert(text)
 
     // Delete all characters one by one
     editor.move_cursor(0)
@@ -94,7 +94,7 @@ test "property: text length is never negative" {
     let editor = Editor::new("test-agent")
     for is_insert in ops {
       if is_insert {
-        editor.insert("x")
+        try! editor.insert("x")
       } else {
         let _ = editor.delete()
 
@@ -112,7 +112,7 @@ test "property: cursor move clamps to bounds" {
   let positions : Array[Int] = @quickcheck.samples(20)
   for position in positions {
     let editor = Editor::new("test-agent")
-    editor.insert("hello")
+    try! editor.insert("hello")
     editor.move_cursor(position)
     let cursor = editor.get_cursor()
     let len = editor.get_text().length()
@@ -130,10 +130,10 @@ test "property: insert at start position" {
       continue
     }
     let editor = Editor::new("test-agent")
-    editor.insert("world")
+    try! editor.insert("world")
     let original_len = editor.get_text().length()
     editor.move_cursor(0)
-    editor.insert(text)
+    try! editor.insert(text)
 
     // After insert, total length should be sum of both
     assert_eq(editor.get_text().length(), original_len + text.length())
@@ -148,7 +148,7 @@ test "property: multiple inserts accumulate length" {
     let editor = Editor::new("test-agent")
     let mut expected_len = 0
     for text in texts {
-      editor.insert(text)
+      try! editor.insert(text)
       expected_len = expected_len + text.length()
     }
     assert_eq(editor.get_text().length(), expected_len)
@@ -162,7 +162,7 @@ test "property: cursor advances after insert" {
   for text in texts {
     let editor = Editor::new("test-agent")
     let start_pos = editor.get_cursor()
-    editor.insert(text)
+    try! editor.insert(text)
     let end_pos = editor.get_cursor()
 
     // Cursor should advance by text length
@@ -179,7 +179,7 @@ test "property: delete reduces length by at most 1" {
       continue
     }
     let editor = Editor::new("test-agent")
-    editor.insert(text)
+    try! editor.insert(text)
     let before_len = editor.get_text().length()
     editor.move_cursor(0)
     let deleted = editor.delete()
@@ -198,7 +198,7 @@ test "property: backspace at start is no-op" {
   let texts : Array[String] = @quickcheck.samples(15)
   for text in texts {
     let editor = Editor::new("test-agent")
-    editor.insert(text)
+    try! editor.insert(text)
     editor.move_cursor(0)
     let before_text = editor.get_text()
     let result = editor.backspace()
@@ -217,7 +217,7 @@ test "property: sequential operations maintain invariants" {
     for op in ops {
       // Positive: insert, negative: delete, zero: move cursor
       if op > 0 {
-        editor.insert("a")
+        try! editor.insert("a")
       } else if op < 0 {
         let _ = editor.delete()
 
@@ -243,7 +243,7 @@ test "property: cursor invariant holds after operations" {
     let editor = Editor::new("test-agent")
     for is_insert in ops {
       if is_insert {
-        editor.insert("x")
+        try! editor.insert("x")
       } else {
         editor.move_cursor(0)
         let _ = editor.delete()

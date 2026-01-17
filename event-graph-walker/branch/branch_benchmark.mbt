@@ -7,19 +7,19 @@ test "branch - checkout (10 ops)" (b : @bench.T) {
   let oplog = @oplog.OpLog::new("agent_a")
 
   // Insert "Hello"
-  let _op1 = oplog.insert("H", -1, -1)
-  let _op2 = oplog.insert("e", 0, -1)
-  let _op3 = oplog.insert("l", 1, -1)
-  let _op4 = oplog.insert("l", 2, -1)
-  let _op5 = oplog.insert("o", 3, -1)
-  let _op6 = oplog.insert(" ", 4, -1)
-  let _op7 = oplog.insert("W", 5, -1)
-  let _op8 = oplog.insert("o", 6, -1)
-  let _op9 = oplog.insert("r", 7, -1)
-  let _op10 = oplog.insert("d", 8, -1)
+  let _op1 = try! oplog.insert("H", -1, -1)
+  let _op2 = try! oplog.insert("e", 0, -1)
+  let _op3 = try! oplog.insert("l", 1, -1)
+  let _op4 = try! oplog.insert("l", 2, -1)
+  let _op5 = try! oplog.insert("o", 3, -1)
+  let _op6 = try! oplog.insert(" ", 4, -1)
+  let _op7 = try! oplog.insert("W", 5, -1)
+  let _op8 = try! oplog.insert("o", 6, -1)
+  let _op9 = try! oplog.insert("r", 7, -1)
+  let _op10 = try! oplog.insert("d", 8, -1)
   let frontier = oplog.get_frontier()
   b.bench(fn() {
-    let result = Branch::checkout(oplog, frontier)
+    let result = try! Branch::checkout(oplog, frontier)
     b.keep(result)
   })
 }
@@ -32,12 +32,12 @@ test "branch - checkout (100 ops)" (b : @bench.T) {
 
   // Insert 100 characters
   for i = 0; i < 100; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     prev = op.lv
   }
   let frontier = oplog.get_frontier()
   b.bench(fn() {
-    let result = Branch::checkout(oplog, frontier)
+    let result = try! Branch::checkout(oplog, frontier)
     b.keep(result)
   })
 }
@@ -50,12 +50,12 @@ test "branch - checkout (1000 ops)" (b : @bench.T) {
 
   // Insert 1000 characters
   for i = 0; i < 1000; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     prev = op.lv
   }
   let frontier = oplog.get_frontier()
   b.bench(fn() {
-    let result = Branch::checkout(oplog, frontier)
+    let result = try! Branch::checkout(oplog, frontier)
     b.keep(result)
   })
 }
@@ -68,20 +68,20 @@ test "branch - advance (10 new ops)" (b : @bench.T) {
 
   // Build base: 100 operations
   for i = 0; i < 100; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     prev = op.lv
   }
   let base_frontier = oplog.get_frontier()
-  let base_branch = Branch::checkout(oplog, base_frontier)
+  let base_branch = try! Branch::checkout(oplog, base_frontier)
 
   // Add 10 more operations
   for i = 0; i < 10; i = i + 1 {
-    let op = oplog.insert("b", prev, -1)
+    let op = try! oplog.insert("b", prev, -1)
     prev = op.lv
   }
   let new_frontier = oplog.get_frontier()
   b.bench(fn() {
-    let result = base_branch.advance(new_frontier)
+    let result = try! base_branch.advance(new_frontier)
     b.keep(result)
   })
 }
@@ -94,20 +94,20 @@ test "branch - advance (100 new ops)" (b : @bench.T) {
 
   // Build base: 100 operations
   for i = 0; i < 100; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     prev = op.lv
   }
   let base_frontier = oplog.get_frontier()
-  let base_branch = Branch::checkout(oplog, base_frontier)
+  let base_branch = try! Branch::checkout(oplog, base_frontier)
 
   // Add 100 more operations
   for i = 0; i < 100; i = i + 1 {
-    let op = oplog.insert("b", prev, -1)
+    let op = try! oplog.insert("b", prev, -1)
     prev = op.lv
   }
   let new_frontier = oplog.get_frontier()
   b.bench(fn() {
-    let result = base_branch.advance(new_frontier)
+    let result = try! base_branch.advance(new_frontier)
     b.keep(result)
   })
 }
@@ -121,21 +121,21 @@ test "branch - checkout with concurrent branches" (b : @bench.T) {
   // Agent A: 50 operations
   let mut prev_a = -1
   for i = 0; i < 50; i = i + 1 {
-    let op = oplog_a.insert("a", prev_a, -1)
+    let op = try! oplog_a.insert("a", prev_a, -1)
     prev_a = op.lv
   }
 
   // Agent B: 50 operations (need to merge into A)
   let mut prev_b = -1
   for i = 0; i < 50; i = i + 1 {
-    let op = oplog_b.insert("b", prev_b, -1)
+    let op = try! oplog_b.insert("b", prev_b, -1)
     prev_b = op.lv
     // Apply to oplog_a
-    ignore(oplog_a.apply_remote(op))
+    ignore(try! oplog_a.apply_remote(op))
   }
   let frontier = oplog_a.get_frontier()
   b.bench(fn() {
-    let result = Branch::checkout(oplog_a, frontier)
+    let result = try! Branch::checkout(oplog_a, frontier)
     b.keep(result)
   })
 }
@@ -149,19 +149,19 @@ test "branch - checkout with deletes" (b : @bench.T) {
 
   // Insert 100 characters
   for i = 0; i < 100; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     lvs.push(op.lv)
     prev = op.lv
   }
 
   // Delete every other character
   for i = 0; i < lvs.length(); i = i + 2 {
-    let _del = oplog.delete(lvs[i])
+    let _del = try! oplog.delete(lvs[i])
 
   }
   let frontier = oplog.get_frontier()
   b.bench(fn() {
-    let result = Branch::checkout(oplog, frontier)
+    let result = try! Branch::checkout(oplog, frontier)
     b.keep(result)
   })
 }
@@ -180,16 +180,16 @@ test "branch - repeated advance steady-state (10 iterations)" (b : @bench.T) {
 
   // Build base: 50 operations BEFORE benchmark
   for i = 0; i < 50; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     prev = op.lv
   }
   let base_frontier = oplog.get_frontier()
-  let base_branch = Branch::checkout(oplog, base_frontier)
+  let base_branch = try! Branch::checkout(oplog, base_frontier)
 
   // Pre-create all future operations and their frontiers BEFORE benchmark
   let future_frontiers = []
   for i = 0; i < 10; i = i + 1 {
-    let op = oplog.insert("b", prev, -1)
+    let op = try! oplog.insert("b", prev, -1)
     prev = op.lv
     future_frontiers.push(oplog.get_frontier())
   }
@@ -201,7 +201,7 @@ test "branch - repeated advance steady-state (10 iterations)" (b : @bench.T) {
 
     // Advance through 10 pre-computed frontiers
     for frontier in future_frontiers {
-      branch = branch.advance(frontier)
+      branch = try! branch.advance(frontier)
     }
     b.keep(branch)
   })
@@ -226,17 +226,17 @@ test "branch - repeated advance with oplog mutations (10 iterations)" (
 
   // Build base: 50 operations
   for i = 0; i < 50; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     prev = op.lv
   }
   b.bench(fn() {
-    let mut branch = Branch::checkout(oplog, oplog.get_frontier())
+    let mut branch = try! Branch::checkout(oplog, oplog.get_frontier())
 
     // Simulate 10 incremental edits with oplog mutations
     for _iter = 0; _iter < 10; _iter = _iter + 1 {
-      let op = oplog.insert("b", prev, -1) // ← Modifies oplog
+      let op = try! oplog.insert("b", prev, -1) // ← Modifies oplog
       prev = op.lv
-      branch = branch.advance(oplog.get_frontier()) // ← Dynamic frontier
+      branch = try! branch.advance(oplog.get_frontier()) // ← Dynamic frontier
     }
     b.keep(branch)
   })
@@ -250,10 +250,10 @@ test "branch - to_text (100 chars)" (b : @bench.T) {
 
   // Insert 100 characters
   for i = 0; i < 100; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     prev = op.lv
   }
-  let branch = Branch::checkout(oplog, oplog.get_frontier())
+  let branch = try! Branch::checkout(oplog, oplog.get_frontier())
   b.bench(fn() {
     let result = branch.to_text()
     b.keep(result)
@@ -268,10 +268,10 @@ test "branch - to_text (1000 chars)" (b : @bench.T) {
 
   // Insert 1000 characters
   for i = 0; i < 1000; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     prev = op.lv
   }
-  let branch = Branch::checkout(oplog, oplog.get_frontier())
+  let branch = try! Branch::checkout(oplog, oplog.get_frontier())
   b.bench(fn() {
     let result = branch.to_text()
     b.keep(result)
@@ -289,17 +289,17 @@ test "branch - single advance (1 new op)" (b : @bench.T) {
 
   // Build base: 100 operations
   for i = 0; i < 100; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     prev = op.lv
   }
   let base_frontier = oplog.get_frontier()
-  let base_branch = Branch::checkout(oplog, base_frontier)
+  let base_branch = try! Branch::checkout(oplog, base_frontier)
 
   // Add 1 operation
-  let _op = oplog.insert("b", prev, -1)
+  let _op = try! oplog.insert("b", prev, -1)
   let new_frontier = oplog.get_frontier()
   b.bench(fn() {
-    let _result = base_branch.advance(new_frontier)
+    let _result = try! base_branch.advance(new_frontier)
     b.keep(_result)
   })
 }
@@ -315,20 +315,20 @@ test "branch - single advance (50 new ops)" (b : @bench.T) {
 
   // Build base: 100 operations
   for i = 0; i < 100; i = i + 1 {
-    let op = oplog.insert("a", prev, -1)
+    let op = try! oplog.insert("a", prev, -1)
     prev = op.lv
   }
   let base_frontier = oplog.get_frontier()
-  let base_branch = Branch::checkout(oplog, base_frontier)
+  let base_branch = try! Branch::checkout(oplog, base_frontier)
 
   // Add 50 operations
   for i = 0; i < 50; i = i + 1 {
-    let op = oplog.insert("b", prev, -1)
+    let op = try! oplog.insert("b", prev, -1)
     prev = op.lv
   }
   let new_frontier = oplog.get_frontier()
   b.bench(fn() {
-    let _result = base_branch.advance(new_frontier)
+    let _result = try! base_branch.advance(new_frontier)
     b.keep(_result)
   })
 }
@@ -347,10 +347,10 @@ test "branch - realistic typing (50 chars)" (b : @bench.T) {
 
   // Pre-create base document (not part of benchmark)
   for i = 0; i < 20; i = i + 1 {
-    let op = oplog.insert("x", prev, -1)
+    let op = try! oplog.insert("x", prev, -1)
     prev = op.lv
   }
-  branch = Branch::checkout(oplog, oplog.get_frontier())
+  branch = try! Branch::checkout(oplog, oplog.get_frontier())
 
   // Benchmark: Type 50 characters one at a time
   // This is realistic because:
@@ -359,10 +359,10 @@ test "branch - realistic typing (50 chars)" (b : @bench.T) {
   // - Branch state persists across iterations
   b.bench(fn() {
     for i = 0; i < 50; i = i + 1 {
-      let op = oplog.insert("c", prev, -1)
+      let op = try! oplog.insert("c", prev, -1)
       prev = op.lv
       let new_frontier = oplog.get_frontier()
-      branch = branch.advance(new_frontier)
+      branch = try! branch.advance(new_frontier)
     }
     b.keep(branch)
   })
@@ -380,23 +380,23 @@ test "branch - concurrent merge scenario" (b : @bench.T) {
 
   // User Alice types 30 chars
   for i = 0; i < 30; i = i + 1 {
-    let op = oplog.insert("a", prev_alice, -1)
+    let op = try! oplog.insert("a", prev_alice, -1)
     prev_alice = op.lv
   }
   let alice_frontier = oplog.get_frontier()
-  branch = Branch::checkout(oplog, alice_frontier)
+  branch = try! Branch::checkout(oplog, alice_frontier)
 
   // User Bob simulates typing concurrently (via separate oplog simulation)
   // In real scenario, these would come from network as remote operations
   let mut prev_bob = -1
   for i = 0; i < 20; i = i + 1 {
-    let op = oplog.insert("b", prev_bob, -1)
+    let op = try! oplog.insert("b", prev_bob, -1)
     prev_bob = op.lv
   }
   let merged_frontier = oplog.get_frontier()
   b.bench(fn() {
     // Advance branch to merged state
-    let _merged_branch = branch.advance(merged_frontier)
+    let _merged_branch = try! branch.advance(merged_frontier)
     b.keep(_merged_branch)
   })
 }
