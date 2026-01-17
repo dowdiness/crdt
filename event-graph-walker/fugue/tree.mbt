@@ -52,24 +52,186 @@ pub fn FugueTree::get(self : FugueTree, id : Int) -> Item? {
 }
 
 ///|
-/// Add item to tree
-pub fn FugueTree::add_item(self : FugueTree, item : Item) -> Unit {
-  self.items = self.items.add(item.id, item)
-  self.length = self.length + 1
-}
-
-///|
-/// Get all items in order (for traversal)
-pub fn FugueTree::get_all_items(self : FugueTree) -> Array[(Int, Item)] {
-  self.items.iter().collect()
-}
-
-///|
 /// Get all visible (non-deleted) items in tree order
 pub fn FugueTree::get_visible_items(self : FugueTree) -> Array[(Int, Item)] {
   let result = []
   self.traverse_tree(-1, result)
   result
+}
+
+///|
+/// Count visible (non-deleted) items
+pub fn FugueTree::visible_count(self : FugueTree) -> Int {
+  self.get_visible_items().length()
+}
+
+///|
+/// Convert tree to text by traversing in order
+pub fn FugueTree::to_text(self : FugueTree) -> String {
+  self
+  .get_visible_items()
+  .fold(init="", (acc, entry) => {
+    let (_, item) = entry
+    acc + item.content
+  })
+}
+
+///|
+/// Insert an item using FugueMax integration algorithm
+pub fn FugueTree::insert(
+  self : FugueTree,
+  id : Int,
+  content : String,
+  origin_left : Int,
+  origin_right : Int,
+  timestamp : Int,
+  agent : String,
+) -> Unit {
+  // Find correct parent and side using FugueMax algorithm
+  let (parent, side) = self.find_parent_and_side(origin_left, origin_right)
+
+  // Create item with found parent and side
+  let item = Item::new(id, content, parent, side, timestamp, agent)
+
+  // Add to tree
+  self.add_item(item)
+}
+
+///|
+/// Delete an item (mark as deleted)
+pub fn FugueTree::delete(self : FugueTree, id : Int) -> Unit raise FugueError {
+  match self[id] {
+    Some(item) => {
+      let deleted_item = item.mark_deleted()
+      self.items = self.items.add(id, deleted_item)
+    }
+    None => raise FugueError::MissingItem(id~)
+  }
+}
+
+///|
+/// Add item to tree
+fn FugueTree::add_item(self : FugueTree, item : Item) -> Unit {
+  self.items = self.items.add(item.id, item)
+  self.length = self.length + 1
+}
+
+///|
+/// Compare children by Lamport timestamp (primary) and agent (tiebreaker)
+fn compare_children(a : (Int, Item), b : (Int, Item)) -> Int {
+  let (_, item_a) = a
+  let (_, item_b) = b
+  item_a.compare(item_b)
+}
+
+///|
+/// Check if ancestor_id is an ancestor of descendant_id in the tree
+fn FugueTree::is_ancestor(
+  self : FugueTree,
+  ancestor_id : Int,
+  descendant_id : Int,
+) -> Bool {
+  if ancestor_id == descendant_id {
+    return true
+  }
+  loop self[descendant_id] {
+    Some(item) => {
+      if item.parent == ancestor_id {
+        return true
+      }
+      if item.parent == -1 {
+        return false // Reached root without finding ancestor
+      }
+      continue self[item.parent]
+    }
+    None => break false
+  }
+}
+
+///|
+test "ancestor check correctness" {
+  let tree = FugueTree::new()
+
+  // Build chain: root(-1) → A(0) → B(1) → C(2)
+  tree.insert(0, "A", -1, -1, 0, "agent0")
+  tree.insert(1, "B", 0, -1, 1, "agent0")
+  tree.insert(2, "C", 1, -1, 2, "agent0")
+
+  // Test ancestor relationships
+  inspect(tree.is_ancestor(0, 0), content="true") // Self is ancestor
+  inspect(tree.is_ancestor(0, 1), content="true") // A is ancestor of B
+  inspect(tree.is_ancestor(0, 2), content="true") // A is ancestor of C
+  inspect(tree.is_ancestor(1, 2), content="true") // B is ancestor of C
+  inspect(tree.is_ancestor(1, 0), content="false") // B is NOT ancestor of A
+  inspect(tree.is_ancestor(2, 0), content="false") // C is NOT ancestor of A
+}
+
+///|
+/// Find the correct parent and side for a new item using FugueMax algorithm
+/// Returns (parent_id, side)
+fn FugueTree::find_parent_and_side(
+  self : FugueTree,
+  origin_left : Int,
+  origin_right : Int,
+) -> (Int, Side) {
+  // If inserting at start, parent is root, side is Right
+  if origin_left == -1 {
+    return (-1, Right)
+  }
+
+  // If no right constraint, parent is origin_left, side is Right
+  if origin_right == -1 {
+    return (origin_left, Right)
+  }
+
+  // FugueMax algorithm:
+  // If origin_left is NOT an ancestor of origin_right → Right child of origin_left
+  // If origin_left IS an ancestor of origin_right → Left child of origin_right
+  if self.is_ancestor(origin_left, origin_right) {
+    (origin_right, Left)
+  } else {
+    (origin_left, Right)
+  }
+}
+
+///|
+test "find parent and side at start" {
+  let tree = FugueTree::new()
+  let (parent, side) = tree.find_parent_and_side(-1, -1)
+  inspect(parent, content="-1")
+  inspect(side, content="Right")
+}
+
+///|
+test "find parent and side with origin_left" {
+  let tree = FugueTree::new()
+  tree.insert(0, "A", -1, -1, 0, "agent0")
+  let (parent, side) = tree.find_parent_and_side(0, -1)
+  inspect(parent, content="0")
+  inspect(side, content="Right")
+}
+
+///|
+/// Get all children of a node (excluding cycles)
+fn FugueTree::get_children(
+  self : FugueTree,
+  parent_id : Int,
+) -> @immut/hashmap.HashMap[Int, Item] {
+  self.items.filter(fn(id, item) { item.parent == parent_id && id != parent_id })
+}
+
+///|
+/// Partition children into left and right sides
+fn partition_children(
+  children : @immut/hashmap.HashMap[Int, Item],
+) -> (Array[(Int, Item)], Array[(Int, Item)]) {
+  let left = []
+  let right = []
+  children.each((id, item) => match item.side {
+    Left => left.push((id, item))
+    Right => right.push((id, item))
+  })
+  (left, right)
 }
 
 ///|
@@ -119,158 +281,4 @@ fn FugueTree::traverse_tree(
       self.traverse_tree(child_id, result)
     }
   })
-}
-
-///|
-/// Get all children of a node (excluding cycles)
-fn FugueTree::get_children(
-  self : FugueTree,
-  parent_id : Int,
-) -> Array[(Int, Item)] {
-  self.items
-  .filter(fn(id, item) { item.parent == parent_id && id != parent_id })
-  .to_array()
-}
-
-///|
-/// Partition children into left and right sides
-fn partition_children(
-  children : Array[(Int, Item)],
-) -> (Array[(Int, Item)], Array[(Int, Item)]) {
-  let left = []
-  let right = []
-  children
-  .iter()
-  .each(fn(child) {
-    let (id, item) = child
-    match item.side {
-      Left => left.push((id, item))
-      Right => right.push((id, item))
-    }
-  })
-  (left, right)
-}
-
-///|
-/// Compare children by Lamport timestamp (primary) and agent (tiebreaker)
-fn compare_children(a : (Int, Item), b : (Int, Item)) -> Int {
-  let (_, item_a) = a
-  let (_, item_b) = b
-
-  // First compare by Lamport timestamp for causal ordering
-  let ts_cmp = item_a.timestamp.compare(item_b.timestamp)
-  if ts_cmp != 0 {
-    return ts_cmp
-  }
-
-  // If timestamps equal, compare by agent for deterministic tiebreaking
-  let agent_cmp = item_a.agent.compare(item_b.agent)
-  if agent_cmp != 0 {
-    return agent_cmp
-  }
-
-  // If agents equal, compare by ID
-  item_a.id.compare(item_b.id)
-}
-
-///|
-/// Count visible (non-deleted) items
-pub fn FugueTree::visible_count(self : FugueTree) -> Int {
-  self.get_visible_items().length()
-}
-
-///|
-/// Convert tree to text by traversing in order
-pub fn FugueTree::to_text(self : FugueTree) -> String {
-  self
-  .get_visible_items()
-  .fold(init="", (acc, entry) => {
-    let (_, item) = entry
-    acc + item.content
-  })
-}
-
-///|
-/// Find the correct parent and side for a new item using FugueMax algorithm
-/// Returns (parent_id, side)
-pub fn FugueTree::find_parent_and_side(
-  self : FugueTree,
-  origin_left : Int,
-  origin_right : Int,
-) -> (Int, Side) {
-  // If inserting at start, parent is root, side is Right
-  if origin_left == -1 {
-    return (-1, Right)
-  }
-
-  // If no right constraint, parent is origin_left, side is Right
-  if origin_right == -1 {
-    return (origin_left, Right)
-  }
-
-  // FugueMax algorithm:
-  // If origin_left is NOT an ancestor of origin_right → Right child of origin_left
-  // If origin_left IS an ancestor of origin_right → Left child of origin_right
-  if self.is_ancestor(origin_left, origin_right) {
-    (origin_right, Left)
-  } else {
-    (origin_left, Right)
-  }
-}
-
-///|
-/// Check if ancestor_id is an ancestor of descendant_id in the tree
-pub fn FugueTree::is_ancestor(
-  self : FugueTree,
-  ancestor_id : Int,
-  descendant_id : Int,
-) -> Bool {
-  if ancestor_id == descendant_id {
-    return true
-  }
-  loop self[descendant_id] {
-    Some(item) => {
-      if item.parent == ancestor_id {
-        return true
-      }
-      if item.parent == -1 {
-        return false // Reached root without finding ancestor
-      }
-      continue self[item.parent]
-    }
-    None => break false
-  }
-}
-
-///|
-/// Insert an item using FugueMax integration algorithm
-pub fn FugueTree::insert(
-  self : FugueTree,
-  id : Int,
-  content : String,
-  origin_left : Int,
-  origin_right : Int,
-  timestamp : Int,
-  agent : String,
-) -> Unit {
-  // Find correct parent and side using FugueMax algorithm
-  let (parent, side) = self.find_parent_and_side(origin_left, origin_right)
-
-  // Create item with found parent and side
-  let item = Item::new(id, content, parent, side, timestamp, agent)
-
-  // Add to tree
-  self.add_item(item)
-}
-
-///|
-/// Delete an item (mark as deleted)
-pub fn FugueTree::delete(self : FugueTree, id : Int) -> Unit raise FugueError {
-  match self[id] {
-    Some(item) => {
-      let deleted_item = item.mark_deleted()
-      self.items = self.items.add(id, deleted_item)
-    }
-    None => raise FugueError::MissingItem(id~)
-  }
 }

@@ -56,23 +56,6 @@ test "get item by id" {
 }
 
 ///|
-test "find parent and side at start" {
-  let tree = FugueTree::new()
-  let (parent, side) = tree.find_parent_and_side(-1, -1)
-  inspect(parent, content="-1")
-  inspect(side, content="Right")
-}
-
-///|
-test "find parent and side with origin_left" {
-  let tree = FugueTree::new()
-  tree.insert(0, "A", -1, -1, 0, "agent0")
-  let (parent, side) = tree.find_parent_and_side(0, -1)
-  inspect(parent, content="0")
-  inspect(side, content="Right")
-}
-
-///|
 test "concurrent inserts ordering with FugueMax" {
   let tree = FugueTree::new()
 
@@ -195,24 +178,6 @@ test "interleaved operations" {
   let text = tree.to_text()
   // Current behavior based on tree structure
   inspect(text, content="Hel-lo>")
-}
-
-///|
-test "ancestor check correctness" {
-  let tree = FugueTree::new()
-
-  // Build chain: root(-1) → A(0) → B(1) → C(2)
-  tree.insert(0, "A", -1, -1, 0, "agent0")
-  tree.insert(1, "B", 0, -1, 1, "agent0")
-  tree.insert(2, "C", 1, -1, 2, "agent0")
-
-  // Test ancestor relationships
-  inspect(tree.is_ancestor(0, 0), content="true") // Self is ancestor
-  inspect(tree.is_ancestor(0, 1), content="true") // A is ancestor of B
-  inspect(tree.is_ancestor(0, 2), content="true") // A is ancestor of C
-  inspect(tree.is_ancestor(1, 2), content="true") // B is ancestor of C
-  inspect(tree.is_ancestor(1, 0), content="false") // B is NOT ancestor of A
-  inspect(tree.is_ancestor(2, 0), content="false") // C is NOT ancestor of A
 }
 
 ///|

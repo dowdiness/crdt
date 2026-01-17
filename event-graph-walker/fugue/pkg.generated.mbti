@@ -18,15 +18,11 @@ pub struct FugueTree {
   root : Int
   mut length : Int
 }
-pub fn FugueTree::add_item(Self, Item) -> Unit
 pub fn FugueTree::delete(Self, Int) -> Unit raise FugueError
-pub fn FugueTree::find_parent_and_side(Self, Int, Int) -> (Int, Side)
 #alias("_[_]")
 pub fn FugueTree::get(Self, Int) -> Item?
-pub fn FugueTree::get_all_items(Self) -> Array[(Int, Item)]
 pub fn FugueTree::get_visible_items(Self) -> Array[(Int, Item)]
 pub fn FugueTree::insert(Self, Int, String, Int, Int, Int, String) -> Unit
-pub fn FugueTree::is_ancestor(Self, Int, Int) -> Bool
 pub fn FugueTree::new() -> Self
 pub fn FugueTree::to_text(Self) -> String
 pub fn FugueTree::visible_count(Self) -> Int
@@ -41,9 +37,7 @@ pub struct Item {
   timestamp : Int
   agent : String
 }
-pub fn Item::is_visible(Self) -> Bool
-pub fn Item::mark_deleted(Self) -> Self
-pub fn Item::new(Int, String, Int, Side, Int, String) -> Self
+pub impl Eq for Item
 pub impl Show for Item
 
 pub enum Side {
