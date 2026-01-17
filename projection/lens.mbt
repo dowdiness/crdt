@@ -156,8 +156,10 @@ pub fn tree_lens_apply_edit(
       // Parse the new value to get a TermNode
       let parser = @parser.IncrementalParser::new(new_value)
       let parsed = parser.parse()
+      // Assign fresh IDs to avoid collisions with existing AST nodes
+      let new_node = assign_fresh_ids(parsed, model)
       // Replace the node with the parsed content
-      let op = ReplaceNode(node_id~, new_node=parsed)
+      let op = ReplaceNode(node_id~, new_node~)
       match model.apply_operation(op) {
         Ok(_) => Ok(model)
         Err(msg) => Err(msg)
@@ -183,7 +185,9 @@ pub fn tree_lens_apply_edit(
           // Parse a lambda wrapping it
           let lambda_text = "λ" + var_name + "." + existing_text
           let parser = @parser.IncrementalParser::new(lambda_text)
-          let new_node = parser.parse()
+          let parsed = parser.parse()
+          // Assign fresh IDs to avoid collisions with existing AST nodes
+          let new_node = assign_fresh_ids(parsed, model)
           // Replace the node
           let op = ReplaceNode(node_id~, new_node~)
           match model.apply_operation(op) {
@@ -202,7 +206,9 @@ pub fn tree_lens_apply_edit(
           // Parse an application with a placeholder argument
           let app_text = "(" + existing_text + ") _"
           let parser = @parser.IncrementalParser::new(app_text)
-          let new_node = parser.parse()
+          let parsed = parser.parse()
+          // Assign fresh IDs to avoid collisions with existing AST nodes
+          let new_node = assign_fresh_ids(parsed, model)
           // Replace the node
           let op = ReplaceNode(node_id~, new_node~)
           match model.apply_operation(op) {
@@ -225,15 +231,8 @@ pub fn tree_lens_apply_edit(
       }
       let parser = @parser.IncrementalParser::new(placeholder_text)
       let parsed = parser.parse()
-      // Assign a fresh node ID
-      let new_id = model.new_node_id()
-      let new_node = @parser.TermNode::new(
-        parsed.kind,
-        0,
-        placeholder_text.to_array().length(),
-        new_id.0,
-        parsed.children,
-      )
+      // Assign fresh IDs to avoid collisions with existing AST nodes
+      let new_node = assign_fresh_ids(parsed, model)
       let op = InsertNode(parent~, index~, node=new_node)
       match model.apply_operation(op) {
         Ok(_) => Ok(model)

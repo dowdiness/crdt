@@ -287,11 +287,7 @@ pub fn CanonicalModel::apply_operation(
   self : CanonicalModel,
   op : ModelOperation,
 ) -> Result[Unit, String] {
-  // Record in history first
-  self.edit_history.push(op)
-  self.history_position = self.edit_history.length()
-
-  // Apply the operation
+  // Apply the operation first - only record in history on success
   match op {
     InsertNode(parent~, index~, node~) =>
       match self.get_node(parent) {
@@ -330,23 +326,28 @@ pub fn CanonicalModel::apply_operation(
           }
         }
       }
-    ReplaceNode(node_id~, new_node~) => {
-      // Create a node with the same ID but new content
-      let replacement = @parser.TermNode::new(
-        new_node.kind,
-        new_node.start,
-        new_node.end,
-        node_id.0,
-        new_node.children,
-      )
-      match self.ast {
-        None => return Err("No AST to modify")
-        Some(root) => {
-          let new_root = update_node_in_tree(root, node_id, replacement)
-          self.set_ast(new_root)
+    ReplaceNode(node_id~, new_node~) =>
+      // Check node exists first
+      match self.get_node(node_id) {
+        None => return Err("Node not found: " + node_id.to_string())
+        Some(_) => {
+          // Create a node with the same ID but new content
+          let replacement = @parser.TermNode::new(
+            new_node.kind,
+            new_node.start,
+            new_node.end,
+            node_id.0,
+            new_node.children,
+          )
+          match self.ast {
+            None => return Err("No AST to modify")
+            Some(root) => {
+              let new_root = update_node_in_tree(root, node_id, replacement)
+              self.set_ast(new_root)
+            }
+          }
         }
       }
-    }
     UpdateLeaf(node_id~, new_value~) => {
       // UpdateLeaf requires creating TermKind values, but the constructors are
       // private to the parser module. Use ReplaceNode with a parsed node instead.
@@ -390,16 +391,36 @@ pub fn CanonicalModel::apply_operation(
           match self.find_parent(node_id) {
             None => return Err("Cannot move root node")
             Some((old_parent, old_index)) => {
+              let old_parent_id = NodeId(old_parent.node_id)
               let parent_after_remove = remove_child_at(old_parent, old_index)
               match self.ast {
                 None => return Err("No AST to modify")
                 Some(root) => {
+                  match get_node_in_tree(root, new_parent) {
+                    None =>
+                      return Err(
+                        "New parent not found: " + new_parent.to_string(),
+                      )
+                    Some(_) =>
+                      if get_node_in_tree(node_to_move, new_parent) is Some(_) {
+                        return Err(
+                          "Cannot move node under its own subtree: " +
+                          new_parent.to_string(),
+                        )
+                      }
+                  }
                   // Update tree with removed node
                   let root_after_remove = update_node_in_tree(
-                    root,
-                    NodeId(old_parent.node_id),
-                    parent_after_remove,
+                    root, old_parent_id, parent_after_remove,
                   )
+                  // Adjust new_index if moving within the same parent
+                  // and the source was before the target position
+                  let adjusted_index = if old_parent_id == new_parent &&
+                    old_index < new_index {
+                    new_index - 1
+                  } else {
+                    new_index
+                  }
                   // Now insert into new parent
                   match get_node_in_tree(root_after_remove, new_parent) {
                     None =>
@@ -408,7 +429,7 @@ pub fn CanonicalModel::apply_operation(
                       )
                     Some(new_parent_node) => {
                       let parent_after_insert = insert_child_at(
-                        new_parent_node, new_index, node_to_move,
+                        new_parent_node, adjusted_index, node_to_move,
                       )
                       let final_root = update_node_in_tree(
                         root_after_remove, new_parent, parent_after_insert,
@@ -422,6 +443,9 @@ pub fn CanonicalModel::apply_operation(
           }
       }
   }
+  // Record in history only on success
+  self.edit_history.push(op)
+  self.history_position = self.edit_history.length()
   self.mark_all_dirty()
   Ok(())
 }
