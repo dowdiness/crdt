@@ -137,20 +137,150 @@ pub fn tree_lens_apply_edit(
   edit : TreeEditOp,
 ) -> Result[CanonicalModel, String] {
   match edit {
+    // Selection operations don't modify the AST
     TreeEditOp::Select(node_id~) => {
-      // Selection doesn't modify the model
+      let _ = node_id
+      Ok(model)
+    }
+    TreeEditOp::SelectRange(start~, end~) => {
+      let _ = (start, end)
+      Ok(model)
+    }
+
+    // Inline editing
+    TreeEditOp::StartEdit(node_id~) => {
       let _ = node_id
       Ok(model)
     }
     TreeEditOp::CommitEdit(node_id~, new_value~) => {
-      // Update the leaf value
-      let _ = (node_id, new_value)
-      // TODO: Implement leaf value update
+      // Parse the new value to get a TermNode
+      let parser = @parser.IncrementalParser::new(new_value)
+      let parsed = parser.parse()
+      // Replace the node with the parsed content
+      let op = ReplaceNode(node_id~, new_node=parsed)
+      match model.apply_operation(op) {
+        Ok(_) => Ok(model)
+        Err(msg) => Err(msg)
+      }
+    }
+    TreeEditOp::CancelEdit => Ok(model)
+
+    // Structural operations
+    TreeEditOp::Delete(node_id~) => {
+      let op = DeleteNode(node_id~)
+      match model.apply_operation(op) {
+        Ok(_) => Ok(model)
+        Err(msg) => Err(msg)
+      }
+    }
+    TreeEditOp::WrapInLambda(node_id~, var_name~) =>
+      // Get the existing node to wrap
+      match model.get_node(node_id) {
+        None => Err("Node not found: " + node_id.to_string())
+        Some(existing) => {
+          // Get text representation of the existing node
+          let existing_text = @parser.print_term_node(existing)
+          // Parse a lambda wrapping it
+          let lambda_text = "λ" + var_name + "." + existing_text
+          let parser = @parser.IncrementalParser::new(lambda_text)
+          let new_node = parser.parse()
+          // Replace the node
+          let op = ReplaceNode(node_id~, new_node~)
+          match model.apply_operation(op) {
+            Ok(_) => Ok(model)
+            Err(msg) => Err(msg)
+          }
+        }
+      }
+    TreeEditOp::WrapInApp(node_id~) =>
+      // Get the existing node to wrap as the function
+      match model.get_node(node_id) {
+        None => Err("Node not found: " + node_id.to_string())
+        Some(existing) => {
+          // Get text representation of the existing node
+          let existing_text = @parser.print_term_node(existing)
+          // Parse an application with a placeholder argument
+          let app_text = "(" + existing_text + ") _"
+          let parser = @parser.IncrementalParser::new(app_text)
+          let new_node = parser.parse()
+          // Replace the node
+          let op = ReplaceNode(node_id~, new_node~)
+          match model.apply_operation(op) {
+            Ok(_) => Ok(model)
+            Err(msg) => Err(msg)
+          }
+        }
+      }
+    TreeEditOp::InsertChild(parent~, index~, kind~) => {
+      // Create a placeholder node based on the kind
+      // Since we can't create TermKind directly, we'll parse a placeholder
+      let placeholder_text = match kind {
+        @parser.TermKind::Int(_) => "0"
+        @parser.TermKind::Var(_) => "_"
+        @parser.TermKind::Lam(_) => "λx.x"
+        @parser.TermKind::App => "f x"
+        @parser.TermKind::Bop(_) => "0 + 0"
+        @parser.TermKind::If => "if 0 then 0 else 0"
+        @parser.TermKind::Error(_) => "_"
+      }
+      let parser = @parser.IncrementalParser::new(placeholder_text)
+      let parsed = parser.parse()
+      // Assign a fresh node ID
+      let new_id = model.new_node_id()
+      let new_node = @parser.TermNode::new(
+        parsed.kind,
+        0,
+        placeholder_text.to_array().length(),
+        new_id.0,
+        parsed.children,
+      )
+      let op = InsertNode(parent~, index~, node=new_node)
+      match model.apply_operation(op) {
+        Ok(_) => Ok(model)
+        Err(msg) => Err(msg)
+      }
+    }
+
+    // Drag and drop
+    TreeEditOp::StartDrag(node_id~) => {
+      let _ = node_id
       Ok(model)
     }
-    _ =>
-      // TODO: Implement other operations
+    TreeEditOp::DragOver(target~, position~) => {
+      let _ = (target, position)
       Ok(model)
+    }
+    TreeEditOp::Drop(source~, target~, position~) =>
+      // Get the target's parent to determine where to insert
+      match model.find_parent(target) {
+        None => Err("Cannot drop on root node")
+        Some((parent_node, target_index)) => {
+          let new_index = match position {
+            Before => target_index
+            After => target_index + 1
+            Inside => 0 // Insert as first child of target
+          }
+          let new_parent = match position {
+            Before | After => NodeId(parent_node.node_id)
+            Inside => target
+          }
+          let op = MoveNode(node_id=source, new_parent~, new_index~)
+          match model.apply_operation(op) {
+            Ok(_) => Ok(model)
+            Err(msg) => Err(msg)
+          }
+        }
+      }
+
+    // Navigation (doesn't modify AST)
+    TreeEditOp::Collapse(node_id~) => {
+      let _ = node_id
+      Ok(model)
+    }
+    TreeEditOp::Expand(node_id~) => {
+      let _ = node_id
+      Ok(model)
+    }
   }
 }
 

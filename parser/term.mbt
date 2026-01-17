@@ -27,7 +27,7 @@ pub(all) enum Term {
 
 ///|
 /// Term kind for positioned nodes
-pub enum TermKind {
+pub(all) enum TermKind {
   Int(Int) // Integer literal
   Var(String) // Variable
   Lam(String) // Lambda abstraction (parameter name, body is children[0])

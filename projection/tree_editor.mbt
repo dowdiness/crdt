@@ -5,7 +5,7 @@
 /// Interactive tree node with editing state
 pub struct InteractiveTreeNode {
   id : NodeId
-  kind : @parser.TermKind
+  kind : TermKind
   label : String
   children : Array[InteractiveTreeNode]
   /// Currently selected
@@ -23,7 +23,7 @@ pub struct InteractiveTreeNode {
 ///|
 /// Create an interactive tree node from a TermNode
 pub fn InteractiveTreeNode::from_term_node(
-  node : @parser.TermNode,
+  node : TermNode,
   source_map : SourceMap,
 ) -> InteractiveTreeNode {
   let node_id = NodeId(node.node_id)

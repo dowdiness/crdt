@@ -32,7 +32,8 @@ pub struct CanonicalModel {
   edit_history : Array[ModelOperation]
   mut history_position : Int
 }
-pub fn CanonicalModel::apply_operation(Self, ModelOperation) -> Unit
+pub fn CanonicalModel::apply_operation(Self, ModelOperation) -> Result[Unit, String]
+pub fn CanonicalModel::find_parent(Self, NodeId) -> (@parser.TermNode, Int)?
 pub fn CanonicalModel::from_ast(@parser.TermNode) -> Self
 pub fn CanonicalModel::get_ast(Self) -> @parser.TermNode?
 pub fn CanonicalModel::get_errors(Self) -> Array[String]

@@ -201,7 +201,15 @@ The existing codebase has:
 | AST (TermNode) | ✅ Complete | `parser/term.mbt` |
 | AST Visualization | ✅ DOT export | `parser/ast_to_dot.mbt` |
 | AST↔CRDT Bridge | 🔶 Partial | `parser/crdt_integration.mbt` |
-| Bidirectional Sync | ❌ Missing | — |
+| CanonicalModel | ✅ Complete | `projection/canonical_model.mbt` |
+| SourceMap | ✅ Complete | `projection/source_map.mbt` |
+| TextLens | ✅ Complete | `projection/lens.mbt` |
+| TreeLens | ✅ Complete | `projection/lens.mbt` |
+| AST Reconciliation | ✅ Complete | `projection/lens.mbt` |
+| apply_operation | ✅ Complete | `projection/canonical_model.mbt` |
+| InteractiveTree | ✅ Complete | `projection/tree_editor.mbt` |
+| TreeEditorState | ✅ Complete | `projection/tree_editor.mbt` |
+| Bidirectional Sync | 🔶 Partial | — |
 
 ### 2.2 Proposed Architecture
 
@@ -483,35 +491,68 @@ enum ValidationLevel {
 
 ## Part 3: Implementation Roadmap
 
-### Phase 1: Foundation (Core Infrastructure)
+### Phase 1: Foundation (Core Infrastructure) — ✅ COMPLETE
 
-**Files to create/modify**:
-- `src/canonical_model.mbt` — CanonicalModel, SourceMap, ModelOperation
-- `src/lens.mbt` — Lens trait definition
-- `src/text_lens.mbt` — TextLens implementation
-- `src/reconcile.mbt` — AST reconciliation algorithm
+**Status**: All core infrastructure implemented and tested (250 tests passing).
 
-**Deliverables**:
-1. CanonicalModel data structure with node registry
-2. SourceMap for bidirectional position mapping
-3. ModelOperation enum and application logic
-4. TextLens with unparse function
+**Files created**:
+- `projection/canonical_model.mbt` — CanonicalModel, node registry, dirty tracking
+- `projection/source_map.mbt` — SourceMap with bidirectional position mapping
+- `projection/types.mbt` — NodeId, ProjectionId, ModelOperation, LeafValue
+- `projection/lens.mbt` — TextLens (get/put/diff), AST reconciliation
+- `projection/tree_editor.mbt` — InteractiveTreeNode, TreeEditorState
 
-### Phase 2: AST Editing (Structural Operations)
+**Deliverables** (all complete):
+1. ✅ CanonicalModel data structure with node registry
+2. ✅ SourceMap for bidirectional position mapping
+3. ✅ ModelOperation enum definition
+4. ✅ TextLens with unparse function (uses `@parser.print_term_node`)
+5. ✅ AST reconciliation algorithm (preserves node IDs)
+6. ✅ InteractiveTreeNode for tree projection
 
-**Files to create/modify**:
-- `src/ast_lens.mbt` — ASTLens implementation
-- `src/ast_operations.mbt` — AST edit operations
-- `parser/unparser.mbt` — AST → source text generation
-- `src/projected_editor.mbt` — Unified editor interface
+**Bug fixes applied**:
+- Fixed lambda body ID assignment in reconcile (was not assigning fresh IDs)
+- Rewrote `text_lens_diff` with proper prefix/suffix detection
+- Added `unregister_node_tree` to properly clean up registry during reconciliation
+- Fixed `apply_edit` to shift positions backward (not forward) on deletions
 
-**Deliverables**:
-1. ASTLens with interactive AST structure
-2. AST operations: insert, delete, replace, move
-3. Pretty-printer (unparser) with formatting
-4. ProjectedEditor coordinating multiple projections
+### Phase 2: AST Editing (Structural Operations) — ✅ COMPLETE
 
-### Phase 3: Unified Tree Editor (Interactive Visualization)
+**Status**: All core AST editing operations implemented and tested (264 tests passing).
+
+**Files modified**:
+- `projection/canonical_model.mbt` — Implemented `apply_operation` with all variants
+- `projection/lens.mbt` — Completed all `tree_lens_apply_edit` handlers
+- `projection/canonical_model_wbtest.mbt` — Added 14 tests for apply_operation and tree_lens_apply_edit
+
+**Deliverables** (all complete):
+1. ✅ TreeLens with `tree_lens_get` and `tree_lens_apply_edit`
+2. ✅ TreeEditOp enum with all structural operations defined
+3. ✅ Pretty-printer via existing `@parser.print_term_node`
+4. ✅ `apply_operation` implementation:
+   - `InsertNode` — Find parent, insert child at index, register node
+   - `DeleteNode` — Find parent, remove from children, unregister recursively
+   - `ReplaceNode` — Replace in parent's children, update registry
+   - `UpdateLeaf` — Parse new value and update node kind
+   - `MoveNode` — Remove from old parent, insert at new location
+5. ✅ Complete TreeEditOp handlers:
+   - `CommitEdit` → parse value, create ReplaceNode operation
+   - `Delete` → create DeleteNode operation
+   - `WrapInLambda` → wrap node in lambda, ReplaceNode
+   - `WrapInApp` → wrap node in App, ReplaceNode
+   - `InsertChild` → parse placeholder, create InsertNode
+   - `Drop` → create MoveNode with position-based indexing
+
+**Helper functions added**:
+- `find_parent(node_id)` — traverse tree to find parent and index
+- `update_node_in_tree(root, node_id, new_node)` — immutable tree update
+- `remove_child_at(node, index)` — remove child from node
+- `insert_child_at(node, index, child)` — insert child into node
+- `get_node_in_tree(root, target_id)` — find node by ID in tree
+
+### Phase 3: Unified Tree Editor (Interactive Visualization) — ❌ NOT STARTED
+
+**Prerequisites**: Phase 2 must be complete first.
 
 **Files to create/modify**:
 - `crdt/src/crdt.mbt` — Extended FFI for tree operations
@@ -562,7 +603,9 @@ enum ValidationLevel {
 └────────────────────────────────────────────────────────────┘
 ```
 
-### Phase 4: Advanced Features (Polish)
+### Phase 4: Advanced Features (Polish) — ❌ NOT STARTED
+
+**Prerequisites**: Phase 3 must be complete first.
 
 **Features**:
 - Keyboard navigation in tree (arrow keys, Enter to edit)

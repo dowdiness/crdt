@@ -185,7 +185,7 @@ pub(all) enum Term {
 pub impl Eq for Term
 pub impl Show for Term
 
-pub enum TermKind {
+pub(all) enum TermKind {
   Int(Int)
   Var(String)
   Lam(String)

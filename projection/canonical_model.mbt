@@ -181,16 +181,277 @@ pub fn CanonicalModel::mark_clean(
 }
 
 ///|
+/// Find the parent of a node by its ID
+/// Returns (parent_node, index_in_parent) or None if node is root or not found
+pub fn CanonicalModel::find_parent(
+  self : CanonicalModel,
+  node_id : NodeId,
+) -> (TermNode, Int)? {
+  match self.ast {
+    None => None
+    Some(root) =>
+      if NodeId(root.node_id) == node_id {
+        None // Root has no parent
+      } else {
+        find_parent_recursive(root, node_id)
+      }
+  }
+}
+
+///|
+/// Recursive helper to find parent
+fn find_parent_recursive(
+  node : TermNode,
+  target_id : NodeId,
+) -> (TermNode, Int)? {
+  for i, child in node.children {
+    if NodeId(child.node_id) == target_id {
+      return Some((node, i))
+    }
+    match find_parent_recursive(child, target_id) {
+      Some(result) => return Some(result)
+      None => continue
+    }
+  }
+  None
+}
+
+///|
+/// Update a node in the tree by its ID (returns new tree root)
+fn update_node_in_tree(
+  root : TermNode,
+  target_id : NodeId,
+  new_node : TermNode,
+) -> TermNode {
+  if NodeId(root.node_id) == target_id {
+    new_node
+  } else {
+    let new_children : Array[TermNode] = []
+    for child in root.children {
+      new_children.push(update_node_in_tree(child, target_id, new_node))
+    }
+    @parser.TermNode::new(
+      root.kind,
+      root.start,
+      root.end,
+      root.node_id,
+      new_children,
+    )
+  }
+}
+
+///|
+/// Remove a child from a node's children by index
+fn remove_child_at(node : TermNode, index : Int) -> TermNode {
+  let new_children : Array[TermNode] = []
+  for i, child in node.children {
+    if i != index {
+      new_children.push(child)
+    }
+  }
+  @parser.TermNode::new(
+    node.kind,
+    node.start,
+    node.end,
+    node.node_id,
+    new_children,
+  )
+}
+
+///|
+/// Insert a child into a node's children at index
+fn insert_child_at(node : TermNode, index : Int, child : TermNode) -> TermNode {
+  let new_children : Array[TermNode] = []
+  for i, c in node.children {
+    if i == index {
+      new_children.push(child)
+    }
+    new_children.push(c)
+  }
+  // If index is at the end
+  if index >= node.children.length() {
+    new_children.push(child)
+  }
+  @parser.TermNode::new(
+    node.kind,
+    node.start,
+    node.end,
+    node.node_id,
+    new_children,
+  )
+}
+
+///|
 /// Apply a model operation and record in history
 pub fn CanonicalModel::apply_operation(
   self : CanonicalModel,
   op : ModelOperation,
-) -> Unit {
-  // TODO: Implement operation application
-  // For now, just record in history
+) -> Result[Unit, String] {
+  // Record in history first
   self.edit_history.push(op)
   self.history_position = self.edit_history.length()
+
+  // Apply the operation
+  match op {
+    InsertNode(parent~, index~, node~) =>
+      match self.get_node(parent) {
+        None => return Err("Parent node not found: " + parent.to_string())
+        Some(parent_node) => {
+          let new_parent = insert_child_at(parent_node, index, node)
+          match self.ast {
+            None => return Err("No AST to modify")
+            Some(root) => {
+              let new_root = update_node_in_tree(root, parent, new_parent)
+              self.set_ast(new_root)
+            }
+          }
+        }
+      }
+    DeleteNode(node_id~) =>
+      match self.find_parent(node_id) {
+        None => return Err("Cannot delete root or node not found")
+        Some((parent_node, index)) => {
+          // Unregister the deleted node and its descendants
+          match self.get_node(node_id) {
+            Some(node) => unregister_node_tree_from_model(node, self)
+            None => ()
+          }
+          let new_parent = remove_child_at(parent_node, index)
+          match self.ast {
+            None => return Err("No AST to modify")
+            Some(root) => {
+              let new_root = update_node_in_tree(
+                root,
+                NodeId(parent_node.node_id),
+                new_parent,
+              )
+              self.set_ast(new_root)
+            }
+          }
+        }
+      }
+    ReplaceNode(node_id~, new_node~) => {
+      // Create a node with the same ID but new content
+      let replacement = @parser.TermNode::new(
+        new_node.kind,
+        new_node.start,
+        new_node.end,
+        node_id.0,
+        new_node.children,
+      )
+      match self.ast {
+        None => return Err("No AST to modify")
+        Some(root) => {
+          let new_root = update_node_in_tree(root, node_id, replacement)
+          self.set_ast(new_root)
+        }
+      }
+    }
+    UpdateLeaf(node_id~, new_value~) => {
+      // UpdateLeaf requires creating TermKind values, but the constructors are
+      // private to the parser module. Use ReplaceNode with a parsed node instead.
+      // For now, we'll parse the value and extract the node.
+      let value_str = match new_value {
+        IntValue(n) => n.to_string()
+        VarName(name) => name
+        OpSymbol(op) => op
+      }
+      // Parse the value to get a TermNode
+      let parser = @parser.IncrementalParser::new(value_str)
+      let parsed = parser.parse()
+      // The parsed node should have the right kind - use ReplaceNode logic
+      match self.get_node(node_id) {
+        None => return Err("Node not found: " + node_id.to_string())
+        Some(existing) => {
+          // Create replacement preserving the original node_id and position
+          let replacement = @parser.TermNode::new(
+            parsed.kind,
+            existing.start,
+            existing.end,
+            existing.node_id,
+            parsed.children,
+          )
+          match self.ast {
+            None => return Err("No AST to modify")
+            Some(root) => {
+              let new_root = update_node_in_tree(root, node_id, replacement)
+              self.set_ast(new_root)
+            }
+          }
+        }
+      }
+    }
+    MoveNode(node_id~, new_parent~, new_index~) =>
+      // First, get the node to move
+      match self.get_node(node_id) {
+        None => return Err("Node to move not found: " + node_id.to_string())
+        Some(node_to_move) =>
+          // Find and remove from old parent
+          match self.find_parent(node_id) {
+            None => return Err("Cannot move root node")
+            Some((old_parent, old_index)) => {
+              let parent_after_remove = remove_child_at(old_parent, old_index)
+              match self.ast {
+                None => return Err("No AST to modify")
+                Some(root) => {
+                  // Update tree with removed node
+                  let root_after_remove = update_node_in_tree(
+                    root,
+                    NodeId(old_parent.node_id),
+                    parent_after_remove,
+                  )
+                  // Now insert into new parent
+                  match get_node_in_tree(root_after_remove, new_parent) {
+                    None =>
+                      return Err(
+                        "New parent not found: " + new_parent.to_string(),
+                      )
+                    Some(new_parent_node) => {
+                      let parent_after_insert = insert_child_at(
+                        new_parent_node, new_index, node_to_move,
+                      )
+                      let final_root = update_node_in_tree(
+                        root_after_remove, new_parent, parent_after_insert,
+                      )
+                      self.set_ast(final_root)
+                    }
+                  }
+                }
+              }
+            }
+          }
+      }
+  }
   self.mark_all_dirty()
+  Ok(())
+}
+
+///|
+/// Helper to find a node in a tree by ID
+fn get_node_in_tree(root : TermNode, target_id : NodeId) -> TermNode? {
+  if NodeId(root.node_id) == target_id {
+    Some(root)
+  } else {
+    for child in root.children {
+      match get_node_in_tree(child, target_id) {
+        Some(found) => return Some(found)
+        None => continue
+      }
+    }
+    None
+  }
+}
+
+///|
+/// Helper to unregister a node tree from the model
+fn unregister_node_tree_from_model(
+  node : TermNode,
+  model : CanonicalModel,
+) -> Unit {
+  model.unregister_node(NodeId(node.node_id))
+  for child in node.children {
+    unregister_node_tree_from_model(child, model)
+  }
 }
 
 ///|
