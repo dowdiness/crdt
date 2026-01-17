@@ -126,6 +126,7 @@ declare module '../target/js/release/build/valtio/valtio.js' {
   export function apply_remote_op(proxy: any, op_json: string): void;
   export function get_pending_ops_json(proxy: any): string;
   export function get_frontier_json(proxy: any): string;
+  export function get_frontier_raw_json(proxy: any): string;
   export function undo(proxy: any): void;
   export function redo(proxy: any): void;
   export function dispose_proxy(proxy: any): void;

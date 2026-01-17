@@ -66,6 +66,11 @@ export interface EgWalkerProxyResult<T> {
   getFrontier: () => number[];
 
   /**
+   * Get the current CRDT frontier as RawVersions
+   */
+  getFrontierRaw: () => RawVersion[];
+
+  /**
    * Clean up resources and unsubscribe
    */
   dispose: () => void;
@@ -84,6 +89,7 @@ export function createEgWalkerProxySync<T extends TextState>(
     apply_remote_op,
     get_pending_ops_json,
     get_frontier_json,
+    get_frontier_raw_json,
     undo: moonbitUndo,
     redo: moonbitRedo,
     dispose_proxy,
@@ -134,6 +140,11 @@ export function createEgWalkerProxySync<T extends TextState>(
       return JSON.parse(json);
     },
 
+    getFrontierRaw: () => {
+      const json = get_frontier_raw_json(proxyState);
+      return JSON.parse(json);
+    },
+
     dispose: () => {
       dispose_proxy(proxyState);
       if (ws) {
@@ -154,6 +165,14 @@ export interface Operation {
   origin_left: number;
   origin_right: number;
   deps: number[];
+}
+
+/**
+ * RawVersion for frontier sync
+ */
+export interface RawVersion {
+  agent: string;
+  seq: number;
 }
 
 /**
@@ -202,6 +221,7 @@ export async function createEgWalkerProxy<T extends TextState>(
     apply_remote_op,
     get_pending_ops_json,
     get_frontier_json,
+    get_frontier_raw_json,
     undo: moonbitUndo,
     redo: moonbitRedo,
     dispose_proxy,
@@ -249,6 +269,11 @@ export async function createEgWalkerProxy<T extends TextState>(
 
     getFrontier: () => {
       const json = get_frontier_json(proxyState);
+      return JSON.parse(json);
+    },
+
+    getFrontierRaw: () => {
+      const json = get_frontier_raw_json(proxyState);
       return JSON.parse(json);
     },
 

@@ -272,6 +272,12 @@ pub fn EgWalkerProxy::get_frontier_json(self : EgWalkerProxy) -> String {
 }
 
 ///|
+/// Get the current CRDT frontier (RawVersions) as JSON
+pub fn EgWalkerProxy::get_frontier_raw_json(self : EgWalkerProxy) -> String {
+  document_get_frontier_raw(self.doc)
+}
+
+///|
 /// Cleanup
 /// Dispose of the proxy and clean up subscriptions
 pub fn EgWalkerProxy::dispose(self : EgWalkerProxy) -> Unit {

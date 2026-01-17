@@ -20,9 +20,25 @@ pub fn document_delete(CRDTDocument, Int) -> CRDTOperation
 
 pub fn document_get_frontier(CRDTDocument) -> String
 
+pub fn document_get_frontier_raw(CRDTDocument) -> String
+
 pub fn document_insert(CRDTDocument, Int, String) -> CRDTOperation
 
 pub fn document_to_text(CRDTDocument) -> String
+
+pub fn example_create_proxy_from_json() -> Unit
+
+pub fn example_create_proxy_from_object() -> Unit
+
+pub fn example_json_round_trip() -> Unit
+
+pub fn example_multiple_property_types() -> Unit
+
+pub fn example_mutate_proxy_properties() -> Unit
+
+pub fn example_nested_proxy_objects() -> Unit
+
+pub fn example_take_snapshot() -> Unit
 
 pub fn from_json(String) -> ValtioProxy
 
@@ -31,6 +47,8 @@ pub fn get_bool(ValtioProxy, String) -> Bool
 pub fn get_double(ValtioProxy, String) -> Double
 
 pub fn get_frontier_json(ValtioProxy) -> String
+
+pub fn get_frontier_raw_json(ValtioProxy) -> String
 
 pub fn get_int(ValtioProxy, String) -> Int
 
@@ -51,6 +69,8 @@ pub fn operation_to_json(CRDTOperation) -> String
 pub fn proxy(ValtioProxy) -> ValtioProxy
 
 pub fn redo(ValtioProxy) -> Unit
+
+pub fn run_all_examples() -> Unit
 
 pub fn set_bool(ValtioProxy, String, Bool) -> Unit
 
@@ -105,6 +125,7 @@ pub fn EgWalkerProxy::apply_remote(Self, CRDTOperation) -> Unit
 pub fn EgWalkerProxy::apply_remote_batch(Self, Array[CRDTOperation]) -> Unit
 pub fn EgWalkerProxy::dispose(Self) -> Unit
 pub fn EgWalkerProxy::get_frontier_json(Self) -> String
+pub fn EgWalkerProxy::get_frontier_raw_json(Self) -> String
 pub fn EgWalkerProxy::get_pending_ops(Self) -> Array[CRDTOperation]
 pub fn EgWalkerProxy::init(Self) -> Unit
 pub fn EgWalkerProxy::new(String, undo_enabled? : Bool) -> Self
@@ -114,12 +135,6 @@ pub fn EgWalkerProxy::undo(Self) -> Unit
 pub enum OpType {
   Insert
   Delete
-}
-
-pub struct Todo {
-  id : Int
-  text : String
-  completed : Bool
 }
 
 pub struct UndoEntry {

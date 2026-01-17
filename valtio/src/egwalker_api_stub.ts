@@ -37,6 +37,9 @@ const mockValtioEgwalker = {
   get_frontier_json: (_proxy: any) => {
     return '[]';
   },
+  get_frontier_raw_json: (_proxy: any) => {
+    return '[]';
+  },
   undo: (_proxy: any) => {
     console.warn('[STUB] undo called');
   },
@@ -118,6 +121,7 @@ export function createEgWalkerProxy<T extends TextState>(
     apply_remote_op,
     get_pending_ops_json,
     get_frontier_json,
+    get_frontier_raw_json,
     undo: moonbitUndo,
     redo: moonbitRedo,
     dispose_proxy,
@@ -162,6 +166,11 @@ export function createEgWalkerProxy<T extends TextState>(
 
     getFrontier: () => {
       const json = get_frontier_json(proxyState);
+      return JSON.parse(json);
+    },
+
+    getFrontierRaw: () => {
+      const json = get_frontier_raw_json(proxyState);
       return JSON.parse(json);
     },
 

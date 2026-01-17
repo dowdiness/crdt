@@ -27,6 +27,11 @@ declare module '*/target/js/release/build/valtio/valtio.js' {
   export function get_frontier_json(proxy: any): string;
 
   /**
+   * Get CRDT frontier (RawVersions) as JSON
+   */
+  export function get_frontier_raw_json(proxy: any): string;
+
+  /**
    * Undo the last operation
    */
   export function undo(proxy: any): void;

@@ -43,8 +43,15 @@ pub extern "js" fn get_pending_ops_json(proxy_state : ValtioProxy) -> String =
 pub extern "js" fn get_frontier_json(proxy_state : ValtioProxy) -> String =
   #|(proxy_state) => {
   #|  const instance = globalThis.__egwalker_instances.get(proxy_state);
-  #|  const frontier = instance.get_frontier();
-  #|  return JSON.stringify(frontier);
+  #|  return instance.get_frontier_json();
+  #|}
+
+///|
+/// Get frontier (RawVersions) as JSON
+pub extern "js" fn get_frontier_raw_json(proxy_state : ValtioProxy) -> String =
+  #|(proxy_state) => {
+  #|  const instance = globalThis.__egwalker_instances.get(proxy_state);
+  #|  return instance.get_frontier_raw_json();
   #|}
 
 ///|

@@ -64,6 +64,12 @@ pub extern "js" fn document_get_frontier(doc : CRDTDocument) -> String =
   #|}
 
 ///|
+pub extern "js" fn document_get_frontier_raw(doc : CRDTDocument) -> String =
+  #|(doc) => {
+  #|  return JSON.stringify(doc.get_frontier_raw());
+  #|}
+
+///|
 /// Operation Serialization
 /// Convert operations to/from JSON for network sync
 pub extern "js" fn operation_to_json(op : CRDTOperation) -> String =
