@@ -50,6 +50,7 @@ pub fn CausalGraph::raw_to_lv(self : CausalGraph, raw : RawVersion) -> Int? {
 
 ///|
 /// Get graph entry by LV
+#alias("_[_]")
 pub fn CausalGraph::get_entry(self : CausalGraph, lv : Int) -> GraphEntry? {
   self.entries.get(lv)
 }
@@ -72,15 +73,8 @@ pub fn CausalGraph::add_version(
   } else {
     let max_parent_timestamp = parents
       .iter()
-      .map(fn(lv) {
-        match self.entries.get(lv) {
-          Some(entry) => entry.timestamp
-          // Logically unreachable: parent validation above ensures all parents exist.
-          // Default to 0 as defensive fallback.
-          None => 0
-        }
-      })
-      .fold(fn(max, curr) { if curr > max { curr } else { max } }, init=0)
+      .filter_map(lv => self.entries.get(lv))
+      .fold((prev_max, curr) => curr.timestamp.max(prev_max), init=0)
     max_parent_timestamp + 1
   }
 
@@ -124,13 +118,8 @@ pub fn CausalGraph::add_version_with_seq(
   } else {
     let max_parent_timestamp = parents
       .iter()
-      .map(lv => match self.entries.get(lv) {
-        Some(entry) => entry.timestamp
-        // Logically unreachable: parent validation above ensures all parents exist.
-        // Default to 0 as defensive fallback.
-        None => 0
-      })
-      .fold((max, curr) => if curr > max { curr } else { max }, init=0)
+      .filter_map(lv => self.entries.get(lv))
+      .fold((prev_max, curr) => curr.timestamp.max(prev_max), init=0)
     max_parent_timestamp + 1
   }
 
@@ -142,10 +131,7 @@ pub fn CausalGraph::add_version_with_seq(
   self.entries = self.entries.add(lv, entry)
   self.version_map = self.version_map.add(RawVersion::new(agent, seq), lv)
   self.next_lv = lv + 1
-  let current_seq = match self.agent_seqs.get(agent) {
-    Some(s) => s
-    None => -1
-  }
+  let current_seq = self.agent_seqs.get(agent).unwrap_or(-1)
   let next_seq = if seq > current_seq { seq } else { current_seq }
   self.agent_seqs = self.agent_seqs.add(agent, next_seq)
 
@@ -162,7 +148,7 @@ fn CausalGraph::update_frontier(
   parents : Frontier,
 ) -> Unit {
   // Remove all parents from frontier (they now have a successor)
-  let frontier = self.frontier.filter(fn(v) { not(parents.contains(v)) })
+  let frontier = self.frontier.filter(v => not(parents.contains(v)))
 
   // Add new version
   frontier.push(new_lv)
@@ -227,10 +213,7 @@ fn CausalGraph::transitive_closure(
   frontiers : Frontier,
 ) -> @immut/hashset.HashSet[Int] {
   let mut result : @immut/hashset.HashSet[Int] = @immut/hashset.new()
-  let queue = @queue.Queue::new()
-  for lv in frontiers {
-    queue.push(lv)
-  }
+  let queue = @queue.from_array(frontiers)
   while not(queue.is_empty()) {
     match queue.pop() {
       Some(current) => {
@@ -262,16 +245,11 @@ pub fn CausalGraph::graph_diff(
   let from_set = self.transitive_closure(from)
   let to_set = self.transitive_closure(to)
 
+  // from_set.difference(to_set)
   // retreat = versions in 'from' but not in 'to'
-  let retreat = from_set
-    .iter()
-    .filter(fn(lv) { not(to_set.contains(lv)) })
-    .collect()
+  let retreat = from_set.difference(to_set).iter().to_array()
 
   // advance = versions in 'to' but not in 'from'
-  let advance = to_set
-    .iter()
-    .filter(fn(lv) { not(from_set.contains(lv)) })
-    .collect()
+  let advance = to_set.difference(from_set).iter().to_array()
   (retreat, advance)
 }

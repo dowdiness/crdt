@@ -378,15 +378,12 @@ pub fn VersionVector::merge(
   self : VersionVector,
   other : VersionVector,
 ) -> VersionVector {
-  let result = {}
-  // Copy all entries from self
-  self.map.each(fn(k, v) { result.set(k, v) })
+  let result = self.map.copy()
   // Merge entries from other (take max)
-  other.map.each(fn(agent, seq) {
-    let max_seq = match result.get(agent) {
-      Some(existing) => if seq > existing { seq } else { existing }
-      None => seq
-    }
+  other.map.each((agent, seq) => {
+    let max_seq = result
+      .get(agent)
+      .map_or(seq, existing => if seq > existing { seq } else { existing })
     result.set(agent, max_seq)
   })
   { map: result }
@@ -513,18 +510,10 @@ pub fn VersionVector::from_frontier(
   let reachable = graph.transitive_closure(frontier)
 
   // Find max seq for each agent in reachable versions
-  reachable.each(fn(lv) {
-    match graph.get_entry(lv) {
-      Some(entry) => {
-        let current_max = match agent_max_seq.get(entry.agent) {
-          Some(seq) => seq
-          None => -1
-        }
-        if entry.seq > current_max {
-          agent_max_seq.set(entry.agent, entry.seq)
-        }
-      }
-      None => ()
+  reachable.each(lv => if graph[lv] is Some(entry) {
+    let current_max = agent_max_seq.get(entry.agent).unwrap_or(-1)
+    if entry.seq > current_max {
+      agent_max_seq.set(entry.agent, entry.seq)
     }
   })
   { map: agent_max_seq }

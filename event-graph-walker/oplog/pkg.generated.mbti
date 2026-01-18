@@ -51,7 +51,6 @@ pub struct OpLog {
   graph : @causal_graph.CausalGraph
   agent_id : String
 }
-pub fn OpLog::add_op(Self, Op) -> Unit
 pub fn OpLog::apply_remote(Self, Op) -> Array[Op] raise OpLogError
 pub fn OpLog::delete(Self, Int) -> Op raise OpLogError
 pub fn OpLog::diff_and_collect(Self, Array[Int], Array[Int]) -> (Array[Op], Array[Op])
@@ -59,14 +58,13 @@ pub fn OpLog::get_all_ops(Self) -> Array[Op]
 pub fn OpLog::get_frontier(Self) -> Array[Int]
 pub fn OpLog::get_frontier_raw(Self) -> Array[@causal_graph.RawVersion] raise OpLogError
 pub fn OpLog::get_op(Self, Int) -> Op?
+pub fn OpLog::get_ops(Self, Array[Int]) -> Array[Op]
 pub fn OpLog::insert(Self, String, Int, Int) -> Op raise OpLogError
 pub fn OpLog::new(String) -> Self
 pub fn OpLog::op_count(Self) -> Int
 pub fn OpLog::validate_remote_batch(Self, Array[Op], Array[@causal_graph.RawVersion]) -> Unit raise OpLogError
 pub fn OpLog::walk_and_collect(Self, Array[Int]) -> Array[Op]
-pub fn OpLog::walk_deletes(Self, Array[Int]) -> Array[Op]
 pub fn OpLog::walk_filtered(Self, Array[Int], (Op) -> Bool) -> Array[Op]
-pub fn OpLog::walk_inserts(Self, Array[Int]) -> Array[Op]
 pub impl Show for OpLog
 
 // Type aliases

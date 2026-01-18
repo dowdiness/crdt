@@ -252,7 +252,7 @@ fn apply_operation_to_tree(
   match op.content {
     @oplog.Insert(text) => {
       // Get Lamport timestamp and agent from causal graph
-      let (timestamp, agent) = match oplog.graph.get_entry(op.lv) {
+      let (timestamp, agent) = match oplog.graph[op.lv] {
         Some(entry) => (entry.timestamp, entry.agent)
         None => (0, "unknown") // Fallback
       }

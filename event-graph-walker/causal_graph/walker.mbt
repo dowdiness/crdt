@@ -52,14 +52,12 @@ fn collect_reachable_versions(
         visited = visited.add(current)
 
         // Add parents to queue
-        match graph.get_entry(current) {
-          Some(entry) =>
-            for parent in entry.parents {
-              if not(visited.contains(parent)) {
-                queue.push(parent)
-              }
+        if graph[current] is Some(entry) {
+          for parent in entry.parents {
+            if not(visited.contains(parent)) {
+              queue.push(parent)
             }
-          None => ()
+          }
         }
       }
       None => break
@@ -88,20 +86,15 @@ fn topological_sort(
   // This is O(n + edges) instead of O(n²) for repeated scanning
   let mut children : @immut/hashmap.HashMap[Int, Array[Int]] = @immut/hashmap.new()
   for lv in versions.iter() {
-    match graph.get_entry(lv) {
-      Some(entry) =>
-        // For each parent, record this version as a child
-        for parent in entry.parents {
-          if versions.contains(parent) {
-            let current_children = match children.get(parent) {
-              Some(c) => c
-              None => []
-            }
-            current_children.push(lv)
-            children = children.add(parent, current_children)
-          }
+    if graph[lv] is Some(entry) {
+      // For each parent, record this version as a child
+      for parent in entry.parents {
+        if versions.contains(parent) {
+          let current_children = children.get(parent).unwrap_or([])
+          current_children.push(lv)
+          children = children.add(parent, current_children)
         }
-      None => ()
+      }
     }
   }
 
@@ -115,19 +108,14 @@ fn topological_sort(
 
   // Count in-degrees
   for lv in versions.iter() {
-    match graph.get_entry(lv) {
-      Some(entry) =>
-        // For each parent in the reachable set, increment this version's in-degree
-        for parent in entry.parents {
-          if versions.contains(parent) {
-            let current_degree = match in_degree.get(lv) {
-              Some(d) => d
-              None => 0
-            }
-            in_degree = in_degree.add(lv, current_degree + 1)
-          }
+    if graph[lv] is Some(entry) {
+      // For each parent in the reachable set, increment this version's in-degree
+      for parent in entry.parents {
+        if versions.contains(parent) {
+          let current_degree = in_degree.get(lv).unwrap_or(0)
+          in_degree = in_degree.add(lv, current_degree + 1)
         }
-      None => ()
+      }
     }
   }
 
@@ -158,27 +146,21 @@ fn topological_sort(
         result.push(current)
 
         // Look up children directly from map (O(1) instead of O(n))
-        match children.get(current) {
-          Some(child_list) => {
-            let sorted_children = child_list.copy()
-            sorted_children.sort()
-            for child in sorted_children {
-              // Decrement in-degree
-              match in_degree.get(child) {
-                Some(degree) => {
-                  let new_degree = degree - 1
-                  in_degree = in_degree.add(child, new_degree)
+        if children.get(current) is Some(child_list) {
+          let sorted_children = child_list.copy()
+          sorted_children.sort()
+          for child in sorted_children {
+            // Decrement in-degree
+            if in_degree.get(child) is Some(degree) {
+              let new_degree = degree - 1
+              in_degree = in_degree.add(child, new_degree)
 
-                  // If in-degree reaches 0, add to queue
-                  if new_degree == 0 {
-                    queue.push(child)
-                  }
-                }
-                None => ()
+              // If in-degree reaches 0, add to queue
+              if new_degree == 0 {
+                queue.push(child)
               }
             }
           }
-          None => () // No children, continue
         }
       }
       None => break

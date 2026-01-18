@@ -22,7 +22,7 @@ pub fn OpLog::new(agent_id : String) -> OpLog {
 
 ///|
 /// Add a new operation to the log
-pub fn OpLog::add_op(self : OpLog, op : Op) -> Unit {
+fn OpLog::add_op(self : OpLog, op : Op) -> Unit {
   let ops = self.operations
   ops.push(op)
   self.operations = ops
@@ -102,6 +102,11 @@ pub fn OpLog::get_op(self : OpLog, lv : Int) -> Op? {
   } else {
     None
   }
+}
+
+///|
+pub fn OpLog::get_ops(self : OpLog, lvs : Array[Int]) -> Array[Op] {
+  lvs.filter_map(lv => self.get_op(lv))
 }
 
 ///|
@@ -216,16 +221,14 @@ fn OpLog::try_apply_remote(
       None => return (true, None)
     }
   }
-  let local_origin_left = match self.lv_from_raw(op.origin_left) {
+  let _local_origin_left = match self.lv_from_raw(op.origin_left) {
     Some(lv) => lv
     None => return (true, None)
   }
-  let local_origin_right = match self.lv_from_raw(op.origin_right) {
+  let _local_origin_right = match self.lv_from_raw(op.origin_right) {
     Some(lv) => lv
     None => return (true, None)
   }
-  ignore(local_origin_left)
-  ignore(local_origin_right)
   if op.content is Delete && op.origin_left is None {
     raise OpLogError::MissingOrigin
   }
