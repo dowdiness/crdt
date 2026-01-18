@@ -60,7 +60,7 @@ pub extern "js" fn document_apply_remote(
 ///|
 pub extern "js" fn document_get_frontier(doc : CRDTDocument) -> String =
   #|(doc) => {
-  #|  return JSON.stringify(doc.get_frontier());
+  #|  return JSON.stringify(doc.get_frontier_array());
   #|}
 
 ///|

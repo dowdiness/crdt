@@ -28,8 +28,14 @@ pub fn Document::to_text(self : Document) -> String {
 
 ///|
 /// Get the current frontier
-pub fn Document::get_frontier(self : Document) -> Array[Int] {
+pub fn Document::get_frontier(self : Document) -> @causal_graph.Frontier {
   self.oplog.get_frontier()
+}
+
+///|
+/// Get the current frontier as an array of LVs
+pub fn Document::get_frontier_array(self : Document) -> Array[Int] {
+  self.oplog.get_frontier().0.copy()
 }
 
 ///|

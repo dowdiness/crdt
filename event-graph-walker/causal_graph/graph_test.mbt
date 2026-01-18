@@ -2,7 +2,7 @@
 /// Tests for CausalGraph
 test "create empty graph" {
   let graph = CausalGraph::new()
-  inspect(graph.get_frontier(), content="[]")
+  inspect(graph.get_frontier().0, content="[]")
 }
 
 ///|
@@ -10,7 +10,7 @@ test "add single version" {
   let graph = CausalGraph::new()
   let lv = try! graph.add_version([], "agent1")
   inspect(lv, content="0")
-  inspect(graph.get_frontier(), content="[0]")
+  inspect(graph.get_frontier().0, content="[0]")
 }
 
 ///|
@@ -19,7 +19,7 @@ test "add version with parent" {
   let lv0 = try! graph.add_version([], "agent1")
   let lv1 = try! graph.add_version([lv0], "agent1")
   inspect(lv1, content="1")
-  inspect(graph.get_frontier(), content="[1]")
+  inspect(graph.get_frontier().0, content="[1]")
 }
 
 ///|
@@ -52,9 +52,9 @@ test "concurrent versions create two frontier heads" {
   let lv0 = try! graph.add_version([], "agent1")
   let lv1 = try! graph.add_version([], "agent2") // Concurrent with lv0
   let frontier = graph.get_frontier()
-  inspect(frontier.length(), content="2")
-  inspect(frontier.contains(lv0), content="true")
-  inspect(frontier.contains(lv1), content="true")
+  inspect(frontier.0.length(), content="2")
+  inspect(frontier.0.contains(lv0), content="true")
+  inspect(frontier.0.contains(lv1), content="true")
 }
 
 ///|
@@ -72,7 +72,7 @@ test "graph_diff with no overlap" {
   let lv0 = try! graph.add_version([], "agent1")
   let lv1 = try! graph.add_version([lv0], "agent1")
   let lv2 = try! graph.add_version([lv0], "agent2") // Branch from lv0
-  let (retreat, advance) = graph.graph_diff([lv1], [lv2])
+  let (retreat, advance) = graph.graph_diff(Frontier::from_array([lv1]), Frontier::from_array([lv2]))
 
   // lv1 should be in retreat (not reachable from lv2)
   inspect(retreat.contains(lv1), content="true")

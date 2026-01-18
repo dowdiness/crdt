@@ -154,12 +154,13 @@ fn execute_command(state : ReplState, line : String) -> Bool {
   }
   if command == "frontier" || command == "f" {
     let frontier = state.editor.get_frontier()
+    let frontier_values = frontier.0
     let mut output = "Frontier: ["
-    for i = 0; i < frontier.length(); i = i + 1 {
+    for i = 0; i < frontier_values.length(); i = i + 1 {
       if i > 0 {
         output = output + ", "
       }
-      output = output + frontier[i].to_string()
+      output = output + frontier_values[i].to_string()
     }
     output = output + "]"
     println(output)

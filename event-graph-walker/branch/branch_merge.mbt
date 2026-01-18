@@ -124,8 +124,8 @@ pub fn MergeContext::retreat_operations(
 pub fn merge(
   tree : @fugue.FugueTree,
   oplog : @oplog.OpLog,
-  current_frontier : Array[Int],
-  target_frontier : Array[Int],
+  current_frontier : @causal_graph.Frontier,
+  target_frontier : @causal_graph.Frontier,
 ) -> Unit raise BranchError {
   // Calculate retreat and advance sets
   let (retreat_ops, advance_ops) = oplog.graph.graph_diff(

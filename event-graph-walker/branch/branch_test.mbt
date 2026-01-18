@@ -17,7 +17,7 @@ test "create empty branch" {
   let oplog = @oplog.OpLog::new("agent-1")
   let branch = Branch::new(oplog)
   inspect(branch.to_text(), content="")
-  inspect(branch.get_frontier().length(), content="0")
+  inspect(branch.get_frontier().0.length(), content="0")
 }
 
 ///|

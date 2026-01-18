@@ -151,7 +151,7 @@ test "from_frontier - simple linear history" {
   let lv0 = try! graph.add_version([], "alice")
   let lv1 = try! graph.add_version([lv0], "alice")
   let lv2 = try! graph.add_version([lv1], "alice")
-  let frontier = [lv2]
+  let frontier = Frontier::from_array([lv2])
   let vv = VersionVector::from_frontier(graph, frontier)
   inspect(vv.0.get("alice"), content="Some(2)")
 }
@@ -163,7 +163,7 @@ test "from_frontier - multiple agents" {
   let lv1 = try! graph.add_version([lv0], "alice")
   let lv2 = try! graph.add_version([], "bob")
   let lv3 = try! graph.add_version([lv2], "bob")
-  let frontier = [lv1, lv3]
+  let frontier = Frontier::from_array([lv1, lv3])
   let vv = VersionVector::from_frontier(graph, frontier)
   inspect(vv.0.get("alice"), content="Some(1)")
   inspect(vv.0.get("bob"), content="Some(1)")
@@ -176,7 +176,7 @@ test "from_frontier - concurrent branches" {
   let lv1 = try! graph.add_version([lv0], "alice")
   let lv2 = try! graph.add_version([lv0], "bob")
   let lv3 = try! graph.add_version([lv2], "bob")
-  let frontier = [lv1, lv3]
+  let frontier = Frontier::from_array([lv1, lv3])
   let vv = VersionVector::from_frontier(graph, frontier)
   inspect(vv.0.get("alice"), content="Some(1)")
   inspect(vv.0.get("bob"), content="Some(1)")
@@ -190,8 +190,8 @@ test "to_frontier - single agent" {
   let lv2 = try! graph.add_version([lv1], "alice")
   let vv = VersionVector::new().set("alice", 2)
   let frontier = vv.to_frontier(graph)
-  inspect(frontier.length(), content="1")
-  inspect(frontier.contains(lv2), content="true")
+  inspect(frontier.0.length(), content="1")
+  inspect(frontier.0.contains(lv2), content="true")
 }
 
 ///|
@@ -203,9 +203,9 @@ test "to_frontier - multiple agents" {
   let lv3 = try! graph.add_version([lv2], "bob")
   let vv = VersionVector::new().set("alice", 1).set("bob", 1)
   let frontier = vv.to_frontier(graph)
-  inspect(frontier.length(), content="2")
-  inspect(frontier.contains(lv1), content="true")
-  inspect(frontier.contains(lv3), content="true")
+  inspect(frontier.0.length(), content="2")
+  inspect(frontier.0.contains(lv1), content="true")
+  inspect(frontier.0.contains(lv3), content="true")
 }
 
 ///|
@@ -216,7 +216,7 @@ test "roundtrip - frontier to version vector and back" {
   let lv2 = try! graph.add_version([], "bob")
   let lv3 = try! graph.add_version([lv2], "bob")
   let lv4 = try! graph.add_version([lv1, lv3], "charlie")
-  let original_frontier = [lv4]
+  let original_frontier = Frontier::from_array([lv4])
   let vv = VersionVector::from_frontier(graph, original_frontier)
   let recovered_frontier = vv.to_frontier(graph)
 

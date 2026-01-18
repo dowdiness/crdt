@@ -22,7 +22,7 @@ pub fn Editor::apply_remote(Self, @oplog.Op) -> Unit raise
 pub fn Editor::backspace(Self) -> Bool
 pub fn Editor::delete(Self) -> Bool
 pub fn Editor::get_cursor(Self) -> Int
-pub fn Editor::get_frontier(Self) -> Array[Int]
+pub fn Editor::get_frontier(Self) -> @causal_graph.Frontier
 pub fn Editor::get_frontier_raw(Self) -> Array[@causal_graph.RawVersion] raise
 pub fn Editor::get_operations(Self) -> Array[@oplog.Op]
 pub fn Editor::get_text(Self) -> String
@@ -46,7 +46,7 @@ pub fn ParsedEditor::delete(Self) -> Bool
 pub fn ParsedEditor::get_ast(Self) -> @parser.TermNode
 pub fn ParsedEditor::get_cursor(Self) -> Int
 pub fn ParsedEditor::get_errors(Self) -> Array[String]
-pub fn ParsedEditor::get_frontier(Self) -> Array[Int]
+pub fn ParsedEditor::get_frontier(Self) -> @causal_graph.Frontier
 pub fn ParsedEditor::get_frontier_raw(Self) -> Array[@causal_graph.RawVersion] raise
 pub fn ParsedEditor::get_operations(Self) -> Array[@oplog.Op]
 pub fn ParsedEditor::get_text(Self) -> String

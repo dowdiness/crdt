@@ -130,7 +130,7 @@ pub fn Editor::merge_remote(
 
 ///|
 /// Get the current frontier
-pub fn Editor::get_frontier(self : Editor) -> Array[Int] {
+pub fn Editor::get_frontier(self : Editor) -> @causal_graph.Frontier {
   self.doc.get_frontier()
 }
 

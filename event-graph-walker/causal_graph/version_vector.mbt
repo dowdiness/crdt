@@ -380,7 +380,7 @@ pub fn VersionVector::concurrent(
 /// let graph = CausalGraph::new()
 /// // ... populate graph with entries ...
 ///
-/// let frontier = [5, 8, 12] // Some logical version numbers
+/// let frontier = Frontier::from_array([5, 8, 12]) // Some logical version numbers
 ///
 /// let vv = VersionVector::from_frontier(graph, frontier)
 /// // vv now contains the maximum sequence number for each agent
@@ -426,7 +426,7 @@ pub fn VersionVector::to_frontier(
       result.push(lv)
     }
   })
-  result
+  Frontier::from_array(result)
 }
 
 ///|

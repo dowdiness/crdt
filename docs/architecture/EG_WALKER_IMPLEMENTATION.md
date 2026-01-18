@@ -58,16 +58,16 @@ Efficient document state computation from operations.
 **Implemented:**
 ```moonbit
 pub struct Branch {
-  frontier : Array[Int]       // Version frontier this branch represents
+  frontier : @causal_graph.Frontier // Version frontier this branch represents
   tree : @fugue.FugueTree     // CRDT tree state at this frontier
   oplog : @oplog.OpLog        // Reference to the operation log
 }
 
 /// Checkout document state at a frontier
-pub fn Branch::checkout(oplog : @oplog.OpLog, frontier : Array[Int]) -> Branch
+pub fn Branch::checkout(oplog : @oplog.OpLog, frontier : @causal_graph.Frontier) -> Branch
 
 /// Advance a branch by applying new operations
-pub fn Branch::advance(self : Branch, target_frontier : Array[Int]) -> Branch
+pub fn Branch::advance(self : Branch, target_frontier : @causal_graph.Frontier) -> Branch
 ```
 
 **Features:**
@@ -131,8 +131,8 @@ pub struct MergeContext {
 pub fn merge(
   tree : @fugue.FugueTree,
   oplog : @oplog.OpLog,
-  current_frontier : Array[Int],
-  target_frontier : Array[Int]
+  current_frontier : @causal_graph.Frontier,
+  target_frontier : @causal_graph.Frontier
 ) -> Unit
 
 /// Merge remote operations into local state using Branch system

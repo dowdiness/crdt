@@ -48,8 +48,8 @@ pub fn OpLog::walk_filtered(
 /// Diff frontiers and collect operations
 pub fn OpLog::diff_and_collect(
   self: OpLog,
-  from_frontier: Array[Int],
-  to_frontier: Array[Int]
+  from_frontier: Frontier,
+  to_frontier: Frontier
 ) -> (Array[Op], Array[Op])  // (retreat_ops, advance_ops)
 ```
 
@@ -124,7 +124,9 @@ for remote_op in remote_ops {
 let frontier_b = oplog.get_frontier()
 
 // Now merge: walk from both frontiers
-let ops = oplog.walk_and_collect([frontier_a, frontier_b])
+let combined = frontier_a.0.copy()
+combined.append(frontier_b.0)
+let ops = oplog.walk_and_collect(Frontier::from_array(combined))
 
 // ops contains all operations from both branches in causal order
 ```

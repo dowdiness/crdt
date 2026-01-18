@@ -22,7 +22,7 @@ pub struct Branch {
 ///|
 /// Create a new empty branch
 pub fn Branch::new(oplog : @oplog.OpLog) -> Branch {
-  { frontier: [], tree: @fugue.FugueTree::new(), oplog }
+  { frontier: @causal_graph.Frontier::from_array([]), tree: @fugue.FugueTree::new(), oplog }
 }
 
 ///|
@@ -64,7 +64,7 @@ pub fn Branch::checkout(
   }
 
   // Return branch with reconstructed state
-  { frontier: frontier.copy(), tree, oplog }
+  { frontier: @causal_graph.Frontier::from_array(frontier.0.copy()), tree, oplog }
 }
 
 ///|
@@ -100,7 +100,11 @@ pub fn Branch::advance(
     for op in advance_ops {
       apply_operation_to_tree(tree, op, self.oplog)
     }
-    { frontier: target_frontier.copy(), tree, oplog: self.oplog }
+    {
+      frontier: @causal_graph.Frontier::from_array(target_frontier.0.copy()),
+      tree,
+      oplog: self.oplog,
+    }
   }
 }
 
@@ -112,8 +116,8 @@ pub fn Branch::to_text(self : Branch) -> String {
 
 ///|
 /// Get the frontier of this branch
-pub fn Branch::get_frontier(self : Branch) -> Array[Int] {
-  self.frontier.copy()
+pub fn Branch::get_frontier(self : Branch) -> @causal_graph.Frontier {
+  @causal_graph.Frontier::from_array(self.frontier.0.copy())
 }
 
 ///|
@@ -128,18 +132,18 @@ pub fn Branch::at_frontier(
   self : Branch,
   frontier : @causal_graph.Frontier,
 ) -> Bool {
-  if self.frontier.length() != frontier.length() {
+  if self.frontier.0.length() != frontier.0.length() {
     return false
   }
 
   // Check if all elements match (order doesn't matter for frontiers)
-  for lv in self.frontier {
-    if not(frontier.contains(lv)) {
+  for lv in self.frontier.0 {
+    if not(frontier.0.contains(lv)) {
       return false
     }
   }
-  for lv in frontier {
-    if not(self.frontier.contains(lv)) {
+  for lv in frontier.0 {
+    if not(self.frontier.0.contains(lv)) {
       return false
     }
   }

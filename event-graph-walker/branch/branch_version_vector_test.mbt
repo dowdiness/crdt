@@ -127,7 +127,7 @@ test "version vector efficiency - many operations from same agent" {
 
   // Regular frontier would have 1 LV
   let frontier = branch.get_frontier()
-  inspect(frontier.length(), content="1")
+  inspect(frontier.0.length(), content="1")
 
   // Version vector is even more compact - just one entry
   let vv = branch.get_version_vector()

@@ -1,6 +1,12 @@
 ///|
 /// CausalGraph implementation
-pub type Frontier = Array[Int]
+pub(all) struct Frontier(Array[Int]) derive(Eq, Show, ToJson, FromJson)
+
+///|
+/// Create a frontier from an array of LVs
+pub fn Frontier::from_array(values : Array[Int]) -> Frontier {
+  Frontier(values)
+}
 
 ///|
 /// Graph entry storing causal information for an operation
@@ -28,7 +34,7 @@ pub fn CausalGraph::new() -> CausalGraph {
     entries: @immut/hashmap.new(),
     version_map: @immut/hashmap.new(),
     next_lv: 0,
-    frontier: [],
+    frontier: Frontier::from_array([]),
     agent_seqs: @immut/hashmap.new(),
   }
 }
@@ -59,7 +65,7 @@ pub fn CausalGraph::get_entry(self : CausalGraph, lv : Int) -> GraphEntry? {
 /// Add a new version to the graph
 pub fn CausalGraph::add_version(
   self : CausalGraph,
-  parents : Frontier,
+  parents : Array[Int],
   agent : String,
 ) -> Int raise CausalGraphError {
   for parent in parents {
@@ -103,7 +109,7 @@ pub fn CausalGraph::add_version(
 /// Add a new version with an explicit sequence number
 pub fn CausalGraph::add_version_with_seq(
   self : CausalGraph,
-  parents : Frontier,
+  parents : Array[Int],
   agent : String,
   seq : Int,
 ) -> Int raise CausalGraphError {
@@ -145,20 +151,21 @@ pub fn CausalGraph::add_version_with_seq(
 fn CausalGraph::update_frontier(
   self : CausalGraph,
   new_lv : Int,
-  parents : Frontier,
+  parents : Array[Int],
 ) -> Unit {
   // Remove all parents from frontier (they now have a successor)
-  let frontier = self.frontier.filter(v => not(parents.contains(v)))
+  let mut frontier = self.frontier.0.copy()
+  frontier = frontier.filter(v => not(parents.contains(v)))
 
   // Add new version
   frontier.push(new_lv)
-  self.frontier = frontier
+  self.frontier = Frontier::from_array(frontier)
 }
 
 ///|
 /// Get current frontier
 pub fn CausalGraph::get_frontier(self : CausalGraph) -> Frontier {
-  self.frontier.copy()
+  Frontier::from_array(self.frontier.0.copy())
 }
 
 ///|
@@ -213,7 +220,7 @@ fn CausalGraph::transitive_closure(
   frontiers : Frontier,
 ) -> @immut/hashset.HashSet[Int] {
   let mut result : @immut/hashset.HashSet[Int] = @immut/hashset.new()
-  let queue = @queue.from_array(frontiers)
+  let queue = @queue.from_array(frontiers.0)
   while not(queue.is_empty()) {
     match queue.pop() {
       Some(current) => {
@@ -241,7 +248,7 @@ pub fn CausalGraph::graph_diff(
   self : CausalGraph,
   from : Frontier,
   to : Frontier,
-) -> (Frontier, Frontier) {
+) -> (Array[Int], Array[Int]) {
   let from_set = self.transitive_closure(from)
   let to_set = self.transitive_closure(to)
 

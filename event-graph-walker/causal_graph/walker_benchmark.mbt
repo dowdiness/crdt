@@ -10,7 +10,7 @@ test "walker - linear history (10 ops)" (b : @bench.T) {
     let parents = if prev == -1 { [] } else { [prev] }
     prev = try! graph.add_version(parents, "agent_a")
   }
-  let frontier = [prev]
+  let frontier = Frontier::from_array([prev])
   b.bench(fn() {
     let result = graph.walk_from_frontier(frontier)
     b.keep(result)
@@ -26,7 +26,7 @@ test "walker - linear history (100 ops)" (b : @bench.T) {
     let parents = if prev == -1 { [] } else { [prev] }
     prev = try! graph.add_version(parents, "agent_a")
   }
-  let frontier = [prev]
+  let frontier = Frontier::from_array([prev])
   b.bench(fn() {
     let result = graph.walk_from_frontier(frontier)
     b.keep(result)
@@ -42,7 +42,7 @@ test "walker - linear history (1000 ops)" (b : @bench.T) {
     let parents = if prev == -1 { [] } else { [prev] }
     prev = try! graph.add_version(parents, "agent_a")
   }
-  let frontier = [prev]
+  let frontier = Frontier::from_array([prev])
   b.bench(fn() {
     let result = graph.walk_from_frontier(frontier)
     b.keep(result)
@@ -67,7 +67,7 @@ test "walker - concurrent branches (2 agents x 50)" (b : @bench.T) {
     let parents = if prev_b == -1 { [] } else { [prev_b] }
     prev_b = try! graph.add_version(parents, "agent_b")
   }
-  let frontier = [prev_a, prev_b]
+  let frontier = Frontier::from_array([prev_a, prev_b])
   b.bench(fn() {
     let result = graph.walk_from_frontier(frontier)
     b.keep(result)
@@ -89,7 +89,7 @@ test "walker - concurrent branches (5 agents x 20)" (b : @bench.T) {
     frontiers.push(prev)
   }
   b.bench(fn() {
-    let result = graph.walk_from_frontier(frontiers)
+    let result = graph.walk_from_frontier(Frontier::from_array(frontiers))
     b.keep(result)
   })
 }
@@ -109,7 +109,7 @@ test "walker - diamond pattern (50 diamonds)" (b : @bench.T) {
     // Merge: join both branches
     base = try! graph.add_version([left, right], "agent_a")
   }
-  let frontier = [base]
+  let frontier = Frontier::from_array([base])
   b.bench(fn() {
     let result = graph.walk_from_frontier(frontier)
     b.keep(result)
@@ -127,13 +127,13 @@ test "walker - diff advance only (10 new ops)" (b : @bench.T) {
     let parents = if prev == -1 { [] } else { [prev] }
     prev = try! graph.add_version(parents, "agent_a")
   }
-  let from_frontier = [prev]
+  let from_frontier = Frontier::from_array([prev])
 
   // Add 10 more operations
   for i = 0; i < 10; i = i + 1 {
     prev = try! graph.add_version([prev], "agent_a")
   }
-  let to_frontier = [prev]
+  let to_frontier = Frontier::from_array([prev])
   b.bench(fn() {
     let result = graph.diff_frontiers_lvs(from_frontier, to_frontier)
     b.keep(result)
@@ -151,7 +151,7 @@ test "walker - diff with concurrent branches" (b : @bench.T) {
     let parents = if base == -1 { [] } else { [base] }
     base = try! graph.add_version(parents, "agent_a")
   }
-  let from_frontier = [base]
+  let from_frontier = Frontier::from_array([base])
 
   // Branch A: 30 more ops
   let mut branch_a = base
@@ -164,7 +164,7 @@ test "walker - diff with concurrent branches" (b : @bench.T) {
   for i = 0; i < 30; i = i + 1 {
     branch_b = try! graph.add_version([branch_b], "agent_b")
   }
-  let to_frontier = [branch_a, branch_b]
+  let to_frontier = Frontier::from_array([branch_a, branch_b])
   b.bench(fn() {
     let result = graph.diff_frontiers_lvs(from_frontier, to_frontier)
     b.keep(result)
@@ -180,7 +180,7 @@ test "walker - large history (10000 ops)" (b : @bench.T) {
     let parents = if prev == -1 { [] } else { [prev] }
     prev = try! graph.add_version(parents, "agent_a")
   }
-  let frontier = [prev]
+  let frontier = Frontier::from_array([prev])
   b.bench(fn() {
     let result = graph.walk_from_frontier(frontier)
     b.keep(result)

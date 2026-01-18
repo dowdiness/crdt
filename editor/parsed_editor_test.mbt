@@ -191,7 +191,7 @@ test "operations and frontier" {
   let ops = pe.get_operations()
   let frontier = pe.get_frontier()
   inspect(ops.length() > 0, content="true")
-  inspect(frontier.length() > 0, content="true")
+  inspect(frontier.0.length() > 0, content="true")
 }
 
 ///|

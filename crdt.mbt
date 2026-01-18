@@ -147,7 +147,7 @@ pub fn get_operations_json(_handle : Int) -> String {
 /// Get frontier as JSON
 pub fn get_frontier_json(_handle : Int) -> String {
   match editor.val {
-    Some(editor) => editor.get_frontier().to_json().stringify()
+    Some(editor) => editor.get_frontier().0.to_json().stringify()
     None => "[]"
   }
 }

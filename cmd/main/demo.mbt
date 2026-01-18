@@ -73,12 +73,13 @@ pub fn run_convergence_demo() -> Unit {
   show_operations(alice)
   println("")
   let frontier = alice.get_frontier()
+  let frontier_values = frontier.0
   let mut frontier_str = "Frontier: ["
-  for i = 0; i < frontier.length(); i = i + 1 {
+  for i = 0; i < frontier_values.length(); i = i + 1 {
     if i > 0 {
       frontier_str = frontier_str + ", "
     }
-    frontier_str = frontier_str + frontier[i].to_string()
+    frontier_str = frontier_str + frontier_values[i].to_string()
   }
   frontier_str = frontier_str + "]"
   println(frontier_str)
