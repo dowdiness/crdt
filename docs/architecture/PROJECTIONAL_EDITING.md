@@ -203,12 +203,15 @@ The existing codebase has:
 | AST↔CRDT Bridge | 🔶 Partial | `parser/crdt_integration.mbt` |
 | CanonicalModel | ✅ Complete | `projection/canonical_model.mbt` |
 | SourceMap | ✅ Complete | `projection/source_map.mbt` |
-| TextLens | ✅ Complete | `projection/lens.mbt` |
-| TreeLens | ✅ Complete | `projection/lens.mbt` |
-| AST Reconciliation | ✅ Complete | `projection/lens.mbt` |
+| TextLens | ✅ Complete | `projection/text_lens.mbt` |
+| TreeLens | ✅ Complete | `projection/tree_lens.mbt` |
+| AST Reconciliation | ✅ Complete | `projection/tree_lens.mbt` |
 | apply_operation | ✅ Complete | `projection/canonical_model.mbt` |
-| InteractiveTree | ✅ Complete | `projection/tree_editor.mbt` |
-| TreeEditorState | ✅ Complete | `projection/tree_editor.mbt` |
+| InteractiveTreeNode | ✅ Complete | `projection/tree_editor.mbt` |
+| TreeEditorState | ✅ Complete | `projection/tree_editor.mbt` (immutable, with guards) |
+| TreeUIState | ✅ Complete | `projection/tree_editor.mbt` (derives node flags) |
+| refresh_from_model | ✅ Complete | `projection/tree_editor.mbt` (stale ID pruning) |
+| ProjectedEditor | ❌ Not started | Integration facade (Phase 3.5) |
 | Bidirectional Sync | 🔶 Partial | — |
 | CstNode | ❌ Not started | — |
 | AstCstMap | ❌ Not started | — |
@@ -617,27 +620,46 @@ enum ValidationLevel {
 - `insert_child_at(node, index, child)` — insert child into node
 - `get_node_in_tree(root, target_id)` — find node by ID in tree
 
-### Phase 3: Unified Tree Editor (Interactive Visualization) — ❌ NOT STARTED
+### Phase 3: Unified Tree Editor (Interactive Visualization) — 🔶 IN PROGRESS
 
-**Prerequisites**: Phase 2 must be complete first.
+**Prerequisites**: Phase 2 must be complete first. ✅
 
-**Files to create/modify**:
-- `crdt/src/crdt.mbt` — Extended FFI for tree operations
-- `web/src/tree-editor.ts` — Unified tree editor component
-- `web/src/tree-renderer.ts` — SVG/Canvas tree rendering
-- `web/src/projection-manager.ts` — Projection synchronization
-- `web/src/editor.ts` — Integrate with projection system
+**Status**: Core UI state management complete, web integration pending.
 
-**Deliverables**:
-1. JavaScript API for tree operations
-2. **Unified Tree Editor** that combines visualization + editing:
+**Files created/modified**:
+- ✅ `projection/tree_editor.mbt` — TreeEditorState with immutable UI state
+- ✅ `projection/tree_editor_wbtest.mbt` — 14 whitebox tests for guards/immutability
+- ❌ `crdt/src/crdt.mbt` — Extended FFI for tree operations
+- ❌ `web/src/tree-editor.ts` — Unified tree editor component
+- ❌ `web/src/tree-renderer.ts` — SVG/Canvas tree rendering
+- ❌ `web/src/projection-manager.ts` — Projection synchronization
+- ❌ `web/src/editor.ts` — Integrate with projection system
+
+**Completed Deliverables**:
+1. ✅ `TreeEditorState` — Manages UI-only state separate from model:
+   - `collapsed_nodes: @immut/hashset.HashSet[NodeId]` — Immutable for undo safety
+   - `selection: Array[NodeId]` — Multi-select support
+   - `editing_node: NodeId?` — Inline edit tracking
+   - `dragging/drop_target/drop_position` — Drag-and-drop state
+2. ✅ `InteractiveTreeNode` — Derived view with flags:
+   - `selected`, `editing`, `collapsed`, `drop_target` derived from `TreeUIState`
+   - Flags computed during tree construction, not stored separately
+3. ✅ `refresh_from_model()` — Stale ID pruning via set intersection
+4. ✅ Guards for invalid operations:
+   - `Collapse`/`Expand` on missing nodes → no-op
+   - `DragOver`/`Drop` on self or descendant → rejected
+   - `Drop` with mismatched source → clears drag state only
+
+**Pending Deliverables**:
+1. ❌ JavaScript API for tree operations (FFI binding)
+2. ❌ **Unified Tree Editor** that combines visualization + editing:
    - Click node to select/focus
    - Double-click to edit leaf values inline
    - Drag nodes to reorder/reparent
    - Context menu for structural operations (wrap in λ, delete, etc.)
    - Visual feedback during edits (highlight affected regions)
-3. Projection manager handling focus and sync
-4. Side-by-side Text ↔ Tree view with synchronized cursors
+3. ❌ Projection manager handling focus and sync
+4. ❌ Side-by-side Text ↔ Tree view with synchronized cursors
 
 **Unified Tree Editor Design**:
 ```
@@ -670,9 +692,94 @@ enum ValidationLevel {
 └────────────────────────────────────────────────────────────┘
 ```
 
+### Phase 3.5: Integration Layer — ❌ NOT STARTED
+
+**Prerequisites**: Phase 3 Completed Deliverables must be working.
+
+**Purpose**: Connect MoonBit state management to Web UI via event routing.
+
+**Architecture**:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Web UI (Svelte/React)                         │
+├─────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────┐  ┌───────────────────────────────┐    │
+│  │      Text Editor        │  │      Tree Editor              │    │
+│  │    (CodeMirror)         │  │   (SVG with D3/Solid)         │    │
+│  └───────────┬─────────────┘  └───────────────┬───────────────┘    │
+│              │                                │                     │
+│              ▼                                ▼                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                    Event Router (JS)                         │   │
+│  │  - TextInsert/Delete → text_lens_apply_edit()               │   │
+│  │  - TreeEditOp → tree_lens_apply_edit() + apply_edit()       │   │
+│  │  - Dispatches to MoonBit FFI                                 │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼ FFI Calls
+┌─────────────────────────────────────────────────────────────────────┐
+│                      MoonBit Layer                                   │
+├─────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                 ProjectedEditor (to be created)              │   │
+│  │  ┌────────────────────────────────────────────────────────┐ │   │
+│  │  │  model: CanonicalModel (AST + source_map + registry)   │ │   │
+│  │  │  ui_state: TreeEditorState (selection, collapsed, etc) │ │   │
+│  │  │  text_crdt: Document (eg-walker FugueMax)              │ │   │
+│  │  └────────────────────────────────────────────────────────┘ │   │
+│  │                                                              │   │
+│  │  fn apply_text_edit(pos, text) -> ProjectedEditor           │   │
+│  │    1. Update text_crdt                                       │   │
+│  │    2. Reparse → new AST                                      │   │
+│  │    3. Reconcile AST (preserve node IDs)                      │   │
+│  │    4. ui_state.refresh_from_model(model) (prune stale IDs)  │   │
+│  │    5. Return updated editor                                  │   │
+│  │                                                              │   │
+│  │  fn apply_tree_edit(op: TreeEditOp) -> ProjectedEditor       │   │
+│  │    1. ui_state.apply_edit(op) → update UI state             │   │
+│  │    2. If structural: tree_lens_apply_edit(model, op)        │   │
+│  │    3. Unparse → text diff → update text_crdt                │   │
+│  │    4. Return updated editor                                  │   │
+│  │                                                              │   │
+│  │  fn get_text() -> String                                     │   │
+│  │  fn get_tree() -> InteractiveTreeNode?                       │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Design Decisions from Implementation**:
+
+| Decision | Rationale |
+|----------|-----------|
+| **Immutable `collapsed_nodes`** | Uses `@immut/hashset` to prevent aliasing bugs in undo/redo scenarios |
+| **Derived node flags** | `selected`/`editing`/`drop_target` computed from `TreeUIState` during tree construction, not stored on nodes |
+| **Stale ID pruning** | `refresh_from_model()` uses set intersection to remove IDs that no longer exist in AST |
+| **Guards on operations** | `Collapse`/`Expand`/`DragOver`/`Drop` validate node existence and prevent self/descendant drops |
+| **UI state separate from model** | `TreeEditorState` holds ephemeral UI state; `CanonicalModel` holds persistent data |
+
+**Files to create**:
+- `projection/projected_editor.mbt` — Unified editor facade
+- `crdt.mbt` (root) — FFI exports for JS
+- `web/src/event-router.ts` — JS event dispatcher
+- `web/src/moonbit-bridge.ts` — FFI wrapper
+
+**Unused Constructors Resolution**:
+The following will be used when the integration layer is built:
+
+| Variant | Used By |
+|---------|---------|
+| `ProjectionEdit::NodeSelect` | Event router when tree selection syncs to text cursor |
+| `ProjectionEdit::StructuralChange` | Undo/redo system for logical operation grouping |
+| `TreeEditOp::*` | Already used by `tree_lens_apply_edit()` |
+| `DropPosition::Before/After/Inside` | Already used in `Drop` handling (line 196-204) |
+| `LeafValue::*` | Will be used for typed inline editing |
+| `ValidationLevel::*` | Will be used for incremental validation |
+
 ### Phase 4: Advanced Features (Polish) — ❌ NOT STARTED
 
-**Prerequisites**: Phase 3 must be complete first.
+**Prerequisites**: Phase 3.5 must be complete first.
 
 **Features**:
 - Keyboard navigation in tree (arrow keys, Enter to edit)
