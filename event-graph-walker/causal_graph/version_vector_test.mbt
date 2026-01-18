@@ -3,28 +3,28 @@
 ///|
 test "create empty version vector" {
   let vv = VersionVector::new()
-  inspect(vv.is_empty(), content="true")
-  inspect(vv.size(), content="0")
-  inspect(vv.to_string(), content="{}")
+  inspect(vv.0.is_empty(), content="true")
+  inspect(vv.0.length(), content="0")
+  inspect(vv.to_string(), content="VersionVector({})")
 }
 
 ///|
 test "set and get version" {
   let vv = VersionVector::new()
   let vv = vv.set("alice", 5)
-  inspect(vv.get("alice"), content="Some(5)")
-  inspect(vv.get("bob"), content="None")
+  inspect(vv.0.get("alice"), content="Some(5)")
+  inspect(vv.0.get("bob"), content="None")
 }
 
 ///|
 test "increment version" {
   let vv = VersionVector::new()
   let vv = vv.increment("alice")
-  inspect(vv.get("alice"), content="Some(0)")
+  inspect(vv.0.get("alice"), content="Some(0)")
   let vv = vv.increment("alice")
-  inspect(vv.get("alice"), content="Some(1)")
+  inspect(vv.0.get("alice"), content="Some(1)")
   let vv = vv.increment("alice")
-  inspect(vv.get("alice"), content="Some(2)")
+  inspect(vv.0.get("alice"), content="Some(2)")
 }
 
 ///|
@@ -33,10 +33,10 @@ test "multiple agents" {
   let vv = vv.set("alice", 3)
   let vv = vv.set("bob", 7)
   let vv = vv.set("charlie", 2)
-  inspect(vv.size(), content="3")
-  inspect(vv.get("alice"), content="Some(3)")
-  inspect(vv.get("bob"), content="Some(7)")
-  inspect(vv.get("charlie"), content="Some(2)")
+  inspect(vv.0.length(), content="3")
+  inspect(vv.0.get("alice"), content="Some(3)")
+  inspect(vv.0.get("bob"), content="Some(7)")
+  inspect(vv.0.get("charlie"), content="Some(2)")
 }
 
 ///|
@@ -44,8 +44,8 @@ test "merge version vectors - no overlap" {
   let vv1 = VersionVector::new().set("alice", 5)
   let vv2 = VersionVector::new().set("bob", 3)
   let merged = vv1.merge(vv2)
-  inspect(merged.get("alice"), content="Some(5)")
-  inspect(merged.get("bob"), content="Some(3)")
+  inspect(merged.0.get("alice"), content="Some(5)")
+  inspect(merged.0.get("bob"), content="Some(3)")
 }
 
 ///|
@@ -53,8 +53,8 @@ test "merge version vectors - with overlap" {
   let vv1 = VersionVector::new().set("alice", 5).set("bob", 2)
   let vv2 = VersionVector::new().set("alice", 3).set("bob", 7)
   let merged = vv1.merge(vv2)
-  inspect(merged.get("alice"), content="Some(5)")
-  inspect(merged.get("bob"), content="Some(7)")
+  inspect(merged.0.get("alice"), content="Some(5)")
+  inspect(merged.0.get("bob"), content="Some(7)")
 }
 
 ///|
@@ -153,7 +153,7 @@ test "from_frontier - simple linear history" {
   let lv2 = try! graph.add_version([lv1], "alice")
   let frontier = [lv2]
   let vv = VersionVector::from_frontier(graph, frontier)
-  inspect(vv.get("alice"), content="Some(2)")
+  inspect(vv.0.get("alice"), content="Some(2)")
 }
 
 ///|
@@ -165,8 +165,8 @@ test "from_frontier - multiple agents" {
   let lv3 = try! graph.add_version([lv2], "bob")
   let frontier = [lv1, lv3]
   let vv = VersionVector::from_frontier(graph, frontier)
-  inspect(vv.get("alice"), content="Some(1)")
-  inspect(vv.get("bob"), content="Some(1)")
+  inspect(vv.0.get("alice"), content="Some(1)")
+  inspect(vv.0.get("bob"), content="Some(1)")
 }
 
 ///|
@@ -178,8 +178,8 @@ test "from_frontier - concurrent branches" {
   let lv3 = try! graph.add_version([lv2], "bob")
   let frontier = [lv1, lv3]
   let vv = VersionVector::from_frontier(graph, frontier)
-  inspect(vv.get("alice"), content="Some(1)")
-  inspect(vv.get("bob"), content="Some(1)")
+  inspect(vv.0.get("alice"), content="Some(1)")
+  inspect(vv.0.get("bob"), content="Some(1)")
 }
 
 ///|

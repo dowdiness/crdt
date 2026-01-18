@@ -59,23 +59,20 @@ pub impl Show for RawVersion
 pub impl ToJson for RawVersion
 pub impl @json.FromJson for RawVersion
 
-pub struct VersionVector {
-  map : Map[String, Int]
-}
+pub struct VersionVector(Map[String, Int])
 pub fn VersionVector::agents(Self) -> Array[String]
 pub fn VersionVector::concurrent(Self, Self) -> Bool
 pub fn VersionVector::from_frontier(CausalGraph, Array[Int]) -> Self
-pub fn VersionVector::from_map(Map[String, Int]) -> Self
-pub fn VersionVector::get(Self, String) -> Int?
 pub fn VersionVector::includes(Self, String, Int) -> Bool
 pub fn VersionVector::increment(Self, String) -> Self
-pub fn VersionVector::is_empty(Self) -> Bool
+#deprecated
+pub fn VersionVector::inner(Self) -> Map[String, Int]
 pub fn VersionVector::merge(Self, Self) -> Self
 pub fn VersionVector::new() -> Self
 pub fn VersionVector::set(Self, String, Int) -> Self
-pub fn VersionVector::size(Self) -> Int
 pub fn VersionVector::to_frontier(Self, CausalGraph) -> Array[Int]
 pub impl Compare for VersionVector
+pub impl Default for VersionVector
 pub impl Eq for VersionVector
 pub impl Show for VersionVector
 pub impl ToJson for VersionVector

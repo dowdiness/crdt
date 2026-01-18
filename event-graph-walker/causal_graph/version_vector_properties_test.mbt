@@ -154,7 +154,7 @@ fn prop_set_increases(vv : VersionVector) -> Bool {
   // Pick first agent if any, otherwise use a new agent
   let agents = vv.agents()
   let agent = if agents.length() > 0 { agents[0] } else { "test" }
-  let current_seq = match vv.get(agent) {
+  let current_seq = match vv.0.get(agent) {
     Some(seq) => seq
     None => 0
   }
@@ -178,7 +178,7 @@ fn prop_includes_consistent(pair : (VersionVector, VersionVector)) -> Bool {
     vv_a
     .agents()
     .each(fn(agent) {
-      match vv_a.get(agent) {
+      match vv_a.0.get(agent) {
         Some(seq) => if not(vv_b.includes(agent, seq)) { all_included = false }
         None => ()
       }
@@ -195,26 +195,26 @@ test "property: includes consistent with comparison" {
 }
 
 ///|
-/// Property: Size equals number of agents
-fn prop_size_equals_agents(vv : VersionVector) -> Bool {
-  vv.size() == vv.agents().length()
+/// Property: length equals number of agents
+fn prop_length_equals_agents(vv : VersionVector) -> Bool {
+  vv.0.length() == vv.agents().length()
 }
 
 ///|
-test "property: size equals agent count" {
-  @qc.quick_check_fn(prop_size_equals_agents)
+test "property: length equals agent count" {
+  @qc.quick_check_fn(prop_length_equals_agents)
 }
 
 ///|
-/// Property: Empty version vector has size 0
-fn prop_empty_size_zero(_unit : Unit) -> Bool {
+/// Property: Empty version vector has length 0
+fn prop_empty_length_zero(_unit : Unit) -> Bool {
   let vv = VersionVector::new()
-  vv.is_empty() && vv.size() == 0
+  vv.0.is_empty() && vv.0.length() == 0
 }
 
 ///|
-test "property: empty has size zero" {
-  @qc.quick_check_fn(prop_empty_size_zero)
+test "property: empty has length zero" {
+  @qc.quick_check_fn(prop_empty_length_zero)
 }
 
 ///|
@@ -254,7 +254,7 @@ fn prop_agents_correct(vv : VersionVector) -> Bool {
   // Every agent in agents() should have a value in the version vector
   let mut all_have_values = true
   agents.each(fn(agent) {
-    match vv.get(agent) {
+    match vv.0.get(agent) {
       Some(_) => ()
       None => all_have_values = false
     }

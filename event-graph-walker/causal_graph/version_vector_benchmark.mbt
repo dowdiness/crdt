@@ -262,15 +262,15 @@ test "version_vector - agents (5 agents)" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: Size calculation (20 agents)
-test "version_vector - size (20 agents)" (b : @bench.T) {
+/// Benchmark: Length calculation (20 agents)
+test "version_vector - length (20 agents)" (b : @bench.T) {
   let mut vv = VersionVector::new()
   for i = 0; i < 20; i = i + 1 {
     let agent = "agent_" + i.to_string()
     vv = vv.set(agent, i * 10)
   }
   b.bench(fn() {
-    let result = vv.size()
+    let result = vv.0.length()
     b.keep(result)
   })
 }

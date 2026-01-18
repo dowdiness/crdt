@@ -12,31 +12,15 @@
 /// - Version Vector: {"alice": 4, "bob": 8}
 ///
 /// This provides O(1) comparison for common operations and reduces memory usage.
-pub struct VersionVector {
-  map : Map[String, Int]
-} derive(Eq, ToJson, FromJson)
+pub struct VersionVector(Map[String, Int]) derive (
+  Show,
+  Eq,
+  Default,
+  ToJson,
+  FromJson,
+)
 
 // Traits
-
-///|
-/// Converts the version vector to its string representation using the
-/// underlying map format.
-///
-/// Parameters:
-///
-/// * `self` : The version vector to convert to string.
-/// * `logger` : The output logger to write the string representation to.
-///
-/// Example:
-///
-/// ```moonbit
-/// let vv = VersionVector::new().set("alice", 5).set("bob", 3)
-/// println(vv) // Outputs the map representation showing agent-to-sequence mappings
-/// ```
-///
-pub impl Show for VersionVector with output(self, logger) {
-  logger.write_object(self.map)
-}
 
 ///|
 /// Compares two version vectors to determine their ordering relationship.
@@ -90,22 +74,22 @@ pub impl Compare for VersionVector with compare(self, other) {
 /// Example:
 ///
 /// ```moonbit
-/// let vv1 = @dowdiness/crdt/causal_graph.VersionVector::new().set("alice", 2).set("bob", 3)
-/// let vv2 = @dowdiness/crdt/causal_graph.VersionVector::new().set("alice", 3).set("bob", 3).set("charlie", 1)
+/// let vv1 = VersionVector::new().set("alice", 2).set("bob", 3)
+/// let vv2 = VersionVector::new().set("alice", 3).set("bob", 3).set("charlie", 1)
 /// inspect(vv1 <= vv2, content="true")
 ///
-/// let vv3 = @dowdiness/crdt/causal_graph.VersionVector::new().set("alice", 4).set("bob", 2)
+/// let vv3 = VersionVector::new().set("alice", 4).set("bob", 2)
 /// inspect(vv1 <= vv3, content="false") // alice: 2 <= 4 but bob: 3 > 2
 ///
-/// let vv4 = @dowdiness/crdt/causal_graph.VersionVector::new().set("alice", 1)
+/// let vv4 = VersionVector::new().set("alice", 1)
 /// inspect(vv1 <= vv4, content="false") // vv1 has bob but vv4 doesn't
 /// ```
 ///
 pub impl Compare for VersionVector with op_le(self, other) {
   // For self <= other, every agent in self must have seq <= seq in other
   let mut is_le = true
-  self.map.each(fn(agent, seq) {
-    match other.map.get(agent) {
+  self.0.each(fn(agent, seq) {
+    match other.0.get(agent) {
       Some(other_seq) => if seq > other_seq { is_le = false }
       None =>
         // self has agent but other doesn't - self is not <= other
@@ -157,7 +141,7 @@ pub impl @qc.Shrink for VersionVector with shrink(vv) {
         for j = 0; j < agents.length(); j = j + 1 {
           if i != j {
             // Include all agents except the one at index i
-            match vv.get(agents[j]) {
+            match vv.0.get(agents[j]) {
               Some(seq) => smaller = smaller.set(agents[j], seq)
               None => ()
             }
@@ -174,7 +158,7 @@ pub impl @qc.Shrink for VersionVector with shrink(vv) {
     let result = []
     // For each agent, try smaller sequence numbers
     for agent in agents {
-      match vv.get(agent) {
+      match vv.0.get(agent) {
         Some(seq) =>
           if seq > 0 {
             // Try seq - 1, seq / 2, 0
@@ -184,7 +168,7 @@ pub impl @qc.Shrink for VersionVector with shrink(vv) {
                 let mut smaller = VersionVector::new()
                 // Copy all agents, but use new_seq for this agent
                 for a in agents {
-                  match vv.get(a) {
+                  match vv.0.get(a) {
                     Some(s) =>
                       if a == agent {
                         smaller = smaller.set(a, new_seq)
@@ -217,62 +201,13 @@ pub impl @qc.Shrink for VersionVector with shrink(vv) {
 /// Example:
 ///
 /// ```moonbit
-/// let vv = @dowdiness/crdt/causal_graph.VersionVector::new()
-/// inspect(vv.is_empty(), content="true")
-/// inspect(vv.size(), content="0")
+/// let vv = VersionVector::new()
+/// inspect(vv.0.is_empty(), content="true")
+/// inspect(vv.0.length(), content="0")
 /// ```
 ///
 pub fn VersionVector::new() -> VersionVector {
-  { map: {} }
-}
-
-///|
-/// Creates a new version vector from a map of agent names to sequence numbers.
-///
-/// Parameters:
-///
-/// * `map` : A map where keys are agent identifiers and values are their
-///   corresponding sequence numbers.
-///
-/// Returns a new `VersionVector` containing the provided agent-to-sequence
-/// mappings.
-///
-/// Example:
-///
-/// ```moonbit
-/// let map = { "alice": 5, "bob": 3, "charlie": 10 }
-/// let vv = VersionVector::from_map(map)
-/// inspect(vv.get("alice"), content="Some(5)")
-/// inspect(vv.get("bob"), content="Some(3)")
-/// ```
-///
-pub fn VersionVector::from_map(map : Map[String, Int]) -> VersionVector {
-  { map, }
-}
-
-///|
-/// Retrieves the sequence number for a specific agent from the version vector.
-///
-/// Parameters:
-///
-/// * `self` : The version vector to query.
-/// * `agent` : The agent identifier to look up.
-///
-/// Returns `Some(sequence_number)` if the agent exists in the version vector,
-/// or `None` if the agent is not found.
-///
-/// Example:
-///
-/// ```moonbit
-/// let vv = @dowdiness/crdt/causal_graph.VersionVector::new()
-///   .set("alice", 5)
-///   .set("bob", 3)
-/// inspect(vv.get("alice"), content="Some(5)")
-/// inspect(vv.get("charlie"), content="None")
-/// ```
-///
-pub fn VersionVector::get(self : VersionVector, agent : String) -> Int? {
-  self.map.get(agent)
+  VersionVector({})
 }
 
 ///|
@@ -290,7 +225,7 @@ pub fn VersionVector::get(self : VersionVector, agent : String) -> Int? {
 /// Example:
 ///
 /// ```moonbit
-/// let vv = @dowdiness/crdt/causal_graph.VersionVector::new()
+/// let vv = VersionVector::new()
 /// let updated = vv.set("alice", 5)
 /// inspect(updated.get("alice"), content="Some(5)")
 /// ```
@@ -300,7 +235,7 @@ pub fn VersionVector::set(
   agent : String,
   seq : Int,
 ) -> VersionVector {
-  self.map.set(agent, seq)
+  self.0.set(agent, seq)
   self
 }
 
@@ -316,11 +251,9 @@ pub fn VersionVector::increment(
   self : VersionVector,
   agent : String,
 ) -> VersionVector {
-  self.map.update(agent, fn(seq) {
-    match seq {
-      Some(n) => Some(n + 1)
-      None => Some(0)
-    }
+  self.0.update(agent, seq => match seq {
+    Some(n) => Some(n + 1)
+    None => Some(0)
   })
   self
 }
@@ -347,7 +280,7 @@ pub fn VersionVector::increment(
 /// ```
 ///
 pub fn VersionVector::agents(self : VersionVector) -> Array[String] {
-  self.map.keys().to_array()
+  self.0.keys().to_array()
 }
 
 ///|
@@ -378,15 +311,15 @@ pub fn VersionVector::merge(
   self : VersionVector,
   other : VersionVector,
 ) -> VersionVector {
-  let result = self.map.copy()
+  let result = self.0.copy()
   // Merge entries from other (take max)
-  other.map.each((agent, seq) => {
+  other.0.each((agent, seq) => {
     let max_seq = result
       .get(agent)
       .map_or(seq, existing => if seq > existing { seq } else { existing })
     result.set(agent, max_seq)
   })
-  { map: result }
+  VersionVector(result)
 }
 
 ///|
@@ -409,12 +342,12 @@ pub fn VersionVector::merge(
 /// Example:
 ///
 /// ```moonbit
-/// let vv1 = @dowdiness/crdt/causal_graph.VersionVector::from_map({"alice": 2, "bob": 1})
-/// let vv2 = @dowdiness/crdt/causal_graph.VersionVector::from_map({"alice": 1, "bob": 2})
+/// let vv1 = VersionVector({"alice": 2, "bob": 1})
+/// let vv2 = VersionVector({"alice": 1, "bob": 2})
 /// inspect(vv1.concurrent(vv2), content="true")
 ///
-/// let vv3 = @dowdiness/crdt/causal_graph.VersionVector::from_map({"alice": 1, "bob": 1})
-/// let vv4 = @dowdiness/crdt/causal_graph.VersionVector::from_map({"alice": 2, "bob": 2})
+/// let vv3 = VersionVector({"alice": 1, "bob": 1})
+/// let vv4 = VersionVector({"alice": 2, "bob": 2})
 /// inspect(vv3.concurrent(vv4), content="false")
 /// ```
 ///
@@ -423,51 +356,6 @@ pub fn VersionVector::concurrent(
   other : VersionVector,
 ) -> Bool {
   not(self <= other) && not(other <= self)
-}
-
-///|
-/// Returns the number of agents tracked in this version vector.
-///
-/// Parameters:
-///
-/// * `self` : The version vector to get the size of.
-///
-/// Returns the count of agents as an integer.
-///
-/// Example:
-///
-/// ```moonbit
-/// let vv = @dowdiness/crdt/causal_graph.VersionVector::new()
-///   .set("alice", 5)
-///   .set("bob", 3)
-/// inspect(vv.size(), content="2")
-/// ```
-///
-pub fn VersionVector::size(self : VersionVector) -> Int {
-  self.map.length()
-}
-
-///|
-/// Checks whether the version vector contains any agent entries.
-///
-/// Parameters:
-///
-/// * `self` : The version vector to check.
-///
-/// Returns `true` if the version vector has no agents, `false` otherwise.
-///
-/// Example:
-///
-/// ```moonbit
-/// let empty_vv = @dowdiness/crdt/causal_graph.VersionVector::new()
-/// inspect(empty_vv.is_empty(), content="true")
-///
-/// let vv = @dowdiness/crdt/causal_graph.VersionVector::new().set("alice", 5)
-/// inspect(vv.is_empty(), content="false")
-/// ```
-///
-pub fn VersionVector::is_empty(self : VersionVector) -> Bool {
-  self.map.length() == 0
 }
 
 ///|
@@ -513,10 +401,10 @@ pub fn VersionVector::from_frontier(
   reachable.each(lv => if graph[lv] is Some(entry) {
     let current_max = agent_max_seq.get(entry.agent).unwrap_or(-1)
     if entry.seq > current_max {
-      agent_max_seq.set(entry.agent, entry.seq)
+      agent_max_seq[entry.agent] = entry.seq
     }
   })
-  { map: agent_max_seq }
+  VersionVector(agent_max_seq)
 }
 
 ///|
@@ -532,11 +420,10 @@ pub fn VersionVector::to_frontier(
   let result = []
 
   // For each agent in version vector, find the LV for that (agent, seq)
-  self.map.each(fn(agent, seq) {
+  self.0.each((agent, seq) => {
     let raw_version = RawVersion::new(agent, seq)
-    match graph.raw_to_lv(raw_version) {
-      Some(lv) => result.push(lv)
-      None => () // Version not in graph yet
+    if graph.raw_to_lv(raw_version) is Some(lv) {
+      result.push(lv)
     }
   })
   result
@@ -559,9 +446,9 @@ pub fn VersionVector::to_frontier(
 /// Examples:
 ///
 /// ```moonbit
-/// let vv = @dowdiness/crdt/causal_graph.VersionVector::new()
-///   |> @dowdiness/crdt/causal_graph.VersionVector::set("alice", 5)
-///   |> @dowdiness/crdt/causal_graph.VersionVector::set("bob", 3)
+/// let vv = VersionVector::new()
+///   |> VersionVector::set("alice", 5)
+///   |> VersionVector::set("bob", 3)
 ///
 /// inspect(vv.includes("alice", 3), content="true")  // 3 <= 5
 /// inspect(vv.includes("alice", 5), content="true")  // 5 <= 5
@@ -574,7 +461,7 @@ pub fn VersionVector::includes(
   agent : String,
   seq : Int,
 ) -> Bool {
-  match self.map.get(agent) {
+  match self.0.get(agent) {
     Some(max_seq) => seq <= max_seq
     None => false
   }
