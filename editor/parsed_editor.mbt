@@ -156,7 +156,9 @@ pub fn ParsedEditor::get_operations(self : ParsedEditor) -> Array[@oplog.Op] {
 
 ///|
 /// Get the current version frontier
-pub fn ParsedEditor::get_frontier(self : ParsedEditor) -> @causal_graph.Frontier {
+pub fn ParsedEditor::get_frontier(
+  self : ParsedEditor,
+) -> @causal_graph.Frontier {
   self.editor.get_frontier()
 }
 

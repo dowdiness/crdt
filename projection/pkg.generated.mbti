@@ -3,6 +3,7 @@ package "dowdiness/crdt/projection"
 
 import(
   "dowdiness/crdt/parser"
+  "moonbitlang/core/immut/hashset"
 )
 
 // Values
@@ -90,6 +91,7 @@ pub struct InteractiveTreeNode {
   text_range : @parser.Range
 }
 pub fn InteractiveTreeNode::from_term_node(@parser.TermNode, SourceMap) -> Self
+pub fn InteractiveTreeNode::from_term_node_with_state(@parser.TermNode, SourceMap, @hashset.HashSet[NodeId]) -> Self
 pub impl Show for InteractiveTreeNode
 
 pub enum LeafValue {
@@ -189,10 +191,12 @@ pub struct TreeEditorState {
   dragging : NodeId?
   drop_target : NodeId?
   drop_position : DropPosition?
+  collapsed_nodes : @hashset.HashSet[NodeId]
 }
 pub fn TreeEditorState::apply_edit(Self, TreeEditOp) -> Self
 pub fn TreeEditorState::from_model(CanonicalModel) -> Self
 pub fn TreeEditorState::new() -> Self
+pub fn TreeEditorState::refresh_from_model(Self, CanonicalModel) -> Self
 
 pub enum ValidationLevel {
   Syntactic

@@ -26,24 +26,74 @@ pub fn InteractiveTreeNode::from_term_node(
   node : TermNode,
   source_map : SourceMap,
 ) -> InteractiveTreeNode {
+  InteractiveTreeNode::from_term_node_with_state(
+    node,
+    source_map,
+    @immut/hashset.new(),
+  )
+}
+
+///|
+/// UI state for building interactive tree nodes
+priv struct TreeUIState {
+  collapsed_nodes : @immut/hashset.HashSet[NodeId]
+  selection : @immut/hashset.HashSet[NodeId]
+  editing_node : NodeId?
+  drop_target : NodeId?
+}
+
+///|
+/// Create an interactive tree node from a TermNode with UI state applied
+/// This is the lens get operation: InteractiveTree = get(TermNode, UIState)
+pub fn InteractiveTreeNode::from_term_node_with_state(
+  node : TermNode,
+  source_map : SourceMap,
+  collapsed_nodes : @immut/hashset.HashSet[NodeId],
+) -> InteractiveTreeNode {
+  let ui_state : TreeUIState = {
+    collapsed_nodes,
+    selection: @immut/hashset.new(),
+    editing_node: None,
+    drop_target: None,
+  }
+  from_term_node_with_full_state(node, source_map, ui_state)
+}
+
+///|
+/// Create an interactive tree node with full UI state (internal)
+fn from_term_node_with_full_state(
+  node : TermNode,
+  source_map : SourceMap,
+  ui_state : TreeUIState,
+) -> InteractiveTreeNode {
   let node_id = NodeId(node.node_id)
   let text_range = match source_map.get_range(node_id) {
     Some(range) => range
     None => Range::new(node.start, node.end)
   }
+  let collapsed = ui_state.collapsed_nodes.contains(node_id)
+  let selected = ui_state.selection.contains(node_id)
+  let editing = match ui_state.editing_node {
+    Some(id) => id == node_id
+    None => false
+  }
+  let drop_target = match ui_state.drop_target {
+    Some(id) => id == node_id
+    None => false
+  }
   let children : Array[InteractiveTreeNode] = []
   for child in node.children {
-    children.push(InteractiveTreeNode::from_term_node(child, source_map))
+    children.push(from_term_node_with_full_state(child, source_map, ui_state))
   }
   {
     id: node_id,
     kind: node.kind,
     label: get_node_label(node.kind),
     children,
-    selected: false,
-    editing: false,
-    collapsed: false,
-    drop_target: false,
+    selected,
+    editing,
+    collapsed,
+    drop_target,
     text_range,
   }
 }
@@ -79,6 +129,8 @@ pub struct TreeEditorState {
   drop_target : NodeId?
   /// Drop position relative to target
   drop_position : DropPosition?
+  /// Set of collapsed node IDs (UI state separate from model, immutable)
+  collapsed_nodes : @immut/hashset.HashSet[NodeId]
 }
 
 ///|
@@ -92,15 +144,23 @@ pub fn TreeEditorState::new() -> TreeEditorState {
     dragging: None,
     drop_target: None,
     drop_position: None,
+    collapsed_nodes: @immut/hashset.new(),
   }
 }
 
 ///|
 /// Create tree editor state from a canonical model
 pub fn TreeEditorState::from_model(model : CanonicalModel) -> TreeEditorState {
+  let collapsed_nodes : @immut/hashset.HashSet[NodeId] = @immut/hashset.new()
   let tree = match model.get_ast() {
     Some(ast) =>
-      Some(InteractiveTreeNode::from_term_node(ast, model.get_source_map()))
+      Some(
+        InteractiveTreeNode::from_term_node_with_state(
+          ast,
+          model.get_source_map(),
+          collapsed_nodes,
+        ),
+      )
     None => None
   }
   {
@@ -111,7 +171,94 @@ pub fn TreeEditorState::from_model(model : CanonicalModel) -> TreeEditorState {
     dragging: None,
     drop_target: None,
     drop_position: None,
+    collapsed_nodes,
   }
+}
+
+///|
+/// Refresh tree from model while preserving UI state (collapsed nodes)
+/// This is the lens-based approach: tree = lens_get(model, ui_state)
+/// Also prunes stale IDs from UI state that no longer exist in the tree.
+pub fn TreeEditorState::refresh_from_model(
+  self : TreeEditorState,
+  model : CanonicalModel,
+) -> TreeEditorState {
+  match model.get_ast() {
+    Some(ast) => {
+      // Build set of valid IDs from new tree
+      let valid_ids = collect_all_ids_from_ast(ast)
+      // Prune stale IDs from collapsed_nodes using set intersection
+      let collapsed_nodes = self.collapsed_nodes.intersection(valid_ids)
+      // Prune stale IDs from selection
+      let selection = self.selection.filter(fn(id) { valid_ids.contains(id) })
+      // Clear editing_node if stale
+      let editing_node = match self.editing_node {
+        Some(id) => if valid_ids.contains(id) { Some(id) } else { None }
+        None => None
+      }
+      let edit_value = if editing_node is None && self.editing_node is Some(_) {
+        ""
+      } else {
+        self.edit_value
+      }
+      // Clear dragging if stale
+      let dragging = match self.dragging {
+        Some(id) => if valid_ids.contains(id) { Some(id) } else { None }
+        None => None
+      }
+      // Clear drop_target if stale
+      let drop_target = match self.drop_target {
+        Some(id) => if valid_ids.contains(id) { Some(id) } else { None }
+        None => None
+      }
+      let drop_position = if drop_target is None {
+        None
+      } else {
+        self.drop_position
+      }
+      // Build selection set for tree construction
+      let selection_set = @immut/hashset.from_iter(selection.iter())
+      // Build tree with full UI state
+      let ui_state : TreeUIState = {
+        collapsed_nodes,
+        selection: selection_set,
+        editing_node,
+        drop_target,
+      }
+      let tree = Some(
+        from_term_node_with_full_state(ast, model.get_source_map(), ui_state),
+      )
+      {
+        tree,
+        selection,
+        editing_node,
+        edit_value,
+        dragging,
+        drop_target,
+        drop_position,
+        collapsed_nodes,
+      }
+    }
+    None => { ..self, tree: None }
+  }
+}
+
+///|
+/// Collect all node IDs from AST as immutable set
+fn collect_all_ids_from_ast(node : TermNode) -> @immut/hashset.HashSet[NodeId] {
+  collect_ids_from_ast_helper(node, @immut/hashset.new())
+}
+
+///|
+fn collect_ids_from_ast_helper(
+  node : TermNode,
+  result : @immut/hashset.HashSet[NodeId],
+) -> @immut/hashset.HashSet[NodeId] {
+  let mut acc = result.add(NodeId(node.node_id))
+  for child in node.children {
+    acc = collect_ids_from_ast_helper(child, acc)
+  }
+  acc
 }
 
 ///|
@@ -123,9 +270,14 @@ pub fn TreeEditorState::apply_edit(
   match edit {
     Select(node_id~) => { ..self, selection: [node_id] }
     SelectRange(start~, end~) => {
-      // TODO: Implement range selection
-      let _ = (start, end)
-      self
+      // Collect all nodes between start and end (inclusive) in tree order
+      // If either endpoint is stale (missing), preserve existing selection
+      let new_selection = collect_nodes_in_range(self.tree, start, end)
+      if new_selection.is_empty() && not(self.selection.is_empty()) {
+        self
+      } else {
+        { ..self, selection: new_selection }
+      }
     }
     StartEdit(node_id~) => {
       // Get current value from tree
@@ -141,43 +293,148 @@ pub fn TreeEditorState::apply_edit(
     }
     CancelEdit => { ..self, editing_node: None, edit_value: "" }
     Delete(node_id~) => {
-      let _ = node_id
-      // TODO: Implement deletion in tree
-      self
+      // Collect all node IDs in subtree being deleted
+      let subtree_ids = collect_subtree_ids(self.tree, node_id)
+      // Remove all subtree nodes from selection
+      let selection = self.selection.filter(fn(id) {
+        not(subtree_ids.contains(id))
+      })
+      // Clear editing if editing any node in subtree
+      let (editing_node, edit_value) = match self.editing_node {
+        Some(edit_id) =>
+          if subtree_ids.contains(edit_id) {
+            (None, "")
+          } else {
+            (self.editing_node, self.edit_value)
+          }
+        None => (None, self.edit_value)
+      }
+      // Remove all subtree nodes from collapsed set (immutable)
+      let mut collapsed_nodes = self.collapsed_nodes
+      for id in subtree_ids {
+        collapsed_nodes = collapsed_nodes.remove(id)
+      }
+      // Clear dragging if dragging a node in subtree
+      let dragging = match self.dragging {
+        Some(drag_id) =>
+          if subtree_ids.contains(drag_id) {
+            None
+          } else {
+            self.dragging
+          }
+        None => None
+      }
+      // Clear drop_target if targeting a node in subtree
+      let drop_target = match self.drop_target {
+        Some(target_id) =>
+          if subtree_ids.contains(target_id) {
+            None
+          } else {
+            self.drop_target
+          }
+        None => None
+      }
+      let drop_position = if drop_target is None {
+        None
+      } else {
+        self.drop_position
+      }
+      {
+        ..self,
+        selection,
+        editing_node,
+        edit_value,
+        dragging,
+        drop_target,
+        drop_position,
+        collapsed_nodes,
+      }
     }
     WrapInLambda(node_id~, var_name~) => {
-      let _ = (node_id, var_name)
-      // TODO: Implement wrap
-      self
+      // UI state: keep the wrapped node selected
+      // Structural change is handled by tree_lens_apply_edit + refresh_from_model
+      let _ = var_name
+      { ..self, selection: [node_id] }
     }
-    WrapInApp(node_id~) => {
-      let _ = node_id
-      // TODO: Implement wrap
-      self
-    }
+    WrapInApp(node_id~) =>
+      // UI state: keep the wrapped node selected
+      // Structural change is handled by tree_lens_apply_edit + refresh_from_model
+      { ..self, selection: [node_id] }
     InsertChild(parent~, index~, kind~) => {
-      let _ = (parent, index, kind)
-      // TODO: Implement insert
-      self
+      // UI state: select the parent node
+      // Structural change is handled by tree_lens_apply_edit + refresh_from_model
+      let _ = (index, kind)
+      { ..self, selection: [parent] }
     }
-    StartDrag(node_id~) => { ..self, dragging: Some(node_id) }
+    StartDrag(node_id~) =>
+      // Clear any stale drop state when starting a new drag
+      {
+        ..self,
+        dragging: Some(node_id),
+        drop_target: None,
+        drop_position: None,
+      }
     DragOver(target~, position~) =>
-      { ..self, drop_target: Some(target), drop_position: Some(position) }
-    Drop(source~, target~, position~) => {
-      let _ = (source, target, position)
-      // TODO: Implement drop
-      { ..self, dragging: None, drop_target: None, drop_position: None }
-    }
-    Collapse(node_id~) => {
-      // TODO: Update collapsed state in tree
-      let _ = node_id
-      self
-    }
-    Expand(node_id~) => {
-      // TODO: Update collapsed state in tree
-      let _ = node_id
-      self
-    }
+      // Guard: only accept drag over if currently dragging and target is not source
+      match self.dragging {
+        Some(drag_id) =>
+          if drag_id == target {
+            // Can't drop on self
+            self
+          } else if is_descendant_of(self.tree, target, drag_id) {
+            // Can't drop on descendant
+            self
+          } else {
+            { ..self, drop_target: Some(target), drop_position: Some(position) }
+          }
+        None => self // Ignore if not dragging
+      }
+    Drop(source~, target~, position~) =>
+      // Guard: only accept drop if dragging matches source
+      match self.dragging {
+        Some(drag_id) =>
+          if drag_id == source &&
+            source != target &&
+            not(is_descendant_of(self.tree, target, source)) {
+            // Valid drop
+            let _ = position
+            {
+              ..self,
+              selection: [source],
+              dragging: None,
+              drop_target: None,
+              drop_position: None,
+            }
+          } else {
+            // Invalid drop, just clear drag state
+            { ..self, dragging: None, drop_target: None, drop_position: None }
+          }
+        None =>
+          // Not dragging, ignore
+          self
+      }
+    Collapse(node_id~) =>
+      // Guard: only collapse if node exists in tree
+      if find_node(self.tree, node_id) is Some(_) {
+        // Immutable add to collapsed_nodes
+        let collapsed_nodes = self.collapsed_nodes.add(node_id)
+        // Update tree node to reflect collapsed state
+        let tree = update_collapsed_state(self.tree, node_id, true)
+        { ..self, tree, collapsed_nodes }
+      } else {
+        self
+      }
+    Expand(node_id~) =>
+      // Guard: only expand if node exists in tree
+      if find_node(self.tree, node_id) is Some(_) {
+        // Immutable remove from collapsed_nodes
+        let collapsed_nodes = self.collapsed_nodes.remove(node_id)
+        // Update tree node to reflect expanded state
+        let tree = update_collapsed_state(self.tree, node_id, false)
+        { ..self, tree, collapsed_nodes }
+      } else {
+        self
+      }
   }
 }
 
@@ -214,6 +471,143 @@ fn find_node_in_children(
     }
   }
   None
+}
+
+///|
+/// Collect all node IDs in a subtree rooted at the given node
+fn collect_subtree_ids(
+  tree : InteractiveTreeNode?,
+  root_id : NodeId,
+) -> Array[NodeId] {
+  match find_node(tree, root_id) {
+    Some(node) => {
+      let result : Array[NodeId] = []
+      flatten_tree_preorder(node, result)
+      result
+    }
+    None => []
+  }
+}
+
+///|
+/// Check if a node is a descendant of another node
+fn is_descendant_of(
+  tree : InteractiveTreeNode?,
+  node_id : NodeId,
+  ancestor_id : NodeId,
+) -> Bool {
+  match find_node(tree, ancestor_id) {
+    Some(ancestor) => {
+      // Check if node_id is in the subtree rooted at ancestor (excluding ancestor itself)
+      for child in ancestor.children {
+        if contains_node(child, node_id) {
+          return true
+        }
+      }
+      false
+    }
+    None => false
+  }
+}
+
+///|
+/// Check if a node contains a given node ID in its subtree
+fn contains_node(node : InteractiveTreeNode, target_id : NodeId) -> Bool {
+  if node.id == target_id {
+    true
+  } else {
+    for child in node.children {
+      if contains_node(child, target_id) {
+        return true
+      }
+    }
+    false
+  }
+}
+
+///|
+/// Collect all node IDs between start and end (inclusive) in pre-order traversal
+/// Uses index-based approach: flatten tree, find indices, return slice from min to max
+fn collect_nodes_in_range(
+  tree : InteractiveTreeNode?,
+  start : NodeId,
+  end : NodeId,
+) -> Array[NodeId] {
+  // Flatten tree to array in pre-order
+  let all_nodes : Array[NodeId] = []
+  match tree {
+    None => return []
+    Some(node) => flatten_tree_preorder(node, all_nodes)
+  }
+  // Find indices of start and end
+  let mut start_idx : Int? = None
+  let mut end_idx : Int? = None
+  for i, id in all_nodes {
+    if id == start {
+      start_idx = Some(i)
+    }
+    if id == end {
+      end_idx = Some(i)
+    }
+  }
+  // Return slice from min to max (inclusive)
+  // Both endpoints must exist in the tree for a valid range selection
+  match (start_idx, end_idx) {
+    (Some(si), Some(ei)) => {
+      let min_idx = if si < ei { si } else { ei }
+      let max_idx = if si > ei { si } else { ei }
+      let result : Array[NodeId] = []
+      for i = min_idx; i <= max_idx; i = i + 1 {
+        result.push(all_nodes[i])
+      }
+      result
+    }
+    // If either endpoint is missing, return empty to avoid stale references
+    _ => []
+  }
+}
+
+///|
+/// Flatten tree to array in pre-order traversal
+fn flatten_tree_preorder(
+  node : InteractiveTreeNode,
+  result : Array[NodeId],
+) -> Unit {
+  result.push(node.id)
+  for child in node.children {
+    flatten_tree_preorder(child, result)
+  }
+}
+
+///|
+/// Update the collapsed state of a node in the tree
+fn update_collapsed_state(
+  tree : InteractiveTreeNode?,
+  node_id : NodeId,
+  collapsed : Bool,
+) -> InteractiveTreeNode? {
+  match tree {
+    None => None
+    Some(node) => Some(update_node_collapsed(node, node_id, collapsed))
+  }
+}
+
+///|
+/// Recursively update a node's collapsed state
+fn update_node_collapsed(
+  node : InteractiveTreeNode,
+  target_id : NodeId,
+  collapsed : Bool,
+) -> InteractiveTreeNode {
+  if node.id == target_id {
+    { ..node, collapsed, }
+  } else {
+    let children : Array[InteractiveTreeNode] = []
+    for child in node.children {
+      children.push(update_node_collapsed(child, target_id, collapsed))
+    }
+    { ..node, children, }
+  }
 }
 
 ///|
