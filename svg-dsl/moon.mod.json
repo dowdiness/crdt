@@ -1,0 +1,11 @@
+{
+  "name": "antisatori/svg-dsl",
+  "version": "0.1.0",
+  "deps": {},
+  "readme": "README.md",
+  "repository": "",
+  "license": "Apache-2.0",
+  "keywords": ["svg", "dsl", "graphics"],
+  "description": "SVG DSL for programmatic SVG generation in MoonBit",
+  "source": "src"
+}

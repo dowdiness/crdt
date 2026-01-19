@@ -1,0 +1,311 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "antisatori/svg-dsl/lib"
+
+// Values
+pub fn attr(String, String) -> Attr
+
+pub fn attr_cx(Double) -> Attr
+
+pub fn attr_cy(Double) -> Attr
+
+pub fn attr_height(Double) -> Attr
+
+pub fn attr_id(String) -> Attr
+
+pub fn attr_marker_height(Double) -> Attr
+
+pub fn attr_marker_width(Double) -> Attr
+
+pub fn attr_orient(String) -> Attr
+
+pub fn attr_r(Double) -> Attr
+
+pub fn attr_ref_x(Double) -> Attr
+
+pub fn attr_ref_y(Double) -> Attr
+
+pub fn attr_rx(Double) -> Attr
+
+pub fn attr_ry(Double) -> Attr
+
+pub fn attr_view_box(Double, Double, Double, Double) -> Attr
+
+pub fn attr_width(Double) -> Attr
+
+pub fn attr_x(Double) -> Attr
+
+pub fn attr_x1(Double) -> Attr
+
+pub fn attr_x2(Double) -> Attr
+
+pub fn attr_y(Double) -> Attr
+
+pub fn attr_y1(Double) -> Attr
+
+pub fn attr_y2(Double) -> Attr
+
+pub fn circle(cx? : Double, cy? : Double, r? : Double) -> SvgElement
+
+pub fn class_(String) -> Attr
+
+pub fn cmd_a(Double, Double, Double, Bool, Bool, Double, Double) -> PathCmd
+
+pub fn cmd_a_rel(Double, Double, Double, Bool, Bool, Double, Double) -> PathCmd
+
+pub fn cmd_c(Double, Double, Double, Double, Double, Double) -> PathCmd
+
+pub fn cmd_c_rel(Double, Double, Double, Double, Double, Double) -> PathCmd
+
+pub fn cmd_h(Double) -> PathCmd
+
+pub fn cmd_h_rel(Double) -> PathCmd
+
+pub fn cmd_l(Double, Double) -> PathCmd
+
+pub fn cmd_l_rel(Double, Double) -> PathCmd
+
+pub fn cmd_m(Double, Double) -> PathCmd
+
+pub fn cmd_m_rel(Double, Double) -> PathCmd
+
+pub fn cmd_q(Double, Double, Double, Double) -> PathCmd
+
+pub fn cmd_q_rel(Double, Double, Double, Double) -> PathCmd
+
+pub fn cmd_s(Double, Double, Double, Double) -> PathCmd
+
+pub fn cmd_s_rel(Double, Double, Double, Double) -> PathCmd
+
+pub fn cmd_t(Double, Double) -> PathCmd
+
+pub fn cmd_t_rel(Double, Double) -> PathCmd
+
+pub fn cmd_v(Double) -> PathCmd
+
+pub fn cmd_v_rel(Double) -> PathCmd
+
+pub fn cmd_z() -> PathCmd
+
+pub fn d(String) -> Attr
+
+pub fn d_cmds(Array[PathCmd]) -> Attr
+
+pub fn defs(children? : Array[SvgElement]) -> SvgElement
+
+pub fn dominant_baseline(String) -> Attr
+
+pub fn ellipse(cx? : Double, cy? : Double, rx? : Double, ry? : Double) -> SvgElement
+
+pub fn escape_xml(String) -> String
+
+pub fn escape_xml_attr(String) -> String
+
+pub fn fill(String) -> Attr
+
+pub fn fill_opacity(Double) -> Attr
+
+pub fn font_family(String) -> Attr
+
+pub fn font_size(Double) -> Attr
+
+pub fn font_weight(String) -> Attr
+
+pub fn g(attrs? : Array[Attr], children? : Array[SvgElement]) -> SvgElement
+
+pub fn href(String) -> Attr
+
+pub fn line(x1? : Double, y1? : Double, x2? : Double, y2? : Double) -> SvgElement
+
+pub fn marker(id~ : String, marker_width? : Double, marker_height? : Double, ref_x? : Double, ref_y? : Double, orient? : String, children? : Array[SvgElement]) -> SvgElement
+
+pub fn marker_end(String) -> Attr
+
+pub fn marker_mid(String) -> Attr
+
+pub fn marker_start(String) -> Attr
+
+pub fn matrix(Double, Double, Double, Double, Double, Double) -> Transform
+
+pub fn opacity(Double) -> Attr
+
+pub fn path(String) -> SvgElement
+
+pub fn path_cmds(Array[PathCmd]) -> SvgElement
+
+pub fn path_data(Array[PathCmd]) -> String
+
+pub fn points(Array[(Double, Double)]) -> Attr
+
+pub fn polygon(Array[(Double, Double)]) -> SvgElement
+
+pub fn polyline(Array[(Double, Double)]) -> SvgElement
+
+pub fn preserve_aspect_ratio(String) -> Attr
+
+pub fn raw(String) -> SvgElement
+
+pub fn rect(x? : Double, y? : Double, width? : Double, height? : Double, rx? : Double?, ry? : Double?) -> SvgElement
+
+pub fn render(SvgElement) -> String
+
+pub fn render_compact(SvgElement) -> String
+
+pub fn render_for_html(SvgElement) -> String
+
+pub fn render_with_config(SvgElement, SvgConfig) -> String
+
+pub fn rotate(Double) -> Transform
+
+pub fn rotate_around(Double, Double, Double) -> Transform
+
+pub fn scale(Double, Double) -> Transform
+
+pub fn skew_x(Double) -> Transform
+
+pub fn skew_y(Double) -> Transform
+
+pub fn stroke(String) -> Attr
+
+pub fn stroke_dasharray(Array[Double]) -> Attr
+
+pub fn stroke_linecap(String) -> Attr
+
+pub fn stroke_linejoin(String) -> Attr
+
+pub fn stroke_opacity(Double) -> Attr
+
+pub fn stroke_width(Double) -> Attr
+
+pub fn style(String) -> Attr
+
+pub fn svg(width? : Double, height? : Double, view_box? : (Double, Double, Double, Double)?, children? : Array[SvgElement]) -> SvgElement
+
+pub fn svg_viewbox(Double, Double, Double, Double, children? : Array[SvgElement]) -> SvgElement
+
+pub fn text(String, x? : Double, y? : Double) -> SvgElement
+
+pub fn text_anchor(String) -> Attr
+
+pub fn transform(Transform) -> Attr
+
+pub fn transform_list(Array[Transform]) -> String
+
+pub fn transforms(Array[Transform]) -> Attr
+
+pub fn translate(Double, Double) -> Transform
+
+pub fn use_(String, x? : Double, y? : Double) -> SvgElement
+
+pub fn xmlns() -> Attr
+
+// Errors
+
+// Types and methods
+pub struct Attr {
+  name : String
+  value : String
+}
+pub impl Eq for Attr
+pub impl Show for Attr
+
+pub enum PathCmd {
+  M(Double, Double)
+  M_rel(Double, Double)
+  L(Double, Double)
+  L_rel(Double, Double)
+  H(Double)
+  H_rel(Double)
+  V(Double)
+  V_rel(Double)
+  C(Double, Double, Double, Double, Double, Double)
+  C_rel(Double, Double, Double, Double, Double, Double)
+  S(Double, Double, Double, Double)
+  S_rel(Double, Double, Double, Double)
+  Q(Double, Double, Double, Double)
+  Q_rel(Double, Double, Double, Double)
+  T(Double, Double)
+  T_rel(Double, Double)
+  A(Double, Double, Double, Bool, Bool, Double, Double)
+  A_rel(Double, Double, Double, Bool, Bool, Double, Double)
+  Z
+}
+pub impl Eq for PathCmd
+pub impl Show for PathCmd
+
+pub struct SvgConfig {
+  indent : Int
+  precision : Int
+  xml_declaration : Bool
+  default_stroke : String
+  default_fill : String
+  default_stroke_width : Double
+  default_font_size : Double
+}
+pub fn SvgConfig::compact() -> Self
+pub fn SvgConfig::dark_theme() -> Self
+pub fn SvgConfig::default() -> Self
+pub fn SvgConfig::for_html() -> Self
+pub fn SvgConfig::with_default_fill(Self, String) -> Self
+pub fn SvgConfig::with_default_stroke(Self, String) -> Self
+pub fn SvgConfig::with_indent(Self, Int) -> Self
+pub fn SvgConfig::with_precision(Self, Int) -> Self
+pub fn SvgConfig::with_xml_declaration(Self, Bool) -> Self
+pub impl Default for SvgConfig
+pub impl Eq for SvgConfig
+pub impl Show for SvgConfig
+
+pub enum SvgElement {
+  Svg(attrs~ : Array[Attr], children~ : Array[SvgElement])
+  G(attrs~ : Array[Attr], children~ : Array[SvgElement])
+  Defs(children~ : Array[SvgElement])
+  Rect(attrs~ : Array[Attr])
+  Circle(attrs~ : Array[Attr])
+  Ellipse(attrs~ : Array[Attr])
+  Line(attrs~ : Array[Attr])
+  Polyline(attrs~ : Array[Attr])
+  Polygon(attrs~ : Array[Attr])
+  Path(attrs~ : Array[Attr])
+  Text(content~ : String, attrs~ : Array[Attr])
+  Marker(attrs~ : Array[Attr], children~ : Array[SvgElement])
+  Use(attrs~ : Array[Attr])
+  Raw(content~ : String)
+}
+pub fn SvgElement::add_child(Self, Self) -> Self
+pub fn SvgElement::add_children(Self, Array[Self]) -> Self
+pub fn SvgElement::class_(Self, String) -> Self
+pub fn SvgElement::fill(Self, String) -> Self
+pub fn SvgElement::id(Self, String) -> Self
+pub fn SvgElement::opacity(Self, Double) -> Self
+pub fn SvgElement::stroke(Self, String) -> Self
+pub fn SvgElement::stroke_width(Self, Double) -> Self
+pub fn SvgElement::transform(Self, Transform) -> Self
+pub fn SvgElement::transforms(Self, Array[Transform]) -> Self
+pub fn SvgElement::with_attr(Self, Attr) -> Self
+pub fn SvgElement::with_attrs(Self, Array[Attr]) -> Self
+pub impl Renderable for SvgElement
+pub impl Eq for SvgElement
+pub impl Show for SvgElement
+
+pub enum Transform {
+  Translate(Double, Double)
+  Scale(Double, Double)
+  Rotate(Double, (Double, Double)?)
+  SkewX(Double)
+  SkewY(Double)
+  Matrix(Double, Double, Double, Double, Double, Double)
+}
+pub impl ToAttr for Transform
+pub impl Eq for Transform
+pub impl Show for Transform
+
+// Type aliases
+
+// Traits
+pub trait Renderable {
+  render(Self) -> String
+}
+
+pub trait ToAttr {
+  to_attr(Self) -> Attr
+}
+
