@@ -76,6 +76,7 @@ pub struct LayoutConfig {
   node_spacing : Double
   edge_spacing : Double
 }
+pub fn LayoutConfig::compact() -> Self
 pub fn LayoutConfig::default() -> Self
 pub impl Show for LayoutConfig
 
@@ -101,7 +102,7 @@ pub impl Show for LayoutNode
 
 pub(all) struct NodeInfo {
   id : String
-  label : String
+  mut label : String
   mut incoming : Array[String]
   mut outgoing : Array[String]
 }

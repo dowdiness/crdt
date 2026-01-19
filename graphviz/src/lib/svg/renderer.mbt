@@ -1,5 +1,5 @@
 // SVG Renderer for GraphLayout
-// Converts layout information into SVG markup
+// Converts layout information into SVG markup using svg-dsl
 
 ///|
 pub struct SvgConfig {
@@ -34,12 +34,12 @@ pub fn SvgConfig::default() -> SvgConfig {
 pub fn SvgConfig::dark_theme() -> SvgConfig {
   {
     padding: 20.0,
-    node_stroke: "#3c3c3c",        // Dark border
-    node_fill: "#252526",          // Dark background
+    node_stroke: "#3c3c3c", // Dark border
+    node_fill: "#252526", // Dark background
     node_stroke_width: 2.0,
-    edge_stroke: "#858585",        // Light gray edges
+    edge_stroke: "#858585", // Light gray edges
     edge_stroke_width: 1.5,
-    text_color: "#d4d4d4",         // Light text
+    text_color: "#d4d4d4", // Light text
     font_size: 14.0,
     font_family: "Arial, sans-serif",
   }
@@ -57,8 +57,16 @@ pub fn render_svg_with_config(
   layout : @layout.GraphLayout,
   config : SvgConfig,
 ) -> String {
-  let buf = StringBuilder::new()
+  let svg_element = build_svg_element(layout, config)
+  @svg.render(svg_element)
+}
 
+///|
+/// Build the SVG element tree from layout
+fn build_svg_element(
+  layout : @layout.GraphLayout,
+  config : SvgConfig,
+) -> @svg.SvgElement {
   // Calculate viewBox with padding
   let vb_x = layout.bounds.min_x - config.padding
   let vb_y = layout.bounds.min_y - config.padding
@@ -69,141 +77,104 @@ pub fn render_svg_with_config(
     layout.bounds.min_y +
     2.0 * config.padding
 
-  // SVG header
-  buf.write_string("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
-  buf.write_string("<svg xmlns=\"http://www.w3.org/2000/svg\" ")
-  buf.write_string("viewBox=\"")
-  buf.write_string(vb_x.to_string())
-  buf.write_string(" ")
-  buf.write_string(vb_y.to_string())
-  buf.write_string(" ")
-  buf.write_string(vb_width.to_string())
-  buf.write_string(" ")
-  buf.write_string(vb_height.to_string())
-  buf.write_string("\">\n")
+  // Build children elements
+  let children : Array[@svg.SvgElement] = []
 
   // Add arrow marker for directed graphs
   if layout.directed {
-    buf.write_string("  <defs>\n")
-    buf.write_string(
-      "    <marker id=\"arrowhead\" markerWidth=\"10\" markerHeight=\"10\" ",
+    let arrow_polygon = @svg.polygon([(0.0, 0.0), (10.0, 3.0), (0.0, 6.0)]).fill(
+      config.edge_stroke,
     )
-    buf.write_string("refX=\"9\" refY=\"3\" orient=\"auto\">\n")
-    buf.write_string("      <polygon points=\"0 0, 10 3, 0 6\" fill=\"")
-    buf.write_string(config.edge_stroke)
-    buf.write_string("\" />\n")
-    buf.write_string("    </marker>\n")
-    buf.write_string("  </defs>\n")
+    let arrow_marker = @svg.marker(
+      id="arrowhead",
+      marker_width=10.0,
+      marker_height=10.0,
+      ref_x=9.0,
+      ref_y=3.0,
+      orient="auto",
+      children=[arrow_polygon],
+    )
+    children.push(@svg.defs(children=[arrow_marker]))
   }
 
   // Render edges first (so they appear behind nodes)
-  buf.write_string("\n  <!-- Edges -->\n")
   for edge in layout.edges {
-    render_edge(buf, edge, layout.directed, config)
+    match build_edge_element(edge, layout.directed, config) {
+      Some(elem) => children.push(elem)
+      None => ()
+    }
   }
 
   // Render nodes
-  buf.write_string("\n  <!-- Nodes -->\n")
-  layout.nodes.each(fn(_id, node) { render_node(buf, node, config) })
+  layout.nodes.each(fn(_id, node) {
+    children.push(build_node_element(node, config))
+  })
 
-  // SVG footer
-  buf.write_string("</svg>\n")
-  buf.to_string()
+  // Create SVG root with viewBox
+  @svg.svg_viewbox(vb_x, vb_y, vb_width, vb_height, children~)
 }
 
 ///|
-/// Render a single node as a rectangle with text label
-fn render_node(
-  buf : StringBuilder,
+/// Build a single node element as a group with rectangle and text label
+fn build_node_element(
   node : @layout.LayoutNode,
   config : SvgConfig,
-) -> Unit {
-  buf.write_string("  <g>\n")
-
+) -> @svg.SvgElement {
   // Rectangle
-  buf.write_string("    <rect x=\"")
-  buf.write_string(node.position.x.to_string())
-  buf.write_string("\" y=\"")
-  buf.write_string(node.position.y.to_string())
-  buf.write_string("\" width=\"")
-  buf.write_string(node.size.width.to_string())
-  buf.write_string("\" height=\"")
-  buf.write_string(node.size.height.to_string())
-  buf.write_string("\" fill=\"")
-  buf.write_string(config.node_fill)
-  buf.write_string("\" stroke=\"")
-  buf.write_string(config.node_stroke)
-  buf.write_string("\" stroke-width=\"")
-  buf.write_string(config.node_stroke_width.to_string())
-  buf.write_string("\" rx=\"4\" />\n")
+  let node_rect = @svg.rect(
+      x=node.position.x,
+      y=node.position.y,
+      width=node.size.width,
+      height=node.size.height,
+      rx=Some(4.0),
+    )
+    .fill(config.node_fill)
+    .stroke(config.node_stroke)
+    .stroke_width(config.node_stroke_width)
 
   // Text label (centered in node)
   let text_x = node.position.x + node.size.width / 2.0
   let text_y = node.position.y + node.size.height / 2.0 + config.font_size / 3.0
-  buf.write_string("    <text x=\"")
-  buf.write_string(text_x.to_string())
-  buf.write_string("\" y=\"")
-  buf.write_string(text_y.to_string())
-  buf.write_string("\" text-anchor=\"middle\" fill=\"")
-  buf.write_string(config.text_color)
-  buf.write_string("\" font-size=\"")
-  buf.write_string(config.font_size.to_string())
-  buf.write_string("\" font-family=\"")
-  buf.write_string(config.font_family)
-  buf.write_string("\">")
-  buf.write_string(escape_xml(node.label))
-  buf.write_string("</text>\n")
-  buf.write_string("  </g>\n")
+  let node_text = @svg.text(node.label, x=text_x, y=text_y)
+    .with_attr(@svg.text_anchor("middle"))
+    .fill(config.text_color)
+    .with_attr(@svg.font_size(config.font_size))
+    .with_attr(@svg.font_family(config.font_family))
+
+  // Group containing rect and text
+  @svg.g(children=[node_rect, node_text])
 }
 
 ///|
-/// Render a single edge as a polyline
-fn render_edge(
-  buf : StringBuilder,
+/// Build a single edge element as a polyline
+fn build_edge_element(
   edge : @layout.LayoutEdge,
   directed : Bool,
   config : SvgConfig,
-) -> Unit {
+) -> @svg.SvgElement? {
   if edge.waypoints.length() < 2 {
-    return
+    return None
   }
-  buf.write_string("  <polyline points=\"")
 
-  // Build points string
-  for i, point in edge.waypoints {
-    if i > 0 {
-      buf.write_string(" ")
-    }
-    buf.write_string(point.x.to_string())
-    buf.write_string(",")
-    buf.write_string(point.y.to_string())
+  // Convert waypoints to points array
+  let pts : Array[(Double, Double)] = []
+  for point in edge.waypoints {
+    pts.push((point.x, point.y))
   }
-  buf.write_string("\" fill=\"none\" stroke=\"")
-  buf.write_string(config.edge_stroke)
-  buf.write_string("\" stroke-width=\"")
-  buf.write_string(config.edge_stroke_width.to_string())
-  buf.write_string("\"")
 
-  // Add arrow marker for directed graphs (unless edge was reversed in layout)
+  // Build polyline with attributes
+  let mut polyline_elem = @svg.polyline(pts)
+    .fill("none")
+    .stroke(config.edge_stroke)
+    .stroke_width(config.edge_stroke_width)
+
+  // Add arrow marker for directed graphs
   if directed && not(edge.reversed) {
-    buf.write_string(" marker-end=\"url(#arrowhead)\"")
+    polyline_elem = polyline_elem.with_attr(@svg.marker_end("arrowhead"))
   } else if directed && edge.reversed {
-    buf.write_string(" marker-start=\"url(#arrowhead)\"")
+    polyline_elem = polyline_elem.with_attr(@svg.marker_start("arrowhead"))
   }
-  buf.write_string(" />\n")
-}
-
-///|
-/// Escape XML special characters
-fn escape_xml(s : String) -> String {
-  // Use replace operations for XML escaping
-  let mut result = s
-  result = result.replace(old="&", new="&amp;")
-  result = result.replace(old="<", new="&lt;")
-  result = result.replace(old=">", new="&gt;")
-  result = result.replace(old="\"", new="&quot;")
-  result = result.replace(old="'", new="&apos;")
-  result
+  Some(polyline_elem)
 }
 
 ///|
@@ -243,57 +214,8 @@ fn render_svg_for_html(
   layout : @layout.GraphLayout,
   config : SvgConfig,
 ) -> String {
-  let buf = StringBuilder::new()
-
-  // Calculate viewBox with padding
-  let vb_x = layout.bounds.min_x - config.padding
-  let vb_y = layout.bounds.min_y - config.padding
-  let vb_width = layout.bounds.max_x -
-    layout.bounds.min_x +
-    2.0 * config.padding
-  let vb_height = layout.bounds.max_y -
-    layout.bounds.min_y +
-    2.0 * config.padding
-
-  // SVG header (without XML declaration)
-  buf.write_string("<svg xmlns=\"http://www.w3.org/2000/svg\" ")
-  buf.write_string("viewBox=\"")
-  buf.write_string(vb_x.to_string())
-  buf.write_string(" ")
-  buf.write_string(vb_y.to_string())
-  buf.write_string(" ")
-  buf.write_string(vb_width.to_string())
-  buf.write_string(" ")
-  buf.write_string(vb_height.to_string())
-  buf.write_string("\">\n")
-
-  // Add arrow marker for directed graphs
-  if layout.directed {
-    buf.write_string("  <defs>\n")
-    buf.write_string(
-      "    <marker id=\"arrowhead\" markerWidth=\"10\" markerHeight=\"10\" ",
-    )
-    buf.write_string("refX=\"9\" refY=\"3\" orient=\"auto\">\n")
-    buf.write_string("      <polygon points=\"0 0, 10 3, 0 6\" fill=\"")
-    buf.write_string(config.edge_stroke)
-    buf.write_string("\" />\n")
-    buf.write_string("    </marker>\n")
-    buf.write_string("  </defs>\n")
-  }
-
-  // Render edges first (so they appear behind nodes)
-  buf.write_string("\n  <!-- Edges -->\n")
-  for edge in layout.edges {
-    render_edge(buf, edge, layout.directed, config)
-  }
-
-  // Render nodes
-  buf.write_string("\n  <!-- Nodes -->\n")
-  layout.nodes.each(fn(_id, node) { render_node(buf, node, config) })
-
-  // SVG footer
-  buf.write_string("</svg>\n")
-  buf.to_string()
+  let svg_element = build_svg_element(layout, config)
+  @svg.render_for_html(svg_element)
 }
 
 ///|
@@ -305,6 +227,7 @@ pub fn render_html_with_config(
 ) -> String {
   let buf = StringBuilder::new()
   let svg_content = render_svg_for_html(layout, config)
+  let escaped_title = @svg.escape_xml(title)
 
   // HTML header
   buf.write_string("<!DOCTYPE html>\n")
@@ -315,7 +238,7 @@ pub fn render_html_with_config(
     "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
   )
   buf.write_string("  <title>")
-  buf.write_string(escape_xml(title))
+  buf.write_string(escaped_title)
   buf.write_string("</title>\n")
   buf.write_string("  <style>\n")
   buf.write_string("    body {\n")
@@ -352,7 +275,7 @@ pub fn render_html_with_config(
   buf.write_string("<body>\n")
   buf.write_string("  <div class=\"container\">\n")
   buf.write_string("    <h1>")
-  buf.write_string(escape_xml(title))
+  buf.write_string(escaped_title)
   buf.write_string("</h1>\n")
   buf.write_string("    ")
   buf.write_string(svg_content)

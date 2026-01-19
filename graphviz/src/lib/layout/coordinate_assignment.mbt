@@ -63,7 +63,6 @@ fn compute_node_positions_in_layer(
       Some(node_info) => node_info.label
       None => node_id
     }
-
     let layout_node : LayoutNode = {
       id: node_id,
       label,

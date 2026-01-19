@@ -2,6 +2,10 @@
   "is_main": false,
   "import": [
     "antisatori/graphviz/lib/layout",
+    {
+      "path": "antisatori/svg-dsl/lib",
+      "alias": "svg"
+    },
     "moonbitlang/x/fs"
   ],
   "test-import": [

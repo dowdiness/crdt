@@ -8,6 +8,7 @@ pub fn extract_graph(graph : @parser.Graph) -> InternalGraph {
 }
 
 ///|
+
 ///|
 /// Extract label from attribute list, defaulting to node ID
 fn extract_label(node_id : String, attrs : @parser.AttributeList?) -> String {
@@ -38,11 +39,10 @@ fn collect_nodes(
         // Update node if it exists (might have been added from EdgeStmt without label)
         // or create new node with label
         match nodes.get(node_id.id) {
-          Some(existing_node) => {
+          Some(existing_node) =>
             // Update the existing node's label
             existing_node.label = label
-          }
-          None => {
+          None =>
             // Create new node
             nodes.set(node_id.id, {
               id: node_id.id,
@@ -50,7 +50,6 @@ fn collect_nodes(
               incoming: [],
               outgoing: [],
             })
-          }
         }
       }
       @parser.EdgeStmt(start_node, edges, _attrs) => {
