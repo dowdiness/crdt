@@ -9,3 +9,5 @@ dist/
 
 .env
 _build
+
+.playwright-mcp/

@@ -74,6 +74,24 @@ export interface EgWalkerProxyResult<T> {
    * Clean up resources and unsubscribe
    */
   dispose: () => void;
+
+  /**
+   * Temporarily suppress undo tracking (for applying remote changes)
+   * When suppress=true, changes won't be added to undo stack.
+   * When suppress=false, syncs lastText to current state.
+   * @param suppress - Whether to suppress tracking
+   */
+  suppressUndoTracking?: (suppress: boolean) => void;
+
+  /**
+   * Get the current size of the undo stack (stub only)
+   */
+  getUndoStackSize?: () => number;
+
+  /**
+   * Get the current size of the redo stack (stub only)
+   */
+  getRedoStackSize?: () => number;
 }
 
 /**
