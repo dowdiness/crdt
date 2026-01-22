@@ -49,17 +49,68 @@ if (typeof globalThis !== 'undefined') {
 }
 
 /**
- * Set up WebSocket synchronization
+ * Configuration for operation batching
+ */
+const BATCH_DELAY_MS = 200; // Collect operations for 200ms before sending
+const SENT_OPS_LIMIT = 10000; // Match server's history limit
+
+/**
+ * Set up WebSocket synchronization with operation batching
+ *
+ * Operations are batched for BATCH_DELAY_MS to reduce network overhead
+ * and improve performance during rapid typing.
  */
 function setupWebSocketSync(
   proxyState: any,
   url: string,
   roomId: string,
   suppressUndoTracking?: (suppress: boolean) => void
-): WebSocket {
+): { ws: WebSocket; cleanup: () => void } {
   const ws = new WebSocket(url);
   const sentOps = new Set<string>();
-  const SENT_OPS_LIMIT = 10000; // Match server's history limit
+
+  // Batching state
+  let pendingBatch: Operation[] = [];
+  let batchTimeout: ReturnType<typeof setTimeout> | null = null;
+  let isProcessingRemote = false;
+
+  const flushBatch = () => {
+    if (pendingBatch.length === 0 || ws.readyState !== WebSocket.OPEN) {
+      batchTimeout = null;
+      return;
+    }
+
+    // Send batched operations
+    ws.send(
+      JSON.stringify({
+        type: 'batch',
+        room: roomId,
+        ops: pendingBatch,
+      })
+    );
+
+    pendingBatch = [];
+    batchTimeout = null;
+  };
+
+  const queueOperation = (op: Operation) => {
+    const opKey = `${op.agent_id}:${op.lv}`;
+    if (sentOps.has(opKey)) return;
+
+    sentOps.add(opKey);
+    pendingBatch.push(op);
+
+    // Evict oldest entries when limit exceeded
+    if (sentOps.size > SENT_OPS_LIMIT) {
+      const oldest = sentOps.values().next().value;
+      if (oldest) sentOps.delete(oldest);
+    }
+
+    // Schedule batch send if not already scheduled
+    if (!batchTimeout) {
+      batchTimeout = setTimeout(flushBatch, BATCH_DELAY_MS);
+    }
+  };
 
   ws.onopen = () => {
     ws.send(JSON.stringify({ type: 'join', room: roomId }));
@@ -69,13 +120,17 @@ function setupWebSocketSync(
     const message = JSON.parse(event.data);
 
     if (message.type === 'operation') {
+      isProcessingRemote = true;
       try {
         suppressUndoTracking?.(true);
         moonbit.apply_remote_op(proxyState, JSON.stringify(message.op));
       } finally {
         suppressUndoTracking?.(false);
+        isProcessingRemote = false;
       }
-    } else if (message.type === 'sync') {
+    } else if (message.type === 'batch') {
+      // Handle batched operations from other clients
+      isProcessingRemote = true;
       try {
         suppressUndoTracking?.(true);
         for (const op of message.ops || []) {
@@ -83,36 +138,43 @@ function setupWebSocketSync(
         }
       } finally {
         suppressUndoTracking?.(false);
+        isProcessingRemote = false;
+      }
+    } else if (message.type === 'sync') {
+      isProcessingRemote = true;
+      try {
+        suppressUndoTracking?.(true);
+        for (const op of message.ops || []) {
+          moonbit.apply_remote_op(proxyState, JSON.stringify(op));
+        }
+      } finally {
+        suppressUndoTracking?.(false);
+        isProcessingRemote = false;
       }
     }
   };
 
-  subscribe(proxyState, () => {
+  const unsubscribe = subscribe(proxyState, () => {
+    // Skip if we're processing remote operations to avoid echo
+    if (isProcessingRemote) return;
+
     const opsJson = moonbit.get_pending_ops_json(proxyState);
     const ops = JSON.parse(opsJson);
 
     for (const op of ops) {
-      const opKey = `${op.agent_id}:${op.lv}`;
-      if (sentOps.has(opKey)) continue;
-      sentOps.add(opKey);
-
-      // Evict oldest entries when limit exceeded (FIFO via Set iteration order)
-      if (sentOps.size > SENT_OPS_LIMIT) {
-        const oldest = sentOps.values().next().value;
-        if (oldest) sentOps.delete(oldest);
-      }
-
-      ws.send(
-        JSON.stringify({
-          type: 'operation',
-          room: roomId,
-          op,
-        })
-      );
+      queueOperation(op);
     }
   });
 
-  return ws;
+  const cleanup = () => {
+    unsubscribe();
+    if (batchTimeout) {
+      clearTimeout(batchTimeout);
+      flushBatch(); // Send any remaining operations
+    }
+  };
+
+  return { ws, cleanup };
 }
 
 /**
@@ -144,9 +206,9 @@ export function createEgWalkerProxy<T extends TextState>(
     ? (suppress: boolean) => moonbit.set_suppress_undo_tracking!(proxyState, suppress)
     : undefined;
 
-  let ws: WebSocket | null = null;
+  let wsConnection: { ws: WebSocket; cleanup: () => void } | null = null;
   if (config.websocketUrl && config.roomId) {
-    ws = setupWebSocketSync(proxyState, config.websocketUrl, config.roomId, suppressUndoTracking);
+    wsConnection = setupWebSocketSync(proxyState, config.websocketUrl, config.roomId, suppressUndoTracking);
   }
 
   return {
@@ -185,10 +247,12 @@ export function createEgWalkerProxy<T extends TextState>(
     },
 
     dispose: () => {
-      moonbit.dispose_proxy(proxyState);
-      if (ws) {
-        ws.close();
+      // Clean up WebSocket and subscriptions
+      if (wsConnection) {
+        wsConnection.cleanup();
+        wsConnection.ws.close();
       }
+      moonbit.dispose_proxy(proxyState);
     },
 
     getUndoStackSize: moonbit.get_undo_stack_size

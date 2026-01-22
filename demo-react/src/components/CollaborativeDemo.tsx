@@ -67,30 +67,44 @@ function EditorPanel({ agentId, color, useWebSocket = false }: EditorPanelProps)
     updateUndoRedoState();
   }, [snap.text, updateUndoRedoState]);
 
-  const isApplyingRemote = useRef(false);
+  // Use a counter instead of boolean flag to handle nested/concurrent updates
+  const syncDepth = useRef(0);
+  // Track the last text we synced to avoid redundant updates
+  const lastSyncedText = useRef(egwalker.proxy.text);
 
+  // Sync shared doc -> local proxy (when other agent changes)
   useEffect(() => {
     if (useWebSocket) return;
 
-    if (isApplyingRemote.current) return;
+    // Skip if we're in the middle of a sync operation
+    if (syncDepth.current > 0) return;
 
-    if (sharedSnap.text !== egwalker.proxy.text) {
-      isApplyingRemote.current = true;
-      egwalker.suppressUndoTracking?.(true);
-      egwalker.proxy.text = sharedSnap.text;
-      egwalker.suppressUndoTracking?.(false);
-
-      setTimeout(() => {
-        isApplyingRemote.current = false;
-      }, 0);
+    const remoteText = sharedSnap.text;
+    // Only sync if text actually differs and isn't our last synced value
+    if (remoteText !== egwalker.proxy.text && remoteText !== lastSyncedText.current) {
+      syncDepth.current++;
+      try {
+        egwalker.suppressUndoTracking?.(true);
+        egwalker.proxy.text = remoteText;
+        lastSyncedText.current = remoteText;
+      } finally {
+        egwalker.suppressUndoTracking?.(false);
+        // Use queueMicrotask for more reliable async reset than setTimeout
+        queueMicrotask(() => {
+          syncDepth.current = Math.max(0, syncDepth.current - 1);
+        });
+      }
     }
   }, [sharedSnap.text, egwalker, useWebSocket]);
 
+  // Sync local proxy -> shared doc (when this agent changes)
   useEffect(() => {
     if (useWebSocket) return;
 
     const unsubscribe = subscribe(egwalker.proxy, () => {
-      if (!isApplyingRemote.current && egwalker.proxy.text !== sharedDoc.text) {
+      // Only propagate if not syncing and text actually changed
+      if (syncDepth.current === 0 && egwalker.proxy.text !== sharedDoc.text) {
+        lastSyncedText.current = egwalker.proxy.text;
         sharedDoc.text = egwalker.proxy.text;
       }
     });
@@ -162,6 +176,26 @@ function EditorPanel({ agentId, color, useWebSocket = false }: EditorPanelProps)
     }
   }, [agentId, egwalker, updateUndoRedoState]);
 
+  // Keyboard shortcuts for undo/redo
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Undo: Ctrl/Cmd + Z
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+      // Redo: Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y
+      if (
+        ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) ||
+        ((e.ctrlKey || e.metaKey) && e.key === 'y')
+      ) {
+        e.preventDefault();
+        handleRedo();
+      }
+    },
+    [handleUndo, handleRedo]
+  );
+
   useEffect(() => {
     return () => egwalker.dispose();
   }, [egwalker]);
@@ -177,8 +211,12 @@ function EditorPanel({ agentId, color, useWebSocket = false }: EditorPanelProps)
         value={snap.text}
         onChange={handleChange}
         onSelect={handleSelect}
+        onKeyDown={handleKeyDown}
         placeholder={`${agentId}'s editor - type here...`}
         spellCheck={false}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
       />
       <div className="panel-status">
         <span>Chars: {snap.text.length}</span>

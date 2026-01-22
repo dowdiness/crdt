@@ -11,6 +11,8 @@ export interface EgWalkerProxyConfig {
   roomId?: string;
 }
 
+export type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'offline';
+
 export interface EgWalkerProxyResult<T> {
   proxy: T;
   undo: () => void;
@@ -23,6 +25,8 @@ export interface EgWalkerProxyResult<T> {
   suppressUndoTracking?: (suppress: boolean) => void;
   getUndoStackSize?: () => number;
   getRedoStackSize?: () => number;
+  getConnectionState?: () => ConnectionState;
+  onConnectionStateChange?: (callback: (state: ConnectionState) => void) => () => void;
 }
 
 export interface Operation {
@@ -259,49 +263,195 @@ if (typeof globalThis !== 'undefined') {
   (globalThis as any).__egwalker_instances = instanceMap;
 }
 
+/**
+ * Configuration for operation batching and reconnection
+ */
+const BATCH_DELAY_MS = 200; // Collect operations for 200ms before sending
+const SENT_OPS_LIMIT = 10000; // Match server's history limit
+const RECONNECT_BASE_DELAY_MS = 1000; // Initial reconnection delay
+const RECONNECT_MAX_DELAY_MS = 30000; // Maximum reconnection delay
+const RECONNECT_MAX_ATTEMPTS = 10; // Maximum reconnection attempts
+
+/**
+ * Internal WebSocket connection state type (matches exported ConnectionState)
+ */
+
+interface WebSocketConnection {
+  ws: WebSocket | null;
+  cleanup: () => void;
+  getState: () => ConnectionState;
+  onStateChange: (callback: (state: ConnectionState) => void) => () => void;
+}
+
+/**
+ * Set up WebSocket synchronization with operation batching and auto-reconnect
+ */
 function setupWebSocketSync(
   proxyState: any,
   url: string,
   roomId: string
-): WebSocket {
-  const ws = new WebSocket(url);
+): WebSocketConnection {
+  const sentOps = new Set<string>();
+  let pendingBatch: Operation[] = [];
+  let batchTimeout: ReturnType<typeof setTimeout> | null = null;
+  let isProcessingRemote = false;
+  let reconnectAttempts = 0;
+  let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+  let unsubscribe: (() => void) | null = null;
+  let isDisposed = false;
 
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'join', room: roomId }));
+  // Connection state management
+  let connectionState: ConnectionState = 'connecting';
+  const stateCallbacks = new Set<(state: ConnectionState) => void>();
+
+  const setState = (state: ConnectionState) => {
+    connectionState = state;
+    stateCallbacks.forEach(cb => cb(state));
   };
 
-  ws.onmessage = (event) => {
+  let ws: WebSocket | null = null;
+
+  const flushBatch = () => {
+    if (pendingBatch.length === 0 || !ws || ws.readyState !== WebSocket.OPEN) {
+      batchTimeout = null;
+      return;
+    }
+
+    ws.send(
+      JSON.stringify({
+        type: 'batch',
+        room: roomId,
+        ops: pendingBatch,
+      })
+    );
+
+    pendingBatch = [];
+    batchTimeout = null;
+  };
+
+  const queueOperation = (op: Operation) => {
+    const opKey = `${op.agent_id}:${op.lv}`;
+    if (sentOps.has(opKey)) return;
+
+    sentOps.add(opKey);
+    pendingBatch.push(op);
+
+    if (sentOps.size > SENT_OPS_LIMIT) {
+      const oldest = sentOps.values().next().value;
+      if (oldest) sentOps.delete(oldest);
+    }
+
+    if (!batchTimeout) {
+      batchTimeout = setTimeout(flushBatch, BATCH_DELAY_MS);
+    }
+  };
+
+  const handleMessage = (event: MessageEvent) => {
     const message = JSON.parse(event.data);
 
     if (message.type === 'operation') {
+      isProcessingRemote = true;
       mockValtioEgwalker.apply_remote_op(
         proxyState,
         JSON.stringify(message.op)
       );
-    } else if (message.type === 'sync') {
-      // Bulk sync for late joiners - apply_remote_op handles suppression internally
+      isProcessingRemote = false;
+    } else if (message.type === 'batch') {
+      isProcessingRemote = true;
       for (const op of message.ops || []) {
         mockValtioEgwalker.apply_remote_op(proxyState, JSON.stringify(op));
       }
+      isProcessingRemote = false;
+    } else if (message.type === 'sync') {
+      isProcessingRemote = true;
+      for (const op of message.ops || []) {
+        mockValtioEgwalker.apply_remote_op(proxyState, JSON.stringify(op));
+      }
+      isProcessingRemote = false;
     }
   };
 
-  subscribe(proxyState, () => {
+  const connect = () => {
+    if (isDisposed) return;
+
+    setState('connecting');
+    ws = new WebSocket(url);
+
+    ws.onopen = () => {
+      setState('connected');
+      reconnectAttempts = 0;
+      ws!.send(JSON.stringify({ type: 'join', room: roomId }));
+    };
+
+    ws.onmessage = handleMessage;
+
+    ws.onerror = () => {
+      // Error handling is done in onclose
+    };
+
+    ws.onclose = () => {
+      if (isDisposed) {
+        setState('disconnected');
+        return;
+      }
+
+      // Attempt reconnection with exponential backoff
+      if (reconnectAttempts < RECONNECT_MAX_ATTEMPTS) {
+        setState('reconnecting');
+        const delay = Math.min(
+          RECONNECT_BASE_DELAY_MS * Math.pow(2, reconnectAttempts),
+          RECONNECT_MAX_DELAY_MS
+        );
+        reconnectAttempts++;
+        console.info(`[STUB] WebSocket disconnected, reconnecting in ${delay}ms (attempt ${reconnectAttempts})`);
+        reconnectTimeout = setTimeout(connect, delay);
+      } else {
+        setState('disconnected');
+        console.warn('[STUB] WebSocket max reconnection attempts reached');
+      }
+    };
+  };
+
+  // Initial connection
+  connect();
+
+  // Subscribe to proxy changes
+  unsubscribe = subscribe(proxyState, () => {
+    if (isProcessingRemote) return;
+
     const opsJson = mockValtioEgwalker.get_pending_ops_json(proxyState);
     const ops = JSON.parse(opsJson);
 
     for (const op of ops) {
-      ws.send(
-        JSON.stringify({
-          type: 'operation',
-          room: roomId,
-          op,
-        })
-      );
+      queueOperation(op);
     }
   });
 
-  return ws;
+  const cleanup = () => {
+    isDisposed = true;
+    if (unsubscribe) unsubscribe();
+    if (batchTimeout) {
+      clearTimeout(batchTimeout);
+      flushBatch();
+    }
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+    }
+    if (ws) {
+      ws.close();
+    }
+    stateCallbacks.clear();
+  };
+
+  return {
+    ws,
+    cleanup,
+    getState: () => connectionState,
+    onStateChange: (callback) => {
+      stateCallbacks.add(callback);
+      return () => stateCallbacks.delete(callback);
+    },
+  };
 }
 
 /**
@@ -344,9 +494,9 @@ export function createEgWalkerProxy<T extends TextState>(
 
   instanceMap.set(proxyState, proxyState);
 
-  let ws: WebSocket | null = null;
+  let wsConnection: WebSocketConnection | null = null;
   if (config.websocketUrl && config.roomId) {
-    ws = setupWebSocketSync(proxyState, config.websocketUrl, config.roomId);
+    wsConnection = setupWebSocketSync(proxyState, config.websocketUrl, config.roomId);
   }
 
   return {
@@ -385,20 +535,26 @@ export function createEgWalkerProxy<T extends TextState>(
     },
 
     dispose: () => {
-      dispose_proxy(proxyState);
-      if (ws) {
-        ws.close();
+      if (wsConnection) {
+        wsConnection.cleanup();
       }
+      dispose_proxy(proxyState);
     },
 
-    // Extended API for UI (not in production API yet)
+    // Extended API for UI
     getUndoStackSize: () => get_undo_stack_size(proxyState),
     getRedoStackSize: () => get_redo_stack_size(proxyState),
     suppressUndoTracking: (suppress: boolean) => set_suppress_undo_tracking(proxyState, suppress),
+    getConnectionState: () => wsConnection?.getState() ?? 'offline',
+    onConnectionStateChange: wsConnection
+      ? (callback: (state: ConnectionState) => void) => wsConnection!.onStateChange(callback)
+      : undefined,
   } as EgWalkerProxyResult<T> & {
     getUndoStackSize: () => number;
     getRedoStackSize: () => number;
     suppressUndoTracking: (suppress: boolean) => void;
+    getConnectionState: () => ConnectionState;
+    onConnectionStateChange?: (callback: (state: ConnectionState) => void) => () => void;
   };
 }
 
