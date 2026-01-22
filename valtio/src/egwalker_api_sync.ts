@@ -23,6 +23,23 @@ import type {
 // Path points to the compiled output from moon build --target js
 import * as valtioEgwalker from '../target/js/release/build/valtio/valtio.js';
 
+// Extended module interface for undo stack tracking
+interface ValtioEgwalkerModule {
+  create_egwalker_proxy: (agent_id: string, undo_enabled: boolean) => any;
+  apply_remote_op: (proxy: any, op_json: string) => void;
+  get_pending_ops_json: (proxy: any) => string;
+  get_frontier_json: (proxy: any) => string;
+  get_frontier_raw_json: (proxy: any) => string;
+  undo: (proxy: any) => void;
+  redo: (proxy: any) => void;
+  dispose_proxy: (proxy: any) => void;
+  get_undo_stack_size?: (proxy: any) => number;
+  get_redo_stack_size?: (proxy: any) => number;
+  set_suppress_undo_tracking?: (proxy: any, suppress: boolean) => void;
+}
+
+const moonbit = valtioEgwalker as unknown as ValtioEgwalkerModule;
+
 // Global instance map
 const instanceMap = new WeakMap();
 
@@ -37,9 +54,12 @@ if (typeof globalThis !== 'undefined') {
 function setupWebSocketSync(
   proxyState: any,
   url: string,
-  roomId: string
+  roomId: string,
+  suppressUndoTracking?: (suppress: boolean) => void
 ): WebSocket {
   const ws = new WebSocket(url);
+  const sentOps = new Set<string>();
+  const SENT_OPS_LIMIT = 10000; // Match server's history limit
 
   ws.onopen = () => {
     ws.send(JSON.stringify({ type: 'join', room: roomId }));
@@ -49,18 +69,39 @@ function setupWebSocketSync(
     const message = JSON.parse(event.data);
 
     if (message.type === 'operation') {
-      valtioEgwalker.apply_remote_op(
-        proxyState,
-        JSON.stringify(message.op)
-      );
+      try {
+        suppressUndoTracking?.(true);
+        moonbit.apply_remote_op(proxyState, JSON.stringify(message.op));
+      } finally {
+        suppressUndoTracking?.(false);
+      }
+    } else if (message.type === 'sync') {
+      try {
+        suppressUndoTracking?.(true);
+        for (const op of message.ops || []) {
+          moonbit.apply_remote_op(proxyState, JSON.stringify(op));
+        }
+      } finally {
+        suppressUndoTracking?.(false);
+      }
     }
   };
 
   subscribe(proxyState, () => {
-    const opsJson = valtioEgwalker.get_pending_ops_json(proxyState);
+    const opsJson = moonbit.get_pending_ops_json(proxyState);
     const ops = JSON.parse(opsJson);
 
     for (const op of ops) {
+      const opKey = `${op.agent_id}:${op.lv}`;
+      if (sentOps.has(opKey)) continue;
+      sentOps.add(opKey);
+
+      // Evict oldest entries when limit exceeded (FIFO via Set iteration order)
+      if (sentOps.size > SENT_OPS_LIMIT) {
+        const oldest = sentOps.values().next().value;
+        if (oldest) sentOps.delete(oldest);
+      }
+
       ws.send(
         JSON.stringify({
           type: 'operation',
@@ -92,27 +133,20 @@ function setupWebSocketSync(
 export function createEgWalkerProxy<T extends TextState>(
   config: EgWalkerProxyConfig
 ): EgWalkerProxyResult<T> {
-  const {
-    create_egwalker_proxy,
-    apply_remote_op,
-    get_pending_ops_json,
-    get_frontier_json,
-    get_frontier_raw_json,
-    undo: moonbitUndo,
-    redo: moonbitRedo,
-    dispose_proxy,
-  } = valtioEgwalker;
-
-  const proxyState = create_egwalker_proxy(
+  const proxyState = moonbit.create_egwalker_proxy(
     config.agentId,
     config.undoManager || false
   );
 
   instanceMap.set(proxyState, proxyState);
 
+  const suppressUndoTracking = moonbit.set_suppress_undo_tracking
+    ? (suppress: boolean) => moonbit.set_suppress_undo_tracking!(proxyState, suppress)
+    : undefined;
+
   let ws: WebSocket | null = null;
   if (config.websocketUrl && config.roomId) {
-    ws = setupWebSocketSync(proxyState, config.websocketUrl, config.roomId);
+    ws = setupWebSocketSync(proxyState, config.websocketUrl, config.roomId, suppressUndoTracking);
   }
 
   return {
@@ -120,42 +154,56 @@ export function createEgWalkerProxy<T extends TextState>(
 
     undo: () => {
       if (config.undoManager) {
-        moonbitUndo(proxyState);
+        moonbit.undo(proxyState);
       }
     },
 
     redo: () => {
       if (config.undoManager) {
-        moonbitRedo(proxyState);
+        moonbit.redo(proxyState);
       }
     },
 
     getPendingOps: () => {
-      const json = get_pending_ops_json(proxyState);
+      const json = moonbit.get_pending_ops_json(proxyState);
       return JSON.parse(json);
     },
 
     applyRemoteOp: (op: Operation) => {
       const json = JSON.stringify(op);
-      apply_remote_op(proxyState, json);
+      moonbit.apply_remote_op(proxyState, json);
     },
 
     getFrontier: () => {
-      const json = get_frontier_json(proxyState);
+      const json = moonbit.get_frontier_json(proxyState);
       return JSON.parse(json);
     },
 
     getFrontierRaw: () => {
-      const json = get_frontier_raw_json(proxyState);
+      const json = moonbit.get_frontier_raw_json(proxyState);
       return JSON.parse(json);
     },
 
     dispose: () => {
-      dispose_proxy(proxyState);
+      moonbit.dispose_proxy(proxyState);
       if (ws) {
         ws.close();
       }
     },
+
+    getUndoStackSize: moonbit.get_undo_stack_size
+      ? () => moonbit.get_undo_stack_size!(proxyState)
+      : () => 0,
+
+    getRedoStackSize: moonbit.get_redo_stack_size
+      ? () => moonbit.get_redo_stack_size!(proxyState)
+      : () => 0,
+
+    suppressUndoTracking,
+  } as EgWalkerProxyResult<T> & {
+    getUndoStackSize: () => number;
+    getRedoStackSize: () => number;
+    suppressUndoTracking?: (suppress: boolean) => void;
   };
 }
 

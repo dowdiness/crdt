@@ -1,5 +1,8 @@
 # dowdiness/crdt
 
+- [Repository](https://github.com/dowdiness/til/tree/main/crdt)
+- [Web App](https://lambda-editor.koji-ishimoto.workers.dev/)
+
 ## Eg-Walker CRDT Editor in MoonBit
 
 An implementation of the eg-walker CRDT algorithm for collaborative text editing, using the FugueMax sequence CRDT and retreat-advance-apply merge strategy.

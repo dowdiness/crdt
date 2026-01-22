@@ -10,6 +10,12 @@ import {
   type TextState,
   type EgWalkerProxyResult,
 } from 'valtio-egwalker/stub';
+
+type ExtendedEgWalkerResult = EgWalkerProxyResult<TextState> & {
+  getUndoStackSize?: () => number;
+  getRedoStackSize?: () => number;
+  suppressUndoTracking?: (suppress: boolean) => void;
+};
 import { Toolbar } from './Toolbar';
 import { StatusBar } from './StatusBar';
 
@@ -37,12 +43,12 @@ export function LambdaEditor({
   agentId,
 }: LambdaEditorProps) {
   // Create egwalker proxy using the MoonBit Valtio FFI module
-  const [egwalker] = useState<EgWalkerProxyResult<TextState>>(() => {
+  const [egwalker] = useState<ExtendedEgWalkerResult>(() => {
     const id = agentId || `user-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     return createEgWalkerProxy<TextState>({
       agentId: id,
       undoManager: true,
-    });
+    }) as ExtendedEgWalkerResult;
   });
 
   // Use snapshot for reactive rendering
@@ -52,23 +58,30 @@ export function LambdaEditor({
   // Editor ref for focus management
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
-  // Track undo/redo availability (simplified check)
+  // Track undo/redo availability using actual stack sizes
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
-  // Initialize with initial text
+  // Update undo/redo state from actual stack sizes
+  const updateUndoRedoState = useCallback(() => {
+    setCanUndo((egwalker.getUndoStackSize?.() ?? 0) > 0);
+    setCanRedo((egwalker.getRedoStackSize?.() ?? 0) > 0);
+  }, [egwalker]);
+
+  // Initialize with initial text (suppressed from undo stack)
   useEffect(() => {
     if (initialText) {
+      egwalker.suppressUndoTracking?.(true);
       egwalker.proxy.text = initialText;
+      egwalker.suppressUndoTracking?.(false);
     }
   }, []); // Only on mount
 
-  // Notify parent of text changes
+  // Notify parent of text changes and update undo/redo state
   useEffect(() => {
     onTextChange?.(snap.text);
-    // Update undo/redo state (simplified - real impl would track stack sizes)
-    setCanUndo(snap.text.length > 0);
-  }, [snap.text, onTextChange]);
+    updateUndoRedoState();
+  }, [snap.text, onTextChange, updateUndoRedoState]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -99,7 +112,7 @@ export function LambdaEditor({
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         egwalker.undo();
-        setCanRedo(true);
+        updateUndoRedoState();
       }
       // Redo: Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y
       if (
@@ -108,25 +121,30 @@ export function LambdaEditor({
       ) {
         e.preventDefault();
         egwalker.redo();
+        updateUndoRedoState();
       }
     },
-    [egwalker]
+    [egwalker, updateUndoRedoState]
   );
 
-  // Load example
+  // Load example (suppressed from undo stack - it's a preset, not user edit)
   const handleLoadExample = useCallback(
     (code: string) => {
+      egwalker.suppressUndoTracking?.(true);
       egwalker.proxy.text = code;
       egwalker.proxy.cursor = code.length;
+      egwalker.suppressUndoTracking?.(false);
       editorRef.current?.focus();
     },
     [egwalker]
   );
 
-  // Clear editor
+  // Clear editor (suppressed from undo stack)
   const handleClear = useCallback(() => {
+    egwalker.suppressUndoTracking?.(true);
     egwalker.proxy.text = '';
     egwalker.proxy.cursor = 0;
+    egwalker.suppressUndoTracking?.(false);
     editorRef.current?.focus();
   }, [egwalker]);
 
@@ -138,9 +156,12 @@ export function LambdaEditor({
       <Toolbar
         onUndo={() => {
           egwalker.undo();
-          setCanRedo(true);
+          updateUndoRedoState();
         }}
-        onRedo={() => egwalker.redo()}
+        onRedo={() => {
+          egwalker.redo();
+          updateUndoRedoState();
+        }}
         onClear={handleClear}
         canUndo={canUndo}
         canRedo={canRedo}

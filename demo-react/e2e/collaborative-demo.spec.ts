@@ -9,7 +9,7 @@ test.describe('Collaborative Demo Mode', () => {
   });
 
   test('should display collaborative demo UI', async ({ page }) => {
-    await expect(page.getByText('Shared Document:')).toBeVisible();
+    await expect(page.getByText('Sync Mode:')).toBeVisible();
     await expect(page.locator('.panel-title').filter({ hasText: 'Alice' })).toBeVisible();
     await expect(page.locator('.panel-title').filter({ hasText: 'Bob' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Operations Log' })).toBeVisible();

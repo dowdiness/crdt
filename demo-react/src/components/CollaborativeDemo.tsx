@@ -1,6 +1,7 @@
 // CollaborativeDemo Component
 //
 // Demonstrates CRDT collaboration with per-agent undo/redo.
+// Supports both local sync (default) and WebSocket sync (when server is running).
 // Each editor has its own undo stack - undo only affects local changes.
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -12,71 +13,69 @@ import {
   type EgWalkerProxyResult,
 } from 'valtio-egwalker/stub';
 
-/**
- * Operations log for visualization
- */
+type ExtendedEgWalkerResult = EgWalkerProxyResult<TextState> & {
+  getUndoStackSize?: () => number;
+  getRedoStackSize?: () => number;
+  suppressUndoTracking?: (suppress: boolean) => void;
+};
+
 interface OperationLog {
   agentId: string;
-  type: 'insert' | 'delete' | 'undo' | 'redo';
+  type: 'insert' | 'delete' | 'undo' | 'redo' | 'sync';
   content?: string;
   timestamp: number;
 }
 
-// Shared operations log (for visualization)
 const opsLog = proxy<{ operations: OperationLog[] }>({
   operations: [],
 });
 
-// Shared document state (simulating CRDT sync layer)
 const sharedDoc = proxy<{ text: string }>({
   text: '',
 });
 
+const WS_URL = 'ws://localhost:8787';
+const ROOM_ID = 'demo-room';
+
 interface EditorPanelProps {
   agentId: string;
   color: string;
+  useWebSocket?: boolean;
 }
 
-function EditorPanel({ agentId, color }: EditorPanelProps) {
-  // Each editor has its own egwalker proxy with per-agent undo/redo
-  const [egwalker] = useState<EgWalkerProxyResult<TextState> & {
-    getUndoStackSize?: () => number;
-    getRedoStackSize?: () => number;
-    suppressUndoTracking?: (suppress: boolean) => void;
-  }>(() =>
+function EditorPanel({ agentId, color, useWebSocket = false }: EditorPanelProps) {
+  const [egwalker] = useState<ExtendedEgWalkerResult>(() =>
     createEgWalkerProxy<TextState>({
       agentId,
       undoManager: true,
-    })
+      ...(useWebSocket ? { websocketUrl: WS_URL, roomId: ROOM_ID } : {}),
+    }) as ExtendedEgWalkerResult
   );
 
-  // Track undo/redo stack sizes in state for reactivity
   const [undoSize, setUndoSize] = useState(0);
   const [redoSize, setRedoSize] = useState(0);
 
-  // Use snapshot for reactive rendering
   const snap = useSnapshot(egwalker.proxy, { sync: true });
   const sharedSnap = useSnapshot(sharedDoc);
 
-  // Update stack sizes when text changes
-  useEffect(() => {
+  const updateUndoRedoState = useCallback(() => {
     setUndoSize(egwalker.getUndoStackSize?.() ?? 0);
     setRedoSize(egwalker.getRedoStackSize?.() ?? 0);
-  }, [snap.text, egwalker]);
+  }, [egwalker]);
 
-  // Track if we're applying remote changes (to prevent sync loops)
+  useEffect(() => {
+    updateUndoRedoState();
+  }, [snap.text, updateUndoRedoState]);
+
   const isApplyingRemote = useRef(false);
 
-  // Sync shared doc -> local proxy (when other agent changes)
   useEffect(() => {
+    if (useWebSocket) return;
+
     if (isApplyingRemote.current) return;
 
-    // Only sync if text differs and this wasn't our change
     if (sharedSnap.text !== egwalker.proxy.text) {
       isApplyingRemote.current = true;
-
-      // Apply remote text without adding to undo stack
-      // suppressUndoTracking ensures this change isn't tracked as local
       egwalker.suppressUndoTracking?.(true);
       egwalker.proxy.text = sharedSnap.text;
       egwalker.suppressUndoTracking?.(false);
@@ -85,19 +84,19 @@ function EditorPanel({ agentId, color }: EditorPanelProps) {
         isApplyingRemote.current = false;
       }, 0);
     }
-  }, [sharedSnap.text, egwalker]);
+  }, [sharedSnap.text, egwalker, useWebSocket]);
 
-  // Sync local proxy -> shared doc (when this agent changes)
   useEffect(() => {
+    if (useWebSocket) return;
+
     const unsubscribe = subscribe(egwalker.proxy, () => {
       if (!isApplyingRemote.current && egwalker.proxy.text !== sharedDoc.text) {
         sharedDoc.text = egwalker.proxy.text;
       }
     });
     return unsubscribe;
-  }, [egwalker]);
+  }, [egwalker, useWebSocket]);
 
-  // Handle text changes (local edits)
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const newText = e.target.value;
@@ -106,7 +105,6 @@ function EditorPanel({ agentId, color }: EditorPanelProps) {
       egwalker.proxy.text = newText;
       egwalker.proxy.cursor = e.target.selectionStart || 0;
 
-      // Log operation
       if (newText.length > oldText.length) {
         const diff = newText.length - oldText.length;
         opsLog.operations.push({
@@ -124,7 +122,6 @@ function EditorPanel({ agentId, color }: EditorPanelProps) {
         });
       }
 
-      // Keep log size manageable
       if (opsLog.operations.length > 15) {
         opsLog.operations.shift();
       }
@@ -139,12 +136,9 @@ function EditorPanel({ agentId, color }: EditorPanelProps) {
     [egwalker]
   );
 
-  // Undo - only undoes THIS agent's changes
   const handleUndo = useCallback(() => {
     egwalker.undo();
-    // Update stack sizes after undo
-    setUndoSize(egwalker.getUndoStackSize?.() ?? 0);
-    setRedoSize(egwalker.getRedoStackSize?.() ?? 0);
+    updateUndoRedoState();
     opsLog.operations.push({
       agentId,
       type: 'undo',
@@ -153,14 +147,11 @@ function EditorPanel({ agentId, color }: EditorPanelProps) {
     if (opsLog.operations.length > 15) {
       opsLog.operations.shift();
     }
-  }, [agentId, egwalker]);
+  }, [agentId, egwalker, updateUndoRedoState]);
 
-  // Redo - only redoes THIS agent's changes
   const handleRedo = useCallback(() => {
     egwalker.redo();
-    // Update stack sizes after redo
-    setUndoSize(egwalker.getUndoStackSize?.() ?? 0);
-    setRedoSize(egwalker.getRedoStackSize?.() ?? 0);
+    updateUndoRedoState();
     opsLog.operations.push({
       agentId,
       type: 'redo',
@@ -169,9 +160,8 @@ function EditorPanel({ agentId, color }: EditorPanelProps) {
     if (opsLog.operations.length > 15) {
       opsLog.operations.shift();
     }
-  }, [agentId, egwalker]);
+  }, [agentId, egwalker, updateUndoRedoState]);
 
-  // Cleanup
   useEffect(() => {
     return () => egwalker.dispose();
   }, [egwalker]);
@@ -216,16 +206,52 @@ function EditorPanel({ agentId, color }: EditorPanelProps) {
 }
 
 export function CollaborativeDemo() {
+  const [useWebSocket, setUseWebSocket] = useState(false);
+  const [wsStatus, setWsStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown');
   const logSnap = useSnapshot(opsLog);
   const sharedSnap = useSnapshot(sharedDoc);
 
-  // Reset
+  // Check WebSocket server availability with timeout
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const checkServer = () => {
+      ws = new WebSocket(WS_URL);
+
+      // Timeout after 2 seconds if no response
+      timeoutId = setTimeout(() => {
+        if (ws && ws.readyState !== WebSocket.OPEN) {
+          ws.close();
+          setWsStatus('disconnected');
+        }
+      }, 2000);
+
+      ws.onopen = () => {
+        clearTimeout(timeoutId);
+        setWsStatus('connected');
+        ws?.close();
+      };
+
+      ws.onerror = () => {
+        clearTimeout(timeoutId);
+        setWsStatus('disconnected');
+      };
+    };
+
+    checkServer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      ws?.close();
+    };
+  }, []);
+
   const handleReset = useCallback(() => {
     sharedDoc.text = '';
     opsLog.operations = [];
   }, []);
 
-  // Load example
   const handleLoadExample = useCallback(() => {
     sharedDoc.text = '(\\x.\\y.x + y) 10 5';
     opsLog.operations = [];
@@ -239,6 +265,21 @@ export function CollaborativeDemo() {
           Each editor has its own undo/redo stack. Alice's undo only undoes
           Alice's changes, not Bob's. This is how real collaborative editors work.
         </p>
+
+        <div className="sync-mode-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={useWebSocket}
+              onChange={(e) => setUseWebSocket(e.target.checked)}
+              disabled={wsStatus === 'disconnected'}
+            />
+            {' '}Use WebSocket Sync
+            {wsStatus === 'connected' && <span className="ws-status connected"> (Server Online)</span>}
+            {wsStatus === 'disconnected' && <span className="ws-status disconnected"> (Server Offline - run `npm run server`)</span>}
+          </label>
+        </div>
+
         <div className="demo-controls">
           <button className="demo-btn" onClick={handleLoadExample}>
             Load Example
@@ -250,15 +291,17 @@ export function CollaborativeDemo() {
       </div>
 
       <div className="shared-doc-info">
-        <span className="shared-label">Shared Document:</span>
+        <span className="shared-label">
+          {useWebSocket ? 'Sync Mode: WebSocket' : 'Sync Mode: Local Valtio'}
+        </span>
         <code className="shared-text">
           {sharedSnap.text || '(empty)'}
         </code>
       </div>
 
-      <div className="editors-container">
-        <EditorPanel agentId="Alice" color="#4ec9b0" />
-        <EditorPanel agentId="Bob" color="#ce9178" />
+      <div className="editors-container" key={useWebSocket ? 'ws' : 'local'}>
+        <EditorPanel agentId="Alice" color="#4ec9b0" useWebSocket={useWebSocket} />
+        <EditorPanel agentId="Bob" color="#ce9178" useWebSocket={useWebSocket} />
       </div>
 
       <div className="operations-log">
@@ -291,10 +334,9 @@ export function CollaborativeDemo() {
           <li>Document shows "Hell World" (Bob's changes preserved)</li>
         </ol>
         <p className="demo-note">
-          In the real eg-walker CRDT, this is handled by tracking operations
-          per-agent and selectively inverting only that agent's operations
-          during undo, while preserving causally concurrent operations from
-          other agents.
+          {useWebSocket
+            ? 'WebSocket mode: Operations sync via ws://localhost:8787 relay server.'
+            : 'Local mode: Operations sync via shared Valtio proxy (same browser tab only).'}
         </p>
       </div>
     </div>

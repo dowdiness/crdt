@@ -1,21 +1,50 @@
 // Stub implementation for development/testing without MoonBit runtime
 // This file provides the same API as egwalker_api.ts but with a mock implementation
+// Types are duplicated here to avoid importing from egwalker_api.ts (which imports MoonBit)
 
 import { proxy, subscribe } from 'valtio/vanilla';
 
-export type {
-  EgWalkerProxyConfig,
-  EgWalkerProxyResult,
-  Operation,
-  TextState,
-} from './egwalker_api.js';
+export interface EgWalkerProxyConfig {
+  agentId: string;
+  undoManager?: boolean;
+  websocketUrl?: string;
+  roomId?: string;
+}
 
-import type {
-  EgWalkerProxyConfig,
-  EgWalkerProxyResult,
-  TextState,
-  Operation,
-} from './egwalker_api.js';
+export interface EgWalkerProxyResult<T> {
+  proxy: T;
+  undo: () => void;
+  redo: () => void;
+  getPendingOps: () => Operation[];
+  applyRemoteOp: (op: Operation) => void;
+  getFrontier: () => number[];
+  getFrontierRaw: () => RawVersion[];
+  dispose: () => void;
+  suppressUndoTracking?: (suppress: boolean) => void;
+  getUndoStackSize?: () => number;
+  getRedoStackSize?: () => number;
+}
+
+export interface Operation {
+  lv: number;
+  agent_id: string;
+  op_type: 'Insert' | 'Delete';
+  content?: string;
+  origin_left: number;
+  origin_right: number;
+  deps: number[];
+}
+
+export interface RawVersion {
+  agent: string;
+  seq: number;
+}
+
+export interface TextState {
+  text: string;
+  cursor: number;
+  syncing: boolean;
+}
 
 /**
  * Snapshot for undo/redo tracking
@@ -249,6 +278,11 @@ function setupWebSocketSync(
         proxyState,
         JSON.stringify(message.op)
       );
+    } else if (message.type === 'sync') {
+      // Bulk sync for late joiners - apply_remote_op handles suppression internally
+      for (const op of message.ops || []) {
+        mockValtioEgwalker.apply_remote_op(proxyState, JSON.stringify(op));
+      }
     }
   };
 

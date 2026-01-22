@@ -2,8 +2,7 @@
 //
 // User-facing API similar to valtio-y's createYjsProxy
 
-import { proxy, subscribe, snapshot } from 'valtio/vanilla';
-import type { Snapshot } from 'valtio/vanilla';
+import { subscribe } from 'valtio/vanilla';
 
 /**
  * Configuration for creating an EgWalker proxy
