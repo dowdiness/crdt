@@ -1,4 +1,7 @@
 {
   "is_main": false,
-  "import": [{ "path": "moonbitlang/quickcheck", "alias": "qc" }]
+  "import": [
+    { "path": "moonbitlang/quickcheck", "alias": "qc" },
+    "moonbitlang/core/bench"
+  ]
 }
