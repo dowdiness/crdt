@@ -3,22 +3,22 @@
 ///|
 
 ///|
-/// Wraps a Document and maintains cursor position
+/// Wraps a TextDoc and maintains cursor position
 pub struct Editor {
-  doc : @document.Document
+  doc : @text.TextDoc
   mut cursor : Int // Current cursor position (0-based)
 } derive(Show)
 
 ///|
 /// Create a new editor for an agent
 pub fn Editor::new(agent_id : String) -> Editor {
-  { doc: @document.Document::new(agent_id), cursor: 0 }
+  { doc: @text.TextDoc::new(agent_id), cursor: 0 }
 }
 
 ///|
 /// Get the current text content
 pub fn Editor::get_text(self : Editor) -> String {
-  self.doc.to_text()
+  self.doc.text()
 }
 
 ///|
@@ -30,7 +30,7 @@ pub fn Editor::get_cursor(self : Editor) -> Int {
 ///|
 /// Move cursor to a specific position
 pub fn Editor::move_cursor(self : Editor, position : Int) -> Unit {
-  let text_len = self.doc.to_text().length()
+  let text_len = self.doc.len()
   if position < 0 {
     self.cursor = 0
   } else if position > text_len {
@@ -47,7 +47,7 @@ pub fn Editor::move_cursor(self : Editor, position : Int) -> Unit {
 ///|
 /// After insertion, cursor moves to after the inserted text
 pub fn Editor::insert(self : Editor, text : String) -> Unit raise {
-  let _op = self.doc.insert(self.cursor, text)
+  let _ = self.doc.insert(@text.Pos::at(self.cursor), text)
   self.cursor = self.cursor + text.length()
 }
 
@@ -62,7 +62,7 @@ pub fn Editor::insert_at(
   position : Int,
   text : String,
 ) -> Unit raise {
-  let _op = self.doc.insert(position, text)
+  let _ = self.doc.insert(@text.Pos::at(position), text)
 
 }
 
@@ -73,8 +73,8 @@ pub fn Editor::insert_at(
 ///|
 /// Returns true if successful, false if nothing to delete
 pub fn Editor::delete(self : Editor) -> Bool {
-  try self.doc.delete(self.cursor) catch {
-    @document.DocumentError::InvalidPosition(pos=_) => false
+  try self.doc.delete(@text.Pos::at(self.cursor)) catch {
+    @text.TextError::InvalidPosition(..) => false
     _ => false
   } noraise {
     _ => true
@@ -90,8 +90,8 @@ pub fn Editor::delete(self : Editor) -> Bool {
 pub fn Editor::backspace(self : Editor) -> Bool {
   if self.cursor > 0 {
     self.cursor = self.cursor - 1
-    try self.doc.delete(self.cursor) catch {
-      @document.DocumentError::InvalidPosition(pos=_) => {
+    try self.doc.delete(@text.Pos::at(self.cursor)) catch {
+      @text.TextError::InvalidPosition(..) => {
         // Restore cursor if delete failed
         self.cursor = self.cursor + 1
         false
@@ -111,19 +111,23 @@ pub fn Editor::backspace(self : Editor) -> Bool {
 ///|
 /// Apply a remote operation to this editor
 pub fn Editor::apply_remote(self : Editor, op : @oplog.Op) -> Unit raise {
-  self.doc.apply_remote(op)
+  self.doc.advanced().apply_remote(op)
   // Adjust cursor position if needed
   self.adjust_cursor()
 }
 
 ///|
-/// Merge remote operations into this editor
+/// Merge remote operations into this editor.
+/// Uses advanced() to preserve frontier validation even when ops is empty.
 pub fn Editor::merge_remote(
   self : Editor,
   remote_ops : Array[@oplog.Op],
   remote_frontier : Array[@causal_graph.RawVersion],
 ) -> Unit raise {
-  self.doc.merge_remote(remote_ops, remote_frontier)
+  // Use advanced() directly to preserve frontier validation behavior.
+  // SyncSession::apply skips validation when ops is empty, which could
+  // allow inconsistent sync states to pass silently.
+  self.doc.advanced().merge_remote(remote_ops, remote_frontier)
   // Adjust cursor position if needed
   self.adjust_cursor()
 }
@@ -131,28 +135,57 @@ pub fn Editor::merge_remote(
 ///|
 /// Get the current frontier
 pub fn Editor::get_frontier(self : Editor) -> @causal_graph.Frontier {
-  self.doc.get_frontier()
+  self.doc.version().to_frontier()
 }
 
 ///|
-/// Get frontier as RawVersions for network sync
+/// Get frontier as RawVersions for network sync.
+/// Uses advanced() directly to avoid O(n) oplog materialization.
 pub fn Editor::get_frontier_raw(
   self : Editor,
 ) -> Array[@causal_graph.RawVersion] raise {
-  self.doc.get_frontier_raw()
+  self.doc.advanced().get_frontier_raw()
 }
 
 ///|
 /// Get all operations (for sending to remote)
 pub fn Editor::get_operations(self : Editor) -> Array[@oplog.Op] {
-  self.doc.oplog.get_all_ops()
+  self.doc.advanced().oplog.get_all_ops()
 }
 
 ///|
 /// Adjust cursor to stay within valid range after merge
 fn Editor::adjust_cursor(self : Editor) -> Unit {
-  let text_len = self.doc.to_text().length()
+  let text_len = self.doc.len()
   if self.cursor > text_len {
     self.cursor = text_len
   }
+}
+
+///|
+/// Get the current version (for sync)
+pub fn Editor::get_version(self : Editor) -> @text.Version {
+  self.doc.version()
+}
+
+///|
+/// Sync: Export all operations as a SyncMessage
+pub fn Editor::export_all(self : Editor) -> @text.SyncMessage raise {
+  self.doc.sync().export_all()
+}
+
+///|
+/// Sync: Export operations since a peer's version
+pub fn Editor::export_since(
+  self : Editor,
+  peer_version : @text.Version,
+) -> @text.SyncMessage raise {
+  self.doc.sync().export_since(peer_version)
+}
+
+///|
+/// Sync: Apply a SyncMessage from a peer
+pub fn Editor::apply_sync(self : Editor, msg : @text.SyncMessage) -> Unit raise {
+  self.doc.sync().apply(msg)
+  self.adjust_cursor()
 }

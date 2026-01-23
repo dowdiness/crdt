@@ -13,3 +13,4 @@ _build
 .playwright-mcp/
 demo-react/playwright-report/
 demo-react/test-results/
+.grepai/
