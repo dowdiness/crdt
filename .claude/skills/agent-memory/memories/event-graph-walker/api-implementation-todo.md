@@ -1,7 +1,7 @@
 ---
 summary: "TODO tracker for event-graph-walker user-friendly API implementation"
 created: 2026-01-23
-status: in-progress
+status: complete
 tags: [todo, api-design, event-graph-walker]
 related: [event-graph-walker/text/, .claude/skills/agent-memory/memories/event-graph-walker/user-friendly-api-plan.md]
 ---
@@ -39,10 +39,10 @@ related: [event-graph-walker/text/, .claude/skills/agent-memory/memories/event-g
 
 ## Phase 6: Tests & Docs
 - [x] Unit tests for all public API (19 tests)
-- [ ] Property tests with quickcheck
-- [ ] Update README.md with new usage examples
-- [ ] Add migration guide from direct Document usage
+- [x] Property tests with quickcheck (12 property tests)
+- [x] Update README.md with new usage examples
+- [x] Add migration guide from direct Document usage
 
 ## Current Progress
 
-**Status**: Phase 5 complete - Core implementation done, 122 tests passing (19 new text API tests)
+**Status**: Complete - All phases done, 134 tests passing (19 unit tests + 12 property tests in text package)

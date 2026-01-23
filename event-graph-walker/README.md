@@ -12,12 +12,34 @@ This module provides a complete implementation of efficient collaborative editin
 
 ```
 event-graph-walker/
-├── document/         # User-facing document API
+├── text/             # User-friendly facade API (recommended)
+├── document/         # Low-level document API
 ├── oplog/            # Operation log and walker
 ├── causal_graph/     # Causal graph and topological sorting
 ├── branch/           # Document snapshots at any frontier
 ├── fugue/            # FugueMax sequence CRDT tree
 └── moon.mod.json     # Module metadata
+```
+
+### Package Layers
+
+```
+┌─────────────────────────────────────────┐
+│  text (Facade - Recommended)            │
+│  TextDoc, SyncMessage, Version, etc.    │
+├─────────────────────────────────────────┤
+│  document (Internal)                    │
+│  Document, DocumentError                │
+├──────────────┬──────────────────────────┤
+│  branch      │  oplog                   │
+│  Branch      │  OpLog, Op               │
+├──────────────┴──────────────────────────┤
+│  causal_graph                           │
+│  CausalGraph, Frontier, VersionVector   │
+├─────────────────────────────────────────┤
+│  fugue                                  │
+│  FugueTree, Item                        │
+└─────────────────────────────────────────┘
 ```
 
 ### Key Data Structures
@@ -148,7 +170,108 @@ pub fn merge_remote_ops(
 
 ## Usage
 
-### Basic Editing
+### Quick Start (Recommended API)
+
+The `text` package provides a user-friendly facade over the CRDT internals:
+
+```moonbit
+import "dowdiness/event-graph-walker/text"
+
+// Create a document
+let doc = @text.TextDoc::new("alice")
+
+// Edit with type-safe positions
+doc.insert(@text.Pos::at(0), "Hello")
+doc.insert(@text.Pos::at(5), " World")
+println(doc.text())  // "Hello World"
+
+// Delete a character
+doc.delete(@text.Pos::at(5))
+println(doc.text())  // "HelloWorld"
+```
+
+### Syncing Between Peers
+
+```moonbit
+// Alice's document
+let alice_doc = @text.TextDoc::new("alice")
+alice_doc.insert(@text.Pos::at(0), "Hello")
+
+// Bob's document
+let bob_doc = @text.TextDoc::new("bob")
+
+// Alice sends her changes to Bob
+let message = alice_doc.sync().export_all()
+bob_doc.sync().apply(message)
+println(bob_doc.text())  // "Hello"
+
+// Incremental sync (only new changes since last sync)
+let bob_version = bob_doc.version()
+alice_doc.insert(@text.Pos::at(5), "!")
+let delta = alice_doc.sync().export_since(bob_version)
+bob_doc.sync().apply(delta)
+println(bob_doc.text())  // "Hello!"
+```
+
+### Historical Checkout (Time Travel)
+
+```moonbit
+let doc = @text.TextDoc::new("alice")
+doc.insert(@text.Pos::at(0), "Hello")
+let v1 = doc.version()  // Save this version
+
+doc.insert(@text.Pos::at(5), " World")
+println(doc.text())  // "Hello World"
+
+// View document at earlier version
+let old_view = doc.checkout(v1)
+println(old_view.text())  // "Hello"
+println(doc.text())       // "Hello World" (unchanged)
+```
+
+### Error Handling
+
+```moonbit
+let doc = @text.TextDoc::new("alice")
+try {
+  doc.delete(@text.Pos::at(100))  // Invalid position
+} catch {
+  @text.TextError::InvalidPosition(pos~, len~) => {
+    println("Error: position \{pos} out of bounds (doc length: \{len})")
+    println("Help: " + err.help())
+    if err.is_retryable() {
+      // Retry logic
+    }
+  }
+  err => println(err.message())
+}
+```
+
+### Advanced Access
+
+For power users who need direct access to internals:
+
+```moonbit
+let doc = @text.TextDoc::new("alice")
+doc.insert(@text.Pos::at(0), "Hello")
+
+// Access underlying Document
+let inner = doc.advanced()
+let oplog = inner.oplog
+let frontier = inner.get_frontier()
+
+// Access underlying Branch from a view
+let view = doc.checkout(doc.version())
+let branch = view.advanced()
+```
+
+---
+
+## Low-Level API (Advanced)
+
+The following sections document the internal APIs. Most users should use the `text` package above.
+
+### Basic Editing (Document API)
 
 ```moonbit
 // Create document for an agent
@@ -165,7 +288,7 @@ doc.delete(0)
 let text = doc.to_text()  // "ello"
 ```
 
-### Network Collaboration
+### Network Collaboration (Low-Level)
 
 ```moonbit
 // Get version vector for sending to peer
@@ -181,7 +304,7 @@ let remote_frontier = [...]  // RawVersions from peer
 doc.merge_remote(remote_ops, remote_frontier)
 ```
 
-### Snapshotting/Branching
+### Snapshotting/Branching (Low-Level)
 
 ```moonbit
 // Get current frontier
@@ -196,6 +319,45 @@ let old_branch = @branch.Branch::checkout(doc.oplog, previous_frontier)
 // Advance to new frontier
 let new_branch = branch.advance(target_frontier)
 ```
+
+---
+
+## Migration Guide
+
+### From Document to TextDoc
+
+If you're using the low-level `Document` API, here's how to migrate to `TextDoc`:
+
+| Old (Document) | New (TextDoc) |
+|---------------|---------------|
+| `Document::new(agent)` | `TextDoc::new(agent)` |
+| `doc.insert(pos, text)` | `doc.insert(Pos::at(pos), text)` |
+| `doc.delete(pos)` | `doc.delete(Pos::at(pos))` |
+| `doc.to_text()` | `doc.text()` |
+| `doc.get_frontier()` | `doc.version().to_frontier()` |
+| `doc.merge_remote(ops, heads)` | `doc.sync().apply(SyncMessage::new(ops, heads))` |
+
+**Gradual Migration:**
+
+```moonbit
+// Wrap existing Document
+let old_doc = @document.Document::new("alice")
+let new_doc = @text.TextDoc::from_document(old_doc)
+
+// Use new API
+new_doc.insert(@text.Pos::at(0), "Hello")
+
+// Access old API when needed
+let inner = new_doc.advanced()
+```
+
+**Key Benefits of TextDoc:**
+
+1. **Type-safe positions** - `Pos` prevents accidental misuse of raw integers
+2. **Cleaner sync** - `SyncMessage` bundles ops and heads together
+3. **Better errors** - `TextError` provides `message()`, `help()`, `is_retryable()`
+4. **Historical views** - `checkout()` returns read-only `TextView`
+5. **Escape hatch** - `advanced()` gives full access when needed
 
 **Remote ops:** When applying remote operations, buffer ops whose parents
 are missing until all parent RawVersions are present, then map RawVersion

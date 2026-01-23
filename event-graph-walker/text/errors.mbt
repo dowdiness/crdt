@@ -35,7 +35,7 @@ pub fn TextError::message(self : TextError) -> String {
 /// Actionable guidance for the user
 pub fn TextError::help(self : TextError) -> String {
   match self {
-    InvalidPosition(len~, ..) =>
+    InvalidPosition(pos=_, len~) =>
       "Use a position between 0 and \{len} (inclusive for insert, exclusive for delete)"
     SyncFailed(MissingDependency(_)) =>
       "Sync more operations from the peer and retry"
