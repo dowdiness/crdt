@@ -81,10 +81,10 @@ pub fn SyncSession::new(TextDoc) -> Self
 pub(all) struct TextDoc {
   // private fields
 }
-pub fn TextDoc::advanced(Self) -> @document.Document
 pub fn TextDoc::checkout(Self, Version) -> TextView raise TextError
 pub fn TextDoc::delete(Self, Pos) -> Change raise TextError
 pub fn TextDoc::from_document(@document.Document) -> Self
+pub fn TextDoc::inner_document(Self) -> @document.Document
 pub fn TextDoc::insert(Self, Pos, String) -> Change raise TextError
 pub fn TextDoc::is_empty(Self) -> Bool
 pub fn TextDoc::len(Self) -> Int
@@ -97,8 +97,8 @@ pub impl Show for TextDoc
 pub(all) struct TextView {
   // private fields
 }
-pub fn TextView::advanced(Self) -> @branch.Branch
 pub fn TextView::from_branch(@branch.Branch) -> Self
+pub fn TextView::inner_branch(Self) -> @branch.Branch
 pub fn TextView::len(Self) -> Int
 pub fn TextView::text(Self) -> String
 pub fn TextView::version(Self) -> Version

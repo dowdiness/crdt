@@ -29,18 +29,13 @@ pub impl @quickcheck.Arbitrary for RealOps with arbitrary(size, random_state) {
       let pos = random_state.split().next_uint64().to_int().abs() % (len + 1)
       let char_idx = random_state.split().next_uint64().to_int().abs() %
         chars.length()
-      let change = doc.insert(
-        @text.Pos::at(pos),
-        chars[char_idx].to_string(),
-      ) catch {
+      let change = doc.insert(@text.Pos::at(pos), chars[char_idx].to_string()) catch {
         _ => continue
       }
       ops.push(change.to_op())
     } else {
       let pos = random_state.split().next_uint64().to_int().abs() % len
-      let change = doc.delete(@text.Pos::at(pos)) catch {
-        _ => continue
-      }
+      let change = doc.delete(@text.Pos::at(pos)) catch { _ => continue }
       ops.push(change.to_op())
     }
   }
@@ -67,7 +62,7 @@ pub impl @qc.Shrink for RealOps with shrink(self) {
 ///|
 /// Apply a real operation to a document, returning success.
 fn apply_op(doc : @text.TextDoc, op : @oplog.Op) -> Bool {
-  let inner = doc.advanced()
+  let inner = doc.inner_document()
   try {
     inner.apply_remote(op)
     true

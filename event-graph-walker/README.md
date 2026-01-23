@@ -256,13 +256,13 @@ let doc = @text.TextDoc::new("alice")
 doc.insert(@text.Pos::at(0), "Hello")
 
 // Access underlying Document
-let inner = doc.advanced()
+let inner = doc.inner_document()
 let oplog = inner.oplog
 let frontier = inner.get_frontier()
 
 // Access underlying Branch from a view
 let view = doc.checkout(doc.version())
-let branch = view.advanced()
+let branch = view.inner_branch()
 ```
 
 ---
@@ -348,7 +348,7 @@ let new_doc = @text.TextDoc::from_document(old_doc)
 new_doc.insert(@text.Pos::at(0), "Hello")
 
 // Access old API when needed
-let inner = new_doc.advanced()
+let inner = new_doc.inner_document()
 ```
 
 **Key Benefits of TextDoc:**
@@ -357,7 +357,7 @@ let inner = new_doc.advanced()
 2. **Cleaner sync** - `SyncMessage` bundles ops and heads together
 3. **Better errors** - `TextError` provides `message()`, `help()`, `is_retryable()`
 4. **Historical views** - `checkout()` returns read-only `TextView`
-5. **Escape hatch** - `advanced()` gives full access when needed
+5. **Escape hatch** - `inner_document()`/`inner_branch()` gives full access when needed
 
 **Remote ops:** When applying remote operations, buffer ops whose parents
 are missing until all parent RawVersions are present, then map RawVersion

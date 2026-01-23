@@ -98,7 +98,7 @@ pub fn TextDoc::checkout(
 
 ///|
 /// Access the underlying Document for advanced operations
-pub fn TextDoc::advanced(self : TextDoc) -> @document.Document {
+pub fn TextDoc::inner_document(self : TextDoc) -> @document.Document {
   self.inner
 }
 

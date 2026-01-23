@@ -172,7 +172,7 @@ pub fn get_version_vector_json(_handle : Int) -> String {
   match editor.val {
     Some(ed) => {
       // Get the document's oplog and create a branch view
-      let inner = ed.editor.doc.advanced()
+      let inner = ed.editor.doc.inner_document()
       let oplog = inner.oplog
       let tree = inner.tree
       let branch = @branch.Branch::from_tree_and_oplog(tree, oplog)
@@ -239,7 +239,7 @@ pub fn merge_operations(
   match editor.val {
     Some(ed) => {
       // Get local version vector for comparison
-      let inner = ed.editor.doc.advanced()
+      let inner = ed.editor.doc.inner_document()
       let oplog = inner.oplog
       let tree = inner.tree
       let local_branch = @branch.Branch::from_tree_and_oplog(tree, oplog)

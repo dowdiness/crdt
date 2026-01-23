@@ -148,7 +148,7 @@ test "TextDoc::checkout creates historical view" {
 test "TextDoc::advanced provides escape hatch" {
   let doc = TextDoc::new("alice")
   let _ = doc.insert(Pos::at(0), "Hello")
-  let inner = doc.advanced()
+  let inner = doc.inner_document()
   inspect(inner.to_text(), content="Hello")
 }
 
