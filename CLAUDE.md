@@ -46,6 +46,7 @@ cd event-graph-walker && moon bench --release
   - [Workflow](docs/development/workflow.md)
   - [Conventions](docs/development/conventions.md)
   - [Testing](docs/development/testing.md)
+  - [grepai usage](docs/development/grepai.md)
 
 - **Performance:** [docs/performance/](docs/performance/)
   - [Benchmarks](docs/performance/BENCHMARKS.md)
