@@ -114,6 +114,7 @@ function setupWebSocketSync(
 
   ws.onopen = () => {
     ws.send(JSON.stringify({ type: 'join', room: roomId }));
+    flushBatch();
   };
 
   ws.onmessage = (event) => {

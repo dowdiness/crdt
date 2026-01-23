@@ -162,8 +162,8 @@ const mockValtioEgwalker = {
     }
   },
 
-  get_pending_ops_json: (_proxy: any) => {
-    return '[]';
+  get_pending_ops_json: (proxyState: any) => {
+    return JSON.stringify(proxyState.__pendingOps ?? []);
   },
 
   get_frontier_json: (_proxy: any) => {
@@ -381,6 +381,7 @@ function setupWebSocketSync(
       setState('connected');
       reconnectAttempts = 0;
       ws!.send(JSON.stringify({ type: 'join', room: roomId }));
+      flushBatch();
     };
 
     ws.onmessage = handleMessage;

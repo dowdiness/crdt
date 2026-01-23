@@ -21,7 +21,8 @@
     "prebuild": "moon build --target js",
     "build": "tsc",
     "check": "moon check",
-    "fmt": "moon fmt"
+    "fmt": "moon fmt",
+    "test": "tsc -p tsconfig.test.json && node --loader ./tests/moonbit-loader.mjs --test ./tests/*.test.js"
   },
   "dependencies": {
     "valtio": "^2.1.0"
