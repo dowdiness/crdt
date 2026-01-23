@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "dowdiness/event-graph-walker/fugue"
 
-import(
-  "moonbitlang/core/immut/hashmap"
-)
+import {
+  "moonbitlang/core/immut/hashmap",
+}
 
 // Values
 

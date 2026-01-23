@@ -22,7 +22,11 @@ pub struct Branch {
 ///|
 /// Create a new empty branch
 pub fn Branch::new(oplog : @oplog.OpLog) -> Branch {
-  { frontier: @causal_graph.Frontier::from_array([]), tree: @fugue.FugueTree::new(), oplog }
+  {
+    frontier: @causal_graph.Frontier::from_array([]),
+    tree: @fugue.FugueTree::new(),
+    oplog,
+  }
 }
 
 ///|
@@ -64,7 +68,11 @@ pub fn Branch::checkout(
   }
 
   // Return branch with reconstructed state
-  { frontier: @causal_graph.Frontier::from_array(frontier.0.copy()), tree, oplog }
+  {
+    frontier: @causal_graph.Frontier::from_array(frontier.0.copy()),
+    tree,
+    oplog,
+  }
 }
 
 ///|

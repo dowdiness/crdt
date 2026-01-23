@@ -1,12 +1,12 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "dowdiness/event-graph-walker/document"
 
-import(
-  "dowdiness/event-graph-walker/branch"
-  "dowdiness/event-graph-walker/causal_graph"
-  "dowdiness/event-graph-walker/fugue"
-  "dowdiness/event-graph-walker/oplog"
-)
+import {
+  "dowdiness/event-graph-walker/branch",
+  "dowdiness/event-graph-walker/causal_graph",
+  "dowdiness/event-graph-walker/fugue",
+  "dowdiness/event-graph-walker/oplog",
+}
 
 // Values
 

@@ -1,11 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "dowdiness/event-graph-walker/causal_graph"
 
-import(
-  "moonbitlang/core/immut/hashmap"
-  "moonbitlang/core/json"
-  "moonbitlang/core/quickcheck/splitmix"
-)
+import {
+  "moonbitlang/core/immut/hashmap",
+  "moonbitlang/core/json",
+  "moonbitlang/core/quickcheck/splitmix",
+}
 
 // Values
 

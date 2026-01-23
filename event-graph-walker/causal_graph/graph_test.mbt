@@ -72,7 +72,10 @@ test "graph_diff with no overlap" {
   let lv0 = try! graph.add_version([], "agent1")
   let lv1 = try! graph.add_version([lv0], "agent1")
   let lv2 = try! graph.add_version([lv0], "agent2") // Branch from lv0
-  let (retreat, advance) = graph.graph_diff(Frontier::from_array([lv1]), Frontier::from_array([lv2]))
+  let (retreat, advance) = graph.graph_diff(
+    Frontier::from_array([lv1]),
+    Frontier::from_array([lv2]),
+  )
 
   // lv1 should be in retreat (not reachable from lv2)
   inspect(retreat.contains(lv1), content="true")

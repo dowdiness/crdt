@@ -1,10 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "dowdiness/event-graph-walker/oplog"
 
-import(
-  "dowdiness/event-graph-walker/causal_graph"
-  "moonbitlang/core/json"
-)
+import {
+  "dowdiness/event-graph-walker/causal_graph",
+  "moonbitlang/core/json",
+}
 
 // Values
 
