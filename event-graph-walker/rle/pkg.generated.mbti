@@ -1,0 +1,70 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/event-graph-walker/rle"
+
+// Values
+
+// Errors
+pub(all) suberror RleError {
+  EmptyElement
+  IndexOutOfBounds(index~ : Int, len~ : Int)
+}
+pub impl Show for RleError
+
+// Types and methods
+pub struct RleVec[T] {
+  items : Array[T]
+}
+pub fn[T : Mergeable + HasLength] RleVec::from_array(Array[T]) -> Self[T]
+pub fn RleVec::from_string(String) -> Self[String]
+pub fn[T] RleVec::is_empty(Self[T]) -> Bool
+pub fn[T] RleVec::iter(Self[T]) -> Iter[T]
+pub fn RleVec::iter_chars(Self[String]) -> Iter[Char]
+pub fn[T : HasLength] RleVec::iter_slices(Self[T], start~ : Int, end~ : Int) -> Result[Iter[Slice[T]], RleError]
+pub fn[T : HasLength] RleVec::iter_slices_clamped(Self[T], start~ : Int, end~ : Int) -> Iter[Slice[T]]
+pub fn[T] RleVec::new() -> Self[T]
+pub fn[T : Mergeable + HasLength] RleVec::push(Self[T], T) -> Result[Unit, RleError]
+pub fn[T] RleVec::run_count(Self[T]) -> Int
+pub fn[T : HasLength] RleVec::search(Self[T], Int) -> SearchResult?
+pub fn[T : Sliceable + HasLength + Mergeable] RleVec::split_at(Self[T], Int) -> Result[(Self[T], Self[T]), RleError]
+pub fn RleVec::to_string(Self[String]) -> String
+pub fn[T : HasLength] RleVec::total_atom_len(Self[T]) -> Int
+pub fn[T : HasLength] RleVec::total_content_len(Self[T]) -> Int
+pub impl[T : Eq] Eq for RleVec[T]
+pub impl[T : Show] Show for RleVec[T]
+
+pub(all) struct SearchResult {
+  run_index : Int
+  offset : Int
+}
+pub impl Eq for SearchResult
+pub impl Show for SearchResult
+
+pub(all) struct Slice[T] {
+  value : T
+  start : Int
+  end : Int
+}
+pub fn[T : Sliceable] Slice::to_inner(Self[T]) -> T
+pub impl[T : Eq] Eq for Slice[T]
+pub impl[T : Show] Show for Slice[T]
+
+// Type aliases
+
+// Traits
+pub(open) trait HasLength {
+  atom_len(Self) -> Int
+  content_len(Self) -> Int
+}
+pub impl HasLength for String
+
+pub(open) trait Mergeable {
+  can_merge(Self, Self) -> Bool
+  merge(Self, Self) -> Self
+}
+pub impl Mergeable for String
+
+pub(open) trait Sliceable {
+  slice(Self, start~ : Int, end~ : Int) -> Self
+}
+pub impl Sliceable for String
+

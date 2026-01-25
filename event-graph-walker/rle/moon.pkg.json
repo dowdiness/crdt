@@ -1,0 +1,7 @@
+{
+  "import": [
+    "moonbitlang/core/builtin",
+    "moonbitlang/core/string",
+    { "path": "moonbitlang/quickcheck", "alias": "qc" }
+  ]
+}

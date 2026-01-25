@@ -1169,25 +1169,322 @@ test "normalize_last cascade with parity-dependent merging" {
 ```
 
 ## Migration Plan
-- Phase 1: Introduce RLE package and text adapters (read-only).
-- Phase 2: Evaluate use in `FugueTree::to_text()` or cached text logic.
-- Phase 3: Consider RLE-backed document representation if performance needs.
+
+### Phase 1: Foundation (Current)
+- Introduce `event-graph-walker/rle` package with basic `RleVec[T]`.
+- Implement core traits: `Mergeable`, `Sliceable`, `HasLength`.
+- Add text adapters (read-only): `RleVec::from_string`, `to_string`.
+- Linear O(n) operations acceptable for small documents.
+- **Exit criteria:** All property tests pass, integrates with `TextView`.
+
+### Phase 2: Production Ready
+- Add prefix-sum caching (lazy rebuild with dirty flag).
+- Implement `RleCursor` for efficient sequential access.
+- Add `concat`/`extend` operations.
+- Optimize `String::slice` with `StringBuilder`.
+- Evaluate use in `FugueTree::to_text()` or cached text logic.
+- **Exit criteria:** Benchmarks meet targets in Performance Roadmap.
+
+### Phase 3: Scale
+- Consider RLE-backed document representation.
+- Implement rope-like `ChunkedRleVec` for large documents.
+- Add batch construction (`from_iter` with single-pass normalize).
+- Evaluate gap buffer for edit-heavy workloads.
+- **Exit criteria:** Handles 100K+ character documents efficiently.
+
+## Performance Roadmap
+
+This section documents known performance limitations and planned improvements for future phases.
+
+### Phase 1 Limitations (Current Design)
+
+| Operation | Complexity | Notes |
+|-----------|------------|-------|
+| `total_atom_len()` | O(n) | Recomputed on each call |
+| `total_content_len()` | O(n) | Recomputed on each call |
+| `search()` | O(n) | Linear scan |
+| `push()` with cascade | O(n²) worst | `normalize_last` may cascade |
+| `String::slice()` | O(n²) | Repeated string concatenation |
+| `String::atom_len()` | O(n) | Codepoint iteration |
+
+These are acceptable for Phase 1 (read-only adapters, small documents) but must be addressed before adopting RLE as the primary storage layer.
+
+### Phase 2: Cached Prefix Sums (Required for Production)
+
+Promote `RleVecCached` from optional to the default implementation:
+
+```moonbit
+///|
+pub struct RleVec[T] {
+  mut items : Array[T]
+  mut prefix_sums : Array[Int]  // prefix_sums[i] = cumulative atom_len through items[i]
+  mut dirty : Bool              // Invalidation flag
+}
+
+///|
+/// O(1) after rebuild; O(n) rebuild amortized over mutations.
+fn total_atom_len[T](self : RleVec[T]) -> Int {
+  self.rebuild_if_dirty()
+  match self.prefix_sums.last() {
+    Some(total) => total
+    None => 0
+  }
+}
+
+///|
+/// O(log n) binary search on prefix_sums.
+fn search[T : HasLength](self : RleVec[T], index : Int) -> SearchResult? {
+  self.rebuild_if_dirty()
+  // Binary search implementation (see existing search_cached)
+}
+```
+
+**Invalidation strategy:**
+- `push`, `split_at`, `clear`, `extend` set `dirty = true`
+- Read operations call `rebuild_if_dirty()` (lazy rebuild)
+- Amortized O(1) for repeated reads between mutations
+
+**Content length caching:** Add separate `content_prefix_sums` array for `total_content_len()` O(1) access.
+
+### Phase 2: Efficient String Operations
+
+Replace naive string slicing with builder pattern:
+
+```moonbit
+///|
+impl Sliceable for String with slice(self, start~, end~) {
+  // Use StringBuilder for O(n) instead of O(n²)
+  let builder = StringBuilder::new(size_hint=(end - start) * 4)
+  let mut i = 0
+  for c in self {
+    if i >= end { break }
+    if i >= start {
+      builder.write_char(c)
+    }
+    i = i + 1
+  }
+  builder.to_string()
+}
+```
+
+**Alternative:** For hot paths, consider `Bytes` with UTF-8 indexing cache:
+
+```moonbit
+///|
+struct CachedString {
+  bytes : Bytes
+  char_indices : Array[Int]  // byte offset of each codepoint
+}
+```
+
+### Phase 2: Cursor API for Sequential Access
+
+Add a cursor type that maintains position state:
+
+```moonbit
+///|
+/// A cursor into an RleVec for efficient sequential access.
+/// Avoids repeated O(log n) searches when iterating.
+pub struct RleCursor[T] {
+  vec : RleVec[T]
+  mut run_index : Int      // Current run
+  mut offset_in_run : Int  // Offset within current run
+  mut global_offset : Int  // Total offset from start
+}
+
+///|
+pub fn RleVec::cursor[T](self : RleVec[T]) -> RleCursor[T] {
+  { vec: self, run_index: 0, offset_in_run: 0, global_offset: 0 }
+}
+
+///|
+/// Move cursor forward by `n` atoms. O(k) where k = runs traversed.
+fn advance[T : HasLength](self : RleCursor[T], n : Int) -> Bool
+
+///|
+/// Move cursor backward by `n` atoms. O(k) where k = runs traversed.
+fn retreat[T : HasLength](self : RleCursor[T], n : Int) -> Bool
+
+///|
+/// Get the current run and offset without searching.
+fn current[T](self : RleCursor[T]) -> (T, Int)?
+
+///|
+/// Seek to absolute position. O(log n) via binary search.
+fn seek[T : HasLength](self : RleCursor[T], position : Int) -> Bool
+```
+
+**Use cases:**
+- Editor cursor movement (repeated small advances)
+- Rendering visible range (sequential iteration)
+- Applying local edits (seek + modify)
+
+### Phase 2: Concat/Extend Operations
+
+Add efficient merging of two `RleVec`s:
+
+```moonbit
+///|
+/// Concatenate two RleVecs, merging at the boundary if possible.
+/// O(n + m) where n, m are run counts.
+pub fn concat[T : Mergeable + HasLength](
+  self : RleVec[T],
+  other : RleVec[T]
+) -> RleVec[T] {
+  let result = RleVec::new()
+  for item in self.items {
+    let _ = result.push(item)
+  }
+  for item in other.items {
+    let _ = result.push(item)  // First push may merge with last of self
+  }
+  result
+}
+
+///|
+/// Extend in-place from another RleVec.
+pub fn extend[T : Mergeable + HasLength](
+  self : RleVec[T],
+  other : RleVec[T]
+) -> Unit {
+  for item in other.items {
+    let _ = self.push(item)
+  }
+  self.invalidate()
+}
+```
+
+### Phase 3: Normalize Cascade Optimization
+
+The current `normalize_last` can cascade O(n) merges. Mitigations:
+
+**Option A: Batch construction**
+```moonbit
+///|
+/// Build RleVec without per-push normalization, normalize once at end.
+pub fn RleVec::from_iter[T : Mergeable + HasLength](
+  iter : Iter[T]
+) -> RleVec[T] {
+  let items = iter.filter(fn(x) { T::atom_len(x) > 0 }).collect()
+  let vec = { items, dirty: true }
+  vec.normalize_all()  // Single pass merge
+  vec
+}
+
+///|
+fn normalize_all[T : Mergeable](self : RleVec[T]) -> Unit {
+  // Single O(n) pass merging adjacent mergeable runs
+}
+```
+
+**Option B: Limit cascade depth**
+```moonbit
+///|
+fn normalize_last[T : Mergeable](self : RleVec[T], max_depth~ : Int = 3) -> Unit {
+  let mut depth = 0
+  while self.items.length() >= 2 && depth < max_depth {
+    // ... merge logic ...
+    depth = depth + 1
+  }
+}
+```
+
+For types where `can_merge` depends on merged state (like `ParityRun`), document that batch construction is preferred.
+
+### Phase 3: Memory Layout Optimizations
+
+For large documents, consider alternative backing structures:
+
+**Small-string optimization:**
+```moonbit
+///|
+enum RunStorage[T] {
+  Inline(FixedArray[T, 8])  // Stack-allocated for small runs
+  Heap(Array[T])            // Heap for larger runs
+}
+```
+
+**Rope-like chunking:**
+```moonbit
+///|
+/// For very large documents, chunk into fixed-size RleVecs.
+struct ChunkedRleVec[T] {
+  chunks : Array[RleVec[T]]
+  chunk_size : Int  // Target atoms per chunk (e.g., 4096)
+}
+```
+
+**Gap buffer for edit locality:**
+```moonbit
+///|
+/// Optimized for edits clustered around a cursor position.
+struct GapRleVec[T] {
+  before_gap : Array[T]
+  after_gap : Array[T]
+  gap_position : Int
+}
+```
+
+### Benchmarking Milestones
+
+Before advancing phases, benchmark against current implementation:
+
+| Benchmark | Target | Baseline |
+|-----------|--------|----------|
+| `search` 10K items | < 1μs | O(n) scan |
+| `push` 10K sequential | < 10ms | Current impl |
+| `iter_slices` full doc | < 5ms | Current impl |
+| `split_at` mid-doc | < 1ms | Current impl |
+| Memory overhead | < 2x raw | Measure prefix_sums cost |
+
+Use `moon bench --release` in `event-graph-walker/rle/` to track regressions.
+
+### Decision Matrix
+
+| Optimization | Phase | Complexity | Impact | Dependencies |
+|--------------|-------|------------|--------|--------------|
+| Prefix-sum caching | 2 | Low | High | None |
+| StringBuilder slice | 2 | Low | Medium | None |
+| Cursor API | 2 | Medium | High | Prefix sums |
+| concat/extend | 2 | Low | Medium | None |
+| Batch construction | 3 | Medium | Medium | None |
+| Rope chunking | 3 | High | High | Cursor API |
+| Gap buffer | 3 | High | Medium | Benchmarks |
 
 ## Open Questions
 
 1. **Run type for text:** Use `String` directly vs custom `TextRun` struct?
    - `String`: Simpler, works for plain text.
    - `TextRun`: Extensible for styling/metadata (e.g., bold, links).
+   - **Recommendation:** Start with `String` in Phase 1, introduce `TextRun` when styling is needed.
 
 2. **Index type:** Keep `Int` or introduce newtype?
    - Consider `type AtomIndex Int` for type safety if mixing with byte indices.
+   - **Recommendation:** Defer until Phase 2; introduce if bugs arise from index confusion.
 
 3. **Visibility:** Expose `RleVec` publicly or keep internal?
    - Start internal, expose if useful for downstream packages.
+   - **Recommendation:** Keep internal in Phase 1; promote to public API in Phase 2 after stabilization.
 
-4. **Prefix-sum caching:** Cache cumulative lengths?
-   - Trade-off: O(1) search vs O(n) update on mutation.
-   - Consider lazy caching with invalidation flag.
+4. ~~**Prefix-sum caching:** Cache cumulative lengths?~~
+   - ~~Trade-off: O(1) search vs O(n) update on mutation.~~
+   - ~~Consider lazy caching with invalidation flag.~~
+   - **Resolved:** Lazy caching with dirty flag is the chosen approach. See Performance Roadmap Phase 2.
+
+5. **Cursor invalidation:** How should cursors behave when the underlying `RleVec` is mutated?
+   - Option A: Cursors hold a version number; operations fail if stale.
+   - Option B: Cursors are invalidated on mutation (must re-seek).
+   - Option C: Cursors auto-adjust positions after mutations (complex).
+   - **Recommendation:** Option B for simplicity; document that cursors are invalidated by mutations.
+
+6. **Chunk size for rope structure:** What's the optimal chunk size for `ChunkedRleVec`?
+   - Trade-off: Smaller chunks = faster local edits, larger chunks = less overhead.
+   - **Recommendation:** Benchmark with 1KB, 4KB, 16KB chunks; likely 4KB is optimal for text.
+
+7. **Content-length prefix sums:** Separate array or compute from atom sums?
+   - Separate array doubles memory but gives O(1) `total_content_len()`.
+   - Computing from atom sums requires iterating runs with tombstones.
+   - **Recommendation:** Separate array; memory cost is acceptable for O(1) lookups.
 
 ## MoonBit Implementation Notes
 
