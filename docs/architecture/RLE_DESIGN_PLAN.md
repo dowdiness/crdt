@@ -1170,20 +1170,31 @@ test "normalize_last cascade with parity-dependent merging" {
 
 ## Migration Plan
 
-### Phase 1: Foundation (Current)
-- Introduce `event-graph-walker/rle` package with basic `RleVec[T]`.
-- Implement core traits: `Mergeable`, `Sliceable`, `HasLength`.
-- Add text adapters (read-only): `RleVec::from_string`, `to_string`.
-- Linear O(n) operations acceptable for small documents.
+### Phase 1: Foundation (Complete ✓)
+- ✅ Introduce `event-graph-walker/rle` package with basic `RleVec[T]`.
+- ✅ Implement core traits: `Mergeable`, `Sliceable`, `HasLength`.
+- ✅ Add text adapters (read-only): `RleVec::from_string`, `to_string`.
+- ✅ Linear O(n) operations acceptable for small documents.
 - **Exit criteria:** All property tests pass, integrates with `TextView`.
 
-### Phase 2: Production Ready
-- Add prefix-sum caching (lazy rebuild with dirty flag).
-- Implement `RleCursor` for efficient sequential access.
-- Add `concat`/`extend` operations.
-- Optimize `String::slice` with `StringBuilder`.
-- Evaluate use in `FugueTree::to_text()` or cached text logic.
+### Phase 2: Production Ready (Complete ✓)
+- ✅ Add prefix-sum caching (lazy rebuild with dirty flag) → `RleVecCached[T]`
+- ✅ Implement `RleCursor` for efficient sequential access.
+- ✅ Add `concat`/`extend` operations.
+- ⏳ Optimize `String::slice` with `StringBuilder` (deferred - current O(n) acceptable).
+- ⏳ Evaluate use in `FugueTree::to_text()` or cached text logic (integration pending).
 - **Exit criteria:** Benchmarks meet targets in Performance Roadmap.
+
+**Phase 2 Implementation Files:**
+- `rle_vec_cached.mbt` - Cached RleVec with O(log n) binary search
+- `cursor.mbt` - RleCursor for O(1) sequential access
+- `operations.mbt` - concat/extend/clear/get_run utilities
+
+**Phase 2 Test Files (67 new tests):**
+- `rle_vec_cached_test.mbt` - 27 blackbox tests
+- `cursor_test.mbt` - 22 cursor tests
+- `operations_test.mbt` - 11 operation tests
+- `rle_vec_cached_properties_test.mbt` - 7 property-based tests
 
 ### Phase 3: Scale
 - Consider RLE-backed document representation.
@@ -1209,9 +1220,9 @@ This section documents known performance limitations and planned improvements fo
 
 These are acceptable for Phase 1 (read-only adapters, small documents) but must be addressed before adopting RLE as the primary storage layer.
 
-### Phase 2: Cached Prefix Sums (Required for Production)
+### Phase 2: Cached Prefix Sums (Implemented ✓)
 
-Promote `RleVecCached` from optional to the default implementation:
+`RleVecCached[T]` is now available with the following optimizations:
 
 ```moonbit
 ///|

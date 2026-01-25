@@ -42,7 +42,7 @@ pub impl @quickcheck.Arbitrary for RealOps with arbitrary(size, random_state) {
       ops.push(change.to_op())
     }
   }
-  { agent, ops, }
+  { agent, ops }
 }
 
 ///|

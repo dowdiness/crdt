@@ -11,12 +11,40 @@ pub(all) suberror RleError {
 pub impl Show for RleError
 
 // Types and methods
+pub struct RleCursor[T] {
+  vec : RleVecCached[T]
+  mut run_index : Int
+  mut offset_in_run : Int
+  mut global_offset : Int
+}
+pub fn[T : HasLength] RleCursor::advance(Self[T], Int) -> Bool
+pub fn[T] RleCursor::clone(Self[T]) -> Self[T]
+pub fn[T] RleCursor::current(Self[T]) -> (T, Int)?
+pub fn[T] RleCursor::current_item(Self[T]) -> T?
+pub fn[T] RleCursor::distance_to(Self[T], Self[T]) -> Int
+pub fn[T : HasLength] RleCursor::is_at_end(Self[T]) -> Bool
+pub fn[T] RleCursor::is_at_start(Self[T]) -> Bool
+pub fn[T : HasLength] RleCursor::iter_forward(Self[T]) -> Iter[(T, Int, Int)]
+pub fn[T : HasLength] RleCursor::next(Self[T]) -> T?
+pub fn[T] RleCursor::position(Self[T]) -> Int
+pub fn[T : HasLength] RleCursor::prev(Self[T]) -> T?
+pub fn[T : HasLength] RleCursor::retreat(Self[T], Int) -> Bool
+pub fn[T : HasLength] RleCursor::seek(Self[T], Int) -> Bool
+pub fn[T : HasLength] RleCursor::seek_end(Self[T]) -> Unit
+pub fn[T] RleCursor::seek_start(Self[T]) -> Unit
+pub impl[T : Show] Show for RleCursor[T]
+
 pub struct RleVec[T] {
   items : Array[T]
 }
+pub fn[T] RleVec::clear(Self[T]) -> Unit
+pub fn[T : Mergeable + HasLength] RleVec::concat(Self[T], Self[T]) -> Self[T]
+pub fn[T : Mergeable + HasLength] RleVec::extend(Self[T], Self[T]) -> Unit
 pub fn[T : Mergeable + HasLength] RleVec::from_array(Array[T]) -> Self[T]
 pub fn RleVec::from_string(String) -> Self[String]
+pub fn[T] RleVec::get_run(Self[T], Int) -> T?
 pub fn[T] RleVec::is_empty(Self[T]) -> Bool
+pub fn[T] RleVec::items(Self[T]) -> Array[T]
 pub fn[T] RleVec::iter(Self[T]) -> Iter[T]
 pub fn RleVec::iter_chars(Self[String]) -> Iter[Char]
 pub fn[T : HasLength] RleVec::iter_slices(Self[T], start~ : Int, end~ : Int) -> Result[Iter[Slice[T]], RleError]
@@ -31,6 +59,38 @@ pub fn[T : HasLength] RleVec::total_atom_len(Self[T]) -> Int
 pub fn[T : HasLength] RleVec::total_content_len(Self[T]) -> Int
 pub impl[T : Eq] Eq for RleVec[T]
 pub impl[T : Show] Show for RleVec[T]
+
+pub struct RleVecCached[T] {
+  items : Array[T]
+  mut prefix_sums : Array[Int]
+  mut content_prefix_sums : Array[Int]
+  mut dirty : Bool
+}
+pub fn[T] RleVecCached::clear(Self[T]) -> Unit
+pub fn[T : Mergeable + HasLength] RleVecCached::concat(Self[T], Self[T]) -> Self[T]
+pub fn[T] RleVecCached::cursor(Self[T]) -> RleCursor[T]
+pub fn[T : Mergeable + HasLength] RleVecCached::extend(Self[T], Self[T]) -> Unit
+pub fn[T : Mergeable + HasLength] RleVecCached::from_array(Array[T]) -> Self[T]
+pub fn[T] RleVecCached::from_rle_vec(RleVec[T]) -> Self[T]
+pub fn RleVecCached::from_string(String) -> Self[String]
+pub fn[T] RleVecCached::get_run(Self[T], Int) -> T?
+pub fn[T] RleVecCached::is_empty(Self[T]) -> Bool
+pub fn[T] RleVecCached::items(Self[T]) -> Array[T]
+pub fn[T] RleVecCached::iter(Self[T]) -> Iter[T]
+pub fn RleVecCached::iter_chars(Self[String]) -> Iter[Char]
+pub fn[T : HasLength] RleVecCached::iter_slices(Self[T], start~ : Int, end~ : Int) -> Result[Iter[Slice[T]], RleError]
+pub fn[T : HasLength] RleVecCached::iter_slices_clamped(Self[T], start~ : Int, end~ : Int) -> Iter[Slice[T]]
+pub fn[T] RleVecCached::new() -> Self[T]
+pub fn[T : Mergeable + HasLength] RleVecCached::push(Self[T], T) -> Result[Unit, RleError]
+pub fn[T] RleVecCached::run_count(Self[T]) -> Int
+pub fn[T : HasLength] RleVecCached::search(Self[T], Int) -> SearchResult?
+pub fn[T : Sliceable + HasLength + Mergeable] RleVecCached::split_at(Self[T], Int) -> Result[(Self[T], Self[T]), RleError]
+pub fn[T] RleVecCached::to_rle_vec(Self[T]) -> RleVec[T]
+pub fn RleVecCached::to_string(Self[String]) -> String
+pub fn[T : HasLength] RleVecCached::total_atom_len(Self[T]) -> Int
+pub fn[T : HasLength] RleVecCached::total_content_len(Self[T]) -> Int
+pub impl[T : Eq] Eq for RleVecCached[T]
+pub impl[T : Show] Show for RleVecCached[T]
 
 pub(all) struct SearchResult {
   run_index : Int
