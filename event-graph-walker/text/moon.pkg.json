@@ -6,6 +6,7 @@
     "dowdiness/event-graph-walker/fugue",
     "dowdiness/event-graph-walker/branch",
     "dowdiness/event-graph-walker/document",
+    "dowdiness/event-graph-walker/rle",
     { "path": "moonbitlang/quickcheck", "alias": "qc" }
   ]
 }

@@ -36,6 +36,29 @@ pub fn TextView::inner_branch(self : TextView) -> @branch.Branch {
 }
 
 ///|
+/// Returns an RLE view of the text content.
+/// Useful for efficient text iteration and range operations.
+///
+/// Note: For plain text, this creates a single-run RleVec. The RLE structure
+/// becomes more useful with styled/attributed text (future enhancement).
+pub fn TextView::to_rle(self : TextView) -> @rle.RleVec[String] {
+  @rle.RleVec::from_string(self.text())
+}
+
+///|
+/// Iterates over text runs.
+/// For a plain text view, this yields a single run containing all text.
+/// Future styled-text support would yield multiple runs with different attributes.
+pub fn TextView::runs(self : TextView) -> Iter[String] {
+  let text = self.text()
+  if text.is_empty() {
+    Iter::empty()
+  } else {
+    [text].iter()
+  }
+}
+
+///|
 pub impl Show for TextView with output(self, logger) {
   logger.write_string("TextView { text: \"")
   let text = self.text()

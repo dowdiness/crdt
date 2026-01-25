@@ -6,6 +6,7 @@ import {
   "dowdiness/event-graph-walker/causal_graph",
   "dowdiness/event-graph-walker/document",
   "dowdiness/event-graph-walker/oplog",
+  "dowdiness/event-graph-walker/rle",
 }
 
 // Values
@@ -100,7 +101,9 @@ pub(all) struct TextView {
 pub fn TextView::from_branch(@branch.Branch) -> Self
 pub fn TextView::inner_branch(Self) -> @branch.Branch
 pub fn TextView::len(Self) -> Int
+pub fn TextView::runs(Self) -> Iter[String]
 pub fn TextView::text(Self) -> String
+pub fn TextView::to_rle(Self) -> @rle.RleVec[String]
 pub fn TextView::version(Self) -> Version
 pub impl Show for TextView
 

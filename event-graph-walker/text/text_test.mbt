@@ -189,3 +189,24 @@ test "TextDoc delete at invalid position raises error" {
     _ => fail("Expected InvalidPosition error")
   }
 }
+
+///|
+test "TextView::to_rle returns RLE view" {
+  let doc = TextDoc::new("alice")
+  let _ = doc.insert(Pos::at(0), "Hello")
+  let view = doc.checkout(doc.version())
+  let rle = view.to_rle()
+  inspect(rle.run_count(), content="1")
+  inspect(rle.total_atom_len(), content="5")
+  inspect(rle.to_string(), content="Hello")
+}
+
+///|
+test "TextView::runs iterates over runs" {
+  let doc = TextDoc::new("alice")
+  let _ = doc.insert(Pos::at(0), "Hello")
+  let view = doc.checkout(doc.version())
+  let runs = view.runs().collect()
+  inspect(runs.length(), content="1")
+  inspect(runs[0], content="Hello")
+}

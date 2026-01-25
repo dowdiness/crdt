@@ -37,9 +37,10 @@ pub impl Sliceable for String with slice(self, start~, end~) {
 /// Creates an RleVec containing a single string run.
 pub fn RleVec::from_string(text : String) -> RleVec[String] {
   let vec = RleVec::new()
-  if text.iter().count() > 0 {
+  // Use is_empty() for O(1) check instead of counting codepoints
+  if not(text.is_empty()) {
     let _ = vec.push(text)
-    // Safe: prechecked atom_len > 0
+    // Safe: prechecked non-empty
   }
   vec
 }
