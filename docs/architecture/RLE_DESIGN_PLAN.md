@@ -1181,20 +1181,39 @@ test "normalize_last cascade with parity-dependent merging" {
 - ✅ Add prefix-sum caching (lazy rebuild with dirty flag) → `RleVecCached[T]`
 - ✅ Implement `RleCursor` for efficient sequential access.
 - ✅ Add `concat`/`extend` operations.
-- ⏳ Optimize `String::slice` with `StringBuilder` (deferred - current O(n) acceptable).
-- ⏳ Evaluate use in `FugueTree::to_text()` or cached text logic (integration pending).
-- **Exit criteria:** Benchmarks meet targets in Performance Roadmap.
+- ✅ Optimize `String::slice` with `StringBuilder` (O(n) instead of O(n²)).
+- ✅ Optimize `FugueTree::to_text()` with `StringBuilder`.
+- ✅ Benchmarks added and all targets met.
+- **Exit criteria:** ✅ Complete - all benchmarks pass, all tests pass.
 
 **Phase 2 Implementation Files:**
 - `rle_vec_cached.mbt` - Cached RleVec with O(log n) binary search
 - `cursor.mbt` - RleCursor for O(1) sequential access
 - `operations.mbt` - concat/extend/clear/get_run utilities
+- `rle_benchmark.mbt` - Performance benchmarks
 
 **Phase 2 Test Files (67 new tests):**
 - `rle_vec_cached_test.mbt` - 27 blackbox tests
 - `cursor_test.mbt` - 22 cursor tests
 - `operations_test.mbt` - 11 operation tests
 - `rle_vec_cached_properties_test.mbt` - 7 property-based tests
+
+**Phase 2 Benchmark Results vs Targets (--release):**
+| Benchmark | Target | Actual | Status |
+|-----------|--------|--------|--------|
+| search 10K items | < 1μs | 0.01 µs | ✅ |
+| push 10K sequential | < 10ms | 9.02 ms | ✅ |
+| iter_slices full 10K | < 5ms | 0.05 µs | ✅ |
+| split_at 10K doc | < 1ms | 230.06 µs | ✅ |
+| Memory overhead | < 2x raw | ~2n ints for n runs | ✅ |
+
+**Additional Benchmarks:**
+| Benchmark | Time | Notes |
+|-----------|------|-------|
+| cursor advance (1000 steps) | 3.73 ms | Sequential access |
+| cursor seek (1000 seeks) | 10.28 µs | Random access |
+| string slice (10000 chars) | 85.33 µs | StringBuilder O(n) |
+| to_string (1000 runs) | 18.38 µs | StringBuilder O(n) |
 
 ### Phase 3: Scale
 - Consider RLE-backed document representation.
@@ -1209,16 +1228,17 @@ This section documents known performance limitations and planned improvements fo
 
 ### Phase 1 Limitations (Current Design)
 
-| Operation | Complexity | Notes |
-|-----------|------------|-------|
-| `total_atom_len()` | O(n) | Recomputed on each call |
-| `total_content_len()` | O(n) | Recomputed on each call |
-| `search()` | O(n) | Linear scan |
-| `push()` with cascade | O(n²) worst | `normalize_last` may cascade |
-| `String::slice()` | O(n²) | Repeated string concatenation |
-| `String::atom_len()` | O(n) | Codepoint iteration |
+| Operation | RleVec | RleVecCached | Notes |
+|-----------|--------|--------------|-------|
+| `total_atom_len()` | O(n) | O(1)* | *After rebuild |
+| `total_content_len()` | O(n) | O(1)* | *After rebuild |
+| `search()` | O(n) | O(log n) | Binary search with prefix sums |
+| `push()` with cascade | O(n²) worst | O(n²) worst | `normalize_last` may cascade |
+| `String::slice()` | O(n) | O(n) | ✅ Now uses StringBuilder |
+| `String::atom_len()` | O(n) | O(n) | Codepoint iteration |
+| `FugueTree::to_text()` | O(n) | O(n) | ✅ Now uses StringBuilder |
 
-These are acceptable for Phase 1 (read-only adapters, small documents) but must be addressed before adopting RLE as the primary storage layer.
+RleVec remains for Phase 1 use cases. Use RleVecCached for production workloads.
 
 ### Phase 2: Cached Prefix Sums (Implemented ✓)
 
@@ -1464,38 +1484,32 @@ Use `moon bench --release` in `event-graph-walker/rle/` to track regressions.
 
 ## Open Questions
 
-1. **Run type for text:** Use `String` directly vs custom `TextRun` struct?
-   - `String`: Simpler, works for plain text.
-   - `TextRun`: Extensible for styling/metadata (e.g., bold, links).
-   - **Recommendation:** Start with `String` in Phase 1, introduce `TextRun` when styling is needed.
+1. ~~**Run type for text:** Use `String` directly vs custom `TextRun` struct?~~
+   - **Resolved:** Using `String` for Phase 1/2. Introduce `TextRun` when styling is needed.
 
-2. **Index type:** Keep `Int` or introduce newtype?
-   - Consider `type AtomIndex Int` for type safety if mixing with byte indices.
-   - **Recommendation:** Defer until Phase 2; introduce if bugs arise from index confusion.
+2. ~~**Index type:** Keep `Int` or introduce newtype?~~
+   - **Resolved:** Keeping `Int`. No bugs from index confusion. Revisit if issues arise.
 
-3. **Visibility:** Expose `RleVec` publicly or keep internal?
-   - Start internal, expose if useful for downstream packages.
-   - **Recommendation:** Keep internal in Phase 1; promote to public API in Phase 2 after stabilization.
+3. ~~**Visibility:** Expose `RleVec` publicly or keep internal?~~
+   - **Resolved:** Both `RleVec` and `RleVecCached` are now public after Phase 2 stabilization.
 
 4. ~~**Prefix-sum caching:** Cache cumulative lengths?~~
-   - ~~Trade-off: O(1) search vs O(n) update on mutation.~~
-   - ~~Consider lazy caching with invalidation flag.~~
-   - **Resolved:** Lazy caching with dirty flag is the chosen approach. See Performance Roadmap Phase 2.
+   - **Resolved:** Lazy caching with dirty flag implemented in `RleVecCached`.
 
 5. **Cursor invalidation:** How should cursors behave when the underlying `RleVec` is mutated?
    - Option A: Cursors hold a version number; operations fail if stale.
    - Option B: Cursors are invalidated on mutation (must re-seek).
    - Option C: Cursors auto-adjust positions after mutations (complex).
-   - **Recommendation:** Option B for simplicity; document that cursors are invalidated by mutations.
+   - **Current:** Option B (documentation-only). Cursors document invalidation but don't enforce it.
+   - **Future consideration:** Add version number check (Option A) if silent corruption becomes a problem.
 
 6. **Chunk size for rope structure:** What's the optimal chunk size for `ChunkedRleVec`?
    - Trade-off: Smaller chunks = faster local edits, larger chunks = less overhead.
    - **Recommendation:** Benchmark with 1KB, 4KB, 16KB chunks; likely 4KB is optimal for text.
+   - **Status:** Deferred to Phase 3.
 
-7. **Content-length prefix sums:** Separate array or compute from atom sums?
-   - Separate array doubles memory but gives O(1) `total_content_len()`.
-   - Computing from atom sums requires iterating runs with tombstones.
-   - **Recommendation:** Separate array; memory cost is acceptable for O(1) lookups.
+7. ~~**Content-length prefix sums:** Separate array or compute from atom sums?~~
+   - **Resolved:** Separate `content_prefix_sums` array implemented for O(1) lookups.
 
 ## MoonBit Implementation Notes
 

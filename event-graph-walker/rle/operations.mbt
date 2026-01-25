@@ -128,8 +128,12 @@ pub fn RleVecCached::from_string(text : String) -> RleVecCached[String] {
 
 ///|
 /// Concatenates all runs into a single string.
+/// Uses StringBuilder for O(n) performance.
 pub fn RleVecCached::to_string(self : RleVecCached[String]) -> String {
-  self.items.fold(init="", fn(acc, s) { acc + s })
+  self.items.fold(init=StringBuilder::new(), fn(sb, s) {
+    sb.write_string(s)
+    sb
+  }).to_string()
 }
 
 ///|

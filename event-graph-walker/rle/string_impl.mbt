@@ -24,13 +24,17 @@ pub impl HasLength for String with content_len(self) {
 
 ///|
 pub impl Sliceable for String with slice(self, start~, end~) {
-  // Codepoint-safe slicing using iterator
-  // Note: O(n) due to codepoint iteration
+  // Codepoint-safe slicing using StringBuilder for O(n) performance
+  // (Previously used string concatenation which was O(n²))
   self
   .iter()
   .drop(start)
   .take(end - start)
-  .fold(init="", fn(acc, c) { acc + c.to_string() })
+  .fold(init=StringBuilder::new(), fn(sb, c) {
+    sb.write_char(c)
+    sb
+  })
+  .to_string()
 }
 
 ///|
@@ -47,8 +51,12 @@ pub fn RleVec::from_string(text : String) -> RleVec[String] {
 
 ///|
 /// Concatenates all runs into a single string.
+/// Uses StringBuilder for O(n) performance.
 pub fn RleVec::to_string(self : RleVec[String]) -> String {
-  self.items.fold(init="", fn(acc, s) { acc + s })
+  self.items.fold(init=StringBuilder::new(), fn(sb, s) {
+    sb.write_string(s)
+    sb
+  }).to_string()
 }
 
 ///|

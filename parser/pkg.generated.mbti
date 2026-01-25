@@ -1,10 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "dowdiness/crdt/parser"
 
-import(
-  "moonbitlang/core/hashmap"
-  "moonbitlang/core/json"
-)
+import {
+  "moonbitlang/core/hashmap",
+  "moonbitlang/core/json",
+}
 
 // Values
 pub fn ast_to_crdt(TermNode) -> CRDTNode

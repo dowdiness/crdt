@@ -66,14 +66,17 @@ pub fn FugueTree::visible_count(self : FugueTree) -> Int {
 }
 
 ///|
-/// Convert tree to text by traversing in order
+/// Convert tree to text by traversing in order.
+/// Uses StringBuilder for O(n) performance.
 pub fn FugueTree::to_text(self : FugueTree) -> String {
   self
   .get_visible_items()
-  .fold(init="", (acc, entry) => {
+  .fold(init=StringBuilder::new(), fn(sb, entry) {
     let (_, item) = entry
-    acc + item.content
+    sb.write_string(item.content)
+    sb
   })
+  .to_string()
 }
 
 ///|
