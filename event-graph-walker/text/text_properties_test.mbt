@@ -6,6 +6,7 @@
 ///|
 /// Generated operations for property testing (real TextDoc edits).
 pub(all) struct RealOps {
+  agent : String
   ops : Array[@oplog.Op]
 } derive(Show)
 
@@ -16,7 +17,9 @@ pub impl @quickcheck.Arbitrary for RealOps with arbitrary(size, random_state) {
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
     'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
   ]
-  let doc = @text.TextDoc::new("gen")
+  let agent_id = random_state.split().next_uint64().to_int().abs()
+  let agent = "gen-\{agent_id}"
+  let doc = @text.TextDoc::new(agent)
   let ops : Array[@oplog.Op] = []
   for i = 0; i < size; i = i + 1 {
     let len = doc.len()
@@ -39,7 +42,7 @@ pub impl @quickcheck.Arbitrary for RealOps with arbitrary(size, random_state) {
       ops.push(change.to_op())
     }
   }
-  { ops, }
+  { agent, ops, }
 }
 
 ///|
@@ -49,12 +52,12 @@ pub impl @qc.Shrink for RealOps with shrink(self) {
   let ops = self.ops
   let len = ops.length()
   if len > 0 {
-    results.push({ ops: [] })
+    results.push({ agent: self.agent, ops: [] })
     let half = len / 2
     if half > 0 {
-      results.push({ ops: ops[:half].to_array() })
+      results.push({ agent: self.agent, ops: ops[:half].to_array() })
     }
-    results.push({ ops: ops[:len - 1].to_array() })
+    results.push({ agent: self.agent, ops: ops[:len - 1].to_array() })
   }
   results.iter()
 }
