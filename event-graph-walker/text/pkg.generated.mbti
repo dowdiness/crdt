@@ -103,7 +103,7 @@ pub fn TextView::inner_branch(Self) -> @branch.Branch
 pub fn TextView::len(Self) -> Int
 pub fn TextView::runs(Self) -> Iter[String]
 pub fn TextView::text(Self) -> String
-pub fn TextView::to_rle(Self) -> @rle.RleVec[String]
+pub fn TextView::to_rle(Self) -> @rle.Runs[String]
 pub fn TextView::version(Self) -> Version
 pub impl Show for TextView
 

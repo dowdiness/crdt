@@ -196,8 +196,8 @@ test "TextView::to_rle returns RLE view" {
   let _ = doc.insert(Pos::at(0), "Hello")
   let view = doc.checkout(doc.version())
   let rle = view.to_rle()
-  inspect(rle.run_count(), content="1")
-  inspect(rle.total_atom_len(), content="5")
+  inspect(rle.count(), content="1")
+  inspect(rle.len(), content="5")
   inspect(rle.to_string(), content="Hello")
 }
 

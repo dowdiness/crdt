@@ -41,8 +41,8 @@ pub fn TextView::inner_branch(self : TextView) -> @branch.Branch {
 ///
 /// Note: For plain text, this creates a single-run RleVec. The RLE structure
 /// becomes more useful with styled/attributed text (future enhancement).
-pub fn TextView::to_rle(self : TextView) -> @rle.RleVec[String] {
-  @rle.RleVec::from_string(self.text())
+pub fn TextView::to_rle(self : TextView) -> @rle.Runs[String] {
+  @rle.Runs::from_string(self.text())
 }
 
 ///|
