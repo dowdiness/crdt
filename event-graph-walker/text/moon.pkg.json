@@ -6,7 +6,10 @@
     "dowdiness/event-graph-walker/fugue",
     "dowdiness/event-graph-walker/branch",
     "dowdiness/event-graph-walker/document",
-    "dowdiness/event-graph-walker/rle",
+    "dowdiness/event-graph-walker/rle"
+  ],
+  "test-import": [
+    "moonbitlang/core/quickcheck",
     { "path": "moonbitlang/quickcheck", "alias": "qc" }
   ]
 }

@@ -4,6 +4,7 @@
     "dowdiness/event-graph-walker/causal_graph",
     "dowdiness/event-graph-walker/text",
     "dowdiness/event-graph-walker/oplog",
-    "dowdiness/crdt/parser"
+    "dowdiness/crdt/parser",
+    "moonbitlang/core/quickcheck"
   ]
 }
