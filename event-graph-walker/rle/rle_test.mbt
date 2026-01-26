@@ -34,7 +34,7 @@ test "Rle::append merges adjacent runs" {
 test "Rle::append rejects empty element" {
   let rle : @rle.Rle[String] = @rle.Rle::new()
   let result = rle.append("")
-  inspect(result, content="Err(EmptyElement)")
+  inspect(result, content="Err(Internal(EmptyElement))")
 }
 
 ///|
@@ -220,4 +220,60 @@ test "Rle to_runs and from_runs roundtrip" {
   let runs = rle.to_runs()
   let back = @rle.Rle::from_runs(runs)
   inspect(back.to_string(), content="hello")
+}
+
+///|
+test "RleError::message for PositionOutOfBounds" {
+  let rle = @rle.Rle::from_string("hello")
+  match rle.split(10) {
+    Ok(_) => fail("should fail")
+    Err(e) =>
+      inspect(
+        e.message(),
+        content="Position 10 is outside the document (length: 5)",
+      )
+  }
+}
+
+///|
+test "RleError::message for InvalidRange NegativeStart" {
+  let rle = @rle.Rle::from_string("hello")
+  match rle.range(start=-1, end=3) {
+    Ok(_) => fail("should fail")
+    Err(e) =>
+      inspect(e.message(), content="Range start (-1) cannot be negative")
+  }
+}
+
+///|
+test "RleError::message for InvalidRange StartAfterEnd" {
+  let rle = @rle.Rle::from_string("hello")
+  match rle.range(start=4, end=2) {
+    Ok(_) => fail("should fail")
+    Err(e) =>
+      inspect(e.message(), content="Range start (4) must come before end (2)")
+  }
+}
+
+///|
+test "RleError::message for InvalidRange ExceedsLength" {
+  let rle = @rle.Rle::from_string("hello")
+  match rle.range(start=0, end=10) {
+    Ok(_) => fail("should fail")
+    Err(e) =>
+      inspect(e.message(), content="Range end (10) exceeds document length (5)")
+  }
+}
+
+///|
+test "RleError::message for Internal EmptyElement" {
+  let rle : @rle.Rle[String] = @rle.Rle::new()
+  match rle.append("") {
+    Ok(_) => fail("should fail")
+    Err(e) =>
+      inspect(
+        e.message(),
+        content="An internal error occurred. Please report this as a bug.",
+      )
+  }
 }

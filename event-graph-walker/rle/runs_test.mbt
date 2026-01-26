@@ -34,7 +34,7 @@ test "Runs::append merges adjacent runs" {
 test "Runs::append rejects empty element" {
   let runs : @rle.Runs[String] = @rle.Runs::new()
   let result = runs.append("")
-  inspect(result, content="Err(EmptyElement)")
+  inspect(result, content="Err(Internal(EmptyElement))")
 }
 
 ///|

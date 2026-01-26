@@ -8,10 +8,18 @@ import {
 // Values
 
 // Errors
-pub(all) suberror RleError {
+pub(all) suberror InternalError {
   EmptyElement
-  IndexOutOfBounds(index~ : Int, len~ : Int)
+  InvalidState(detail~ : String)
 }
+pub impl Show for InternalError
+
+pub(all) suberror RleError {
+  PositionOutOfBounds(position~ : Int, length~ : Int)
+  InvalidRange(start~ : Int, end~ : Int, length~ : Int, reason~ : RangeIssue)
+  Internal(InternalError)
+}
+pub fn RleError::message(Self) -> ErrorMessage
 pub impl Show for RleError
 
 // Types and methods
@@ -21,6 +29,11 @@ pub(all) struct BenchRun {
 pub impl HasLength for BenchRun
 pub impl Eq for BenchRun
 pub impl Show for BenchRun
+
+pub struct ErrorMessage {
+  // private fields
+}
+pub impl Show for ErrorMessage
 
 pub(all) struct PrefixSums {
   atoms : Array[Int]
@@ -36,6 +49,15 @@ pub impl Eq for PrefixSums
 pub impl Show for PrefixSums
 pub impl @moonbitlang/core/quickcheck.Arbitrary for PrefixSums
 pub impl @moonbitlang/quickcheck.Shrink for PrefixSums
+
+pub enum RangeIssue {
+  NegativeStart
+  NegativeEnd
+  StartAfterEnd
+  ExceedsLength
+}
+pub impl Eq for RangeIssue
+pub impl Show for RangeIssue
 
 pub struct Rle[T] {
   runs : Runs[T]
@@ -128,7 +150,7 @@ pub impl[T : Show] Show for Runs[T]
 pub impl @moonbitlang/core/quickcheck.Arbitrary for Runs[String]
 pub impl @moonbitlang/quickcheck.Shrink for Runs[String]
 
-pub(all) struct Slice[T] {
+pub struct Slice[T] {
   value : T
   start : Int
   end : Int

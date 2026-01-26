@@ -66,7 +66,7 @@ pub fn[T : Mergeable + HasLength] Runs::append(
   elem : T,
 ) -> Result[Unit, RleError] {
   if T::atom_len(elem) <= 0 {
-    return Err(RleError::EmptyElement)
+    return Err(RleError::Internal(InternalError::EmptyElement))
   }
   match self.0.last() {
     Some(last) =>
@@ -175,17 +175,25 @@ pub fn[T : HasLength] Runs::range(
   end~ : Int,
 ) -> Result[Iter[Slice[T]], RleError] {
   let total = self.len()
-  if start < 0 || end < 0 || start > end || end > total {
-    let bad = if start < 0 {
-      start
-    } else if end < 0 {
-      end
-    } else if start > end {
-      start
-    } else {
-      end
-    }
-    return Err(RleError::IndexOutOfBounds(index=bad, len=total))
+  if start < 0 {
+    return Err(
+      RleError::InvalidRange(start~, end~, length=total, reason=NegativeStart),
+    )
+  }
+  if end < 0 {
+    return Err(
+      RleError::InvalidRange(start~, end~, length=total, reason=NegativeEnd),
+    )
+  }
+  if start > end {
+    return Err(
+      RleError::InvalidRange(start~, end~, length=total, reason=StartAfterEnd),
+    )
+  }
+  if end > total {
+    return Err(
+      RleError::InvalidRange(start~, end~, length=total, reason=ExceedsLength),
+    )
   }
   if start == end {
     return Ok(Iter::empty())
@@ -235,7 +243,7 @@ pub fn[T : Sliceable + HasLength + Mergeable] Runs::split(
 ) -> Result[(Runs[T], Runs[T]), RleError] {
   let total = self.len()
   if pos < 0 || pos > total {
-    return Err(RleError::IndexOutOfBounds(index=pos, len=total))
+    return Err(RleError::PositionOutOfBounds(position=pos, length=total))
   }
   if pos == 0 {
     return Ok((Runs::new(), self))

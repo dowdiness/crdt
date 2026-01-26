@@ -107,17 +107,25 @@ pub fn[T : HasLength] Rle::range(
 ) -> Result[Iter[Slice[T]], RleError] {
   let sums = self.ensure_prefix()
   let total = sums.len()
-  if start < 0 || end < 0 || start > end || end > total {
-    let bad = if start < 0 {
-      start
-    } else if end < 0 {
-      end
-    } else if start > end {
-      start
-    } else {
-      end
-    }
-    return Err(RleError::IndexOutOfBounds(index=bad, len=total))
+  if start < 0 {
+    return Err(
+      RleError::InvalidRange(start~, end~, length=total, reason=NegativeStart),
+    )
+  }
+  if end < 0 {
+    return Err(
+      RleError::InvalidRange(start~, end~, length=total, reason=NegativeEnd),
+    )
+  }
+  if start > end {
+    return Err(
+      RleError::InvalidRange(start~, end~, length=total, reason=StartAfterEnd),
+    )
+  }
+  if end > total {
+    return Err(
+      RleError::InvalidRange(start~, end~, length=total, reason=ExceedsLength),
+    )
   }
   if start == end {
     return Ok(Iter::empty())

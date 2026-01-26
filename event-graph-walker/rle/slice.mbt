@@ -1,6 +1,6 @@
 ///|
 /// A slice view into a run, representing a sub-range [start, end)
-pub(all) struct Slice[T] {
+pub struct Slice[T] {
   value : T
   start : Int
   end : Int
