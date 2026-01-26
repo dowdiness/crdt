@@ -11,7 +11,9 @@ pub fn[T] Rle::new() -> Rle[T] {
 }
 
 ///|
-pub fn[T : Mergeable + HasLength] Rle::from_array(arr : Array[T]) -> Rle[T] {
+pub fn[T : Mergeable + HasCausalLength] Rle::from_array(
+  arr : Array[T],
+) -> Rle[T] {
   { runs: Runs::from_array(arr), prefix: None }
 }
 
@@ -33,7 +35,7 @@ fn[T] Rle::invalidate(self : Rle[T]) -> Unit {
 
 ///|
 /// Rebuild prefix sums if stale
-fn[T : HasLength] Rle::ensure_prefix(self : Rle[T]) -> PrefixSums {
+fn[T : HasCausalLength] Rle::ensure_prefix(self : Rle[T]) -> PrefixSums {
   match self.prefix {
     Some(p) => p
     None => {
@@ -65,20 +67,20 @@ pub fn[T] Rle::iter(self : Rle[T]) -> Iter[T] {
 }
 
 ///|
-/// Total atom length - O(1) with cache
-pub fn[T : HasLength] Rle::len(self : Rle[T]) -> Int {
+/// Total causal length - O(1) with cache
+pub fn[T : HasCausalLength] Rle::len(self : Rle[T]) -> Int {
   self.ensure_prefix().len()
 }
 
 ///|
-/// Total content length - O(1) with cache
-pub fn[T : HasLength] Rle::content_len(self : Rle[T]) -> Int {
-  self.ensure_prefix().content_len()
+/// Total visible length - O(1) with cache
+pub fn[T : HasCausalLength] Rle::visible_len(self : Rle[T]) -> Int {
+  self.ensure_prefix().visible_len()
 }
 
 ///|
 /// Append element - invalidates cache
-pub fn[T : Mergeable + HasLength] Rle::append(
+pub fn[T : Mergeable + HasCausalLength] Rle::append(
   self : Rle[T],
   elem : T,
 ) -> Result[Unit, RleError] {
@@ -93,14 +95,14 @@ pub fn[T : Mergeable + HasLength] Rle::append(
 
 ///|
 /// Find position - O(log n) with cache
-pub fn[T : HasLength] Rle::find(self : Rle[T], pos : Int) -> RunPos? {
+pub fn[T : HasCausalLength] Rle::find(self : Rle[T], pos : Int) -> RunPos? {
   let sums = self.ensure_prefix()
   self.runs.find_fast(sums, pos)
 }
 
 ///|
 /// Iterate slices in range [start, end) - uses cache
-pub fn[T : HasLength] Rle::range(
+pub fn[T : HasCausalLength] Rle::range(
   self : Rle[T],
   start~ : Int,
   end~ : Int,
@@ -158,7 +160,7 @@ pub fn[T : HasLength] Rle::range(
 
 ///|
 /// Iterate slices with clamped bounds
-pub fn[T : HasLength] Rle::range_clamped(
+pub fn[T : HasCausalLength] Rle::range_clamped(
   self : Rle[T],
   start~ : Int,
   end~ : Int,
@@ -177,7 +179,7 @@ pub fn[T : HasLength] Rle::range_clamped(
 
 ///|
 /// Split at position - invalidates cache
-pub fn[T : Sliceable + HasLength + Mergeable] Rle::split(
+pub fn[T : Sliceable + HasCausalLength + Mergeable] Rle::split(
   self : Rle[T],
   pos : Int,
 ) -> Result[(Rle[T], Rle[T]), RleError] {
@@ -196,7 +198,7 @@ pub fn[T] Rle::clear(self : Rle[T]) -> Unit {
 
 ///|
 /// Concatenate two Rle
-pub fn[T : Mergeable + HasLength] Rle::concat(
+pub fn[T : Mergeable + HasCausalLength] Rle::concat(
   self : Rle[T],
   other : Rle[T],
 ) -> Rle[T] {
@@ -205,7 +207,7 @@ pub fn[T : Mergeable + HasLength] Rle::concat(
 
 ///|
 /// Extend in-place - invalidates cache
-pub fn[T : Mergeable + HasLength] Rle::extend(
+pub fn[T : Mergeable + HasCausalLength] Rle::extend(
   self : Rle[T],
   other : Rle[T],
 ) -> Unit {

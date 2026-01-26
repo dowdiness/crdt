@@ -27,21 +27,36 @@ pub(open) trait Sliceable {
 }
 
 ///|
-/// **HasLength** - "How big is this thing?"
+/// **HasLength** - "Plain size"
+///
+/// Basic, non-CRDT length for a value.
+pub(open) trait HasLength {
+  length(Self) -> Int
+}
+
+///|
+/// **HasCausalLength** - "CRDT position space"
 ///
 /// Two different notions of "length" matter for CRDTs:
 ///
-/// - `atom_len`: The structural size used for indexing and slicing.
-///   This is always positive, even for deleted content (tombstones).
-///   Think: "how many slots does this occupy in the logical sequence?"
+/// - `causal_len`: The causal/structural length including tombstones.
+///   This represents the position space for causal ordering.
+///   Always positive, even for deleted content.
+///   Think: "how many slots does this occupy in the causal sequence?"
 ///
-/// - `content_len`: The visible size shown to users.
-///   Zero for tombstones (deleted content), positive otherwise.
+/// - `visible_len`: The visible length excluding tombstones.
+///   This is what users see and interact with.
+///   Zero for tombstones, positive otherwise.
 ///   Think: "how many characters would the user see?"
 ///
-/// Example: A deleted "hello" has atom_len=5 (still occupies 5 slots for
-/// causal ordering) but content_len=0 (user sees nothing).
-pub(open) trait HasLength {
-  atom_len(Self) -> Int
-  content_len(Self) -> Int
+/// Note: `causal_len` defaults to `HasLength::length` unless overridden.
+pub(open) trait HasCausalLength : HasLength {
+  causal_len(Self) -> Int = _
+  visible_len(Self) -> Int
+}
+
+///|
+/// Default causal length delegates to plain length.
+impl HasCausalLength with causal_len(self) {
+  HasLength::length(self)
 }

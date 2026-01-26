@@ -38,15 +38,15 @@ test "Runs::append rejects empty element" {
 }
 
 ///|
-test "Runs::len returns total atom length" {
+test "Runs::len returns total causal length" {
   let runs = @rle.Runs::from_string("hello")
   inspect(runs.len(), content="5")
 }
 
 ///|
-test "Runs::content_len returns total content length" {
+test "Runs::visible_len returns total visible length" {
   let runs = @rle.Runs::from_string("hello")
-  inspect(runs.content_len(), content="5")
+  inspect(runs.visible_len(), content="5")
 }
 
 ///|

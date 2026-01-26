@@ -3,7 +3,7 @@
 ## Goals
 - Provide reusable run-length encoding (RLE) primitives for CRDT/text features.
 - Support trait-based run payloads (text runs, op spans, tombstones).
-- Keep invariants explicit: no runs with `atom_len() == 0`, no adjacent mergeable runs.
+- Keep invariants explicit: no runs with `causal_len() == 0`, no adjacent mergeable runs.
 - Use half-open `[start, end)` intervals consistently.
 
 ## Non-Goals
@@ -15,10 +15,10 @@
 Tombstones are deleted elements that remain in the CRDT for causality tracking.
 
 **Invariants:**
-- Tombstones have `atom_len > 0` but `content_len == 0`.
+- Tombstones have `causal_len > 0` but `visible_len == 0`.
 - `can_merge` should return `false` when mixing tombstones with live content.
 - `merge` preserves tombstone status: merging two tombstones yields a tombstone.
-- `content_len(merge(a, b)) == content_len(a) + content_len(b)` when mergeable.
+- `visible_len(merge(a, b)) == visible_len(a) + visible_len(b)` when mergeable.
 
 **Example:**
 ```moonbit
@@ -31,7 +31,11 @@ impl Mergeable for TextSpan with can_merge(a, b) {
   a.deleted == b.deleted
 }
 
-impl HasLength for TextSpan with content_len(self) {
+impl HasLength for TextSpan with length(self) {
+  self.text.length()
+}
+
+impl HasCausalLength for TextSpan with visible_len(self) {
   if self.deleted { 0 } else { self.text.length() }
 }
 ```
@@ -52,10 +56,10 @@ needed.
 event-graph-walker/rle/
 ├── moon.pkg.json
 ├── errors.mbt                # RleError, InternalError, RangeIssue
-├── traits.mbt                # Mergeable, Sliceable, HasLength traits
+├── traits.mbt                # Mergeable, Sliceable, HasLength, HasCausalLength
 ├── slice.mbt                 # Slice[T] type
 ├── run_pos.mbt               # RunPos type (run index + offset)
-├── prefix_sums.mbt           # PrefixSums for atoms/content
+├── prefix_sums.mbt           # PrefixSums for causal/visible
 ├── runs.mbt                  # Runs[T] core container
 ├── runs_string.mbt           # String trait impls + helpers
 ├── rle.mbt                   # Rle[T] cached wrapper
@@ -94,17 +98,38 @@ pub(open) trait Sliceable {
 }
 
 ///|
+/// **HasLength** - "Plain size"
+///
+/// Basic, non-CRDT length for a value.
 pub(open) trait HasLength {
-  atom_len(Self) -> Int
-  content_len(Self) -> Int
+  length(Self) -> Int
+}
+
+///|
+/// **HasCausalLength** - "CRDT position space"
+///
+/// Two different notions of "length" matter for CRDTs:
+///
+/// - `causal_len`: The causal/structural length including tombstones.
+///   This represents the position space for causal ordering.
+///   Always positive, even for deleted content.
+///   Think: "how many slots does this occupy in the causal sequence?"
+///
+/// - `visible_len`: The visible length excluding tombstones.
+///   This is what users see and interact with.
+///   Zero for tombstones, positive otherwise.
+///   Think: "how many characters would the user see?"
+pub(open) trait HasCausalLength {
+  causal_len(Self) -> Int = _
+  visible_len(Self) -> Int
 }
 ```
 
 **Trait Laws (algebraic properties):**
-- `atom_len(merge(a, b)) == atom_len(a) + atom_len(b)`
-- `content_len(merge(a, b)) == content_len(a) + content_len(b)` when mergeable
-- `slice(x, start=0, end=atom_len(x)) == x`
-- `content_len(x) <= atom_len(x)` and both are non-negative
+- `causal_len(merge(a, b)) == causal_len(a) + causal_len(b)`
+- `visible_len(merge(a, b)) == visible_len(a) + visible_len(b)` when mergeable
+- `slice(x, start=0, end=causal_len(x)) == x`
+- `visible_len(x) <= causal_len(x)` and both are non-negative
 
 ## Supporting Types
 
@@ -159,7 +184,7 @@ pub(all) suberror RleError {
 `Runs[T]` is the core structure that enforces RLE invariants.
 
 **Invariants:**
-- No runs with `atom_len() == 0`
+- No runs with `causal_len() == 0`
 - No adjacent runs where `can_merge` is true
 
 **Key operations:**
@@ -171,23 +196,23 @@ pub(all) suberror RleError {
 
 ```moonbit
 ///|
-pub fn[T : Mergeable + HasLength] Runs::append(
+pub fn[T : Mergeable + HasCausalLength] Runs::append(
   self : Runs[T],
   elem : T,
 ) -> Result[Unit, RleError]
 
 ///|
-pub fn[T : HasLength] Runs::find(self : Runs[T], pos : Int) -> RunPos?
+pub fn[T : HasCausalLength] Runs::find(self : Runs[T], pos : Int) -> RunPos?
 
 ///|
-pub fn[T : HasLength] Runs::range(
+pub fn[T : HasCausalLength] Runs::range(
   self : Runs[T],
   start~ : Int,
   end~ : Int,
 ) -> Result[Iter[Slice[T]], RleError]
 
 ///|
-pub fn[T : Sliceable + HasLength + Mergeable] Runs::split(
+pub fn[T : Sliceable + HasCausalLength + Mergeable] Runs::split(
   self : Runs[T],
   pos : Int,
 ) -> Result[(Runs[T], Runs[T]), RleError]
@@ -199,7 +224,7 @@ pub fn[T : Sliceable + HasLength + Mergeable] Runs::split(
 All mutations invalidate the cache.
 
 **Key operations:**
-- `Rle::len()` and `Rle::content_len()` are O(1) after cache rebuild.
+- `Rle::len()` and `Rle::visible_len()` are O(1) after cache rebuild.
 - `Rle::find()` uses `Runs::find_fast` with prefix sums (O(log n)).
 - `Rle::range()` uses prefix sums for the starting run; still linear in runs
   over the sliced span.
@@ -212,13 +237,13 @@ pub struct Rle[T] {
 } derive(Show, Eq)
 
 ///|
-pub fn[T : Mergeable + HasLength] Rle::append(
+pub fn[T : Mergeable + HasCausalLength] Rle::append(
   self : Rle[T],
   elem : T,
 ) -> Result[Unit, RleError]
 
 ///|
-pub fn[T : HasLength] Rle::find(self : Rle[T], pos : Int) -> RunPos?
+pub fn[T : HasCausalLength] Rle::find(self : Rle[T], pos : Int) -> RunPos?
 ```
 
 ## Algorithms (Current)
@@ -240,8 +265,8 @@ to `[0, len]` and returns empty iterators for invalid or empty ranges.
 ```moonbit
 pub impl Mergeable for String with can_merge(_a, _b) { true }
 pub impl Mergeable for String with merge(a, b) { a + b }
-pub impl HasLength for String with atom_len(self) { self.length() }
-pub impl HasLength for String with content_len(self) { self.length() }
+pub impl HasLength for String with length(self) { self.length() }
+pub impl HasCausalLength for String with visible_len(self) { self.length() }
 pub impl Sliceable for String with slice(self, start~, end~) {
   self
   .iter()
@@ -282,7 +307,7 @@ QuickCheck helpers live in `arbitrary.mbt`.
 | Operation | Runs | Rle | Notes |
 |-----------|------|-----|------|
 | `len()` | O(n) | O(1)* | *after cache rebuild |
-| `content_len()` | O(n) | O(1)* | *after cache rebuild |
+| `visible_len()` | O(n) | O(1)* | *after cache rebuild |
 | `find()` | O(n) | O(log n) | binary search on prefix sums |
 | `range()` | O(n) | O(k) | k = runs in range |
 | `append()` | O(1) avg | O(1) avg | may cascade leftward |

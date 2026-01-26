@@ -3,7 +3,7 @@
 ///|
 /// Internal invariant violations - indicates bugs, not user errors
 pub(all) suberror InternalError {
-  EmptyElement // Attempted to add element with atom_len == 0
+  EmptyElement // Attempted to add element with causal_len == 0
   InvalidState(detail~ : String)
 } derive(Show)
 

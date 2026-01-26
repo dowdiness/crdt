@@ -12,13 +12,14 @@ pub impl Mergeable for String with merge(a : String, b : String) -> String {
 }
 
 ///|
-/// String implements HasLength - atom_len = content_len = char count
-pub impl HasLength for String with atom_len(self : String) -> Int {
+/// String implements HasLength
+pub impl HasLength for String with length(self : String) -> Int {
   self.length()
 }
 
 ///|
-pub impl HasLength for String with content_len(self : String) -> Int {
+/// String implements HasCausalLength - causal_len = visible_len = char count
+pub impl HasCausalLength for String with visible_len(self : String) -> Int {
   self.length()
 }
 

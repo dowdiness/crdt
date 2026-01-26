@@ -7,12 +7,12 @@ pub(all) struct BenchRun {
 } derive(Show, Eq)
 
 ///|
-pub impl HasLength for BenchRun with atom_len(self : BenchRun) -> Int {
+pub impl HasLength for BenchRun with length(self : BenchRun) -> Int {
   self.len
 }
 
 ///|
-pub impl HasLength for BenchRun with content_len(self : BenchRun) -> Int {
+pub impl HasCausalLength for BenchRun with visible_len(self : BenchRun) -> Int {
   self.len
 }
 

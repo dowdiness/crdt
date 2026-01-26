@@ -75,7 +75,7 @@ pub impl @qc.Shrink for Runs[String] with shrink(runs) {
   // Strategy 4: Shorten individual runs
   for i = 0; i < len; i = i + 1 {
     let item = items[i]
-    let item_len = HasLength::atom_len(item)
+    let item_len = HasCausalLength::causal_len(item)
     if item_len > 1 {
       // Try with shortened run
       let shortened : Runs[String] = Runs::new()
@@ -205,7 +205,7 @@ pub impl @quickcheck.Arbitrary for Slice[String] with arbitrary(
     sb.write_char(chars[char_idx])
   }
   let value = sb.to_string()
-  let value_len = HasLength::atom_len(value)
+  let value_len = HasCausalLength::causal_len(value)
   let start = random_state.split().next_uint64().to_int().abs() % value_len
   let end = start +
     random_state.split().next_uint64().to_int().abs() % (value_len - start) +
@@ -217,7 +217,7 @@ pub impl @quickcheck.Arbitrary for Slice[String] with arbitrary(
 /// Shrink instance for Slice[String] - shrinks value and narrows range
 pub impl @qc.Shrink for Slice[String] with shrink(slice) {
   let results : Array[Slice[String]] = []
-  let value_len = HasLength::atom_len(slice.value)
+  let value_len = HasCausalLength::causal_len(slice.value)
   // Shrink to smaller range
   if slice.end > slice.start + 1 {
     results.push({ ..slice, end: slice.start + 1 })

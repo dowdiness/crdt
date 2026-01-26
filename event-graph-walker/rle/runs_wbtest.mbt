@@ -7,7 +7,7 @@ test "invariant: no zero-length runs after append" {
   let _ = runs.append("b")
   let _ = runs.append("c")
   for item in runs.0 {
-    inspect(HasLength::atom_len(item) > 0, content="true")
+    inspect(HasCausalLength::causal_len(item) > 0, content="true")
   }
 }
 
@@ -46,10 +46,10 @@ test "split preserves invariants" {
   match result {
     Ok((left, right)) => {
       for item in left.0 {
-        inspect(HasLength::atom_len(item) > 0, content="true")
+        inspect(HasCausalLength::causal_len(item) > 0, content="true")
       }
       for item in right.0 {
-        inspect(HasLength::atom_len(item) > 0, content="true")
+        inspect(HasCausalLength::causal_len(item) > 0, content="true")
       }
     }
     Err(_) => fail("split should succeed")

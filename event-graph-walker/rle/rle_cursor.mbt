@@ -39,13 +39,16 @@ pub fn[T] RleCursor::current_item(self : RleCursor[T]) -> T? {
 
 ///|
 /// Check if at end
-pub fn[T : HasLength] RleCursor::at_end(self : RleCursor[T]) -> Bool {
+pub fn[T : HasCausalLength] RleCursor::at_end(self : RleCursor[T]) -> Bool {
   self.global_offset >= self.rle.len()
 }
 
 ///|
 /// Advance by n atoms
-pub fn[T : HasLength] RleCursor::advance(self : RleCursor[T], n : Int) -> Bool {
+pub fn[T : HasCausalLength] RleCursor::advance(
+  self : RleCursor[T],
+  n : Int,
+) -> Bool {
   if n <= 0 {
     return true
   }
@@ -59,7 +62,7 @@ pub fn[T : HasLength] RleCursor::advance(self : RleCursor[T], n : Int) -> Bool {
   }
   let mut remaining = n
   while remaining > 0 && self.run_index < self.rle.runs.0.length() {
-    let run_len = HasLength::atom_len(self.rle.runs.0[self.run_index])
+    let run_len = HasCausalLength::causal_len(self.rle.runs.0[self.run_index])
     let available = run_len - self.offset_in_run
     if remaining < available {
       self.offset_in_run = self.offset_in_run + remaining
@@ -77,7 +80,10 @@ pub fn[T : HasLength] RleCursor::advance(self : RleCursor[T], n : Int) -> Bool {
 
 ///|
 /// Retreat by n atoms
-pub fn[T : HasLength] RleCursor::retreat(self : RleCursor[T], n : Int) -> Bool {
+pub fn[T : HasCausalLength] RleCursor::retreat(
+  self : RleCursor[T],
+  n : Int,
+) -> Bool {
   if n <= 0 {
     return true
   }
@@ -101,7 +107,9 @@ pub fn[T : HasLength] RleCursor::retreat(self : RleCursor[T], n : Int) -> Bool {
         break
       }
       self.run_index = self.run_index - 1
-      self.offset_in_run = HasLength::atom_len(self.rle.runs.0[self.run_index])
+      self.offset_in_run = HasCausalLength::causal_len(
+        self.rle.runs.0[self.run_index],
+      )
     }
   }
   true
@@ -109,7 +117,10 @@ pub fn[T : HasLength] RleCursor::retreat(self : RleCursor[T], n : Int) -> Bool {
 
 ///|
 /// Seek to absolute position
-pub fn[T : HasLength] RleCursor::seek(self : RleCursor[T], pos : Int) -> Bool {
+pub fn[T : HasCausalLength] RleCursor::seek(
+  self : RleCursor[T],
+  pos : Int,
+) -> Bool {
   if pos < 0 {
     self.global_offset = 0
     self.run_index = 0
@@ -149,7 +160,7 @@ pub fn[T] RleCursor::seek_start(self : RleCursor[T]) -> Unit {
 
 ///|
 /// Seek to end
-pub fn[T : HasLength] RleCursor::seek_end(self : RleCursor[T]) -> Unit {
+pub fn[T : HasCausalLength] RleCursor::seek_end(self : RleCursor[T]) -> Unit {
   self.global_offset = self.rle.len()
   self.run_index = self.rle.runs.0.length()
   self.offset_in_run = 0
@@ -157,7 +168,7 @@ pub fn[T : HasLength] RleCursor::seek_end(self : RleCursor[T]) -> Unit {
 
 ///|
 /// Get next item and advance
-pub fn[T : HasLength] RleCursor::next(self : RleCursor[T]) -> T? {
+pub fn[T : HasCausalLength] RleCursor::next(self : RleCursor[T]) -> T? {
   if self.run_index >= self.rle.runs.0.length() {
     return None
   }
@@ -168,7 +179,7 @@ pub fn[T : HasLength] RleCursor::next(self : RleCursor[T]) -> T? {
 
 ///|
 /// Retreat and get previous item
-pub fn[T : HasLength] RleCursor::prev(self : RleCursor[T]) -> T? {
+pub fn[T : HasCausalLength] RleCursor::prev(self : RleCursor[T]) -> T? {
   if self.global_offset == 0 {
     return None
   }
@@ -182,7 +193,7 @@ pub fn[T : HasLength] RleCursor::prev(self : RleCursor[T]) -> T? {
 
 ///|
 /// Iterate forward from current position, yielding (item, offset_in_run, global_pos) per atom
-pub fn[T : HasLength] RleCursor::iter_forward(
+pub fn[T : HasCausalLength] RleCursor::iter_forward(
   self : RleCursor[T],
 ) -> Iter[(T, Int, Int)] {
   let items = self.rle.runs.0
@@ -194,7 +205,7 @@ pub fn[T : HasLength] RleCursor::iter_forward(
       return None
     }
     let item = items[run_idx]
-    let item_len = HasLength::atom_len(item)
+    let item_len = HasCausalLength::causal_len(item)
     if offset >= item_len {
       run_idx = run_idx + 1
       offset = 0

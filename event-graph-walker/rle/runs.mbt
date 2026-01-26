@@ -8,10 +8,12 @@ pub fn[T] Runs::new() -> Runs[T] {
 }
 
 ///|
-pub fn[T : Mergeable + HasLength] Runs::from_array(arr : Array[T]) -> Runs[T] {
+pub fn[T : Mergeable + HasCausalLength] Runs::from_array(
+  arr : Array[T],
+) -> Runs[T] {
   let runs = Runs::new()
   for item in arr {
-    if T::atom_len(item) > 0 {
+    if T::causal_len(item) > 0 {
       guard runs.append(item) is Ok(_)
     }
   }
@@ -48,24 +50,24 @@ pub fn[T] Runs::to_array(self : Runs[T]) -> Array[T] {
 }
 
 ///|
-/// Total atom length - O(n)
-pub fn[T : HasLength] Runs::len(self : Runs[T]) -> Int {
-  self.0.fold(init=0, fn(acc, item) { acc + T::atom_len(item) })
+/// Total causal length - O(n)
+pub fn[T : HasCausalLength] Runs::len(self : Runs[T]) -> Int {
+  self.0.fold(init=0, fn(acc, item) { acc + T::causal_len(item) })
 }
 
 ///|
-/// Total content length - O(n)
-pub fn[T : HasLength] Runs::content_len(self : Runs[T]) -> Int {
-  self.0.fold(init=0, fn(acc, item) { acc + T::content_len(item) })
+/// Total visible length - O(n)
+pub fn[T : HasCausalLength] Runs::visible_len(self : Runs[T]) -> Int {
+  self.0.fold(init=0, fn(acc, item) { acc + T::visible_len(item) })
 }
 
 ///|
 /// Append element, merging with last run if possible
-pub fn[T : Mergeable + HasLength] Runs::append(
+pub fn[T : Mergeable + HasCausalLength] Runs::append(
   self : Runs[T],
   elem : T,
 ) -> Result[Unit, RleError] {
-  if T::atom_len(elem) <= 0 {
+  if T::causal_len(elem) <= 0 {
     return Err(RleError::Internal(InternalError::EmptyElement))
   }
   match self.0.last() {
@@ -102,13 +104,13 @@ fn[T : Mergeable] Runs::normalize_tail(self : Runs[T]) -> Unit {
 ///|
 /// Find position in runs - O(n) linear scan
 /// Prefer `Runs::find_fast` with cached prefix sums for repeated lookups.
-pub fn[T : HasLength] Runs::find(self : Runs[T], pos : Int) -> RunPos? {
+pub fn[T : HasCausalLength] Runs::find(self : Runs[T], pos : Int) -> RunPos? {
   if pos < 0 {
     return None
   }
   let mut prefix = 0
   for i = 0; i < self.0.length(); i = i + 1 {
-    let run_len = T::atom_len(self.0[i])
+    let run_len = T::causal_len(self.0[i])
     if pos < prefix + run_len {
       return Some({ run: i, offset: pos - prefix })
     }
@@ -155,14 +157,14 @@ pub fn[T] Runs::find_fast(
 
 ///|
 /// Build prefix sums from runs
-pub fn[T : HasLength] Runs::prefix_sums(self : Runs[T]) -> PrefixSums {
+pub fn[T : HasCausalLength] Runs::prefix_sums(self : Runs[T]) -> PrefixSums {
   let atoms : Array[Int] = []
   let content : Array[Int] = []
   let mut atom_sum = 0
   let mut content_sum = 0
   for item in self.0 {
-    atom_sum = atom_sum + T::atom_len(item)
-    content_sum = content_sum + T::content_len(item)
+    atom_sum = atom_sum + T::causal_len(item)
+    content_sum = content_sum + T::visible_len(item)
     atoms.push(atom_sum)
     content.push(content_sum)
   }
@@ -171,7 +173,7 @@ pub fn[T : HasLength] Runs::prefix_sums(self : Runs[T]) -> PrefixSums {
 
 ///|
 /// Iterate slices in range [start, end)
-pub fn[T : HasLength] Runs::range(
+pub fn[T : HasCausalLength] Runs::range(
   self : Runs[T],
   start~ : Int,
   end~ : Int,
@@ -203,7 +205,7 @@ pub fn[T : HasLength] Runs::range(
   let result : Array[Slice[T]] = []
   let mut pos = 0
   for item in self.0 {
-    let run_len = T::atom_len(item)
+    let run_len = T::causal_len(item)
     let item_end = pos + run_len
     if item_end > start && pos < end {
       let slice_start = if pos < start { start - pos } else { 0 }
@@ -220,7 +222,7 @@ pub fn[T : HasLength] Runs::range(
 
 ///|
 /// Iterate slices with clamped bounds
-pub fn[T : HasLength] Runs::range_clamped(
+pub fn[T : HasCausalLength] Runs::range_clamped(
   self : Runs[T],
   start~ : Int,
   end~ : Int,
@@ -239,7 +241,7 @@ pub fn[T : HasLength] Runs::range_clamped(
 
 ///|
 /// Split at position into two Runs
-pub fn[T : Sliceable + HasLength + Mergeable] Runs::split(
+pub fn[T : Sliceable + HasCausalLength + Mergeable] Runs::split(
   self : Runs[T],
   pos : Int,
 ) -> Result[(Runs[T], Runs[T]), RleError] {
@@ -257,7 +259,7 @@ pub fn[T : Sliceable + HasLength + Mergeable] Runs::split(
   let right : Runs[T] = Runs::new()
   let mut cur = 0
   for item in self.0 {
-    let run_len = T::atom_len(item)
+    let run_len = T::causal_len(item)
     let item_end = cur + run_len
     if item_end <= pos {
       guard left.append(item) is Ok(_)
@@ -285,7 +287,7 @@ pub fn[T] Runs::clear(self : Runs[T]) -> Unit {
 
 ///|
 /// Concatenate two Runs
-pub fn[T : Mergeable + HasLength] Runs::concat(
+pub fn[T : Mergeable + HasCausalLength] Runs::concat(
   self : Runs[T],
   other : Runs[T],
 ) -> Runs[T] {
@@ -303,7 +305,7 @@ pub fn[T : Mergeable + HasLength] Runs::concat(
 
 ///|
 /// Extend in-place from another Runs
-pub fn[T : Mergeable + HasLength] Runs::extend(
+pub fn[T : Mergeable + HasCausalLength] Runs::extend(
   self : Runs[T],
   other : Runs[T],
 ) -> Unit {
