@@ -101,6 +101,7 @@ fn[T : Mergeable] Runs::normalize_tail(self : Runs[T]) -> Unit {
 
 ///|
 /// Find position in runs - O(n) linear scan
+/// Prefer `Runs::find_fast` with cached prefix sums for repeated lookups.
 pub fn[T : HasLength] Runs::find(self : Runs[T], pos : Int) -> RunPos? {
   if pos < 0 {
     return None
@@ -118,6 +119,7 @@ pub fn[T : HasLength] Runs::find(self : Runs[T], pos : Int) -> RunPos? {
 
 ///|
 /// Find position using prefix sums - O(log n) binary search
+/// Caller manages `PrefixSums` (use `Runs::prefix_sums()` and keep it in sync).
 pub fn[T] Runs::find_fast(
   self : Runs[T],
   sums : PrefixSums,

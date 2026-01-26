@@ -2,6 +2,11 @@
   "is_main": false,
   "import": [
     "moonbitlang/core/bench",
+    "moonbitlang/core/queue",
+    "moonbitlang/core/json",
+    { "path": "moonbitlang/core/immut/hashmap", "alias": "immut/hashmap" },
+    { "path": "moonbitlang/core/immut/hashset", "alias": "immut/hashset" },
+    "moonbitlang/core/quickcheck",
     { "path": "moonbitlang/quickcheck", "alias": "qc" }
   ]
 }
