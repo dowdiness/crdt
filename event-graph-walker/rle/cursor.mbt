@@ -47,20 +47,20 @@ pub fn[T] RleCursor::position(self : RleCursor[T]) -> Int {
 /// Returns the current run and offset within it.
 /// Returns None if at end of vector.
 pub fn[T] RleCursor::current(self : RleCursor[T]) -> (T, Int)? {
-  if self.run_index >= self.vec.items.length() {
+  if self.run_index >= self.vec.vec.0.length() {
     return None
   }
-  Some((self.vec.items[self.run_index], self.offset_in_run))
+  Some((self.vec.vec.0[self.run_index], self.offset_in_run))
 }
 
 ///|
 /// Returns the current item without offset.
 /// Returns None if at end of vector.
 pub fn[T] RleCursor::current_item(self : RleCursor[T]) -> T? {
-  if self.run_index >= self.vec.items.length() {
+  if self.run_index >= self.vec.vec.0.length() {
     return None
   }
-  Some(self.vec.items[self.run_index])
+  Some(self.vec.vec.0[self.run_index])
 }
 
 ///|
@@ -79,13 +79,13 @@ pub fn[T : HasLength] RleCursor::advance(self : RleCursor[T], n : Int) -> Bool {
   if target > total {
     // Move to end
     self.global_offset = total
-    self.run_index = self.vec.items.length()
+    self.run_index = self.vec.vec.0.length()
     self.offset_in_run = 0
     return false
   }
   let mut remaining = n
-  while remaining > 0 && self.run_index < self.vec.items.length() {
-    let current_run_len = HasLength::atom_len(self.vec.items[self.run_index])
+  while remaining > 0 && self.run_index < self.vec.vec.0.length() {
+    let current_run_len = HasLength::atom_len(self.vec.vec.0[self.run_index])
     let available_in_run = current_run_len - self.offset_in_run
     if remaining < available_in_run {
       // Stay in current run
@@ -138,7 +138,7 @@ pub fn[T : HasLength] RleCursor::retreat(self : RleCursor[T], n : Int) -> Bool {
         break
       }
       self.run_index = self.run_index - 1
-      self.offset_in_run = HasLength::atom_len(self.vec.items[self.run_index])
+      self.offset_in_run = HasLength::atom_len(self.vec.vec.0[self.run_index])
     }
   }
   true
@@ -161,7 +161,7 @@ pub fn[T : HasLength] RleCursor::seek(
   let total = self.vec.total_atom_len()
   if position >= total {
     self.global_offset = total
-    self.run_index = self.vec.items.length()
+    self.run_index = self.vec.vec.0.length()
     self.offset_in_run = 0
     return position == total
   }
@@ -176,7 +176,7 @@ pub fn[T : HasLength] RleCursor::seek(
     None => {
       // Should not happen if position < total
       self.global_offset = total
-      self.run_index = self.vec.items.length()
+      self.run_index = self.vec.vec.0.length()
       self.offset_in_run = 0
       false
     }
@@ -195,17 +195,17 @@ pub fn[T] RleCursor::seek_start(self : RleCursor[T]) -> Unit {
 /// Move to the end of the vector.
 pub fn[T : HasLength] RleCursor::seek_end(self : RleCursor[T]) -> Unit {
   self.global_offset = self.vec.total_atom_len()
-  self.run_index = self.vec.items.length()
+  self.run_index = self.vec.vec.0.length()
   self.offset_in_run = 0
 }
 
 ///|
 /// Move to the next atom. Returns the current item before moving, or None if at end.
 pub fn[T : HasLength] RleCursor::next(self : RleCursor[T]) -> T? {
-  if self.run_index >= self.vec.items.length() {
+  if self.run_index >= self.vec.vec.0.length() {
     return None
   }
-  let item = self.vec.items[self.run_index]
+  let item = self.vec.vec.0[self.run_index]
   let _ = self.advance(1)
   Some(item)
 }
@@ -217,8 +217,8 @@ pub fn[T : HasLength] RleCursor::prev(self : RleCursor[T]) -> T? {
     return None
   }
   let _ = self.retreat(1)
-  if self.run_index < self.vec.items.length() {
-    Some(self.vec.items[self.run_index])
+  if self.run_index < self.vec.vec.0.length() {
+    Some(self.vec.vec.0[self.run_index])
   } else {
     None
   }
@@ -230,7 +230,7 @@ pub fn[T : HasLength] RleCursor::prev(self : RleCursor[T]) -> T? {
 pub fn[T : HasLength] RleCursor::iter_forward(
   self : RleCursor[T],
 ) -> Iter[(T, Int, Int)] {
-  let items = self.vec.items
+  let items = self.vec.vec.0
   let mut run_idx = self.run_index
   let mut offset = self.offset_in_run
   let mut global = self.global_offset

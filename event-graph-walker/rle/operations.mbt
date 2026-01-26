@@ -10,11 +10,11 @@ pub fn[T : Mergeable + HasLength] RleVec::concat(
   other : RleVec[T],
 ) -> RleVec[T] {
   let result : RleVec[T] = RleVec::new()
-  for item in self.items {
+  for item in self.0 {
     let _ = result.push(item)
 
   }
-  for item in other.items {
+  for item in other.0 {
     // First push may merge with last of self
     let _ = result.push(item)
 
@@ -28,7 +28,7 @@ pub fn[T : Mergeable + HasLength] RleVec::extend(
   self : RleVec[T],
   other : RleVec[T],
 ) -> Unit {
-  for item in other.items {
+  for item in other.0 {
     let _ = self.push(item)
 
   }
@@ -37,23 +37,23 @@ pub fn[T : Mergeable + HasLength] RleVec::extend(
 ///|
 /// Clear all items from the RleVec.
 pub fn[T] RleVec::clear(self : RleVec[T]) -> Unit {
-  self.items.clear()
+  self.0.clear()
 }
 
 ///|
 /// Get a copy of the underlying items array.
 /// Returns a shallow copy - if T contains mutable references, they are shared.
 pub fn[T] RleVec::items(self : RleVec[T]) -> Array[T] {
-  self.items.copy()
+  self.0.copy()
 }
 
 ///|
 /// Get item at run index (not atom index).
 pub fn[T] RleVec::get_run(self : RleVec[T], index : Int) -> T? {
-  if index < 0 || index >= self.items.length() {
+  if index < 0 || index >= self.0.length() {
     None
   } else {
-    Some(self.items[index])
+    Some(self.0[index])
   }
 }
 
@@ -65,11 +65,11 @@ pub fn[T : Mergeable + HasLength] RleVecCached::concat(
   other : RleVecCached[T],
 ) -> RleVecCached[T] {
   let result : RleVecCached[T] = RleVecCached::new()
-  for item in self.items {
+  for item in self.vec.0 {
     let _ = result.push(item)
 
   }
-  for item in other.items {
+  for item in other.vec.0 {
     let _ = result.push(item)
 
   }
@@ -83,7 +83,7 @@ pub fn[T : Mergeable + HasLength] RleVecCached::extend(
   self : RleVecCached[T],
   other : RleVecCached[T],
 ) -> Unit {
-  for item in other.items {
+  for item in other.vec.0 {
     let _ = self.push(item)
 
   }
@@ -92,7 +92,7 @@ pub fn[T : Mergeable + HasLength] RleVecCached::extend(
 ///|
 /// Clear all items from the RleVecCached.
 pub fn[T] RleVecCached::clear(self : RleVecCached[T]) -> Unit {
-  self.items.clear()
+  self.vec.0.clear()
   self.prefix_sums.clear()
   self.content_prefix_sums.clear()
   self.dirty = false
@@ -102,16 +102,16 @@ pub fn[T] RleVecCached::clear(self : RleVecCached[T]) -> Unit {
 /// Get a copy of the underlying items array.
 /// Returns a shallow copy - if T contains mutable references, they are shared.
 pub fn[T] RleVecCached::items(self : RleVecCached[T]) -> Array[T] {
-  self.items.copy()
+  self.vec.0.copy()
 }
 
 ///|
 /// Get item at run index (not atom index).
 pub fn[T] RleVecCached::get_run(self : RleVecCached[T], index : Int) -> T? {
-  if index < 0 || index >= self.items.length() {
+  if index < 0 || index >= self.vec.0.length() {
     None
   } else {
-    Some(self.items[index])
+    Some(self.vec.0[index])
   }
 }
 
@@ -130,7 +130,7 @@ pub fn RleVecCached::from_string(text : String) -> RleVecCached[String] {
 /// Concatenates all runs into a single string.
 /// Uses StringBuilder for O(n) performance.
 pub fn RleVecCached::to_string(self : RleVecCached[String]) -> String {
-  self.items.fold(init=StringBuilder::new(), fn(sb, s) {
+  self.vec.0.fold(init=StringBuilder::new(), fn(sb, s) {
     sb.write_string(s)
     sb
   }).to_string()
@@ -140,7 +140,7 @@ pub fn RleVecCached::to_string(self : RleVecCached[String]) -> String {
 /// Returns an iterator over codepoints.
 pub fn RleVecCached::iter_chars(self : RleVecCached[String]) -> Iter[Char] {
   let chars : Array[Char] = []
-  for run in self.items {
+  for run in self.vec.0 {
     for c in run {
       chars.push(c)
     }

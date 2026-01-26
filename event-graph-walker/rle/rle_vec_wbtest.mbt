@@ -6,7 +6,7 @@ test "invariant: no zero-length runs after push" {
   let _ = vec.push("a")
   let _ = vec.push("b")
   let _ = vec.push("c")
-  for item in vec.items {
+  for item in vec.0 {
     inspect(HasLength::atom_len(item) > 0, content="true")
   }
 }
@@ -18,7 +18,7 @@ test "invariant: no adjacent mergeable runs" {
   let _ = vec.push(" ")
   let _ = vec.push("world")
   // String always merges, so should be single run
-  inspect(vec.items.length(), content="1")
+  inspect(vec.0.length(), content="1")
 }
 
 ///|
@@ -29,15 +29,15 @@ test "normalize_last cascades properly" {
   let _ = vec.push("b")
   let _ = vec.push("c")
   let _ = vec.push("d")
-  inspect(vec.items.length(), content="1")
-  inspect(vec.items[0], content="abcd")
+  inspect(vec.0.length(), content="1")
+  inspect(vec.0[0], content="abcd")
 }
 
 ///|
 test "items array direct access" {
   let vec = RleVec::from_string("test")
-  inspect(vec.items.length(), content="1")
-  inspect(vec.items[0], content="test")
+  inspect(vec.0.length(), content="1")
+  inspect(vec.0[0], content="test")
 }
 
 ///|
@@ -47,10 +47,10 @@ test "split_at preserves invariants" {
   match result {
     Ok((left, right)) => {
       // Both halves should maintain invariants
-      for item in left.items {
+      for item in left.0 {
         inspect(HasLength::atom_len(item) > 0, content="true")
       }
-      for item in right.items {
+      for item in right.0 {
         inspect(HasLength::atom_len(item) > 0, content="true")
       }
     }

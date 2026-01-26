@@ -10,7 +10,7 @@
 /// Uses lazy rebuild: prefix sums are only recomputed when dirty and accessed.
 /// All mutations set the dirty flag; read operations trigger rebuild if needed.
 pub struct RleVecCached[T] {
-  items : Array[T]
+  vec : RleVec[T]
   mut prefix_sums : Array[Int] // prefix_sums[i] = cumulative atom_len through items[i]
   mut content_prefix_sums : Array[Int] // For O(1) total_content_len
   mut dirty : Bool
@@ -19,7 +19,7 @@ pub struct RleVecCached[T] {
 ///|
 /// Creates an empty RleVecCached.
 pub fn[T] RleVecCached::new() -> RleVecCached[T] {
-  { items: [], prefix_sums: [], content_prefix_sums: [], dirty: false }
+  { vec: RleVec::new(), prefix_sums: [], content_prefix_sums: [], dirty: false }
 }
 
 ///|
@@ -40,13 +40,13 @@ pub fn[T : Mergeable + HasLength] RleVecCached::from_array(
 ///|
 /// Returns true if this RleVecCached contains no runs.
 pub fn[T] RleVecCached::is_empty(self : RleVecCached[T]) -> Bool {
-  self.items.is_empty()
+  self.vec.is_empty()
 }
 
 ///|
 /// Returns the number of runs (not atoms).
 pub fn[T] RleVecCached::run_count(self : RleVecCached[T]) -> Int {
-  self.items.length()
+  self.vec.run_count()
 }
 
 ///|
@@ -62,7 +62,7 @@ fn[T : HasLength] RleVecCached::rebuild_if_dirty(
   self.content_prefix_sums = []
   let mut atom_sum = 0
   let mut content_sum = 0
-  for item in self.items {
+  for item in self.vec.0 {
     atom_sum = atom_sum + T::atom_len(item)
     content_sum = content_sum + T::content_len(item)
     self.prefix_sums.push(atom_sum)
@@ -111,38 +111,12 @@ pub fn[T : Mergeable + HasLength] RleVecCached::push(
   self : RleVecCached[T],
   element : T,
 ) -> Result[Unit, RleError] {
-  if T::atom_len(element) <= 0 {
-    return Err(RleError::EmptyElement)
-  }
-  match self.items.last() {
-    Some(last) =>
-      if T::can_merge(last, element) {
-        self.items[self.items.length() - 1] = T::merge(last, element)
-        self.normalize_last()
-      } else {
-        self.items.push(element)
-      }
-    None => self.items.push(element)
-  }
-  self.invalidate()
-  Ok(())
-}
-
-///|
-/// Cascades merging leftward after a push-merge changes mergeability.
-fn[T : Mergeable] RleVecCached::normalize_last(self : RleVecCached[T]) -> Unit {
-  while self.items.length() >= 2 {
-    let last = self.items.length() - 1
-    let prev = last - 1
-    let a = self.items[prev]
-    let b = self.items[last]
-    if T::can_merge(a, b) {
-      self.items[prev] = T::merge(a, b)
-      let _ = self.items.pop()
-
-    } else {
-      break
+  match self.vec.push(element) {
+    Ok(_) => {
+      self.invalidate()
+      Ok(())
     }
+    Err(e) => Err(e)
   }
 }
 
@@ -159,7 +133,7 @@ pub fn[T : HasLength] RleVecCached::search(
   self : RleVecCached[T],
   index : Int,
 ) -> SearchResult? {
-  if index < 0 || self.items.is_empty() {
+  if index < 0 || self.vec.is_empty() {
     return None
   }
   self.rebuild_if_dirty()
@@ -172,7 +146,7 @@ pub fn[T : HasLength] RleVecCached::search(
   }
   // Binary search: find smallest i where prefix_sums[i] > index
   let mut lo = 0
-  let mut hi = self.items.length()
+  let mut hi = self.vec.0.length()
   while lo < hi {
     let mid = lo + (hi - lo) / 2
     if self.prefix_sums[mid] <= index {
@@ -218,7 +192,7 @@ pub fn[T : HasLength] RleVecCached::iter_slices(
   // Find the starting run using binary search
   let start_result = self.search(start)
   guard start_result is Some(start_pos) else { return Ok(Iter::empty()) }
-  let items = self.items
+  let items = self.vec.0
   let prefix_sums = self.prefix_sums
   let result : Array[Slice[T]] = []
   // Start from the run containing 'start'
@@ -293,13 +267,13 @@ pub fn[T : Sliceable + HasLength + Mergeable] RleVecCached::split_at(
     Some(split_pos) => {
       // Copy items before the split run to left
       for i = 0; i < split_pos.run_index; i = i + 1 {
-        match left.push(self.items[i]) {
+        match left.push(self.vec.0[i]) {
           Ok(_) => ()
           Err(e) => return Err(e)
         }
       }
       // Handle the split run
-      let split_item = self.items[split_pos.run_index]
+      let split_item = self.vec.0[split_pos.run_index]
       if split_pos.offset > 0 {
         // Need to slice the run
         match left.push(T::slice(split_item, start=0, end=split_pos.offset)) {
@@ -324,8 +298,8 @@ pub fn[T : Sliceable + HasLength + Mergeable] RleVecCached::split_at(
         }
       }
       // Copy remaining items to right
-      for i = split_pos.run_index + 1; i < self.items.length(); i = i + 1 {
-        match right.push(self.items[i]) {
+      for i = split_pos.run_index + 1; i < self.vec.0.length(); i = i + 1 {
+        match right.push(self.vec.0[i]) {
           Ok(_) => ()
           Err(e) => return Err(e)
         }
@@ -338,7 +312,7 @@ pub fn[T : Sliceable + HasLength + Mergeable] RleVecCached::split_at(
 ///|
 /// Returns an iterator over all items.
 pub fn[T] RleVecCached::iter(self : RleVecCached[T]) -> Iter[T] {
-  self.items.iter()
+  self.vec.iter()
 }
 
 ///|
@@ -346,7 +320,7 @@ pub fn[T] RleVecCached::iter(self : RleVecCached[T]) -> Iter[T] {
 /// The returned vec uses a shallow copy of items, so T should be treated as immutable.
 /// TODO: Consider a deep-copy variant or an immutability wrapper for T.
 pub fn[T] RleVecCached::to_rle_vec(self : RleVecCached[T]) -> RleVec[T] {
-  { items: self.items.copy() }
+  RleVec(self.vec.0.copy())
 }
 
 ///|
@@ -355,7 +329,7 @@ pub fn[T] RleVecCached::to_rle_vec(self : RleVecCached[T]) -> RleVec[T] {
 /// TODO: Consider a deep-copy variant or an immutability wrapper for T.
 pub fn[T] RleVecCached::from_rle_vec(vec : RleVec[T]) -> RleVecCached[T] {
   {
-    items: vec.items.copy(),
+    vec: RleVec(vec.0.copy()),
     prefix_sums: [],
     content_prefix_sums: [],
     dirty: true,

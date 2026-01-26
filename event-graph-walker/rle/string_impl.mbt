@@ -53,7 +53,7 @@ pub fn RleVec::from_string(text : String) -> RleVec[String] {
 /// Concatenates all runs into a single string.
 /// Uses StringBuilder for O(n) performance.
 pub fn RleVec::to_string(self : RleVec[String]) -> String {
-  self.items.fold(init=StringBuilder::new(), fn(sb, s) {
+  self.0.fold(init=StringBuilder::new(), fn(sb, s) {
     sb.write_string(s)
     sb
   }).to_string()
@@ -63,7 +63,7 @@ pub fn RleVec::to_string(self : RleVec[String]) -> String {
 /// Returns an iterator over codepoints.
 pub fn RleVec::iter_chars(self : RleVec[String]) -> Iter[Char] {
   let chars : Array[Char] = []
-  for run in self.items {
+  for run in self.0 {
     for c in run {
       chars.push(c)
     }

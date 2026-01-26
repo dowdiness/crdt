@@ -1,13 +1,11 @@
 ///|
 /// A run-length encoded vector that automatically merges adjacent runs.
-pub struct RleVec[T] {
-  items : Array[T]
-} derive(Show, Eq)
+pub struct RleVec[T](Array[T]) derive(Show, Eq)
 
 ///|
 /// Creates an empty RleVec.
 pub fn[T] RleVec::new() -> RleVec[T] {
-  { items: [] }
+  RleVec([])
 }
 
 ///|
@@ -29,27 +27,27 @@ pub fn[T : Mergeable + HasLength] RleVec::from_array(
 ///|
 /// Returns true if this RleVec contains no runs.
 pub fn[T] RleVec::is_empty(self : RleVec[T]) -> Bool {
-  self.items.is_empty()
+  self.0.is_empty()
 }
 
 ///|
 /// Returns the number of runs (not atoms).
 pub fn[T] RleVec::run_count(self : RleVec[T]) -> Int {
-  self.items.length()
+  self.0.length()
 }
 
 ///|
 /// Returns the total atom length (sum of all atom_len).
 /// Computed on each call; O(n) where n = run_count.
 pub fn[T : HasLength] RleVec::total_atom_len(self : RleVec[T]) -> Int {
-  self.items.fold(init=0, fn(acc, item) { acc + T::atom_len(item) })
+  self.0.fold(init=0, fn(acc, item) { acc + T::atom_len(item) })
 }
 
 ///|
 /// Returns the total content length (sum of all content_len).
 /// Computed on each call; O(n) where n = run_count.
 pub fn[T : HasLength] RleVec::total_content_len(self : RleVec[T]) -> Int {
-  self.items.fold(init=0, fn(acc, item) { acc + T::content_len(item) })
+  self.0.fold(init=0, fn(acc, item) { acc + T::content_len(item) })
 }
 
 ///|
@@ -63,15 +61,15 @@ pub fn[T : Mergeable + HasLength] RleVec::push(
   if T::atom_len(element) <= 0 {
     return Err(RleError::EmptyElement)
   }
-  match self.items.last() {
+  match self.0.last() {
     Some(last) =>
       if T::can_merge(last, element) {
-        self.items[self.items.length() - 1] = T::merge(last, element)
+        self.0[self.0.length() - 1] = T::merge(last, element)
         self.normalize_last()
       } else {
-        self.items.push(element)
+        self.0.push(element)
       }
-    None => self.items.push(element)
+    None => self.0.push(element)
   }
   Ok(())
 }
@@ -88,14 +86,14 @@ pub fn[T : Mergeable + HasLength] RleVec::push(
 /// ensures the vector collapses to a single run.
 fn[T : Mergeable] RleVec::normalize_last(self : RleVec[T]) -> Unit {
   // If merge behavior changes after merging, cascade to the left.
-  while self.items.length() >= 2 {
-    let last = self.items.length() - 1
+  while self.0.length() >= 2 {
+    let last = self.0.length() - 1
     let prev = last - 1
-    let a = self.items[prev]
-    let b = self.items[last]
+    let a = self.0[prev]
+    let b = self.0[last]
     if T::can_merge(a, b) {
-      self.items[prev] = T::merge(a, b)
-      let _ = self.items.pop()
+      self.0[prev] = T::merge(a, b)
+      let _ = self.0.pop()
 
     } else {
       break
@@ -127,8 +125,8 @@ pub fn[T : HasLength] RleVec::search(
     return None
   }
   let mut prefix = 0
-  for i = 0; i < self.items.length(); i = i + 1 {
-    let len = T::atom_len(self.items[i])
+  for i = 0; i < self.0.length(); i = i + 1 {
+    let len = T::atom_len(self.0[i])
     if index < prefix + len {
       return Some({ run_index: i, offset: index - prefix })
     }
@@ -163,7 +161,7 @@ pub fn[T : HasLength] RleVec::iter_slices(
   if start == end {
     return Ok(Iter::empty())
   }
-  let items = self.items
+  let items = self.0
   let result : Array[Slice[T]] = []
   let mut pos = 0
   for i = 0; i < items.length(); i = i + 1 {
@@ -227,7 +225,7 @@ pub fn[T : Sliceable + HasLength + Mergeable] RleVec::split_at(
   let left : RleVec[T] = RleVec::new()
   let right : RleVec[T] = RleVec::new()
   let mut pos = 0
-  for item in self.items {
+  for item in self.0 {
     let len = T::atom_len(item)
     let item_end = pos + len
     if item_end <= index {
@@ -274,5 +272,5 @@ pub fn[T : Sliceable + HasLength + Mergeable] RleVec::split_at(
 ///|
 /// Returns an iterator over all items.
 pub fn[T] RleVec::iter(self : RleVec[T]) -> Iter[T] {
-  self.items.iter()
+  self.0.iter()
 }
