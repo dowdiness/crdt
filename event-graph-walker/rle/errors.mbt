@@ -25,7 +25,9 @@ pub(all) suberror RleError {
 } derive(Show)
 
 ///|
-/// Wrapper for user-friendly error display
+/// Rust style wrapper struct for user-friendly error display
+///
+/// https://doc.rust-lang.org/stable/std/path/struct.Display.html
 pub struct ErrorMessage {
   priv error : RleError
 }
