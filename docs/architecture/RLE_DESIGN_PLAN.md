@@ -324,10 +324,14 @@ QuickCheck helpers live in `arbitrary.mbt`.
 - `RleCursor` for sequential access.
 - String slicing via `StringBuilder`.
 
-### Phase 3 (planned)
-- Batch construction to avoid `normalize_tail` cascades.
-- Chunked or rope-like RLE for large documents.
-- Optional versioned cursors for mutation safety.
+### Phase 3 (done)
+- `Runs::from_array_batch` - single-pass stack merge avoiding `normalize_tail` cascades.
+- Versioned cursors via `Rle.version` counter and `RleCursor.is_stale()`.
+- Stale cursors return safe defaults (None/false/empty) on all operations.
+
+### Phase 4 (planned)
+- Chunked or rope-like RLE for large documents (defer until profiling shows need).
+- Batch `concat`/`extend` optimization.
 
 ## Open Questions
 

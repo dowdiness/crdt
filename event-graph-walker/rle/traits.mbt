@@ -50,7 +50,7 @@ pub(open) trait HasLength {
 ///   Think: "how many characters would the user see?"
 ///
 /// Note: `causal_len` defaults to `HasLength::length` unless overridden.
-pub(open) trait HasCausalLength : HasLength {
+pub(open) trait HasCausalLength: HasLength {
   causal_len(Self) -> Int = _
   visible_len(Self) -> Int
 }

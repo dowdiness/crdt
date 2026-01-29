@@ -2,6 +2,7 @@
 package "dowdiness/event-graph-walker/rle"
 
 import {
+  "moonbitlang/core/builtin",
   "moonbitlang/core/quickcheck/splitmix",
 }
 
@@ -27,6 +28,7 @@ pub(all) struct BenchRun {
   len : Int
 }
 pub impl HasCausalLength for BenchRun
+pub impl HasLength for BenchRun
 pub impl Eq for BenchRun
 pub impl Show for BenchRun
 
@@ -62,6 +64,7 @@ pub impl Show for RangeIssue
 pub struct Rle[T] {
   runs : Runs[T]
   mut prefix : PrefixSums?
+  mut version : Int
 }
 pub fn[T : Mergeable + HasCausalLength] Rle::append(Self[T], T) -> Result[Unit, RleError]
 pub fn[T] Rle::clear(Self[T]) -> Unit
@@ -74,6 +77,7 @@ pub fn[T : Mergeable + HasCausalLength] Rle::from_array(Array[T]) -> Self[T]
 pub fn[T] Rle::from_runs(Runs[T]) -> Self[T]
 pub fn Rle::from_string(String) -> Self[String]
 pub fn[T] Rle::get(Self[T], Int) -> T?
+pub fn[T] Rle::get_version(Self[T]) -> Int
 pub fn[T] Rle::is_empty(Self[T]) -> Bool
 pub fn[T] Rle::iter(Self[T]) -> Iter[T]
 pub fn Rle::iter_chars(Self[String]) -> Iter[Char]
@@ -92,6 +96,7 @@ pub impl @moonbitlang/quickcheck.Shrink for Rle[String]
 
 pub struct RleCursor[T] {
   rle : Rle[T]
+  version : Int
   mut run_index : Int
   mut offset_in_run : Int
   mut global_offset : Int
@@ -100,9 +105,10 @@ pub fn[T : HasCausalLength] RleCursor::advance(Self[T], Int) -> Bool
 pub fn[T : HasCausalLength] RleCursor::at_end(Self[T]) -> Bool
 pub fn[T] RleCursor::current(Self[T]) -> (T, Int)?
 pub fn[T] RleCursor::current_item(Self[T]) -> T?
+pub fn[T] RleCursor::is_stale(Self[T]) -> Bool
 pub fn[T : HasCausalLength] RleCursor::iter_forward(Self[T]) -> Iter[(T, Int, Int)]
 pub fn[T : HasCausalLength] RleCursor::next(Self[T]) -> T?
-pub fn[T] RleCursor::position(Self[T]) -> Int
+pub fn[T] RleCursor::position(Self[T]) -> Int?
 pub fn[T : HasCausalLength] RleCursor::prev(Self[T]) -> T?
 pub fn[T : HasCausalLength] RleCursor::retreat(Self[T], Int) -> Bool
 pub fn[T : HasCausalLength] RleCursor::seek(Self[T], Int) -> Bool
@@ -129,6 +135,7 @@ pub fn[T : Mergeable + HasCausalLength] Runs::extend(Self[T], Self[T]) -> Unit
 pub fn[T : HasCausalLength] Runs::find(Self[T], Int) -> RunPos?
 pub fn[T] Runs::find_fast(Self[T], PrefixSums, Int) -> RunPos?
 pub fn[T : Mergeable + HasCausalLength] Runs::from_array(Array[T]) -> Self[T]
+pub fn[T : Mergeable + HasCausalLength] Runs::from_array_batch(Array[T]) -> Self[T]
 pub fn Runs::from_string(String) -> Self[String]
 pub fn[T] Runs::get(Self[T], Int) -> T?
 #deprecated
@@ -162,13 +169,19 @@ pub impl @moonbitlang/core/quickcheck.Arbitrary for Slice[String]
 pub impl @moonbitlang/quickcheck.Shrink for Slice[String]
 
 // Type aliases
+pub using @builtin {type Option as Perishable}
 
 // Traits
-pub(open) trait HasCausalLength {
-  causal_len(Self) -> Int
+pub(open) trait HasCausalLength : HasLength {
+  causal_len(Self) -> Int = _
   visible_len(Self) -> Int
 }
 pub impl HasCausalLength for String
+
+pub(open) trait HasLength {
+  length(Self) -> Int
+}
+pub impl HasLength for String
 
 pub(open) trait Mergeable {
   can_merge(Self, Self) -> Bool

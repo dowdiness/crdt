@@ -3,28 +3,41 @@
 pub struct Rle[T] {
   runs : Runs[T]
   mut prefix : PrefixSums? // None = stale, needs rebuild
+  mut version : Int // Monotonically increasing mutation counter
 } derive(Show, Eq)
 
 ///|
 pub fn[T] Rle::new() -> Rle[T] {
-  { runs: Runs::new(), prefix: None }
+  { runs: Runs::new(), prefix: None, version: 0 }
 }
 
 ///|
 pub fn[T : Mergeable + HasCausalLength] Rle::from_array(
   arr : Array[T],
 ) -> Rle[T] {
-  { runs: Runs::from_array(arr), prefix: None }
+  { runs: Runs::from_array(arr), prefix: None, version: 0 }
 }
 
 ///|
 pub fn[T] Rle::from_runs(runs : Runs[T]) -> Rle[T] {
-  { runs, prefix: None }
+  { runs, prefix: None, version: 0 }
 }
 
 ///|
 pub fn[T] Rle::to_runs(self : Rle[T]) -> Runs[T] {
   self.runs
+}
+
+///|
+/// Current mutation version (for cursor staleness detection)
+pub fn[T] Rle::get_version(self : Rle[T]) -> Int {
+  self.version
+}
+
+///|
+/// Increment version on structural mutations
+fn[T] Rle::bump_version(self : Rle[T]) -> Unit {
+  self.version = self.version + 1
 }
 
 ///|
@@ -79,13 +92,14 @@ pub fn[T : HasCausalLength] Rle::visible_len(self : Rle[T]) -> Int {
 }
 
 ///|
-/// Append element - invalidates cache
+/// Append element - invalidates cache and bumps version
 pub fn[T : Mergeable + HasCausalLength] Rle::append(
   self : Rle[T],
   elem : T,
 ) -> Result[Unit, RleError] {
   match self.runs.append(elem) {
     Ok(_) => {
+      self.bump_version()
       self.invalidate()
       Ok(())
     }
@@ -190,9 +204,10 @@ pub fn[T : Sliceable + HasCausalLength + Mergeable] Rle::split(
 }
 
 ///|
-/// Clear all runs - invalidates cache
+/// Clear all runs - invalidates cache and bumps version
 pub fn[T] Rle::clear(self : Rle[T]) -> Unit {
   self.runs.clear()
+  self.bump_version()
   self.invalidate()
 }
 
@@ -206,11 +221,12 @@ pub fn[T : Mergeable + HasCausalLength] Rle::concat(
 }
 
 ///|
-/// Extend in-place - invalidates cache
+/// Extend in-place - invalidates cache and bumps version
 pub fn[T : Mergeable + HasCausalLength] Rle::extend(
   self : Rle[T],
   other : Rle[T],
 ) -> Unit {
   self.runs.extend(other.runs)
+  self.bump_version()
   self.invalidate()
 }

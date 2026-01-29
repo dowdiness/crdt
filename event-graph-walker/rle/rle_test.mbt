@@ -277,3 +277,165 @@ test "RleError::message for Internal EmptyElement" {
       )
   }
 }
+
+// ============== Phase 3: Versioned Cursor Tests ==============
+
+///|
+test "RleCursor::is_stale returns false for fresh cursor" {
+  let rle = @rle.Rle::from_string("hello")
+  let cursor = rle.cursor()
+  inspect(cursor.is_stale(), content="false")
+}
+
+///|
+test "RleCursor::is_stale returns true after append" {
+  let rle = @rle.Rle::from_string("hello")
+  let cursor = rle.cursor()
+  let _ = rle.append(" world")
+  inspect(cursor.is_stale(), content="true")
+}
+
+///|
+test "RleCursor::is_stale returns true after clear" {
+  let rle = @rle.Rle::from_string("hello")
+  let cursor = rle.cursor()
+  rle.clear()
+  inspect(cursor.is_stale(), content="true")
+}
+
+///|
+test "RleCursor::is_stale returns true after extend" {
+  let rle = @rle.Rle::from_string("hello")
+  let cursor = rle.cursor()
+  let other = @rle.Rle::from_string(" world")
+  rle.extend(other)
+  inspect(cursor.is_stale(), content="true")
+}
+
+///|
+test "stale cursor current returns None" {
+  let rle = @rle.Rle::from_string("hello")
+  let cursor = rle.cursor()
+  let _ = rle.append(" world")
+  inspect(cursor.current(), content="None")
+  inspect(cursor.current_item(), content="None")
+}
+
+///|
+test "stale cursor advance returns false" {
+  let rle = @rle.Rle::from_string("hello")
+  let cursor = rle.cursor()
+  let _ = rle.append(" world")
+  inspect(cursor.advance(1), content="false")
+}
+
+///|
+test "stale cursor retreat returns false" {
+  let rle = @rle.Rle::from_string("hello")
+  let cursor = rle.cursor()
+  let _ = cursor.advance(2) // Move forward first
+  let _ = rle.append(" world")
+  inspect(cursor.retreat(1), content="false")
+}
+
+///|
+test "stale cursor seek returns false" {
+  let rle = @rle.Rle::from_string("hello")
+  let cursor = rle.cursor()
+  let _ = rle.append(" world")
+  inspect(cursor.seek(2), content="false")
+}
+
+///|
+test "stale cursor at_end returns true" {
+  let rle = @rle.Rle::from_string("hello")
+  let cursor = rle.cursor()
+  let _ = rle.append(" world")
+  inspect(cursor.at_end(), content="true")
+}
+
+///|
+test "stale cursor next returns None" {
+  let rle = @rle.Rle::from_string("hello")
+  let cursor = rle.cursor()
+  let _ = rle.append(" world")
+  inspect(cursor.next(), content="None")
+}
+
+///|
+test "stale cursor prev returns None" {
+  let rle = @rle.Rle::from_string("hello")
+  let cursor = rle.cursor()
+  let _ = cursor.advance(2)
+  let _ = rle.append(" world")
+  inspect(cursor.prev(), content="None")
+}
+
+///|
+test "stale cursor iter_forward returns empty" {
+  let rle = @rle.Rle::from_string("hello")
+  let cursor = rle.cursor()
+  let _ = rle.append(" world")
+  let items = cursor.iter_forward().collect()
+  inspect(items.length(), content="0")
+}
+
+///|
+test "stale cursor position returns None" {
+  let rle = @rle.Rle::from_string("hello")
+  let cursor = rle.cursor()
+  let _ = cursor.advance(3)
+  inspect(cursor.position(), content="Some(3)")
+  let _ = rle.append(" world")
+  inspect(cursor.position(), content="None")
+}
+
+///|
+test "Rle::get_version starts at 0" {
+  let rle : @rle.Rle[String] = @rle.Rle::new()
+  inspect(rle.get_version(), content="0")
+}
+
+///|
+test "Rle::get_version increments on mutation" {
+  let rle : @rle.Rle[String] = @rle.Rle::new()
+  let _ = rle.append("a")
+  inspect(rle.get_version(), content="1")
+  let _ = rle.append("b")
+  inspect(rle.get_version(), content="2")
+  rle.clear()
+  inspect(rle.get_version(), content="3")
+}
+
+// ============== Phase 3: Batch Construction Tests ==============
+
+///|
+test "Runs::from_array_batch produces same result as from_array" {
+  let arr = ["a", "b", "c", "d", "e"]
+  let via_array = @rle.Runs::from_array(arr)
+  let via_batch = @rle.Runs::from_array_batch(arr)
+  inspect(via_array.to_string() == via_batch.to_string(), content="true")
+  inspect(via_array.count() == via_batch.count(), content="true")
+}
+
+///|
+test "Runs::from_array_batch skips empty elements" {
+  let arr = ["a", "", "b", "", "c"]
+  let runs = @rle.Runs::from_array_batch(arr)
+  inspect(runs.to_string(), content="abc")
+  inspect(runs.count(), content="1")
+}
+
+///|
+test "Runs::from_array_batch handles empty array" {
+  let arr : Array[String] = []
+  let runs = @rle.Runs::from_array_batch(arr)
+  inspect(runs.is_empty(), content="true")
+}
+
+///|
+test "Runs::from_array_batch handles all empty elements" {
+  let arr = ["", "", ""]
+  let runs = @rle.Runs::from_array_batch(arr)
+  inspect(runs.is_empty(), content="true")
+}

@@ -8,16 +8,40 @@ pub fn[T] Runs::new() -> Runs[T] {
 }
 
 ///|
+/// Batch construction - single-pass stack merge, avoids repeated normalize_tail
+pub fn[T : Mergeable + HasCausalLength] Runs::from_array_batch(
+  arr : Array[T],
+) -> Runs[T] {
+  let out : Array[T] = []
+  for item in arr {
+    if T::causal_len(item) <= 0 {
+      continue
+    }
+    if out.is_empty() {
+      out.push(item)
+      continue
+    }
+    // Stack-merge: fold into tail and cascade as needed
+    let mut cur = item
+    while not(out.is_empty()) {
+      let last = out[out.length() - 1]
+      if T::can_merge(last, cur) {
+        let _ = out.pop()
+        cur = T::merge(last, cur)
+      } else {
+        break
+      }
+    }
+    out.push(cur)
+  }
+  Runs(out)
+}
+
+///|
 pub fn[T : Mergeable + HasCausalLength] Runs::from_array(
   arr : Array[T],
 ) -> Runs[T] {
-  let runs = Runs::new()
-  for item in arr {
-    if T::causal_len(item) > 0 {
-      guard runs.append(item) is Ok(_)
-    }
-  }
-  runs
+  Runs::from_array_batch(arr)
 }
 
 ///|
