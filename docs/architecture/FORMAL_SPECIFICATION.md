@@ -4,6 +4,43 @@
 > implemented in MoonBit. Every law is numbered, mapped to its property test,
 > or marked **UNTESTED**.
 
+## 0. Quick Overview (TL;DR)
+
+**What this system is:** A layered CRDT for collaborative text editing. Each
+layer provides a narrow, testable contract; higher layers rely on lower-layer
+laws rather than re-implementing them.
+
+### 0.1 System Dataflow (Mental Model)
+
+```
+User edits
+  ↓
+TextDoc / Editor
+  ↓ emits ops
+OpLog  +  CausalGraph
+  ↓ topological order (Walker)
+Branch / Document (merge/apply)
+  ↓ apply inserts/deletes
+FugueTree (sequence CRDT)
+  ↓ in-order traversal
+Visible text
+```
+
+### 0.2 Reading Guide (Where to Start)
+
+- **Want the big picture & roles?** Read Sections **0–1**.
+- **Want causal ordering & merge correctness?** Read Section **4** and **6**.
+- **Want sequence ordering / non-interleaving?** Read Section **5**.
+- **Want convergence & sync?** Read Section **7** and Theorems in **9**.
+
+### 0.3 Key Invariants by Layer (One Line Each)
+
+- **RLE / Span:** length + merge + normalization laws (L1.x, I3.x, L3.x).
+- **FugueTree:** deterministic ordering + non-interleaving (L5.x).
+- **CausalGraph / Walker:** partial order + topological traversal (L4.x).
+- **Branch / Document merge:** retreat/advance correctness (L6.x).
+- **Text sync / Editor:** convergence + user invariants (L7.x, L8.x).
+
 ## 1. Preamble
 
 ### 1.1 Purpose and Scope
@@ -57,6 +94,53 @@ CRDT system. It covers:
 | Document snapshot | `Branch` | `event-graph-walker/branch/branch.mbt` |
 | User-facing document | `TextDoc` | `event-graph-walker/text/text_doc.mbt` |
 | Editor with cursor | `Editor` | `editor/editor.mbt` |
+
+---
+
+## 1.5 Responsibility Map (Quick Reference)
+
+This diagram shows which layer is responsible for satisfying which laws.
+Upper layers rely on the guarantees of lower layers; they do not re-implement them.
+
+```
+Editor/TextDoc
+  └─ sync + user API
+     (L7.x, L8.x)
+      |
+Branch/Document
+  └─ apply/merge orchestration
+     (L6.x)
+      |
+OpLog + CausalGraph + Walker
+  └─ causal ordering + topological walk
+     (L4.x)
+      |
+FugueTree
+  └─ sequence CRDT ordering + non-interleaving
+     (L5.x)
+      |
+RLE/Span
+  └─ element algebra + normalized runs
+     (L1.x, I3.x, L3.x)
+```
+
+### 1.5.1 Layer-to-Law Mapping
+
+| Layer | Laws it must satisfy | Primary files |
+|------|----------------------|---------------|
+| RLE / Span | L1.x, I3.x, L3.x | `event-graph-walker/rle/*`, `event-graph-walker/text/span.mbt` |
+| FugueTree | L5.x | `event-graph-walker/fugue/item.mbt`, `event-graph-walker/fugue/tree.mbt` |
+| CausalGraph + Walker | L4.x | `event-graph-walker/causal_graph/*` |
+| Branch / Document merge | L6.x | `event-graph-walker/branch/branch_merge.mbt`, `event-graph-walker/causal_graph/graph.mbt` |
+| Text sync | L7.x | `event-graph-walker/text/*` |
+| Editor | L8.x | `editor/*` |
+
+### 1.5.2 Delegation Notes
+
+- **Ordering semantics** are owned by FugueTree (L5.x); higher layers treat it as deterministic.
+- **Causal ordering** is owned by CausalGraph/Walker (L4.x); Branch applies in walker order.
+- **Length/visibility** invariants are owned by RLE/Span (L1.x, I3.x, L3.x).
+- **Convergence** (SEC, intention preservation) is a cross-layer consequence of the above.
 
 ---
 
