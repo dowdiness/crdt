@@ -169,7 +169,7 @@ pub impl @moonbitlang/core/quickcheck.Arbitrary for Slice[String]
 pub impl @moonbitlang/quickcheck.Shrink for Slice[String]
 
 // Type aliases
-pub using @builtin {type Option as Perishable}
+pub using @builtin {type Option as MayStale}
 
 // Traits
 pub(open) trait HasCausalLength : HasLength {

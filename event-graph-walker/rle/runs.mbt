@@ -310,31 +310,61 @@ pub fn[T] Runs::clear(self : Runs[T]) -> Unit {
 }
 
 ///|
-/// Concatenate two Runs
+/// Concatenate two Runs - batch optimized, single boundary merge
+/// Delegates to from_array_batch when self is empty to avoid code duplication.
 pub fn[T : Mergeable + HasCausalLength] Runs::concat(
   self : Runs[T],
   other : Runs[T],
 ) -> Runs[T] {
-  let result : Runs[T] = Runs::new()
-  for item in self.0 {
-    let _ = result.append(item)
-
+  if self.is_empty() {
+    return Runs::from_array_batch(other.0)
   }
+  if other.is_empty() {
+    return Runs(self.0.copy())
+  }
+  let out : Array[T] = self.0.copy()
   for item in other.0 {
-    let _ = result.append(item)
-
+    if T::causal_len(item) <= 0 {
+      continue
+    }
+    let mut cur = item
+    while not(out.is_empty()) {
+      let last = out[out.length() - 1]
+      if T::can_merge(last, cur) {
+        let _ = out.pop()
+        cur = T::merge(last, cur)
+      } else {
+        break
+      }
+    }
+    out.push(cur)
   }
-  result
+  Runs(out)
 }
 
 ///|
-/// Extend in-place from another Runs
+/// Extend in-place from another Runs - batch optimized
 pub fn[T : Mergeable + HasCausalLength] Runs::extend(
   self : Runs[T],
   other : Runs[T],
 ) -> Unit {
+  if other.is_empty() {
+    return
+  }
   for item in other.0 {
-    let _ = self.append(item)
-
+    if T::causal_len(item) <= 0 {
+      continue
+    }
+    let mut cur = item
+    while not(self.0.is_empty()) {
+      let last = self.0[self.0.length() - 1]
+      if T::can_merge(last, cur) {
+        let _ = self.0.pop()
+        cur = T::merge(last, cur)
+      } else {
+        break
+      }
+    }
+    self.0.push(cur)
   }
 }

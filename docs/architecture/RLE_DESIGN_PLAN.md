@@ -223,6 +223,29 @@ pub fn[T : Sliceable + HasCausalLength + Mergeable] Runs::split(
 `Rle[T]` wraps `Runs[T]` with lazy `PrefixSums` for fast indexed access.
 All mutations invalidate the cache.
 
+**Why trait bounds are on methods, not the struct:**
+
+`Rle[T]` is generic with no trait bounds on the struct itself. Bounds are
+declared per-method based on what each operation actually requires. This is
+deliberate:
+
+- `Runs[T]` is the plain RLE container — no bounds needed.
+- `Rle[T]` adds prefix sum caching (requires `HasCausalLength`) and version
+  tracking. The `prefix: PrefixSums?` field cannot be populated without
+  `HasCausalLength`, so `Rle` without that bound is effectively just `Runs`
+  with unused fields.
+- Despite this, we keep the struct unconstrained because the concrete element
+  type `T` will evolve. Currently only `String` is used, but future phases
+  will introduce multiple data representations (lists, trees) likely via an
+  enum. All of these will implement the CRDT traits (`Mergeable`,
+  `HasCausalLength`, `Sliceable`), so the bound would always be satisfied —
+  but we avoid premature coupling to a specific trait set.
+- Method-level bounds give graduated constraints: read-only operations need
+  only `HasCausalLength`, mutations add `Mergeable`, and `split` requires all
+  three. This lets callers depend on exactly the capabilities they use.
+- If all future concrete types always satisfy the same set of bounds, that is
+  the signal to promote them to struct-level bounds.
+
 **Key operations:**
 - `Rle::len()` and `Rle::visible_len()` are O(1) after cache rebuild.
 - `Rle::find()` uses `Runs::find_fast` with prefix sums (O(log n)).
@@ -329,9 +352,14 @@ QuickCheck helpers live in `arbitrary.mbt`.
 - Versioned cursors via `Rle.version` counter and `RleCursor.is_stale()`.
 - Stale cursors return safe defaults (None/false/empty) on all operations.
 
-### Phase 4 (planned)
-- Chunked or rope-like RLE for large documents (defer until profiling shows need).
-- Batch `concat`/`extend` optimization.
+### Phase 4 (done)
+- Batch `concat`/`extend` optimization - uses stack-merge approach avoiding
+  repeated `normalize_tail` calls. Early exit for empty inputs.
+- Bug fixes from oracle review:
+  - `concat` now delegates to `from_array_batch` when self is empty (eliminates code duplication)
+  - `Rle::extend` tracks mutation via count comparison before bumping version
+- Note: `concat` always copies to preserve pure semantics (no aliasing)
+- Chunked or rope-like RLE for large documents (deferred until profiling shows need).
 
 ## Open Questions
 

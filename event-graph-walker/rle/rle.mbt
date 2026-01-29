@@ -221,12 +221,21 @@ pub fn[T : Mergeable + HasCausalLength] Rle::concat(
 }
 
 ///|
-/// Extend in-place - invalidates cache and bumps version
+/// Extend in-place - invalidates cache and bumps version only if mutation occurs.
+/// Note: bumps version if other is non-empty, even if all items are filtered
+/// (causal_len <= 0). This is conservative; callers should pre-filter if needed.
 pub fn[T : Mergeable + HasCausalLength] Rle::extend(
   self : Rle[T],
   other : Rle[T],
 ) -> Unit {
+  if other.runs.is_empty() {
+    return
+  }
+  let old_count = self.runs.count()
   self.runs.extend(other.runs)
-  self.bump_version()
-  self.invalidate()
+  // Only bump version if actual mutation occurred
+  if self.runs.count() != old_count || old_count > 0 {
+    self.bump_version()
+    self.invalidate()
+  }
 }

@@ -219,3 +219,38 @@ fn prop_range_coverage(text : String) -> Bool {
 test "property: range covers exactly the requested range" {
   @qc.quick_check_fn(prop_range_coverage)
 }
+
+///|
+/// Property: extend produces same result as concat
+fn prop_extend_equals_concat(pair : (Array[String], Array[String])) -> Bool {
+  let (a, b) = pair
+  let runs_a = @rle.Runs::from_array(a)
+  let runs_b = @rle.Runs::from_array(b)
+  let concatenated = runs_a.concat(runs_b)
+  let runs_a2 = @rle.Runs::from_array(a)
+  let runs_b2 = @rle.Runs::from_array(b)
+  runs_a2.extend(runs_b2)
+  runs_a2.to_array() == concatenated.to_array()
+}
+
+///|
+test "property: extend equals concat" {
+  @qc.quick_check_fn(prop_extend_equals_concat)
+}
+
+///|
+/// Property: concat preserves total length
+fn prop_concat_preserves_len(pair : (Array[String], Array[String])) -> Bool {
+  let (a, b) = pair
+  let runs_a = @rle.Runs::from_array(a)
+  let runs_b = @rle.Runs::from_array(b)
+  let len_a = runs_a.len()
+  let len_b = runs_b.len()
+  let concatenated = runs_a.concat(runs_b)
+  concatenated.len() == len_a + len_b
+}
+
+///|
+test "property: concat preserves total length" {
+  @qc.quick_check_fn(prop_concat_preserves_len)
+}
