@@ -361,8 +361,66 @@ QuickCheck helpers live in `arbitrary.mbt`.
 - Note: `concat` always copies to preserve pure semantics (no aliasing)
 - Chunked or rope-like RLE for large documents (deferred until profiling shows need).
 
+### Phase 5 (documentation)
+**Goal:** Clarify trait semantics and package boundaries.
+
+RLE is a **compression + query** package, not an editing package:
+- ✅ Append-only construction (append, extend, concat)
+- ✅ Fast queries (find, range, prefix sums)
+- ✅ Read-only traversal (RleCursor)
+- ❌ NOT editing operations (insert/delete belong in domain modules)
+
+**Trait semantics:**
+
+| Trait | Question it answers | RLE uses it for |
+|-------|---------------------|-----------------|
+| `Mergeable` | Can adjacent items combine? | Compression invariant |
+| `Sliceable` | Can we extract a sub-range? | Split, range queries |
+| `HasLength` | What is the basic size? | Foundation trait |
+| `HasCausalLength` | Position space vs visible content? | Dual prefix sums |
+
+**Why `HasCausalLength` belongs in RLE:**
+- RLE must track positions for find/range operations
+- Some runs have different "structural" vs "visible" lengths (e.g., tombstones)
+- Prefix sums track both `atoms` (causal) and `content` (visible)
+- This is a generic RLE concern, not CRDT-specific
+
+**Package boundaries:**
+- `rle/` - compression, queries, traversal
+- `oplog/` - owns `Op`, `OpSpan` types (may use RLE internally)
+- `text/` - owns `TextView`, text rendering, `TextSpan` (uses RLE for output)
+- `fugue/` - owns CRDT merge semantics
+
+### Phase 5 Implementation (done)
+**TextSpan integration** - domain-specific RLE usage in `text/` package.
+
+Added `text/span.mbt`:
+```moonbit
+pub struct TextSpan {
+  text : String
+  deleted : Bool  // tombstone tracking
+}
+
+impl Mergeable for TextSpan    // merge if same deleted status
+impl HasLength for TextSpan    // character count
+impl HasCausalLength for TextSpan  // visible_len = 0 for tombstones
+impl Sliceable for TextSpan    // preserves deleted status
+```
+
+Added `TextView::to_spans() -> Runs[TextSpan]`:
+- Returns all items (including tombstones) in tree order
+- Adjacent spans with same deleted status are merged
+- Enables `causal_len` vs `visible_len` queries on output
+
+Supporting changes:
+- `FugueTree::get_all_items()` - traversal including tombstones
+- `Branch::inner_tree()` - accessor for advanced operations
+
 ## Open Questions
 
-1. Cursor invalidation strategy: versioning vs doc-only contract.
+1. ~~Cursor invalidation strategy: versioning vs doc-only contract.~~
+   **RESOLVED:** Versioning implemented in Phase 3 (`Rle.version` counter, `RleCursor.is_stale()`).
 2. Best chunk size if chunked RLE is introduced.
-3. Batch normalize API for large append workloads.
+   **DEFERRED:** Until profiling shows need for chunked/rope-like structures.
+3. ~~Batch normalize API for large append workloads.~~
+   **RESOLVED:** `from_array_batch`, `concat`, and `extend` use stack-merge approach, avoiding repeated `normalize_tail` calls.

@@ -135,6 +135,12 @@ pub fn Branch::visible_count(self : Branch) -> Int {
 }
 
 ///|
+/// Access the underlying FugueTree for advanced operations
+pub fn Branch::inner_tree(self : Branch) -> @fugue.FugueTree {
+  self.tree
+}
+
+///|
 /// Check if this branch is at the given frontier
 pub fn Branch::at_frontier(
   self : Branch,

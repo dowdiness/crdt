@@ -21,6 +21,7 @@ pub struct FugueTree {
 pub fn FugueTree::delete(Self, Int) -> Unit raise FugueError
 #alias("_[_]")
 pub fn FugueTree::get(Self, Int) -> Item?
+pub fn FugueTree::get_all_items(Self) -> Array[(Int, Item)]
 pub fn FugueTree::get_visible_items(Self) -> Array[(Int, Item)]
 pub fn FugueTree::insert(Self, Int, String, Int, Int, Int, String) -> Unit
 pub fn FugueTree::new() -> Self

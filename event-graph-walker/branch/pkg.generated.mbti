@@ -35,6 +35,7 @@ pub fn Branch::checkout_version_vector(@oplog.OpLog, @causal_graph.VersionVector
 pub fn Branch::from_tree_and_oplog(@fugue.FugueTree, @oplog.OpLog) -> Self
 pub fn Branch::get_frontier(Self) -> @causal_graph.Frontier
 pub fn Branch::get_version_vector(Self) -> @causal_graph.VersionVector
+pub fn Branch::inner_tree(Self) -> @fugue.FugueTree
 pub fn Branch::merge_remote_ops(Self, Array[@oplog.Op]) -> Self raise BranchError
 pub fn Branch::new(@oplog.OpLog) -> Self
 pub fn Branch::to_text(Self) -> String

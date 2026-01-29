@@ -55,7 +55,15 @@ pub fn FugueTree::get(self : FugueTree, id : Int) -> Item? {
 /// Get all visible (non-deleted) items in tree order
 pub fn FugueTree::get_visible_items(self : FugueTree) -> Array[(Int, Item)] {
   let result = []
-  self.traverse_tree(-1, result)
+  self.traverse_tree(-1, result, visible_only=true)
+  result
+}
+
+///|
+/// Get all items (including tombstones) in tree order
+pub fn FugueTree::get_all_items(self : FugueTree) -> Array[(Int, Item)] {
+  let result = []
+  self.traverse_tree(-1, result, visible_only=false)
   result
 }
 
@@ -244,6 +252,7 @@ fn FugueTree::traverse_tree(
   self : FugueTree,
   node_id : Int,
   result : Array[(Int, Item)],
+  visible_only~ : Bool,
 ) -> Unit {
   // Get children of current node (excluding the node itself to prevent cycles)
   let children = self.get_children(node_id)
@@ -260,14 +269,17 @@ fn FugueTree::traverse_tree(
     let (child_id, _) = child
     // Don't traverse back to parent (prevents cycles)
     if child_id != node_id {
-      self.traverse_tree(child_id, result)
+      self.traverse_tree(child_id, result, visible_only~)
     }
   })
 
-  // Visit current node (if not root and visible)
+  // Visit current node (if not root)
   if node_id != -1 {
     match self[node_id] {
-      Some(item) => if item.is_visible() { result.push((node_id, item)) }
+      Some(item) =>
+        if not(visible_only) || item.is_visible() {
+          result.push((node_id, item))
+        }
       None => ()
     }
   }
@@ -281,7 +293,7 @@ fn FugueTree::traverse_tree(
     let (child_id, _) = child
     // Don't traverse back to parent (prevents cycles)
     if child_id != node_id {
-      self.traverse_tree(child_id, result)
+      self.traverse_tree(child_id, result, visible_only~)
     }
   })
 }

@@ -46,6 +46,29 @@ pub fn TextView::to_rle(self : TextView) -> @rle.Runs[String] {
 }
 
 ///|
+/// Returns RLE spans including tombstones for causal length queries.
+/// Each span has `text`, `deleted` status. Adjacent spans with same
+/// deleted status are merged.
+///
+/// Use cases:
+/// - `causal_len`: total structural length including tombstones
+/// - `visible_len`: visible text length (tombstones contribute 0)
+/// - Range queries that need to track deleted positions
+pub fn TextView::to_spans(self : TextView) -> @rle.Runs[TextSpan] {
+  let items = self.branch.inner_tree().get_all_items()
+  let spans : Array[TextSpan] = []
+  for item in items {
+    let (_, it) = item
+    if it.deleted {
+      spans.push(TextSpan::tombstone(it.content))
+    } else {
+      spans.push(TextSpan::visible(it.content))
+    }
+  }
+  @rle.Runs::from_array(spans)
+}
+
+///|
 /// Iterates over text runs.
 /// For a plain text view, this yields a single run containing all text.
 /// Future styled-text support would yield multiple runs with different attributes.

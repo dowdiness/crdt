@@ -95,6 +95,22 @@ pub fn TextDoc::text(Self) -> String
 pub fn TextDoc::version(Self) -> Version
 pub impl Show for TextDoc
 
+pub struct TextSpan {
+  text : String
+  deleted : Bool
+}
+pub fn TextSpan::content(Self) -> String
+pub fn TextSpan::is_tombstone(Self) -> Bool
+pub fn TextSpan::is_visible(Self) -> Bool
+pub fn TextSpan::tombstone(String) -> Self
+pub fn TextSpan::visible(String) -> Self
+pub impl @rle.HasCausalLength for TextSpan
+pub impl @rle.HasLength for TextSpan
+pub impl @rle.Mergeable for TextSpan
+pub impl @rle.Sliceable for TextSpan
+pub impl Eq for TextSpan
+pub impl Show for TextSpan
+
 pub(all) struct TextView {
   // private fields
 }
@@ -104,6 +120,7 @@ pub fn TextView::len(Self) -> Int
 pub fn TextView::runs(Self) -> Iter[String]
 pub fn TextView::text(Self) -> String
 pub fn TextView::to_rle(Self) -> @rle.Runs[String]
+pub fn TextView::to_spans(Self) -> @rle.Runs[TextSpan]
 pub fn TextView::version(Self) -> Version
 pub impl Show for TextView
 
