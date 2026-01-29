@@ -60,6 +60,33 @@ Semantic Versioning.
       commits exist.
 6.  **Format Output:** Present the categorized notes under the suggested new
     version heading and date.
+7.  **Update Package Version:** For MoonBit packages, update the `version` field
+    in `moon.pkg.json` to match the new version number.
+
+## MoonBit Package Versioning
+
+Each MoonBit package maintains its own version and changelog:
+
+- **Package version**: `moon.pkg.json` contains a `"version"` field
+- **Package changelog**: `CHANGELOG.md` in the package directory
+- **Module version**: `moon.mod.json` version is for library releases (separate concern)
+
+When updating a package changelog:
+1. Add the new version entry to `CHANGELOG.md`
+2. Update `"version"` in `moon.pkg.json` to match
+3. Keep module version (`moon.mod.json`) unchanged unless releasing the library
+
+Example package structure:
+```
+event-graph-walker/
+├── moon.mod.json        # Module version (library release)
+├── rle/
+│   ├── moon.pkg.json    # "version": "0.3.0"
+│   └── CHANGELOG.md     # ## [0.3.0] - 2026-01-29
+├── text/
+│   ├── moon.pkg.json    # "version": "0.1.0"
+│   └── CHANGELOG.md     # ## [0.1.0] - ...
+```
 
 ## How to Use
 
