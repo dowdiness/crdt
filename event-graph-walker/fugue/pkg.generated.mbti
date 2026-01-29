@@ -24,6 +24,7 @@ pub fn FugueTree::get(Self, Int) -> Item?
 pub fn FugueTree::get_all_items(Self) -> Array[(Int, Item)]
 pub fn FugueTree::get_visible_items(Self) -> Array[(Int, Item)]
 pub fn FugueTree::insert(Self, Int, String, Int, Int, Int, String) -> Unit
+pub fn FugueTree::is_ancestor(Self, Int, Int) -> Bool
 pub fn FugueTree::new() -> Self
 pub fn FugueTree::to_text(Self) -> String
 pub fn FugueTree::visible_count(Self) -> Int

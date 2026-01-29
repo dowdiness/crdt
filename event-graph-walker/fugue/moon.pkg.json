@@ -2,5 +2,10 @@
   "is_main": false,
   "import": [
     { "path": "moonbitlang/core/immut/hashmap", "alias": "immut/hashmap" }
+  ],
+  "test-import": [
+    "moonbitlang/core/cmp",
+    "moonbitlang/core/quickcheck",
+    { "path": "moonbitlang/quickcheck", "alias": "qc" }
   ]
 }

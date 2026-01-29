@@ -137,7 +137,10 @@ fn compare_children(a : (Int, Item), b : (Int, Item)) -> Int {
 
 ///|
 /// Check if ancestor_id is an ancestor of descendant_id in the tree
-fn FugueTree::is_ancestor(
+
+///|
+/// Check whether `ancestor_id` is an ancestor of `descendant_id`.
+pub fn FugueTree::is_ancestor(
   self : FugueTree,
   ancestor_id : Int,
   descendant_id : Int,

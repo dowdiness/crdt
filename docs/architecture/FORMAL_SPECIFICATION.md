@@ -41,6 +41,18 @@ Visible text
 - **Branch / Document merge:** retreat/advance correctness (L6.x).
 - **Text sync / Editor:** convergence + user invariants (L7.x, L8.x).
 
+### 0.4 Property Testing Checklist
+
+Use this checklist when adding or reviewing property tests:
+
+- **Law alignment:** property matches a named law and its responsible layer.
+- **Strong oracle:** expected result computed from a simpler, trusted model.
+- **Generators:** include edge cases (empty, single, equal timestamps, concurrency).
+- **Shrinkers:** minimize failing cases to readable, minimal counterexamples.
+- **Order independence:** test permutations where ordering should not matter.
+- **Determinism:** no timing/IO; results must be stable across runs.
+- **Budget:** heavier properties get fewer samples; CI stays fast.
+
 ## 1. Preamble
 
 ### 1.1 Purpose and Scope
@@ -624,6 +636,8 @@ Given the same `(origin_left, origin_right, timestamp, agent)` tuple,
 - **Test:** `"find parent and side at start"` in `event-graph-walker/fugue/tree.mbt:209`
 - **Test:** `"find parent and side with origin_left"` in `event-graph-walker/fugue/tree.mbt:217`
 - **Test:** `"concurrent inserts ordering with FugueMax"` in `event-graph-walker/fugue/tree_test.mbt:59`
+- **Test (property):** `"property: fugue insertion determinism (order independence)"` in
+  `event-graph-walker/fugue/tree_properties_test.mbt:111`
 
 **L5.2 Ancestor Reflexivity.**
 For all items `x` in the tree:
@@ -632,10 +646,13 @@ For all items `x` in the tree:
 is_ancestor(x, x) == true
 ```
 
-- **Test:** `"ancestor check correctness"` in `event-graph-walker/fugue/tree.mbt:163`
-  (tests self-ancestry: `inspect(tree.is_ancestor(lv0, lv0), content="true")`)
+- **Test (property):** `"property: fugue ancestor reflexive"` in
+  `event-graph-walker/fugue/tree_properties_test.mbt:157`
+  (random chains; verifies reflexivity for all nodes)
+- **Test (example):** `"ancestor check correctness"` in `event-graph-walker/fugue/tree.mbt:163`
+  (single chain example)
 
-**L5.3 Ancestor Transitivity.** **UNTESTED (standalone)**
+**L5.3 Ancestor Transitivity.**
 
 ```
 forall a, b, c:
@@ -643,8 +660,9 @@ forall a, b, c:
 ```
 
 - **Rationale:** Follows from tree structure (parent pointer traversal).
-- **Tested indirectly:** `"ancestor check correctness"` in `event-graph-walker/fugue/tree.mbt:163`
-  tests a chain A -> B -> C and verifies `is_ancestor(A, C)`.
+- **Test (property):** `"property: fugue ancestor transitivity (chain)"` in
+  `event-graph-walker/fugue/tree_properties_test.mbt:177`
+  (random chains; verifies transitivity).
 
 **L5.4 Strong List Specification (Insert).**
 After `insert(id, content, origin_left, origin_right, ts, agent)`:
@@ -654,9 +672,11 @@ exists position p in visible sequence:
   visible_items()[p] == (id, Item{content, ...})
 ```
 
-- **Test:** `"insert single item"` in `event-graph-walker/fugue/tree_test.mbt:10`
-- **Test:** `"insert multiple items"` in `event-graph-walker/fugue/tree_test.mbt:18`
-- **Test:** `"collaborative editing simulation"` in `event-graph-walker/fugue/tree_test.mbt:221`
+- **Test (property):** `"property: fugue insert appears in visible list"` in
+  `event-graph-walker/fugue/tree_properties_test.mbt:282`
+- **Test (examples):** `"insert single item"` in `event-graph-walker/fugue/tree_test.mbt:10`,
+  `"insert multiple items"` in `event-graph-walker/fugue/tree_test.mbt:18`,
+  `"collaborative editing simulation"` in `event-graph-walker/fugue/tree_test.mbt:221`
 
 **L5.5 Strong List Specification (Delete).**
 After `delete(id)`:
@@ -666,24 +686,31 @@ item[id].deleted == true
 visible_count decreases by 1
 ```
 
-- **Test:** `"delete item"` in `event-graph-walker/fugue/tree_test.mbt:30`
-- **Test:** `"delete in concurrent scenario"` in `event-graph-walker/fugue/tree_test.mbt:184`
+- **Test (property):** `"property: fugue delete removes from visible list"` in
+  `event-graph-walker/fugue/tree_properties_test.mbt:317`
+- **Test (examples):** `"delete item"` in `event-graph-walker/fugue/tree_test.mbt:30`,
+  `"delete in concurrent scenario"` in `event-graph-walker/fugue/tree_test.mbt:184`
 
-**L5.6 Maximally Non-Interleaving.** **UNTESTED (standalone property test)**
+**L5.6 Maximally Non-Interleaving.**
 If user A inserts sequence `[a_1, ..., a_n]` and user B concurrently
 inserts `[b_1, ..., b_m]` at the same position, the result contains
 A's items contiguously and B's items contiguously (no interleaving).
 
-- **Test (snapshot):** `"fugue property - non-interleaving"` in `event-graph-walker/fugue/tree_test.mbt:255`
-  Verifies `"AXXYYB"` (not `"AXYXB"` or `"AYXYB"`).
+- **Test (property):** `"property: fugue non-interleaving (concurrent sequences)"`
+  in `event-graph-walker/fugue/tree_properties_test.mbt:472`
+  (random lengths; verifies contiguity).
+- **Test (snapshot):** `"fugue property - non-interleaving"` in
+  `event-graph-walker/fugue/tree_test.mbt:255`
+  (example case).
 
-**L5.7 Deterministic Tie-Breaking.** **UNTESTED (standalone property test)**
+**L5.7 Deterministic Tie-Breaking.**
 For concurrent inserts at the same position with the same timestamp,
 ordering is determined by lexicographic agent comparison.
 
 - **Rationale:** Ensures all replicas produce identical sequences.
-- **Test (snapshot):** `"reverse timestamp ordering"` in `event-graph-walker/fugue/tree_test.mbt:202`
-  Tests ordering by decreasing timestamps.
+- **Test (property):** `"property: fugue tie-breaking (agent then id)"` in
+  `event-graph-walker/fugue/tree_properties_test.mbt:532`
+  (random agents/ids with equal timestamps).
 
 ---
 
@@ -1116,8 +1143,8 @@ contiguously (no interleaving).
 4. The in-order traversal then outputs A's sequence contiguously
    followed by (or preceded by) B's sequence.
 
-**Tested via:** L5.6 (non-interleaving snapshot test), L5.1 (insertion
-determinism), L5.4/L5.5 (strong list spec).
+**Tested via:** L5.6 (property test), L5.1 (insertion determinism),
+L5.4/L5.5 (strong list spec).
 
 ---
 
@@ -1161,13 +1188,13 @@ determinism), L5.4/L5.5 (strong list spec).
 | L4.14 | Equality transitivity | `event-graph-walker/causal_graph/version_vector_properties_test.mbt` | 246 | Tested |
 | L4.15 | Lamport clock | `event-graph-walker/causal_graph/graph.mbt` | 76 | Untested |
 | L4.16 | Topological ordering | `event-graph-walker/causal_graph/walker_test.mbt` | 195 | Indirect |
-| L5.1 | Insertion determinism | `event-graph-walker/fugue/tree.mbt` | 209, 217 | Tested |
-| L5.2 | Ancestor reflexivity | `event-graph-walker/fugue/tree.mbt` | 163 | Tested |
-| L5.3 | Ancestor transitivity | `event-graph-walker/fugue/tree.mbt` | 163 | Indirect |
-| L5.4 | Strong list spec (insert) | `event-graph-walker/fugue/tree_test.mbt` | 10, 18, 221 | Tested |
-| L5.5 | Strong list spec (delete) | `event-graph-walker/fugue/tree_test.mbt` | 30, 184 | Tested |
-| L5.6 | Non-interleaving | `event-graph-walker/fugue/tree_test.mbt` | 255 | Snapshot |
-| L5.7 | Deterministic tie-breaking | `event-graph-walker/fugue/tree_test.mbt` | 202 | Snapshot |
+| L5.1 | Insertion determinism | `event-graph-walker/fugue/tree_properties_test.mbt` | 111 | Tested |
+| L5.2 | Ancestor reflexivity | `event-graph-walker/fugue/tree_properties_test.mbt` | 157 | Tested |
+| L5.3 | Ancestor transitivity | `event-graph-walker/fugue/tree_properties_test.mbt` | 177 | Tested |
+| L5.4 | Strong list spec (insert) | `event-graph-walker/fugue/tree_properties_test.mbt` | 282 | Tested |
+| L5.5 | Strong list spec (delete) | `event-graph-walker/fugue/tree_properties_test.mbt` | 317 | Tested |
+| L5.6 | Non-interleaving | `event-graph-walker/fugue/tree_properties_test.mbt` | 472 | Tested |
+| L5.7 | Deterministic tie-breaking | `event-graph-walker/fugue/tree_properties_test.mbt` | 532 | Tested |
 | L6.1 | Retreat/advance partition | `event-graph-walker/causal_graph/graph_test.mbt` | 70 | Indirect |
 | L6.2 | Coverage | — | — | Untested |
 | L6.3 | Topological apply order | `event-graph-walker/branch/branch_merge_test.mbt` | 21, 84, 146 | Indirect |
@@ -1217,9 +1244,6 @@ Laws without standalone property-based tests:
 | L1.8 | Tombstone merge guard | Domain-specific constraint | `event-graph-walker/text/span_test.mbt:50` |
 | L4.15 | Lamport clock | Structural property of `add_version` | Walker/merge tests |
 | L4.16 | Topological ordering | Walker correctness | `event-graph-walker/causal_graph/walker_test.mbt:195` |
-| L5.3 | Ancestor transitivity | Structural property of tree | `event-graph-walker/fugue/tree.mbt:163` (chain test) |
-| L5.6 | Non-interleaving | Snapshot test only, not QC property | `event-graph-walker/fugue/tree_test.mbt:255` |
-| L5.7 | Deterministic tie-breaking | Snapshot test only, not QC property | `event-graph-walker/fugue/tree_test.mbt:202` |
 | L6.1 | Retreat/advance partition | No standalone partition test | `event-graph-walker/causal_graph/graph_test.mbt:70` |
 | L6.2 | Coverage | No standalone coverage test | Merge integration tests |
 | L6.3 | Topological apply order | Tested via merge outcomes | `event-graph-walker/branch/branch_merge_test.mbt` |
