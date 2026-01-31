@@ -5,12 +5,15 @@
     "moonbitlang/quickcheck": "0.9.9",
     "dowdiness/event-graph-walker": {
       "path": "./event-graph-walker"
+    },
+    "dowdiness/parser": {
+      "path": "./parser"
     }
   },
   "readme": "README.mbt.md",
-  "repository": "",
+  "repository": "https://github.com/dowdiness/crdt",
   "license": "Apache-2.0",
-  "keywords": [],
-  "description": "",
+  "keywords": ["crdt", "collaborative-editing", "lambda-calculus"],
+  "description": "Lambda Calculus CRDT Editor - eg-walker implementation in MoonBit",
   "preferred-target": "js"
 }

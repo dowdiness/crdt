@@ -1,0 +1,15 @@
+[submodule "event-graph-walker"]
+	path = event-graph-walker
+	url = https://github.com/dowdiness/event-graph-walker.git
+[submodule "parser"]
+	path = parser
+	url = https://github.com/dowdiness/parser.git
+[submodule "svg-dsl"]
+	path = svg-dsl
+	url = https://github.com/dowdiness/svg-dsl.git
+[submodule "graphviz"]
+	path = graphviz
+	url = https://github.com/dowdiness/graphviz.git
+[submodule "valtio"]
+	path = valtio
+	url = https://github.com/dowdiness/valtio.git
