@@ -1,10 +1,20 @@
 # Module Structure
 
-The codebase is organized into **two MoonBit modules**:
+The codebase is organized as a **monorepo with git submodules**:
+
+## Git Submodules (Standalone Libraries)
+
+| Submodule | GitHub Repo | MoonBit Module |
+|---|---|---|
+| `event-graph-walker/` | [dowdiness/event-graph-walker](https://github.com/dowdiness/event-graph-walker) | `dowdiness/event-graph-walker` |
+| `parser/` | [dowdiness/parser](https://github.com/dowdiness/parser) | `dowdiness/parser` |
+| `svg-dsl/` | [dowdiness/svg-dsl](https://github.com/dowdiness/svg-dsl) | `antisatori/svg-dsl` |
+| `graphviz/` | [dowdiness/graphviz](https://github.com/dowdiness/graphviz) | `antisatori/graphviz` |
+| `valtio/` | [dowdiness/valtio](https://github.com/dowdiness/valtio) | `antisatori/valtio` |
 
 ## `event-graph-walker/` Module (Core CRDT Library)
 
-A reusable CRDT library implementing the eg-walker algorithm. Contains 5 packages (103 tests):
+A reusable CRDT library implementing the eg-walker algorithm. Contains 5 packages:
 
 ### `causal_graph/`
 Causal graph data structure for tracking operation dependencies.
@@ -13,44 +23,35 @@ Causal graph data structure for tracking operation dependencies.
 - Implements transitive closure, graph diffing, and ancestry checks
 - **Event graph walker** (`walker.mbt`) - Core eg-walker algorithm for topological traversal
 - **Version vectors** (`version_vector.mbt`) - Compact representation of version frontiers for efficient network sync
-  - Tracks maximum sequence number per agent
-  - Supports comparison, merging, and conversion to/from frontiers
-  - Includes property-based tests with Arbitrary/Shrink traits
 
 ### `oplog/`
 Operation log for append-only storage of edit operations.
 
-- Tracks insert/delete operations with version information
-- Handles remote operation merging
-- Walker integration (`walker.mbt`) for collecting operations in causal order
-
 ### `fugue/`
 FugueMax tree implementation (ordered sequence CRDT).
-
-- Tree-based structure for maintaining operation order
-- Supports efficient insert/delete with causal ordering
 
 ### `branch/`
 Branch/snapshot system for efficient document state reconstruction and merging.
 
-- `Branch` - Document snapshot at a specific frontier
-- `checkout()` - Reconstruct document state at any frontier using walker
-- `advance()` - Efficiently update branch with incremental operations
-- Merge operations (`branch_merge.mbt`) - Implements retreat-advance-apply merge strategy
-
 ### `document/`
 CRDT document model (general-purpose text document).
 
-- `Document` - Wraps FugueTree, OpLog, and CausalGraph together
-- Position-based operations (insert/delete at cursor position)
-- Remote operation merging
-- Reusable for any collaborative text editor application
-
 **See:** [event-graph-walker/README.md](../../event-graph-walker/README.md) for detailed documentation.
+
+## `parser/` Module (Lambda Calculus Parser)
+
+Standalone incremental lambda calculus parser. Now a separate MoonBit module (`dowdiness/parser`).
+
+- Lexer and parser for lambda calculus with arithmetic and conditionals
+- Error recovery for partial/invalid syntax
+- Incremental parsing with damage tracking and parse caching
+- CRDT integration for AST updates
+
+**See:** [parser/README.md](../../parser/README.md) for detailed documentation.
 
 ## `crdt/` Module (Lambda Calculus Editor Application)
 
-Application layer that uses the event-graph-walker library. Contains 3 packages + root (226 tests):
+Application layer that uses event-graph-walker and parser as path dependencies.
 
 ### `/` (root)
 JavaScript FFI bindings (`crdt.mbt`) that expose the editor API to JavaScript.
@@ -62,64 +63,55 @@ High-level editor abstractions (application-specific).
 - `ParsedEditor` - Editor with integrated incremental parsing for lambda calculus
 - Text diff utilities for incremental parser integration
 
-### `parser/`
-Lambda calculus parser with incremental reparsing.
-
-- Lexer and parser for lambda calculus with arithmetic and conditionals
-- Error recovery for partial/invalid syntax
-- Incremental parsing with damage tracking and parse caching
-- CRDT integration for AST updates
-
-**See:** [parser/README.md](../../parser/README.md) for detailed documentation.
+### `projection/`
+Projectional editing support.
 
 ### `cmd/main/`
 Command-line entry points and REPL.
 
-## Test Coverage
+## Dependencies
 
-**Total: 329 tests** (103 in event-graph-walker + 226 in crdt)
+```
+svg-dsl (independent)
+   ↑
+graphviz (depends on svg-dsl via path ../svg-dsl)
 
-- event-graph-walker: 103 tests (core CRDT library)
-- crdt application: 226 tests (editor + parser)
+valtio (independent)
 
-Run tests:
+event-graph-walker (independent, quickcheck only)
+
+parser (independent, stdlib only)
+
+crdt (depends on event-graph-walker + parser via path deps)
+```
+
+## MoonBit Module Configuration
+
+The root `moon.mod.json` declares path dependencies on the submodules:
+
+```json
+{
+  "deps": {
+    "dowdiness/event-graph-walker": { "path": "./event-graph-walker" },
+    "dowdiness/parser": { "path": "./parser" }
+  }
+}
+```
+
+## Run Tests
+
 ```bash
 moon test                           # crdt module
 cd event-graph-walker && moon test # CRDT library
+cd parser && moon test             # Parser
 ```
-
-## Dependencies
-
-- **crdt → event-graph-walker**: Application depends on CRDT library (via path reference)
-- **Both → quickcheck**: Property-based testing (version 0.9.8)
-
-## File Locations
-
-**Core CRDT library (`event-graph-walker/`):**
-- `causal_graph/graph.mbt` - Core graph operations
-- `causal_graph/walker.mbt` - Topological traversal (eg-walker)
-- `causal_graph/version_vector.mbt` - Version vector implementation
-- `oplog/oplog.mbt` - Operation storage and retrieval
-- `fugue/tree.mbt` - Sequence CRDT implementation
-- `branch/branch.mbt` - Branch system
-- `branch/branch_merge.mbt` - Merge operations
-- `document/document.mbt` - Document model
-
-**Application layer (crdt module):**
-- `editor/editor.mbt` - Basic editor with cursor tracking
-- `editor/parsed_editor.mbt` - Editor with incremental parser integration
-- `editor/text_diff.mbt` - Text diffing utilities
-- `parser/*` - Lambda calculus parser
 
 ## Design Rationale
 
-### Why Two Modules?
+### Why Submodules?
 
-1. **Separation of concerns**: Core CRDT logic is independent of lambda calculus
-2. **Reusability**: event-graph-walker can be used by other collaborative editors
-3. **Testing**: CRDT primitives tested separately from application logic
-4. **Clarity**: Makes dependencies explicit
-
-### Why `document/` is in event-graph-walker
-
-The `document/` package provides a general-purpose CRDT document abstraction with position-based operations. It has no application-specific features (no lambda calculus logic), making it suitable for any collaborative text editor.
+1. **Reusability**: Libraries can be used independently in other projects
+2. **Separation of concerns**: Core CRDT logic is independent of lambda calculus
+3. **Independent versioning**: Each library can be versioned and released separately
+4. **Testing**: Each library tested independently
+5. **Clarity**: Makes dependencies explicit
