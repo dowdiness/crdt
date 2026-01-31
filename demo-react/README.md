@@ -2,6 +2,8 @@
 
 A demonstration of integrating React with the MoonBit Valtio FFI module (`valtio-egwalker`).
 
+Part of the [dowdiness/crdt](https://github.com/dowdiness/crdt) monorepo. Depends on the [valtio](../valtio/) and [event-graph-walker](../event-graph-walker/) submodules.
+
 ## Features
 
 - **React 19** - Modern React with hooks
@@ -12,11 +14,12 @@ A demonstration of integrating React with the MoonBit Valtio FFI module (`valtio
 
 ## Quick Start
 
-```bash
-# Install dependencies
-npm install
+Make sure you cloned the monorepo with submodules:
 
-# Start development server
+```bash
+git clone --recursive https://github.com/dowdiness/crdt.git
+cd crdt/demo-react
+npm install
 npm run dev
 ```
 
@@ -115,7 +118,7 @@ Requires building MoonBit: `cd ../valtio && moon build --target js`
 
 ## Vite Configuration
 
-The demo uses path aliases to resolve the valtio-egwalker module:
+The demo uses path aliases to resolve the valtio-egwalker module from the monorepo:
 
 ```typescript
 // vite.config.ts
@@ -125,21 +128,6 @@ resolve: {
     'valtio-egwalker': path.resolve(__dirname, '../valtio/src/egwalker_api.ts'),
   },
 },
-```
-
-## Architecture
-
-```
-React Component
-      ↓
-useSnapshot(egwalker.proxy)
-      ↓
-valtio-egwalker (createEgWalkerProxy)
-      ↓
-[Stub: Valtio proxy with undo/redo]
-[Production: MoonBit eg-walker CRDT]
-      ↓
-Reactive Update → Re-render
 ```
 
 ## Scripts

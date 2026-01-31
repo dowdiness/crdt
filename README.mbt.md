@@ -7,7 +7,41 @@
 
 An implementation of the eg-walker CRDT algorithm for collaborative text editing, using the FugueMax sequence CRDT and retreat-advance-apply merge strategy.
 
-## Building
+## Project Structure
+
+This is a monorepo with git submodules. Reusable libraries live in their own repositories and are linked here as submodules.
+
+```
+crdt/
+├── event-graph-walker/   # Core CRDT library (submodule)
+├── parser/               # Lambda calculus parser (submodule)
+├── svg-dsl/              # SVG DSL (submodule)
+├── graphviz/             # Graphviz DOT renderer (submodule)
+├── valtio/               # Valtio state management (submodule)
+├── editor/               # Editor abstractions
+├── projection/           # Projectional editing
+├── cmd/                  # CLI entry points
+├── web/                  # Web frontend (Vite)
+└── demo-react/           # React demo
+```
+
+See [Monorepo & Submodule Guide](docs/development/monorepo.md) for the full workflow.
+
+## Getting Started
+
+```sh
+git clone --recursive https://github.com/dowdiness/crdt.git
+cd crdt
+moon test
+```
+
+If you already cloned without `--recursive`:
+
+```sh
+git submodule update --init --recursive
+```
+
+## Building for Web
 
 ```sh
 moon build --target js
@@ -72,7 +106,7 @@ a + b - c   // Chained operations (left-associative)
 ```
 f x         // Apply f to x
 f x y       // Apply (f x) to y
-(λx.x) 5    // Apply identity to 5
+(λx.x) 5   // Apply identity to 5
 ```
 
 ### Conditionals
@@ -82,37 +116,33 @@ if x then 1 else 0
 if x then y + 1 else y - 1
 ```
 
-## Performance
-
-Comprehensive benchmarks available:
-- **56 benchmarks** across 5 modules
-- Baseline performance established
-- Small-medium documents (≤1000 ops): **Good performance**
-- Large documents (10,000 ops): Optimization needed
-
-Run benchmarks:
-```sh
-moon bench --release
-```
-
-See [PERFORMANCE_ANALYSIS.md](./PERFORMANCE_ANALYSIS.md) for detailed results and [BENCHMARKS.md](./BENCHMARKS.md) for benchmark documentation.
-
-## Documentation
-
-- **[CLAUDE.md](./CLAUDE.md)** - Complete project guide and development workflow
-- **[EG_WALKER_IMPLEMENTATION.md](./EG_WALKER_IMPLEMENTATION.md)** - Implementation status and architecture
-- **[WALKER_USAGE.md](./WALKER_USAGE.md)** - Event graph walker usage guide
-- **[NETWORK_SYNC.md](./NETWORK_SYNC.md)** - Network synchronization guide
-- **[BENCHMARKS.md](./BENCHMARKS.md)** - Benchmark documentation
-- **[PERFORMANCE_ANALYSIS.md](./PERFORMANCE_ANALYSIS.md)** - Performance baseline and optimization roadmap
-
 ## Testing
 
 ```sh
-moon test                    # Run all tests (329 passing)
-moon test --update          # Update test snapshots
-moon coverage analyze       # Analyze test coverage
+moon test                                    # crdt module
+cd event-graph-walker && moon test && cd ..   # CRDT library
+cd parser && moon test && cd ..              # Parser
 ```
+
+## Performance
+
+Run benchmarks (always use `--release`):
+
+```sh
+moon bench --release
+cd event-graph-walker && moon bench --release && cd ..
+```
+
+See [docs/performance/](docs/performance/) for detailed results.
+
+## Documentation
+
+- **[docs/](docs/)** - Full documentation index
+- **[docs/development/monorepo.md](docs/development/monorepo.md)** - Monorepo & submodule workflow
+- **[docs/development/workflow.md](docs/development/workflow.md)** - Development process
+- **[docs/architecture/modules.md](docs/architecture/modules.md)** - Module structure
+- **[event-graph-walker/README.md](event-graph-walker/README.md)** - Core CRDT library
+- **[parser/README.md](parser/README.md)** - Lambda calculus parser
 
 ## References
 
