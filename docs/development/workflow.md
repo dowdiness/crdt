@@ -11,6 +11,10 @@
 7. Run `moon fmt` to format
 8. If web interface is affected, rebuild and copy JS files
 
+## Working with Submodules
+
+See [Monorepo & Submodules](monorepo.md) for the full guide on the git submodule setup, daily workflows, and common pitfalls.
+
 ## Working with the Parser
 
 The parser has extensive documentation in `parser/README.md` and `parser/docs/`. When modifying:

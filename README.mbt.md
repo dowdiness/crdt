@@ -1,6 +1,6 @@
 # dowdiness/crdt
 
-- [Repository](https://github.com/dowdiness/til/tree/main/crdt)
+- [Repository](https://github.com/dowdiness/crdt)
 - [Web App](https://lambda-editor.koji-ishimoto.workers.dev/)
 
 ## Eg-Walker CRDT Editor in MoonBit
