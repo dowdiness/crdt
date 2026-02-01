@@ -209,29 +209,99 @@ fn reconcile_ast(
 }
 
 ///|
-/// Reconcile arrays of children using positional matching
+/// Check if two TermKind values have the same constructor tag.
+/// Used for LCS-based matching in children reconciliation.
+fn same_kind_tag(a : @parser.TermKind, b : @parser.TermKind) -> Bool {
+  match (a, b) {
+    (Int(_), Int(_)) => true
+    (Var(_), Var(_)) => true
+    (Lam(_), Lam(_)) => true
+    (App, App) => true
+    (Bop(_), Bop(_)) => true
+    (If, If) => true
+    (Error(_), Error(_)) => true
+    _ => false
+  }
+}
+
+///|
+/// Reconcile arrays of children using LCS (Longest Common Subsequence) matching.
+/// LCS finds the best structural alignment between old and new children based on
+/// their kind tags, preserving node IDs even when children are inserted, deleted,
+/// or reordered.
 fn reconcile_children(
   old_children : Array[@parser.TermNode],
   new_children : Array[@parser.TermNode],
   model : CanonicalModel,
 ) -> Array[@parser.TermNode] {
-  // Simple approach: match by position for now
-  // TODO: Use LCS for better matching
+  let old_len = old_children.length()
+  let new_len = new_children.length()
+
+  // Build LCS DP table
+  // dp[i][j] = length of LCS of old_children[0..i] and new_children[0..j]
+  let dp : Array[Array[Int]] = []
+  for i = 0; i <= old_len; i = i + 1 {
+    let row : Array[Int] = []
+    for j = 0; j <= new_len; j = j + 1 {
+      row.push(0)
+    }
+    dp.push(row)
+  }
+  for i = 1; i <= old_len; i = i + 1 {
+    for j = 1; j <= new_len; j = j + 1 {
+      if same_kind_tag(old_children[i - 1].kind, new_children[j - 1].kind) {
+        dp[i][j] = dp[i - 1][j - 1] + 1
+      } else {
+        dp[i][j] = @cmp.maximum(dp[i - 1][j], dp[i][j - 1])
+      }
+    }
+  }
+
+  // Backtrack to find matched pairs
+  // old_matched[i] = new index that old child i maps to (-1 if unmatched)
+  // new_matched[j] = old index that new child j maps to (-1 if unmatched)
+  let old_matched : Array[Int] = []
+  let new_matched : Array[Int] = []
+  for i = 0; i < old_len; i = i + 1 {
+    old_matched.push(-1)
+  }
+  for j = 0; j < new_len; j = j + 1 {
+    new_matched.push(-1)
+  }
+  let mut i = old_len
+  let mut j = new_len
+  while i > 0 && j > 0 {
+    if same_kind_tag(old_children[i - 1].kind, new_children[j - 1].kind) {
+      old_matched[i - 1] = j - 1
+      new_matched[j - 1] = i - 1
+      i = i - 1
+      j = j - 1
+    } else if dp[i - 1][j] >= dp[i][j - 1] {
+      i = i - 1
+    } else {
+      j = j - 1
+    }
+  }
+
+  // Build result array following new_children order
   let result : Array[@parser.TermNode] = []
-  let min_len = @cmp.minimum(old_children.length(), new_children.length())
-  for i = 0; i < min_len; i = i + 1 {
-    result.push(reconcile_ast(old_children[i], new_children[i], model))
+  for j = 0; j < new_len; j = j + 1 {
+    if new_matched[j] >= 0 {
+      // Matched with an old child - reconcile to preserve node IDs
+      result.push(
+        reconcile_ast(old_children[new_matched[j]], new_children[j], model),
+      )
+    } else {
+      // Unmatched new child - assign fresh IDs
+      result.push(assign_fresh_ids(new_children[j], model))
+    }
   }
 
-  // Add any extra new children with fresh IDs
-  for i = min_len; i < new_children.length(); i = i + 1 {
-    result.push(assign_fresh_ids(new_children[i], model))
-  }
-
-  // Explicitly unregister removed old children from the model's registry
-  // to prevent orphaned entries before set_ast rebuilds the indices
-  for i = min_len; i < old_children.length(); i = i + 1 {
-    unregister_node_tree(old_children[i], model)
+  // Unregister removed old children that weren't matched
+  for i = 0; i < old_len; i = i + 1 {
+    if old_matched[i] < 0 {
+      unregister_node_tree(old_children[i], model)
+    }
   }
   result
 }
