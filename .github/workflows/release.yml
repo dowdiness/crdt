@@ -51,6 +51,7 @@ jobs:
 
       - name: Build web application
         run: |
+          mkdir -p web/public
           cp target/js/release/build/crdt.js web/public/
           cd web
           npm ci

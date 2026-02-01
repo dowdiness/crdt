@@ -36,7 +36,9 @@ jobs:
         run: moon build --target js --release
 
       - name: Copy JS build to web directory
-        run: cp target/js/release/build/crdt.js web/public/
+        run: |
+          mkdir -p web/public
+          cp target/js/release/build/crdt.js web/public/
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
