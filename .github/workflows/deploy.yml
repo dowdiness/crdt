@@ -32,13 +32,12 @@ jobs:
       - name: Update dependencies
         run: moon update
 
-      - name: Build MoonBit for JavaScript
+      - name: Build main module for JavaScript
         run: moon build --target js --release
 
-      - name: Copy JS build to web directory
-        run: |
-          mkdir -p web/public
-          cp target/js/release/build/crdt.js web/public/
+      - name: Build graphviz module for JavaScript
+        working-directory: graphviz
+        run: moon build --target js --release
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

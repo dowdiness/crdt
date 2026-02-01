@@ -1,6 +1,6 @@
 import { exec, spawn, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile } from 'node:fs/promises';
+import { readFile, access } from 'node:fs/promises';
 import path from 'node:path';
 import type { Plugin, ViteDevServer } from 'vite';
 
@@ -34,6 +34,8 @@ export interface MoonBitPluginOptions {
   release?: boolean;
   /** Enable MoonBit watch mode in development (defaults to true) */
   watch?: boolean;
+  /** Skip building if output files exist (useful in CI, defaults to false) */
+  skipIfExists?: boolean;
 }
 
 /**
@@ -58,8 +60,12 @@ export interface MoonBitPluginOptions {
  * ```
  */
 export function moonbitPlugin(options: MoonBitPluginOptions): Plugin {
-  const { modules, target = 'js', release = true, watch = true } = options;
+  const { modules, target = 'js', release = true, watch = true, skipIfExists = false } = options;
   const watchProcesses: ChildProcess[] = [];
+
+  // Auto-detect CI environment
+  const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+  const shouldSkipBuild = skipIfExists || isCI;
 
   // Resolve absolute paths for modules
   const resolvedModules = modules.map(mod => {
@@ -84,7 +90,18 @@ export function moonbitPlugin(options: MoonBitPluginOptions): Plugin {
     name: 'vite-plugin-moonbit',
 
     async buildStart() {
-      console.log('[MoonBit] Building modules...');
+      if (shouldSkipBuild) {
+        console.log('[MoonBit] CI mode detected, checking for pre-built modules...');
+        const allExist = await checkAllModulesExist(resolvedModules);
+        if (allExist) {
+          console.log('[MoonBit] All pre-built modules found, skipping build');
+          return;
+        } else {
+          console.log('[MoonBit] Some modules missing, building...');
+        }
+      } else {
+        console.log('[MoonBit] Building modules...');
+      }
       await buildAllModules(resolvedModules, target, release);
     },
 
@@ -206,6 +223,23 @@ function inferOutputPath(moduleName: string, target: string, release: boolean): 
   const baseName = moduleName.split('/').pop() || 'module';
   const mode = release ? 'release' : 'debug';
   return `target/${target}/${mode}/build/${baseName}.js`;
+}
+
+/**
+ * Check if all module output files exist
+ */
+async function checkAllModulesExist(
+  modules: Array<MoonBitModule & { absoluteOutputPath: string }>
+): Promise<boolean> {
+  for (const mod of modules) {
+    try {
+      await access(mod.absoluteOutputPath);
+    } catch {
+      console.log(`[MoonBit] Missing: ${mod.name} at ${mod.absoluteOutputPath}`);
+      return false;
+    }
+  }
+  return true;
 }
 
 /**

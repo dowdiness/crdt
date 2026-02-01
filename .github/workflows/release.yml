@@ -44,16 +44,18 @@ jobs:
           moon build --target js --release
           moon build --target wasm --release || echo "WASM build skipped (may not be supported)"
 
+      - name: Build graphviz module
+        working-directory: graphviz
+        run: moon build --target js --release
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Build web application
+        working-directory: web
         run: |
-          mkdir -p web/public
-          cp target/js/release/build/crdt.js web/public/
-          cd web
           npm ci
           npm run build
 

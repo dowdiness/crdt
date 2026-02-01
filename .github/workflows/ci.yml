@@ -139,14 +139,20 @@ jobs:
       - name: Update dependencies
         run: moon update
 
-      - name: Build for JavaScript
+      - name: Build main module for JavaScript
+        run: moon build --target js --release
+
+      - name: Build graphviz module for JavaScript
+        working-directory: graphviz
         run: moon build --target js --release
 
       - name: Upload JS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: moonbit-js-build
-          path: target/js/release/build/crdt.js
+          path: |
+            target/js/release/build/crdt.js
+            graphviz/target/js/release/build/browser/browser.js
           retention-days: 7
 
   web-test:
@@ -159,14 +165,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Set up MoonBit
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
-
-      - name: Update dependencies
-        run: moon update
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -178,7 +176,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: moonbit-js-build
-          path: web/public
+          path: .
 
       - name: Install dependencies
         working-directory: web
