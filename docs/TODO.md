@@ -37,7 +37,7 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 **Impact:** Medium | **Effort:** Medium
 
 - [ ] Implement selective cache invalidation by range instead of full reparse fallback (`parser/incremental_parser.mbt:76`)
-- [ ] Implement LCS matching for AST child reconciliation instead of positional matching (`projection/text_lens.mbt:219`)
+- [x] Implement LCS matching for AST child reconciliation instead of positional matching (`projection/text_lens.mbt:219`)
 
 ---
 
