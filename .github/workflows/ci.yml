@@ -147,7 +147,7 @@ jobs:
         run: moon build --target js --release
 
       - name: Upload JS artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: moonbit-js-build
           path: |
