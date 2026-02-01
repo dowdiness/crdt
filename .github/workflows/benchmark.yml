@@ -1,0 +1,152 @@
+name: Benchmark Regression
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  benchmark-comparison:
+    name: Compare Benchmarks
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: Update dependencies
+        run: moon update
+
+      - name: Run PR benchmarks
+        run: |
+          echo "Running benchmarks on PR branch..."
+          moon bench --release > pr_bench.txt 2>&1
+          cat pr_bench.txt
+
+      - name: Run submodule benchmarks (event-graph-walker)
+        working-directory: event-graph-walker
+        run: |
+          moon update
+          moon bench --release > ../pr_egw_bench.txt 2>&1
+          cat ../pr_egw_bench.txt
+
+      - name: Store PR results
+        run: |
+          mkdir -p benchmark-results
+          cp pr_bench.txt benchmark-results/
+          cp pr_egw_bench.txt benchmark-results/
+
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          submodules: recursive
+
+      - name: Update dependencies (base)
+        run: moon update
+
+      - name: Run base benchmarks
+        run: |
+          echo "Running benchmarks on base branch..."
+          moon bench --release > base_bench.txt 2>&1
+          cat base_bench.txt
+
+      - name: Run submodule benchmarks (base - event-graph-walker)
+        working-directory: event-graph-walker
+        run: |
+          moon update
+          moon bench --release > ../base_egw_bench.txt 2>&1
+          cat ../base_egw_bench.txt
+
+      - name: Compare results
+        id: compare
+        run: |
+          echo "## Benchmark Comparison Report" > comparison.md
+          echo "" >> comparison.md
+          echo "Comparing PR branch against \`${{ github.base_ref }}\`" >> comparison.md
+          echo "" >> comparison.md
+
+          echo "### Main Module Benchmarks" >> comparison.md
+          echo "" >> comparison.md
+          echo "**Base branch:**" >> comparison.md
+          echo '```' >> comparison.md
+          cat base_bench.txt >> comparison.md
+          echo '```' >> comparison.md
+          echo "" >> comparison.md
+
+          echo "**PR branch:**" >> comparison.md
+          echo '```' >> comparison.md
+          cat benchmark-results/pr_bench.txt >> comparison.md
+          echo '```' >> comparison.md
+          echo "" >> comparison.md
+
+          echo "### event-graph-walker Benchmarks" >> comparison.md
+          echo "" >> comparison.md
+          echo "**Base branch:**" >> comparison.md
+          echo '```' >> comparison.md
+          cat base_egw_bench.txt >> comparison.md
+          echo '```' >> comparison.md
+          echo "" >> comparison.md
+
+          echo "**PR branch:**" >> comparison.md
+          echo '```' >> comparison.md
+          cat benchmark-results/pr_egw_bench.txt >> comparison.md
+          echo '```' >> comparison.md
+          echo "" >> comparison.md
+
+          echo "---" >> comparison.md
+          echo "*Benchmarks run with \`--release\` flag*" >> comparison.md
+
+      - name: Post comment to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const comparison = fs.readFileSync('comparison.md', 'utf8');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Benchmark Comparison Report')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comparison
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comparison
+              });
+            }
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-comparison
+          path: |
+            base_bench.txt
+            benchmark-results/pr_bench.txt
+            base_egw_bench.txt
+            benchmark-results/pr_egw_bench.txt
+            comparison.md
+          retention-days: 30

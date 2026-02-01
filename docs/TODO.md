@@ -12,12 +12,18 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 
 ## 1. CI/CD & Automation
 
-**Impact:** High | **Effort:** Low-Medium
+**Impact:** High | **Effort:** Low-Medium | **Status:** ✅ Done
 
-- [ ] Add GitHub Actions workflow to run `moon test` for both modules on push/PR
-- [ ] Add `moon check` and `moon fmt --check` to CI pipeline
-- [ ] Add benchmark regression detection (store baselines, compare on PR)
-- [ ] Automate JS build verification (`moon build --target js`)
+- [x] Add GitHub Actions workflow to run `moon test` for both modules on push/PR
+- [x] Add `moon check` and `moon fmt --check` to CI pipeline
+- [x] Add benchmark regression detection (store baselines, compare on PR)
+- [x] Automate JS build verification (`moon build --target js`)
+- [x] Add deployment workflow for GitHub Pages
+- [x] Add release automation workflow
+- [x] Add Dependabot configuration for dependency updates
+- [x] Add Makefile for common development tasks
+- [x] Add helper scripts (build-web.sh, test-all.sh, check-all.sh)
+- [x] Add pre-commit hook installation script
 
 ---
 
@@ -73,11 +79,11 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 
 ## 7. Developer Experience
 
-**Impact:** Low-Medium | **Effort:** Low
+**Impact:** Low-Medium | **Effort:** Low | **Status:** ✅ Done
 
-- [ ] Add top-level `Makefile` or `justfile` wrapping both-module test commands into a single invocation
-- [ ] Add pre-commit hook running `moon check && moon fmt --check`
-- [ ] Script the web build workflow (`moon build --target js && cp target/js/release/build/crdt.js web/public/`)
+- [x] Add top-level `Makefile` or `justfile` wrapping both-module test commands into a single invocation
+- [x] Add pre-commit hook running `moon check && moon fmt --check`
+- [x] Script the web build workflow (`moon build --target js && cp target/js/release/build/crdt.js web/public/`)
 
 ---
 

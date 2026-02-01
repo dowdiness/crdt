@@ -1,0 +1,121 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v0.2.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build Release Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: Update dependencies
+        run: moon update
+
+      - name: Run tests
+        run: |
+          moon test --release
+          cd event-graph-walker && moon test --release
+          cd ../parser && moon test --release
+
+      - name: Build all targets
+        run: |
+          moon build --release
+          moon build --target js --release
+          moon build --target wasm --release || echo "WASM build skipped (may not be supported)"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build web application
+        run: |
+          cp target/js/release/build/crdt.js web/public/
+          cd web
+          npm ci
+          npm run build
+
+      - name: Create release archive
+        run: |
+          VERSION=${{ github.ref_name }}
+          if [ -z "$VERSION" ]; then
+            VERSION=${{ inputs.version }}
+          fi
+
+          mkdir -p release
+
+          # Package MoonBit builds
+          tar -czf release/crdt-moonbit-${VERSION}.tar.gz \
+            target/js/release/build/crdt.js \
+            moon.mod.json \
+            moon.pkg.json \
+            README.md \
+            LICENSE
+
+          # Package web build
+          cd web/dist
+          tar -czf ../../release/crdt-web-${VERSION}.tar.gz .
+          cd ../..
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          VERSION=${{ github.ref_name }}
+          if [ -z "$VERSION" ]; then
+            VERSION=${{ inputs.version }}
+          fi
+
+          echo "## What's Changed" > CHANGELOG.txt
+          echo "" >> CHANGELOG.txt
+
+          # Get commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            git log ${LAST_TAG}..HEAD --pretty=format:"- %s (%h)" >> CHANGELOG.txt
+          else
+            git log --pretty=format:"- %s (%h)" -10 >> CHANGELOG.txt
+          fi
+
+          echo "" >> CHANGELOG.txt
+          echo "" >> CHANGELOG.txt
+          echo "**Full Changelog**: https://github.com/${{ github.repository }}/commits/${VERSION}" >> CHANGELOG.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || inputs.version }}
+          name: Release ${{ github.ref_name || inputs.version }}
+          body_path: CHANGELOG.txt
+          draft: false
+          prerelease: false
+          files: |
+            release/*.tar.gz
+          generate_release_notes: true
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: release/
+          retention-days: 90

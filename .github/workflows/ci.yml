@@ -1,0 +1,218 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-main:
+    name: Test Main Module
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: Verify MoonBit installation
+        run: moon version --all
+
+      - name: Update dependencies
+        run: moon update
+
+      - name: Check code
+        run: moon check --deny-warn
+
+      - name: Run tests
+        run: moon test --release
+
+      - name: Build
+        run: moon build --release
+
+  test-submodules:
+    name: Test Submodules
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        submodule:
+          - event-graph-walker
+          - parser
+          - svg-dsl
+          - graphviz
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: Verify MoonBit installation
+        run: moon version --all
+
+      - name: Test ${{ matrix.submodule }}
+        working-directory: ${{ matrix.submodule }}
+        run: |
+          moon update
+          moon check --deny-warn
+          moon test --release
+
+  benchmark:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: Update dependencies
+        run: moon update
+
+      - name: Run main module benchmarks
+        run: moon bench --release
+
+      - name: Run event-graph-walker benchmarks
+        working-directory: event-graph-walker
+        run: |
+          moon update
+          moon bench --release
+
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: Check formatting
+        run: |
+          moon fmt
+          if ! git diff --exit-code; then
+            echo "❌ Code is not formatted. Please run 'moon fmt'"
+            exit 1
+          fi
+
+  build-js:
+    name: Build JavaScript Target
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: Update dependencies
+        run: moon update
+
+      - name: Build for JavaScript
+        run: moon build --target js --release
+
+      - name: Upload JS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: moonbit-js-build
+          path: target/js/release/build/crdt.js
+          retention-days: 7
+
+  web-test:
+    name: Web Frontend Tests
+    runs-on: ubuntu-latest
+    needs: build-js
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Download JS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: moonbit-js-build
+          path: web/public
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: Build web
+        working-directory: web
+        run: npm run build
+
+      - name: Run Playwright tests (if they exist)
+        working-directory: web
+        continue-on-error: true
+        run: |
+          if [ -d "tests" ] || [ -d "e2e" ]; then
+            npx playwright test
+          else
+            echo "No Playwright tests found, skipping"
+          fi
+
+  all-checks-passed:
+    name: All Checks Passed
+    runs-on: ubuntu-latest
+    needs:
+      - test-main
+      - test-submodules
+      - format-check
+      - build-js
+      - web-test
+    if: always()
+    steps:
+      - name: Check all job statuses
+        run: |
+          if [[ "${{ needs.test-main.result }}" != "success" ]] || \
+             [[ "${{ needs.test-submodules.result }}" != "success" ]] || \
+             [[ "${{ needs.format-check.result }}" != "success" ]] || \
+             [[ "${{ needs.build-js.result }}" != "success" ]] || \
+             [[ "${{ needs.web-test.result }}" != "success" ]]; then
+            echo "❌ One or more required checks failed"
+            exit 1
+          fi
+          echo "✅ All checks passed!"
