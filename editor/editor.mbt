@@ -110,47 +110,45 @@ pub fn Editor::backspace(self : Editor) -> Bool {
 
 ///|
 /// Apply a remote operation to this editor
-pub fn Editor::apply_remote(self : Editor, op : @oplog.Op) -> Unit raise {
-  self.doc.inner_document().apply_remote(op)
+pub fn Editor::apply_remote(self : Editor, op : @core.Op) -> Unit raise {
+  self.doc.apply_remote(op)
   // Adjust cursor position if needed
   self.adjust_cursor()
 }
 
 ///|
 /// Merge remote operations into this editor.
-/// Uses inner_document() to preserve frontier validation even when ops is empty.
+/// Preserves frontier validation even when ops is empty.
 pub fn Editor::merge_remote(
   self : Editor,
-  remote_ops : Array[@oplog.Op],
-  remote_frontier : Array[@causal_graph.RawVersion],
+  remote_ops : Array[@core.Op],
+  remote_frontier : Array[@core.RawVersion],
 ) -> Unit raise {
-  // Use inner_document() directly to preserve frontier validation behavior.
-  // SyncSession::apply skips validation when ops is empty, which could
+  // Preserve frontier validation even when ops is empty.
+  // SyncSession::apply skips validation in that case, which could
   // allow inconsistent sync states to pass silently.
-  self.doc.inner_document().merge_remote(remote_ops, remote_frontier)
+  self.doc.merge_remote(remote_ops, remote_frontier)
   // Adjust cursor position if needed
   self.adjust_cursor()
 }
 
 ///|
 /// Get the current frontier
-pub fn Editor::get_frontier(self : Editor) -> @causal_graph.Frontier {
+pub fn Editor::get_frontier(self : Editor) -> @core.Frontier {
   self.doc.version().to_frontier()
 }
 
 ///|
 /// Get frontier as RawVersions for network sync.
-/// Uses inner_document() directly to avoid O(n) oplog materialization.
-pub fn Editor::get_frontier_raw(
-  self : Editor,
-) -> Array[@causal_graph.RawVersion] raise {
-  self.doc.inner_document().get_frontier_raw()
+/// Delegates to TextDoc for O(1) access.
+pub fn Editor::get_frontier_raw(self : Editor) -> Array[@core.RawVersion] raise {
+  self.doc.get_frontier_raw()
 }
 
 ///|
 /// Get all operations (for sending to remote)
-pub fn Editor::get_operations(self : Editor) -> Array[@oplog.Op] {
-  self.doc.inner_document().oplog.get_all_ops()
+pub fn Editor::get_operations(self : Editor) -> Array[@core.Op] {
+  self.doc.get_all_ops()
 }
 
 ///|

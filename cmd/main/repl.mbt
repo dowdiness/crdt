@@ -173,11 +173,11 @@ fn execute_command(state : ReplState, line : String) -> Bool {
       let op = ops[i]
       let mut line = "  [\{op.lv}] "
       match op.content {
-        @oplog.Insert(text) =>
+        @core.Insert(text) =>
           line = line +
             "Insert(\"\{text}\") left=\{op.origin_left} right=\{op.origin_right}"
-        @oplog.Delete => line = line + "Delete() left=\{op.origin_left}"
-        @oplog.Undelete => line = line + "Undelete() left=\{op.origin_left}"
+        @core.Delete => line = line + "Delete() left=\{op.origin_left}"
+        @core.Undelete => line = line + "Undelete() left=\{op.origin_left}"
       }
       println(line)
     }

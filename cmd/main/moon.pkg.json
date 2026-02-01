@@ -2,7 +2,6 @@
   "is-main": true,
   "import": [
     "dowdiness/crdt/editor",
-    "dowdiness/event-graph-walker/causal_graph",
-    "dowdiness/event-graph-walker/oplog"
+    "dowdiness/event-graph-walker/core"
   ]
 }

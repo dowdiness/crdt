@@ -170,16 +170,11 @@ pub fn get_frontier_raw_json(_handle : Int) -> String {
 /// Example: {"alice": 5, "bob": 3}
 pub fn get_version_vector_json(_handle : Int) -> String {
   match editor.val {
-    Some(ed) => {
-      // Get the document's oplog and create a branch view
-      let inner = ed.editor.doc.inner_document()
-      let oplog = inner.oplog
-      let tree = inner.tree
-      let branch = @branch.Branch::from_tree_and_oplog(tree, oplog)
-      let vv = branch.get_version_vector()
-      // Use ToJson trait to serialize
-      vv.to_json().stringify()
-    }
+    Some(ed) =>
+      // Use TextDoc API to build the version vector
+      ed.editor.doc.get_version_vector().to_json().stringify() catch {
+        _ => "{}"
+      }
     None => "{}"
   }
 }
@@ -187,7 +182,7 @@ pub fn get_version_vector_json(_handle : Int) -> String {
 ///|
 /// Parse operations from JSON
 /// Uses @json.from_json with FromJson trait
-fn parse_ops_from_json(json_str : String) -> Array[@oplog.Op] {
+fn parse_ops_from_json(json_str : String) -> Array[@core.Op] {
   try {
     let json_val = @json.parse(json_str)
     // Use FromJson trait - Op already derives FromJson
@@ -200,9 +195,7 @@ fn parse_ops_from_json(json_str : String) -> Array[@oplog.Op] {
 ///|
 /// Parse RawVersion frontier from JSON
 /// Uses @json.from_json with FromJson trait
-fn parse_frontier_raw_from_json(
-  json_str : String,
-) -> Array[@causal_graph.RawVersion] {
+fn parse_frontier_raw_from_json(json_str : String) -> Array[@core.RawVersion] {
   try {
     let json_val = @json.parse(json_str)
     @json.from_json(json_val)
@@ -239,11 +232,9 @@ pub fn merge_operations(
   match editor.val {
     Some(ed) => {
       // Get local version vector for comparison
-      let inner = ed.editor.doc.inner_document()
-      let oplog = inner.oplog
-      let tree = inner.tree
-      let local_branch = @branch.Branch::from_tree_and_oplog(tree, oplog)
-      let local_vv = local_branch.get_version_vector()
+      let local_vv = ed.editor.doc.get_version_vector() catch {
+        _ => @causal_graph.VersionVector::new()
+      }
 
       // Parse remote version vector
       match parse_version_vector_from_json(version_vector_json) {

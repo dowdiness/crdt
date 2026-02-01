@@ -1,10 +1,9 @@
 {
   "import": [
     "dowdiness/crdt/editor",
-    "dowdiness/event-graph-walker/oplog",
-    "dowdiness/parser",
-    "dowdiness/event-graph-walker/branch",
+    "dowdiness/event-graph-walker/core",
     "dowdiness/event-graph-walker/causal_graph",
+    "dowdiness/parser",
     "moonbitlang/core/json"
   ],
   "link": {
