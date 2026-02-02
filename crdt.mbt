@@ -7,6 +7,10 @@
 let editor : Ref[@editor.ParsedEditor?] = { val: None }
 
 ///|
+/// Global UndoManager (paired with editor when undo is enabled)
+let undo_mgr : Ref[@undo.UndoManager?] = { val: None }
+
+///|
 /// Create a new ParsedEditor instance
 /// Returns handle 1 (MVP: single editor only)
 pub fn create_editor(agent_id : String) -> Int {
@@ -260,6 +264,232 @@ pub fn merge_operations(
 
       // ParsedEditor::merge_remote already marks as dirty for reparsing
     }
+    None => ()
+  }
+}
+
+// ============================================================
+// UndoManager-integrated API
+// ============================================================
+
+///|
+/// Create a new ParsedEditor with an UndoManager
+/// Returns handle 1 (MVP: single editor only)
+pub fn create_editor_with_undo(
+  agent_id : String,
+  capture_timeout_ms : Int,
+) -> Int {
+  editor.val = Some(@editor.ParsedEditor::new(agent_id))
+  undo_mgr.val = Some(
+    @undo.UndoManager::new(agent_id, capture_timeout_ms=capture_timeout_ms),
+  )
+  1
+}
+
+///|
+/// Insert text at cursor position and record for undo
+pub fn insert_and_record(
+  _handle : Int,
+  text : String,
+  timestamp_ms : Int,
+) -> Unit {
+  match (editor.val, undo_mgr.val) {
+    (Some(ed), Some(mgr)) => {
+      let pos = ed.editor.get_cursor()
+      try! ed.editor.doc.insert_and_record(
+        @text.Pos::at(pos),
+        text,
+        mgr,
+        timestamp_ms=timestamp_ms,
+      )
+      ed.editor.move_cursor(pos + text.length())
+      ed.mark_dirty()
+    }
+    _ => ()
+  }
+}
+
+///|
+/// Delete character at cursor (forward delete) and record for undo
+pub fn delete_and_record(_handle : Int, timestamp_ms : Int) -> Bool {
+  match (editor.val, undo_mgr.val) {
+    (Some(ed), Some(mgr)) => {
+      let pos = ed.editor.get_cursor()
+      try {
+        ed.editor.doc.delete_and_record(
+          @text.Pos::at(pos),
+          mgr,
+          timestamp_ms=timestamp_ms,
+        )
+        ed.mark_dirty()
+        true
+      } catch {
+        _ => false
+      }
+    }
+    _ => false
+  }
+}
+
+///|
+/// Delete character before cursor (backspace) and record for undo
+pub fn backspace_and_record(_handle : Int, timestamp_ms : Int) -> Bool {
+  match (editor.val, undo_mgr.val) {
+    (Some(ed), Some(mgr)) => {
+      let pos = ed.editor.get_cursor()
+      if pos > 0 {
+        let new_pos = pos - 1
+        try {
+          ed.editor.doc.delete_and_record(
+            @text.Pos::at(new_pos),
+            mgr,
+            timestamp_ms=timestamp_ms,
+          )
+          ed.editor.move_cursor(new_pos)
+          ed.mark_dirty()
+          true
+        } catch {
+          _ => false
+        }
+      } else {
+        false
+      }
+    }
+    _ => false
+  }
+}
+
+///|
+/// Set text content directly and record changes for undo
+/// Computes diff between old and new text, applies as individual ops
+pub fn set_text_and_record(
+  _handle : Int,
+  new_text : String,
+  timestamp_ms : Int,
+) -> Unit {
+  match (editor.val, undo_mgr.val) {
+    (Some(ed), Some(mgr)) => {
+      let old_text = ed.editor.get_text()
+      if old_text == new_text {
+        return
+      }
+      // Simple diff: find common prefix/suffix
+      let old_len = old_text.length()
+      let new_len = new_text.length()
+      let mut prefix = 0
+      while prefix < old_len && prefix < new_len && old_text[prefix] == new_text[prefix] {
+        prefix = prefix + 1
+      }
+      let mut suffix = 0
+      while suffix < old_len - prefix &&
+            suffix < new_len - prefix &&
+            old_text[old_len - 1 - suffix] == new_text[new_len - 1 - suffix] {
+        suffix = suffix + 1
+      }
+      let del_count = old_len - prefix - suffix
+      let ins_len = new_len - prefix - suffix
+      // Delete changed region (delete from prefix position, del_count times)
+      for _i = 0; _i < del_count; _i = _i + 1 {
+        try {
+          ed.editor.doc.delete_and_record(
+            @text.Pos::at(prefix),
+            mgr,
+            timestamp_ms=timestamp_ms,
+          )
+        } catch {
+          _ => ()
+        }
+      }
+      // Insert new text at prefix position
+      if ins_len > 0 {
+        let inserted = new_text[prefix:prefix + ins_len].to_string() catch {
+          _ => ""
+        }
+        if inserted.length() > 0 {
+          try {
+            ed.editor.doc.insert_and_record(
+              @text.Pos::at(prefix),
+              inserted,
+              mgr,
+              timestamp_ms=timestamp_ms,
+            )
+          } catch {
+            _ => ()
+          }
+        }
+      }
+      ed.mark_dirty()
+    }
+    _ => ()
+  }
+}
+
+///|
+/// Undo the last operation group
+/// Returns JSON string of ops for peer sync, or "[]" if nothing to undo
+pub fn undo_manager_undo(_handle : Int) -> String {
+  match (editor.val, undo_mgr.val) {
+    (Some(ed), Some(mgr)) =>
+      try {
+        let ops = mgr.undo(ed.editor.doc)
+        ed.mark_dirty()
+        ops.to_json().stringify()
+      } catch {
+        _ => "[]"
+      }
+    _ => "[]"
+  }
+}
+
+///|
+/// Redo the last undone operation group
+/// Returns JSON string of ops for peer sync, or "[]" if nothing to redo
+pub fn undo_manager_redo(_handle : Int) -> String {
+  match (editor.val, undo_mgr.val) {
+    (Some(ed), Some(mgr)) =>
+      try {
+        let ops = mgr.redo(ed.editor.doc)
+        ed.mark_dirty()
+        ops.to_json().stringify()
+      } catch {
+        _ => "[]"
+      }
+    _ => "[]"
+  }
+}
+
+///|
+/// Check if undo is possible
+pub fn undo_manager_can_undo(_handle : Int) -> Bool {
+  match undo_mgr.val {
+    Some(mgr) => mgr.can_undo()
+    None => false
+  }
+}
+
+///|
+/// Check if redo is possible
+pub fn undo_manager_can_redo(_handle : Int) -> Bool {
+  match undo_mgr.val {
+    Some(mgr) => mgr.can_redo()
+    None => false
+  }
+}
+
+///|
+/// Enable or disable undo tracking (use false during remote op application)
+pub fn undo_manager_set_tracking(_handle : Int, enabled : Bool) -> Unit {
+  match undo_mgr.val {
+    Some(mgr) => mgr.set_tracking(enabled)
+    None => ()
+  }
+}
+
+///|
+/// Clear both undo and redo stacks
+pub fn undo_manager_clear(_handle : Int) -> Unit {
+  match undo_mgr.val {
+    Some(mgr) => mgr.clear()
     None => ()
   }
 }

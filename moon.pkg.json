@@ -3,6 +3,8 @@
     "dowdiness/crdt/editor",
     "dowdiness/event-graph-walker/core",
     "dowdiness/event-graph-walker/causal_graph",
+    "dowdiness/event-graph-walker/text",
+    "dowdiness/event-graph-walker/undo",
     "dowdiness/parser",
     "moonbitlang/core/json"
   ],
@@ -24,7 +26,18 @@
         "get_frontier_json",
         "get_frontier_raw_json",
         "get_version_vector_json",
-        "merge_operations"
+        "merge_operations",
+        "create_editor_with_undo",
+        "insert_and_record",
+        "delete_and_record",
+        "backspace_and_record",
+        "set_text_and_record",
+        "undo_manager_undo",
+        "undo_manager_redo",
+        "undo_manager_can_undo",
+        "undo_manager_can_redo",
+        "undo_manager_set_tracking",
+        "undo_manager_clear"
       ]
     }
   }

@@ -77,6 +77,12 @@ pub fn ParsedEditor::get_text(self : ParsedEditor) -> String {
 }
 
 ///|
+/// Mark the AST as dirty so it will be reparsed on next access
+pub fn ParsedEditor::mark_dirty(self : ParsedEditor) -> Unit {
+  self.parse_dirty = true
+}
+
+///|
 /// Get the AST (lazy evaluation - only reparses if dirty)
 /// Raises an error if parsing fails
 pub fn ParsedEditor::get_ast(self : ParsedEditor) -> @parser.TermNode {

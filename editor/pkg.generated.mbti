@@ -55,6 +55,7 @@ pub fn ParsedEditor::get_operations(Self) -> Array[@core.Op]
 pub fn ParsedEditor::get_text(Self) -> String
 pub fn ParsedEditor::insert(Self, String) -> Unit raise
 pub fn ParsedEditor::is_parse_valid(Self) -> Bool
+pub fn ParsedEditor::mark_dirty(Self) -> Unit
 pub fn ParsedEditor::merge_remote(Self, Array[@core.Op], Array[@core.RawVersion]) -> Unit raise
 pub fn ParsedEditor::move_cursor(Self, Int) -> Unit
 pub fn ParsedEditor::new(String) -> Self
