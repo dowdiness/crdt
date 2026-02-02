@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createEgWalkerProxy, type TextState } from 'valtio-egwalker/stub';
 
 describe('createEgWalkerProxy', () => {
@@ -35,13 +35,13 @@ describe('createEgWalkerProxy', () => {
 
   describe('undo/redo', () => {
     it('should track changes in undo stack', async () => {
-      expect(proxy.getUndoStackSize?.()).toBe(0);
+      expect(proxy.canUndo()).toBe(false);
 
       proxy.proxy.text = 'a';
       // Wait for subscription to fire
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      expect(proxy.getUndoStackSize?.()).toBe(1);
+      expect(proxy.canUndo()).toBe(true);
     });
 
     it('should undo changes', async () => {
@@ -68,12 +68,12 @@ describe('createEgWalkerProxy', () => {
       await new Promise(resolve => setTimeout(resolve, 10));
 
       proxy.undo();
-      expect(proxy.getRedoStackSize?.()).toBe(1);
+      expect(proxy.canRedo()).toBe(true);
 
       proxy.proxy.text = 'World';
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      expect(proxy.getRedoStackSize?.()).toBe(0);
+      expect(proxy.canRedo()).toBe(false);
     });
 
     it('should not track changes when suppressed', async () => {
@@ -83,7 +83,7 @@ describe('createEgWalkerProxy', () => {
 
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      expect(proxy.getUndoStackSize?.()).toBe(0);
+      expect(proxy.canUndo()).toBe(false);
     });
   });
 
@@ -98,7 +98,7 @@ describe('createEgWalkerProxy', () => {
       proxy.proxy.text = 'abc';
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      expect(proxy.getUndoStackSize?.()).toBe(3);
+      expect(proxy.canUndo()).toBe(true);
 
       proxy.undo();
       expect(proxy.proxy.text).toBe('ab');

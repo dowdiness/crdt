@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { LambdaEditor } from './components/LambdaEditor';
-import { CollaborativeDemo } from './components/CollaborativeDemo';
+import { LambdaEditor } from './features/lambda-editor';
+import { CollaborativeDemo } from './features/collaborative';
 
 type DemoMode = 'single' | 'collaborative';
 

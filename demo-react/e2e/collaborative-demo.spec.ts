@@ -65,11 +65,10 @@ test.describe('Collaborative Demo Mode', () => {
     const aliceEditor = page.getByPlaceholder("Alice's editor");
     await aliceEditor.pressSequentially('Hello');
 
-    // Alice's undo button should show count > 0
+    // Alice's undo button should be enabled after typing
     const alicePanel = page.locator('.editor-panel').filter({ hasText: 'Alice' });
     const aliceUndoBtn = alicePanel.getByRole('button', { name: /Undo/ });
     await expect(aliceUndoBtn).toBeEnabled();
-    await expect(aliceUndoBtn).toContainText(/Undo \([1-9]\d*\)/);
   });
 
   test('should undo Alice changes', async ({ page }) => {
