@@ -93,6 +93,21 @@ git commit -m "chore: update event-graph-walker submodule"
 
 ## Development Workflow
 
+### Quality-First Approach
+
+**CRITICAL:** When implementing or modifying MoonBit code, ALWAYS follow the `/moonbit-check` skill workflow to catch issues before they become bugs:
+
+1. **Pre-flight**: Check dependencies with `moon update` before starting implementation
+2. **Syntax awareness**: Verify MoonBit patterns (tuple destructuring, labelled args, error handling)
+3. **Test verification**: Run tests and ensure error message formats match assertions exactly
+4. **CLI testing**: If applicable, verify help text, flag behavior, and check for shadowing issues
+5. **Interface review**: Update `.mbti` files and verify API changes are intentional
+6. **Format & lint**: Run `moon fmt` and `moon check` before completing
+
+This workflow addresses common friction points: dependency issues, syntax errors, test assertion mismatches, and functional bugs in CLI tools.
+
+### Standard Workflow
+
 1. Make edits
 2. `moon check` - Lint
 3. `moon test` - Run tests
@@ -111,6 +126,7 @@ git commit -m "chore: update event-graph-walker submodule"
 
 ## Important Notes
 
+- **Quality verification:** Use `/moonbit-check` skill for all MoonBit implementations to catch dependency issues, syntax errors, and test failures early
 - **Character-level ops:** Split multi-char inserts into individual chars
 - **Submodules:** After cloning, run `git submodule update --init --recursive`
 - **Snapshots:** Use `moon test --update` when behavior changes
