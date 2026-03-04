@@ -7,14 +7,24 @@ Documentation for the Lambda Calculus CRDT Editor project.
 - **[CLAUDE.md](../CLAUDE.md)** - Quick reference for Claude Code
 - **[README.md](../README.md)** - Project overview
 
+## Grand Design
+
+The future vision for combining eg-walker CRDT + loom incremental parser into a collaborative projectional editor.
+These documents are draft designs and explicitly call out required API additions where current public APIs are insufficient.
+
+- **[Grand Design](design/GRAND_DESIGN.md)** — Vision, principles, and implementation order
+  - [01 — Edit Bridge](design/01-edit-bridge.md) — CRDT ops → loom `Edit` without string diffing
+  - [02 — Reactive Pipeline](design/02-reactive-pipeline.md) — Replace manual dirty-flags with `Signal`/`Memo`
+  - [03 — Unified Editor](design/03-unified-editor.md) — Single `SyncEditor` facade
+  - [04 — Awareness Protocol](design/04-awareness-protocol.md) — Peer cursors and presence
+  - [05 — Tree Edit Roundtrip](design/05-tree-edit-roundtrip.md) — Structural AST edits via text CRDT
+
 ## Architecture
 
 Understand the system design and CRDT implementation.
 
-- [Module Structure](architecture/modules.md) - Two-module organization (event-graph-walker + crdt)
-- [eg-walker Implementation](architecture/EG_WALKER_IMPLEMENTATION.md) - CRDT algorithm details
-- [Walker Usage](architecture/WALKER_USAGE.md) - Event graph walker API
-- [Network Sync](architecture/NETWORK_SYNC.md) - Synchronization protocols
+- [Module Structure](architecture/modules.md) - Monorepo organization with git submodules
+- [Projectional Editing](architecture/PROJECTIONAL_EDITING.md) - Projectional editing architecture
 
 ## Development
 
@@ -29,15 +39,16 @@ Guides for contributing and developing.
 
 Benchmarking and optimization documentation.
 
-- [Benchmarks](performance/BENCHMARKS.md) - Performance measurements
-- [Optimization Roadmap](performance/OPTIMIZATION_ROADMAP.md) - Future improvements
+- [Benchmark Redesign](performance/BENCHMARK_REDESIGN.md) - Benchmark methodology
+- [Performance Analysis](performance/PERFORMANCE_ANALYSIS.md) - Performance analysis
+- [Performance Results](performance/PERFORMANCE_RESULTS.md) - Benchmark results
 
 ## Module Documentation
 
 Detailed documentation for each module:
 
 - **[event-graph-walker](../event-graph-walker/README.md)** - Core CRDT library
-- **[parser](../parser/README.md)** - Lambda calculus parser
+- **[loom](../loom/README.md)** - Incremental parser framework
 
 ## Archive
 

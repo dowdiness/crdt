@@ -17,12 +17,11 @@ See [Monorepo & Submodules](monorepo.md) for the full guide on the git submodule
 
 ## Working with the Parser
 
-The parser has extensive documentation in `parser/README.md` and `parser/docs/`. When modifying:
+The parser lives in `loom/examples/lambda/`. The framework is in `loom/loom/`. When modifying:
 
 - Check error recovery behavior with malformed input
-- Update token/parse caches if lexer changes
-- Test incremental parsing with `parser/incremental_parser_test.mbt`
-- Benchmark performance with `parser/benchmark.mbt`
+- Test incremental parsing with loom's test suites
+- Benchmark performance with `cd loom/examples/lambda && moon bench --release`
 
 ## Working with the CRDT
 
@@ -44,8 +43,7 @@ The CRDT implementation is split across two modules:
 - `editor/text_diff.mbt` - Text diffing utilities
 
 When adding features, consult:
-- [EG_WALKER_IMPLEMENTATION.md](../architecture/EG_WALKER_IMPLEMENTATION.md)
-- [WALKER_USAGE.md](../architecture/WALKER_USAGE.md)
+- [event-graph-walker/README.md](../../event-graph-walker/README.md)
 
 ## Web Development
 
@@ -127,10 +125,10 @@ moon bench --release
 cd event-graph-walker && moon bench --release
 
 # Specific packages
-moon bench --package parser --release
+cd loom/examples/lambda && moon bench --release
 cd event-graph-walker
 moon bench --package causal_graph --release
 moon bench --package branch --release
 ```
 
-See [benchmarks documentation](../performance/BENCHMARKS.md) for details.
+See [benchmarks documentation](../performance/BENCHMARK_REDESIGN.md) for details.

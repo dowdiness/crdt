@@ -197,10 +197,10 @@ The existing codebase has:
 | Component | Status | Location |
 |-----------|--------|----------|
 | Text CRDT | ✅ Complete | `event-graph-walker/document/` |
-| Lambda Parser | ✅ Complete | `parser/` |
-| AST (TermNode) | ✅ Complete | `parser/term.mbt` |
-| AST Visualization | ✅ DOT export | `parser/ast_to_dot.mbt` |
-| AST↔CRDT Bridge | 🔶 Partial | `parser/crdt_integration.mbt` |
+| Lambda Parser | ✅ Complete | `loom/examples/lambda/` |
+| AST (TermNode) | ✅ Complete | `loom/examples/lambda/src/ast/` |
+| AST Visualization | ✅ DOT export | `loom/examples/lambda/src/dot_node.mbt` |
+| AST↔CRDT Bridge | 🔶 Partial | `editor/parsed_editor.mbt` |
 | CanonicalModel | ✅ Complete | `projection/canonical_model.mbt` |
 | SourceMap | ✅ Complete | `projection/source_map.mbt` |
 | TextLens | ✅ Complete | `projection/text_lens.mbt` |
@@ -213,9 +213,9 @@ The existing codebase has:
 | refresh_from_model | ✅ Complete | `projection/tree_editor.mbt` (stale ID pruning) |
 | ProjectedEditor | ❌ Not started | Integration facade (Phase 3.5) |
 | Bidirectional Sync | 🔶 Partial | — |
-| CstNode | ❌ Not started | — |
-| AstCstMap | ❌ Not started | — |
-| CST-aware algorithms | ❌ Not started | See `docs/archive/CST_INTEGRATION_PLAN.md` |
+| CstNode | ✅ Complete | `loom/seam/` |
+| AstCstMap | ✅ Complete | `loom/examples/lambda/src/term_convert.mbt` |
+| CST-aware algorithms | ✅ Complete | `loom/` (incremental parsing via `ImperativeParser`) |
 
 ### 2.2 Proposed Architecture
 

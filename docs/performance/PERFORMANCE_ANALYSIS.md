@@ -132,7 +132,7 @@ The original 55% variance in repeated advance was caused by **benchmark design**
 **Optional Future Optimizations (Low Priority):**
 - Lazy frontier caching: 10-20% improvement in dynamic scenarios
 - Object pooling: 5-10% variance reduction
-- See OPTIMIZATION_ROADMAP.md for details
+- See performance docs for details
 
 **No code changes needed** - performance is good!
 

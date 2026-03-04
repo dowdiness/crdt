@@ -9,7 +9,7 @@ Previously, all code lived in a single `dowdiness/til` repository. The restructu
 ```
 crdt/                           ← monorepo (dowdiness/crdt)
 ├── event-graph-walker/         ← submodule (dowdiness/event-graph-walker)
-├── parser/                     ← submodule (dowdiness/parser)
+├── loom/                       ← submodule (dowdiness/loom)
 ├── svg-dsl/                    ← submodule (dowdiness/svg-dsl)
 ├── graphviz/                   ← submodule (dowdiness/graphviz)
 ├── valtio/                     ← submodule (dowdiness/valtio)
@@ -26,7 +26,8 @@ The root MoonBit module (`dowdiness/crdt`) depends on submodules via path depend
 {
   "deps": {
     "dowdiness/event-graph-walker": { "path": "./event-graph-walker" },
-    "dowdiness/parser": { "path": "./parser" }
+    "dowdiness/lambda": { "path": "./loom/examples/lambda" },
+    "dowdiness/loom": { "path": "./loom/loom" }
   }
 }
 ```
@@ -114,8 +115,9 @@ moon test
 # submodule: event-graph-walker
 cd event-graph-walker && moon test && cd ..
 
-# submodule: parser
-cd parser && moon test && cd ..
+# submodule: loom (parser framework + lambda example)
+cd loom/loom && moon test && cd ../..
+cd loom/examples/lambda && moon test && cd ../..
 ```
 
 ## Submodule Reference
@@ -123,12 +125,12 @@ cd parser && moon test && cd ..
 | Directory | Repository | Role | Has MoonBit module? |
 |---|---|---|---|
 | `event-graph-walker/` | [dowdiness/event-graph-walker](https://github.com/dowdiness/event-graph-walker) | Core CRDT library | Yes |
-| `parser/` | [dowdiness/parser](https://github.com/dowdiness/parser) | Lambda calculus parser | Yes |
+| `loom/` | [dowdiness/loom](https://github.com/dowdiness/loom) | Incremental parser framework | Yes |
 | `svg-dsl/` | [dowdiness/svg-dsl](https://github.com/dowdiness/svg-dsl) | SVG DSL | Yes |
 | `graphviz/` | [dowdiness/graphviz](https://github.com/dowdiness/graphviz) | Graphviz renderer | Yes |
 | `valtio/` | [dowdiness/valtio](https://github.com/dowdiness/valtio) | Valtio state management | Yes |
 
-Only `event-graph-walker` and `parser` are path dependencies of the root MoonBit module. The others (`svg-dsl`, `graphviz`, `valtio`) are independent modules used by the web frontend.
+Only `event-graph-walker`, `dowdiness/lambda`, and `dowdiness/loom` are path dependencies of the root MoonBit module. The others (`svg-dsl`, `graphviz`, `valtio`) are independent modules used by the web frontend.
 
 ## Common Pitfalls
 
@@ -175,16 +177,17 @@ valtio (independent)
 
 event-graph-walker (independent)
 
-parser (independent)
+loom (independent: loom/seam/incr/lambda)
 
 crdt (root module)
  ├── depends on event-graph-walker (path dep)
- └── depends on parser (path dep)
+ ├── depends on dowdiness/lambda (path dep)
+ └── depends on dowdiness/loom (path dep)
 ```
 
 ## Why Submodules?
 
-1. **Reusability** — `event-graph-walker` and `parser` can be used by other MoonBit projects without pulling the entire editor
+1. **Reusability** — `event-graph-walker` and `loom` can be used by other MoonBit projects without pulling the entire editor
 2. **Independent versioning** — Each library is versioned and released on its own schedule
 3. **Focused testing** — Each library has its own test suite and CI
 4. **Clear boundaries** — Dependencies are explicit in `moon.mod.json`

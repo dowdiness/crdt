@@ -6,14 +6,14 @@ Lambda Calculus CRDT Editor - eg-walker implementation in MoonBit
 
 **Monorepo with git submodules:**
 - `event-graph-walker/` - Reusable CRDT library (submodule → [dowdiness/event-graph-walker](https://github.com/dowdiness/event-graph-walker))
-- `parser/` - Lambda calculus parser (submodule → [dowdiness/parser](https://github.com/dowdiness/parser))
+- `loom/` - Loom framework (submodule → [dowdiness/loom](https://github.com/dowdiness/loom))
 - `svg-dsl/` - SVG DSL (submodule → [dowdiness/svg-dsl](https://github.com/dowdiness/svg-dsl))
 - `graphviz/` - Graphviz renderer (submodule → [dowdiness/graphviz](https://github.com/dowdiness/graphviz))
 - `valtio/` - Valtio state management (submodule → [dowdiness/valtio](https://github.com/dowdiness/valtio))
 - `editor/`, `projection/`, `cmd/` - Application packages (in monorepo)
 - `web/`, `demo-react/` - Web frontends (in monorepo)
 
-**Modules:** 3 MoonBit modules (crdt + event-graph-walker + parser)
+**Modules:** 3 MoonBit modules (crdt + event-graph-walker + loom framework)
 
 ## Quick Commands
 
@@ -28,7 +28,7 @@ git submodule update --init --recursive
 ```bash
 moon test                           # crdt module tests
 cd event-graph-walker && moon test # CRDT library tests
-cd parser && moon test             # Parser tests
+cd loom && moon test               # Loom framework tests
 moon info && moon fmt               # Format & update interfaces
 moon check                          # Lint
 ```
@@ -51,7 +51,7 @@ cd event-graph-walker && moon bench --release
 ### Updating submodules
 ```bash
 git submodule update --remote        # Pull latest from all submodules
-git add event-graph-walker parser    # Stage submodule pointer updates
+git add event-graph-walker loom      # Stage submodule pointer updates
 git commit -m "chore: update submodules"
 ```
 
@@ -81,15 +81,15 @@ git commit -m "chore: update event-graph-walker submodule"
 
 **Submodule docs:**
 - [event-graph-walker](event-graph-walker/README.md) - CRDT library
-- [parser](parser/README.md) - Lambda calculus parser
+- [loom](loom/README.md) - Loom framework (lambda calculus parser in `loom/examples/lambda/`)
 
 ## Key Facts
 
 **CRDT:** eg-walker algorithm with FugueMax sequence CRDT
 **Language:** MoonBit
 **Parser:** Lambda calculus with arithmetic (`λx.x`, `1+2`, `if-then-else`)
-**Modules:** 3 MoonBit modules (crdt app + event-graph-walker lib + parser lib)
-**Submodules:** 5 git submodules (event-graph-walker, parser, svg-dsl, graphviz, valtio)
+**Modules:** 3 MoonBit modules (crdt app + event-graph-walker lib + loom framework)
+**Submodules:** 5 git submodules (event-graph-walker, loom, svg-dsl, graphviz, valtio)
 
 ## Development Workflow
 
@@ -132,7 +132,7 @@ This workflow addresses common friction points: dependency issues, syntax errors
 - **Snapshots:** Use `moon test --update` when behavior changes
 - **Interfaces:** Check `.mbti` files after refactoring
 - **Benchmarks:** Always use `--release` flag
-- **Parser module:** Now `dowdiness/parser` (was `dowdiness/crdt/parser`). Source code `@parser` alias unchanged.
+- **Parser module:** Now `dowdiness/lambda` in `loom/examples/lambda/` (via loom submodule). Source code `@parser` alias unchanged.
 
 ## References
 

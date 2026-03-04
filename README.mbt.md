@@ -14,7 +14,7 @@ This is a monorepo with git submodules. Reusable libraries live in their own rep
 ```
 crdt/
 ├── event-graph-walker/   # Core CRDT library (submodule)
-├── parser/               # Lambda calculus parser (submodule)
+├── loom/                 # Incremental parser framework (submodule)
 ├── svg-dsl/              # SVG DSL (submodule)
 ├── graphviz/             # Graphviz DOT renderer (submodule)
 ├── valtio/               # Valtio state management (submodule)
@@ -121,7 +121,8 @@ if x then y + 1 else y - 1
 ```sh
 moon test                                    # crdt module
 cd event-graph-walker && moon test && cd ..   # CRDT library
-cd parser && moon test && cd ..              # Parser
+cd loom/loom && moon test && cd ../..         # Parser framework
+cd loom/examples/lambda && moon test && cd ../..  # Lambda parser
 ```
 
 ## Performance
@@ -142,7 +143,7 @@ See [docs/performance/](docs/performance/) for detailed results.
 - **[docs/development/workflow.md](docs/development/workflow.md)** - Development process
 - **[docs/architecture/modules.md](docs/architecture/modules.md)** - Module structure
 - **[event-graph-walker/README.md](event-graph-walker/README.md)** - Core CRDT library
-- **[parser/README.md](parser/README.md)** - Lambda calculus parser
+- **[loom/README.md](loom/README.md)** - Incremental parser framework
 
 ## References
 

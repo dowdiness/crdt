@@ -5,9 +5,7 @@ Documentation for the CRDT collaborative editor architecture.
 ## Contents
 
 - **[Module Structure](modules.md)** - Monorepo organization with git submodules
-- **[eg-walker Implementation](EG_WALKER_IMPLEMENTATION.md)** - Detailed implementation notes for the eg-walker CRDT algorithm
-- **[Walker Usage](WALKER_USAGE.md)** - How to use the event graph walker API
-- **[Network Sync](NETWORK_SYNC.md)** - Network synchronization protocols and version vectors
+- **[Projectional Editing](PROJECTIONAL_EDITING.md)** - Projectional editing architecture plan
 
 ## Quick Overview
 

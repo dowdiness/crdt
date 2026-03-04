@@ -20,14 +20,14 @@ This investigation resolved a concerning 55% variance in branch advance performa
 ## Quick Navigation
 
 ### For Decision Makers
-**Start here**: [VARIANCE_INVESTIGATION_COMPLETE.md](VARIANCE_INVESTIGATION_COMPLETE.md)
+**Start here**: [VARIANCE_INVESTIGATION_COMPLETE.md](investigations/branch-variance/VARIANCE_INVESTIGATION_COMPLETE.md)
 - Executive summary
 - Key findings
 - Recommendations
 - Next steps
 
 ### For Developers
-**Understanding the issue**: [BRANCH_ADVANCE_VARIANCE_INVESTIGATION.md](BRANCH_ADVANCE_VARIANCE_INVESTIGATION.md)
+**Understanding the issue**: [BRANCH_ADVANCE_VARIANCE_INVESTIGATION.md](investigations/branch-variance/BRANCH_ADVANCE_VARIANCE_INVESTIGATION.md)
 - Detailed root cause analysis
 - How the benchmark was flawed
 - Real performance costs identified
@@ -35,7 +35,7 @@ This investigation resolved a concerning 55% variance in branch advance performa
 - Implementation checklist
 
 ### For Benchmarking
-**Using new benchmarks**: [BENCHMARK_REDESIGN.md](BENCHMARK_REDESIGN.md)
+**Using new benchmarks**: [BENCHMARK_REDESIGN.md](../performance/BENCHMARK_REDESIGN.md)
 - Why benchmarks were redesigned
 - How to interpret results
 - Complete benchmark descriptions
@@ -43,7 +43,7 @@ This investigation resolved a concerning 55% variance in branch advance performa
 - How to run benchmarks
 
 ### For Performance Analysis
-**What the data shows**: [BRANCH_ADVANCE_VARIANCE_FINDINGS.md](BRANCH_ADVANCE_VARIANCE_FINDINGS.md)
+**What the data shows**: [BRANCH_ADVANCE_VARIANCE_FINDINGS.md](investigations/branch-variance/BRANCH_ADVANCE_VARIANCE_FINDINGS.md)
 - Actual benchmark results (15 tests)
 - Root cause analysis with evidence
 - Performance characteristics
@@ -55,16 +55,21 @@ This investigation resolved a concerning 55% variance in branch advance performa
 ## File Structure
 
 ```
-crdt/
-├── branch/
-│   └── branch_benchmark.mbt          ← MODIFIED (5 new benchmarks)
+docs/archive/
+├── investigations/
+│   └── branch-variance/
+│       ├── VARIANCE_INVESTIGATION_COMPLETE.md  ← START HERE (summary)
+│       ├── BRANCH_ADVANCE_VARIANCE_INVESTIGATION.md (detailed analysis)
+│       └── BRANCH_ADVANCE_VARIANCE_FINDINGS.md (actual results)
 │
-├── INVESTIGATION_INDEX.md             ← YOU ARE HERE
-├── VARIANCE_INVESTIGATION_COMPLETE.md ← START HERE (summary)
-├── BRANCH_ADVANCE_VARIANCE_INVESTIGATION.md    (detailed analysis)
-├── BENCHMARK_REDESIGN.md              (how to use new benchmarks)
-├── BRANCH_ADVANCE_VARIANCE_FINDINGS.md (actual results)
-└── PERFORMANCE_ANALYSIS.md            (update needed)
+├── INVESTIGATION_INDEX.md                      ← YOU ARE HERE
+│
+event-graph-walker/internal/branch/
+└── branch_benchmark.mbt                        ← MODIFIED (5 new benchmarks)
+│
+docs/performance/
+├── BENCHMARK_REDESIGN.md                       (how to use new benchmarks)
+└── PERFORMANCE_ANALYSIS.md                     (update needed)
 ```
 
 ---

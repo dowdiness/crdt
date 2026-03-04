@@ -11,7 +11,7 @@ This document summarizes the CI/CD infrastructure that has been set up for the L
 
 **Features:**
 - ✅ Tests main module with `moon test --release`
-- ✅ Tests all submodules in parallel (event-graph-walker, parser, svg-dsl, graphviz)
+- ✅ Tests all submodules in parallel (event-graph-walker, loom, svg-dsl, graphviz)
 - ✅ Code quality checks with `moon check --deny-warn`
 - ✅ Format verification with `moon fmt`
 - ✅ JavaScript build verification (`moon build --target js`)
@@ -83,7 +83,7 @@ Automates the web build workflow:
 Runs tests for all modules with pretty output:
 ```bash
 ./scripts/test-all.sh
-# Tests: main, event-graph-walker, parser, svg-dsl, graphviz
+# Tests: main, event-graph-walker, loom, svg-dsl, graphviz
 ```
 
 #### `check-all.sh`

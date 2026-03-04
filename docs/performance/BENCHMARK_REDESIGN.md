@@ -238,7 +238,7 @@ branch - repeated advance steady-state (10 iterations)
 
 **Indicates**: Memory allocation, GC pressure, or algorithmic issue
 
-**Next Steps**: Implement Phase 2 optimizations from OPTIMIZATION_ROADMAP.md
+**Next Steps**: Implement Phase 2 optimizations (see performance docs)
 
 ---
 

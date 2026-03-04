@@ -2,11 +2,12 @@
 
 ## Test Coverage
 
-**Total: 329 tests** (103 in event-graph-walker + 226 in crdt)
+Run tests per module:
 
-- event-graph-walker: 103 tests (core CRDT library)
-- crdt application: 226 tests (editor + parser)
-- All tests passing
+- `moon test` — crdt module (editor, projection)
+- `cd event-graph-walker && moon test` — Core CRDT library
+- `cd loom/loom && moon test` — Parser framework
+- `cd loom/examples/lambda && moon test` — Lambda calculus parser
 
 ## Running Tests
 
@@ -21,10 +22,6 @@ cd event-graph-walker && moon test # Test CRDT library (103 tests)
 ### Run Specific Package Tests
 
 ```bash
-# crdt module packages
-moon test parser
-moon test editor
-
 # event-graph-walker packages
 cd event-graph-walker
 moon test causal_graph
@@ -266,7 +263,7 @@ test "error recovery: unclosed paren" {
 }
 ```
 
-See `parser/docs/EDGE_CASE_TESTS.md` for comprehensive parser tests.
+See `loom/examples/lambda/` for comprehensive parser tests.
 
 ## Benchmarking
 
@@ -277,7 +274,7 @@ moon bench --release
 cd event-graph-walker && moon bench --release
 ```
 
-See [performance documentation](../performance/BENCHMARKS.md) for details.
+See [performance documentation](../performance/BENCHMARK_REDESIGN.md) for details.
 
 ## Continuous Integration
 
@@ -321,5 +318,5 @@ git diff *.mbti
 ## References
 
 - [MoonBit Testing Guide](https://docs.moonbitlang.com/testing)
-- Parser edge cases: [parser/docs/EDGE_CASE_TESTS.md](../../parser/docs/EDGE_CASE_TESTS.md)
+- Parser edge cases: `loom/examples/lambda/`
 - QuickCheck properties: `causal_graph/version_vector_properties_test.mbt`

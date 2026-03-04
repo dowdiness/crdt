@@ -31,7 +31,7 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 
 **Impact:** High | **Effort:** High
 
-- [ ] Complete WebSocket client integration (sync protocol designed in `NETWORK_SYNC.md`, TypeScript API stub exists)
+- [ ] Complete WebSocket client integration (sync protocol designed, TypeScript API stub exists)
 - [ ] Fix P2-1: Remote sync pollutes undo history — add `suppressUndoTracking` for remote changes (see `valtio/PLAN.md`)
 - [ ] Fix P2-2: Position-based undo replays stale positions after concurrent edits — switch to snapshot-based undo (see `valtio/PLAN.md`)
 - [ ] Add remote cursor/selection tracking
@@ -42,7 +42,7 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 
 **Impact:** Medium | **Effort:** Medium
 
-- [ ] Implement selective cache invalidation by range instead of full reparse fallback (`parser/incremental_parser.mbt:76`)
+- [ ] Implement selective cache invalidation by range instead of full reparse fallback (loom incremental engine)
 - [x] Implement LCS matching for AST child reconciliation instead of positional matching (`projection/text_lens.mbt:219`)
 
 ---
@@ -72,7 +72,6 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 
 **Impact:** Low | **Effort:** Low
 
-- [ ] Remove commented-out code in `parser/ast_to_dot.mbt` (lines 84, 87, 98)
 - [ ] Convert `abort()` calls in test files to proper assertions (`assert_true` / `inspect`) for better error messages
 
 ---

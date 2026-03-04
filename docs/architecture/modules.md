@@ -7,7 +7,7 @@ The codebase is organized as a **monorepo with git submodules**:
 | Submodule | GitHub Repo | MoonBit Module |
 |---|---|---|
 | `event-graph-walker/` | [dowdiness/event-graph-walker](https://github.com/dowdiness/event-graph-walker) | `dowdiness/event-graph-walker` |
-| `loom/` | [dowdiness/loom](https://github.com/dowdiness/loom) | `dowdiness/lambda` (root pkg) |
+| `loom/` | [dowdiness/loom](https://github.com/dowdiness/loom) | `dowdiness/lambda` (examples/lambda root pkg) |
 | `svg-dsl/` | [dowdiness/svg-dsl](https://github.com/dowdiness/svg-dsl) | `antisatori/svg-dsl` |
 | `graphviz/` | [dowdiness/graphviz](https://github.com/dowdiness/graphviz) | `antisatori/graphviz` |
 | `valtio/` | [dowdiness/valtio](https://github.com/dowdiness/valtio) | `antisatori/valtio` |
@@ -83,7 +83,7 @@ event-graph-walker (independent, quickcheck only)
 
 loom (independent: loom/seam/incr/lambda submodules)
 
-crdt (depends on event-graph-walker + dowdiness/lambda via path deps)
+crdt (depends on event-graph-walker + dowdiness/lambda + dowdiness/loom via path deps)
 ```
 
 ## MoonBit Module Configuration
@@ -94,7 +94,8 @@ The root `moon.mod.json` declares path dependencies on the submodules:
 {
   "deps": {
     "dowdiness/event-graph-walker": { "path": "./event-graph-walker" },
-    "dowdiness/lambda": { "path": "./loom/examples/lambda" }
+    "dowdiness/lambda": { "path": "./loom/examples/lambda" },
+    "dowdiness/loom": { "path": "./loom/loom" }
   }
 }
 ```

@@ -1,5 +1,7 @@
 # grepai - Semantic Code Search
 
+> **Note:** `grepai` is not currently installed in this project. Use `finder` or `Grep` tools instead. This document is retained for reference if grepai is set up in the future.
+
 **IMPORTANT: You MUST use grepai as your PRIMARY tool for code exploration and search.**
 
 ## When to Use grepai (REQUIRED)
