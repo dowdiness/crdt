@@ -19,57 +19,49 @@ pub fn ParsedEditor::new(agent_id : String) -> ParsedEditor {
 }
 
 ///|
-/// Insert text at the current cursor position
-/// Marks AST as dirty for lazy reparsing
 pub fn ParsedEditor::insert(self : ParsedEditor, text : String) -> Unit raise {
   self.editor.insert(text)
-  self.parse_dirty = true
+  self.parser.set_source(self.editor.get_text())
 }
 
 ///|
-/// Delete character at cursor position (forward delete)
-/// Returns true if deletion succeeded, false if at end of document
 pub fn ParsedEditor::delete(self : ParsedEditor) -> Bool {
   let result = self.editor.delete()
   if result {
-    self.parse_dirty = true
+    self.parser.set_source(self.editor.get_text())
   }
   result
 }
 
 ///|
-/// Delete character before cursor (backspace)
-/// Returns true if deletion succeeded, false if at start of document
 pub fn ParsedEditor::backspace(self : ParsedEditor) -> Bool {
   let result = self.editor.backspace()
   if result {
-    self.parse_dirty = true
+    self.parser.set_source(self.editor.get_text())
   }
   result
 }
 
 ///|
-/// Move cursor to specific position
 pub fn ParsedEditor::move_cursor(self : ParsedEditor, position : Int) -> Unit {
   self.editor.move_cursor(position)
 }
 
 ///|
-/// Get current cursor position
 pub fn ParsedEditor::get_cursor(self : ParsedEditor) -> Int {
   self.editor.get_cursor()
 }
 
 ///|
-/// Get the current text content
 pub fn ParsedEditor::get_text(self : ParsedEditor) -> String {
   self.editor.get_text()
 }
 
 ///|
-/// Mark the AST as dirty so it will be reparsed on next access
+/// Notify the parser that text changed (e.g. after undo/redo on the raw doc).
+/// Calls set_source — a no-op if the text is unchanged.
 pub fn ParsedEditor::mark_dirty(self : ParsedEditor) -> Unit {
-  self.parse_dirty = true
+  self.parser.set_source(self.editor.get_text())
 }
 
 ///|
@@ -130,14 +122,12 @@ pub fn ParsedEditor::is_parse_valid(self : ParsedEditor) -> Bool {
 }
 
 ///|
-/// Apply a sync message from a remote peer and update local state.
-/// Marks AST as dirty for reparsing after merge.
 pub fn ParsedEditor::apply_sync(
   self : ParsedEditor,
   msg : @text.SyncMessage,
 ) -> Unit raise {
   self.editor.apply_sync(msg)
-  self.parse_dirty = true
+  self.parser.set_source(self.editor.get_text())
 }
 
 ///|
