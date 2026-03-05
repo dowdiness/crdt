@@ -157,12 +157,7 @@ fn execute_command(state : ReplState, line : String) -> Bool {
     return true
   }
   if command == "ops" || command == "o" {
-    try {
-      let msg = state.editor.export_all()
-      println("Operations (\{msg.op_count()} total in sync message)")
-    } catch {
-      _ => ()
-    }
+    show_sync_info(state.editor)
     return true
   }
   println("Unknown command: '\{command}'")

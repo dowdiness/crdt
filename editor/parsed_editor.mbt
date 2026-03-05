@@ -109,10 +109,8 @@ fn ParsedEditor::reparse(self : ParsedEditor) -> Unit {
     self.parser.edit(@parser.Edit::new(0, 0, 0), new_text)
   } else {
     let mut node = self.parser.edit(edits[0], new_text)
-    let mut i = 1
-    while i < edits.length() {
+    for i = 1; i < edits.length(); i = i + 1 {
       node = self.parser.edit(edits[i], new_text)
-      i = i + 1
     }
     node
   }
