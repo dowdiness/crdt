@@ -12,7 +12,7 @@
 
 ---
 
-### Task 1: Create `SyncEditor` struct and constructor
+## Task 1: Create `SyncEditor` struct and constructor
 
 **Files:**
 - Create: `editor/sync_editor.mbt`
@@ -79,7 +79,7 @@ git commit -m "feat(editor): add SyncEditor struct and constructor"
 
 ---
 
-### Task 2: Add editing methods to `SyncEditor`
+## Task 2: Add editing methods to `SyncEditor`
 
 **Files:**
 - Modify: `editor/sync_editor.mbt`
@@ -155,7 +155,7 @@ git commit -m "feat(editor): add SyncEditor editing methods"
 
 ---
 
-### Task 3: Add query methods to `SyncEditor`
+## Task 3: Add query methods to `SyncEditor`
 
 **Files:**
 - Modify: `editor/sync_editor.mbt`
@@ -209,7 +209,7 @@ git commit -m "feat(editor): add SyncEditor query methods"
 
 ---
 
-### Task 4: Add sync methods to `SyncEditor`
+## Task 4: Add sync methods to `SyncEditor`
 
 **Files:**
 - Modify: `editor/sync_editor.mbt`
@@ -268,7 +268,7 @@ git commit -m "feat(editor): add SyncEditor sync methods"
 
 ---
 
-### Task 5: Add undo methods to `SyncEditor`
+## Task 5: Add undo methods to `SyncEditor`
 
 **Files:**
 - Modify: `editor/sync_editor.mbt`
@@ -393,7 +393,7 @@ git commit -m "feat(editor): add SyncEditor undo methods"
 
 ---
 
-### Task 6: Write `SyncEditor` tests
+## Task 6: Write `SyncEditor` tests
 
 **Files:**
 - Create: `editor/sync_editor_test.mbt`
@@ -612,7 +612,7 @@ git commit -m "test(editor): add SyncEditor tests"
 
 ---
 
-### Task 7: Switch `crdt.mbt` FFI to `SyncEditor`
+## Task 7: Switch `crdt.mbt` FFI to `SyncEditor`
 
 **Files:**
 - Modify: `crdt.mbt`
@@ -836,7 +836,7 @@ git commit -m "refactor(ffi): switch crdt.mbt from ParsedEditor+UndoManager to S
 
 ---
 
-### Task 8: Delete `ParsedEditor`
+## Task 8: Delete `ParsedEditor`
 
 **Files:**
 - Delete: `editor/parsed_editor.mbt`
@@ -874,7 +874,7 @@ git commit -m "refactor(editor): remove ParsedEditor, replaced by SyncEditor"
 
 ---
 
-### Task 9: Final verification
+## Task 9: Final verification
 
 **Files:** None (verification only)
 

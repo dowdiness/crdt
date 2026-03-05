@@ -1,6 +1,20 @@
 // Tests for SyncEditor
 
 ///|
+fn insert_each(se : SyncEditor, text : String) -> Unit raise {
+  se.insert(text)
+}
+
+///|
+fn insert_each_and_record(
+  se : SyncEditor,
+  text : String,
+  timestamp_ms : Int,
+) -> Unit raise {
+  se.insert_and_record(text, timestamp_ms)
+}
+
+///|
 test "SyncEditor: create and insert text" {
   let se = SyncEditor::new("agent1")
   try! se.insert("x")
@@ -14,14 +28,14 @@ test "SyncEditor: sequential inserts update AST" {
   let se = SyncEditor::new("agent1")
   try! se.insert("x")
   inspect(@ast.print_term(se.get_ast()), content="x")
-  try! se.insert(" + 1")
+  try! insert_each(se, " + 1")
   inspect(@ast.print_term(se.get_ast()), content="(x + 1)")
 }
 
 ///|
 test "SyncEditor: delete updates AST" {
   let se = SyncEditor::new("agent1")
-  try! se.insert("123")
+  try! insert_each(se, "123")
   inspect(se.get_text(), content="123")
   let deleted = se.backspace()
   inspect(deleted, content="true")
@@ -31,7 +45,7 @@ test "SyncEditor: delete updates AST" {
 ///|
 test "SyncEditor: parse error handling" {
   let se = SyncEditor::new("agent1")
-  try! se.insert("λ.")
+  try! insert_each(se, "λ.")
   let _ast = se.get_ast()
   inspect(se.is_parse_valid(), content="false")
 }
@@ -40,7 +54,7 @@ test "SyncEditor: parse error handling" {
 test "SyncEditor: cursor tracking" {
   let se = SyncEditor::new("agent1")
   inspect(se.get_cursor(), content="0")
-  try! se.insert("abc")
+  try! insert_each(se, "abc")
   inspect(se.get_cursor(), content="3")
   se.move_cursor(1)
   inspect(se.get_cursor(), content="1")
@@ -54,8 +68,8 @@ test "SyncEditor: concurrent edits converge" {
   try! se2.apply_sync(try! se1.export_all())
   inspect(se1.get_text(), content="x")
   inspect(se2.get_text(), content="x")
-  try! se1.insert(" + 1")
-  try! se2.insert(" - 2")
+  try! insert_each(se1, " + 1")
+  try! insert_each(se2, " - 2")
   try! se1.apply_sync(try! se2.export_all())
   try! se2.apply_sync(try! se1.export_all())
   let text1 = se1.get_text()
@@ -71,12 +85,12 @@ test "SyncEditor: concurrent edits converge" {
 test "SyncEditor: collaborative lambda editing" {
   let se1 = SyncEditor::new("agent1")
   let se2 = SyncEditor::new("agent2")
-  try! se1.insert("λx.")
+  try! insert_each(se1, "λx.")
   try! se2.apply_sync(try! se1.export_all())
   inspect(se1.get_text(), content="λx.")
   inspect(se2.get_text(), content="λx.")
-  try! se1.insert("x + 1")
-  try! se2.insert("x - 1")
+  try! insert_each(se1, "x + 1")
+  try! insert_each(se2, "x - 1")
   try! se1.apply_sync(try! se2.export_all())
   try! se2.apply_sync(try! se1.export_all())
   inspect(se1.get_text() == se2.get_text(), content="true")
@@ -89,7 +103,7 @@ test "SyncEditor: collaborative lambda editing" {
 ///|
 test "SyncEditor: incremental parsing vs full reparse" {
   let se = SyncEditor::new("agent1")
-  try! se.insert("λf.λx.if f x then x + 1 else x - 1")
+  try! insert_each(se, "λf.λx.if f x then x + 1 else x - 1")
   let _ast1 = se.get_ast()
   se.move_cursor(34)
   let _deleted = se.backspace()
@@ -111,7 +125,7 @@ test "SyncEditor: empty document" {
 ///|
 test "SyncEditor: backspace at start returns false" {
   let se = SyncEditor::new("agent1")
-  try! se.insert("abc")
+  try! insert_each(se, "abc")
   se.move_cursor(0)
   inspect(se.backspace(), content="false")
   inspect(se.get_text(), content="abc")
@@ -120,7 +134,7 @@ test "SyncEditor: backspace at start returns false" {
 ///|
 test "SyncEditor: delete at end returns false" {
   let se = SyncEditor::new("agent1")
-  try! se.insert("abc")
+  try! insert_each(se, "abc")
   se.move_cursor(3)
   inspect(se.delete(), content="false")
   inspect(se.get_text(), content="abc")
@@ -159,28 +173,36 @@ test "SyncEditor: merge invalidates AST cache" {
 ///|
 test "SyncEditor: insert_and_record + undo roundtrip" {
   let se = SyncEditor::new("agent1")
-  try! se.insert_and_record("hello", 1000)
+  try! insert_each_and_record(se, "hello", 1000)
   inspect(se.get_text(), content="hello")
   inspect(se.can_undo(), content="true")
   let undone = se.undo()
   inspect(undone, content="true")
   inspect(se.get_text(), content="")
+  inspect(se.get_cursor() <= se.get_text().length(), content="true")
   inspect(se.can_redo(), content="true")
   let redone = se.redo()
   inspect(redone, content="true")
   inspect(se.get_text(), content="hello")
+  inspect(se.get_cursor() <= se.get_text().length(), content="true")
+  try! se.insert_and_record("!", 3000)
+  inspect(se.get_text().length(), content="6")
+  inspect(se.get_cursor() <= se.get_text().length(), content="true")
 }
 
 ///|
 test "SyncEditor: backspace_and_record + undo" {
   let se = SyncEditor::new("agent1")
-  try! se.insert_and_record("abc", 1000)
+  try! insert_each_and_record(se, "abc", 1000)
   let deleted = se.backspace_and_record(2000)
   inspect(deleted, content="true")
   inspect(se.get_text(), content="ab")
   let undone = se.undo()
   inspect(undone, content="true")
   inspect(se.get_text(), content="abc")
+  inspect(se.get_cursor() <= se.get_text().length(), content="true")
+  try! se.insert_and_record("d", 3000)
+  inspect(se.get_cursor() <= se.get_text().length(), content="true")
 }
 
 ///|
@@ -190,4 +212,8 @@ test "SyncEditor: clear_undo empties stacks" {
   inspect(se.can_undo(), content="true")
   se.clear_undo()
   inspect(se.can_undo(), content="false")
+  inspect(se.get_cursor() <= se.get_text().length(), content="true")
+  try! se.insert_and_record("y", 2000)
+  inspect(se.get_text(), content="xy")
+  inspect(se.get_cursor() <= se.get_text().length(), content="true")
 }

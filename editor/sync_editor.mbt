@@ -202,20 +202,19 @@ pub fn SyncEditor::set_text_and_record(
     }
   }
   if ins_len > 0 {
-    let inserted = new_text[prefix:prefix + ins_len].to_string() catch {
-      _ => ""
-    }
-    if inserted.length() > 0 {
+    try {
+      let ins_text = new_text[prefix:prefix + ins_len].to_string()
       self.doc.insert_and_record(
         @text.Pos::at(prefix),
-        inserted,
+        ins_text,
         self.undo,
         timestamp_ms~,
-      ) catch {
-        _ => ()
-      }
+      )
+    } catch {
+      _ => ()
     }
   }
+  self.adjust_cursor()
   self.parser.set_source(self.doc.text())
 }
 
