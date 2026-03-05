@@ -54,20 +54,7 @@ pub fn get_text(_handle : Int) -> String {
 /// Set text content directly (replaces entire document)
 pub fn set_text(_handle : Int, new_text : String) -> Unit {
   match editor.val {
-    Some(ed) => {
-      let old_text = ed.get_text()
-      if old_text == new_text {
-        return
-      }
-      let old_len = old_text.length()
-      ed.move_cursor(0)
-      for _i = 0; _i < old_len; _i = _i + 1 {
-        let _ = ed.delete()
-      }
-      if new_text.length() > 0 {
-        try! ed.insert(new_text)
-      }
-    }
+    Some(ed) => ed.set_text(new_text)
     None => ()
   }
 }
@@ -225,49 +212,7 @@ pub fn set_text_and_record(
   timestamp_ms : Int,
 ) -> Unit {
   match editor.val {
-    Some(ed) => {
-      let old_text = ed.get_text()
-      if old_text == new_text {
-        return
-      }
-      let old_len = old_text.length()
-      let new_len = new_text.length()
-      let mut prefix = 0
-      while prefix < old_len &&
-            prefix < new_len &&
-            old_text[prefix] == new_text[prefix] {
-        prefix = prefix + 1
-      }
-      let mut suffix = 0
-      while suffix < old_len - prefix &&
-            suffix < new_len - prefix &&
-            old_text[old_len - 1 - suffix] == new_text[new_len - 1 - suffix] {
-        suffix = suffix + 1
-      }
-      let del_count = old_len - prefix - suffix
-      let ins_len = new_len - prefix - suffix
-      for _i = 0; _i < del_count; _i = _i + 1 {
-        ed.doc.delete_and_record(@text.Pos::at(prefix), ed.undo, timestamp_ms~) catch {
-          _ => ()
-        }
-      }
-      if ins_len > 0 {
-        let inserted = new_text[prefix:prefix + ins_len].to_string() catch {
-          _ => ""
-        }
-        if inserted.length() > 0 {
-          ed.doc.insert_and_record(
-            @text.Pos::at(prefix),
-            inserted,
-            ed.undo,
-            timestamp_ms~,
-          ) catch {
-            _ => ()
-          }
-        }
-      }
-      ed.mark_dirty()
-    }
+    Some(ed) => ed.set_text_and_record(new_text, timestamp_ms)
     None => ()
   }
 }

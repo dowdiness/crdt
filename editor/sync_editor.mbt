@@ -146,6 +146,79 @@ pub fn SyncEditor::export_since(
   self.doc.sync().export_since(peer_version)
 }
 
+// --- Bulk text methods ---
+
+///|
+pub fn SyncEditor::set_text(self : SyncEditor, new_text : String) -> Unit {
+  let old_text = self.doc.text()
+  if old_text == new_text {
+    return
+  }
+  let old_len = old_text.length()
+  self.cursor = 0
+  for _i = 0; _i < old_len; _i = _i + 1 {
+    self.doc.delete(@text.Pos::at(0)) catch {
+      _ => ()
+    }
+  }
+  if new_text.length() > 0 {
+    self.doc.insert(@text.Pos::at(0), new_text) catch {
+      _ => ()
+    }
+    self.cursor = new_text.length()
+  }
+  self.parser.set_source(self.doc.text())
+}
+
+///|
+pub fn SyncEditor::set_text_and_record(
+  self : SyncEditor,
+  new_text : String,
+  timestamp_ms : Int,
+) -> Unit {
+  let old_text = self.doc.text()
+  if old_text == new_text {
+    return
+  }
+  let old_len = old_text.length()
+  let new_len = new_text.length()
+  let mut prefix = 0
+  while prefix < old_len &&
+        prefix < new_len &&
+        old_text[prefix] == new_text[prefix] {
+    prefix = prefix + 1
+  }
+  let mut suffix = 0
+  while suffix < old_len - prefix &&
+        suffix < new_len - prefix &&
+        old_text[old_len - 1 - suffix] == new_text[new_len - 1 - suffix] {
+    suffix = suffix + 1
+  }
+  let del_count = old_len - prefix - suffix
+  let ins_len = new_len - prefix - suffix
+  for _i = 0; _i < del_count; _i = _i + 1 {
+    self.doc.delete_and_record(@text.Pos::at(prefix), self.undo, timestamp_ms~) catch {
+      _ => ()
+    }
+  }
+  if ins_len > 0 {
+    let inserted = new_text[prefix:prefix + ins_len].to_string() catch {
+      _ => ""
+    }
+    if inserted.length() > 0 {
+      self.doc.insert_and_record(
+        @text.Pos::at(prefix),
+        inserted,
+        self.undo,
+        timestamp_ms~,
+      ) catch {
+        _ => ()
+      }
+    }
+  }
+  self.parser.set_source(self.doc.text())
+}
+
 // --- Undo methods ---
 
 ///|

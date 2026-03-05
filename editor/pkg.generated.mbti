@@ -64,6 +64,8 @@ pub fn SyncEditor::mark_dirty(Self) -> Unit
 pub fn SyncEditor::move_cursor(Self, Int) -> Unit
 pub fn SyncEditor::new(String, capture_timeout_ms? : Int) -> Self
 pub fn SyncEditor::redo(Self) -> Bool
+pub fn SyncEditor::set_text(Self, String) -> Unit
+pub fn SyncEditor::set_text_and_record(Self, String, Int) -> Unit
 pub fn SyncEditor::set_tracking(Self, Bool) -> Unit
 pub fn SyncEditor::undo(Self) -> Bool
 
