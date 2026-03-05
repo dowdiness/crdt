@@ -247,11 +247,7 @@ pub fn set_text_and_record(
       let del_count = old_len - prefix - suffix
       let ins_len = new_len - prefix - suffix
       for _i = 0; _i < del_count; _i = _i + 1 {
-        ed.doc.delete_and_record(
-          @text.Pos::at(prefix),
-          ed.undo,
-          timestamp_ms~,
-        ) catch {
+        ed.doc.delete_and_record(@text.Pos::at(prefix), ed.undo, timestamp_ms~) catch {
           _ => ()
         }
       }
