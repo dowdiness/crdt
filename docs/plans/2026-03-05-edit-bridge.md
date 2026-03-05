@@ -402,12 +402,16 @@ git commit -m "chore(editor): regenerate .mbti and format after edit_bridge"
 
 ---
 
+## Status: COMPLETE
+
+Merged via PR #15 (2026-03-05). Tasks 1-2, 4 completed as planned. Task 3 (wire `reparse()` to `merge_to_edits`) was superseded by the Reactive Pipeline plan (PR #16), which removed `reparse()` entirely in favor of `ReactiveParser.set_source()`.
+
 ## Success criteria
 
-1. `moon test -p dowdiness/crdt/editor` — all tests pass, including the new parity tests in `edit_bridge_test.mbt`
-2. `moon test` — full module test suite passes
-3. `grep -r "compute_edit" editor/parsed_editor.mbt` — returns nothing (removed from hot path)
-4. `grep -r "merge_to_edits" editor/parsed_editor.mbt` — shows the wiring
+1. `moon test -p dowdiness/crdt/editor` — all tests pass
+2. `moon test` — full module test suite passes (185/185)
+3. `grep -r "compute_edit" editor/parsed_editor.mbt` — returns nothing (`reparse()` removed entirely by reactive pipeline)
+4. `grep -r "merge_to_edits" editor/parsed_editor.mbt` — superseded: `reparse()` no longer exists; `ReactiveParser.set_source()` handles re-parsing internally
 5. `merge_to_edits` is exported in `editor/pkg.generated.mbti`
 
 ## What this does NOT change (out of scope)

@@ -349,11 +349,20 @@ Implements Design §2 Strategy A."
 
 ---
 
+## Status: COMPLETE
+
+Merged via PR #16 (2026-03-05). All 13 tasks completed. Key outcomes:
+- `ParsedEditor` uses `ReactiveParser` with Signal/Memo (no dirty flags)
+- `projection/` package created with `CanonicalModel`, `ProjNode`, text/tree lenses
+- `syntax_to_proj_node` walks `@seam.SyntaxNode` directly for accurate per-node spans
+- `rebuild_kind` keeps `ProjNode.kind` in sync with `.children` after tree mutations
+- 185/185 tests passing
+
 ## Success Criteria
 
 1. `grep -rn "parse_dirty\|cached_text\|cached_errors\|fn reparse" editor/` → zero results
 2. `moon check --deny-warn` → no warnings
-3. `moon test` → all tests pass (181+ tests)
+3. `moon test` → all tests pass (185/185)
 4. `editor/ParsedEditor` struct has exactly 2 fields: `editor` and `parser`
 
 ## What This Does NOT Change
