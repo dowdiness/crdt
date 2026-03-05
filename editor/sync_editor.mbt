@@ -3,10 +3,10 @@
 
 ///|
 pub struct SyncEditor {
-  doc : @text.TextDoc
-  undo : @undo.UndoManager
-  parser : @loom.ReactiveParser[@parser.SyntaxNode]
-  mut cursor : Int
+  priv doc : @text.TextDoc
+  priv undo : @undo.UndoManager
+  priv parser : @loom.ReactiveParser[@parser.SyntaxNode]
+  priv mut cursor : Int
 }
 
 ///|
@@ -283,6 +283,7 @@ pub fn SyncEditor::backspace_and_record(
 pub fn SyncEditor::undo(self : SyncEditor) -> Bool {
   try {
     self.undo.undo(self.doc)
+    self.adjust_cursor()
     self.mark_dirty()
     true
   } catch {
@@ -294,6 +295,7 @@ pub fn SyncEditor::undo(self : SyncEditor) -> Bool {
 pub fn SyncEditor::redo(self : SyncEditor) -> Bool {
   try {
     self.undo.redo(self.doc)
+    self.adjust_cursor()
     self.mark_dirty()
     true
   } catch {

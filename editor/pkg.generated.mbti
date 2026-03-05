@@ -3,11 +3,8 @@ package "dowdiness/crdt/editor"
 
 import {
   "dowdiness/event-graph-walker/text",
-  "dowdiness/event-graph-walker/undo",
   "dowdiness/lambda/ast",
   "dowdiness/loom/core",
-  "dowdiness/loom/pipeline",
-  "dowdiness/seam",
 }
 
 // Values
@@ -37,10 +34,7 @@ pub fn Editor::new(String) -> Self
 pub impl Show for Editor
 
 pub struct SyncEditor {
-  doc : @text.TextDoc
-  undo : @undo.UndoManager
-  parser : @pipeline.ReactiveParser[@seam.SyntaxNode]
-  mut cursor : Int
+  // private fields
 }
 pub fn SyncEditor::apply_sync(Self, @text.SyncMessage) -> Unit raise
 pub fn SyncEditor::backspace(Self) -> Bool
