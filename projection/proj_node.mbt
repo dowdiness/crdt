@@ -78,6 +78,7 @@ pub fn same_kind_tag(a : @ast.Term, b : @ast.Term) -> Bool {
     (Bop(_, _, _), Bop(_, _, _)) => true
     (If(_, _, _), If(_, _, _)) => true
     (Let(_, _, _), Let(_, _, _)) => true
+    (Unit, Unit) => true
     (Error(_), Error(_)) => true
     _ => false
   }

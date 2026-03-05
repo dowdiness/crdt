@@ -161,6 +161,7 @@ pub fn tree_lens_apply_edit(
         @ast.Term::Bop(_, _, _) => "0 + 0"
         @ast.Term::If(_, _, _) => "if 0 then 0 else 0"
         @ast.Term::Let(_, _, _) => "let x = 0 in x"
+        @ast.Term::Unit => "()"
         @ast.Term::Error(_) => "_"
       }
       let (parsed, _) = parse_to_proj_node(placeholder_text)

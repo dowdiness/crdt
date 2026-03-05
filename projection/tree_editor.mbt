@@ -109,6 +109,7 @@ fn get_node_label(kind : @ast.Term) -> String {
     Bop(op, _, _) => op.to_string()
     If(_, _, _) => "if"
     Let(name, _, _) => "let " + name
+    Unit => "()"
     Error(msg) => "Error: " + msg
   }
 }
