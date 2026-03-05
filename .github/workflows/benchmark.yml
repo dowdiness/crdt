@@ -49,9 +49,10 @@ jobs:
         with:
           ref: ${{ github.base_ref }}
           submodules: recursive
+          clean: false
 
       - name: Update dependencies (base)
-        run: moon update
+        run: moon update || true
 
       - name: Run base benchmarks
         continue-on-error: true
@@ -64,7 +65,7 @@ jobs:
         continue-on-error: true
         working-directory: event-graph-walker
         run: |
-          moon update
+          moon update || true
           moon bench --release > ../base_egw_bench.txt 2>&1 || echo "(base branch benchmark failed — may not compile)" > ../base_egw_bench.txt
           cat ../base_egw_bench.txt
 
