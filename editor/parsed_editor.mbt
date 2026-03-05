@@ -1,31 +1,21 @@
-// ParsedEditor: Integration of CRDT text editor with incremental parser
-// Combines Editor (CRDT text) and IncrementalParser (AST) using wrapper pattern
+// ParsedEditor: Integration of CRDT text editor with reactive parser
+// Combines Editor (CRDT text) and ReactiveParser (AST) using loom's Signal/Memo pipeline
 
 ///|
-/// ParsedEditor wraps both the CRDT editor and incremental parser
-/// Keeps them synchronized via lazy evaluation and text diffing
+/// ParsedEditor wraps the CRDT editor and a ReactiveParser.
+/// Lazy AST evaluation is handled by the Signal/Memo pipeline — no manual
+/// dirty flags needed. Call set_source after any text mutation.
 pub struct ParsedEditor {
   editor : Editor // CRDT text editor
-  parser : @parser.ImperativeParser[@parser.SyntaxNode] // Incremental parser
-  mut ast : @ast.AstNode? // Cached AST (lazy evaluation)
-  mut parse_dirty : Bool // Does AST need reparsing?
-  mut cached_text : String // Last parsed text (for computing Edit)
-  mut cached_errors : Array[String] // Cached errors from last parse
+  parser : @loom.ReactiveParser[@parser.SyntaxNode] // Reactive incremental parser
 }
 
 ///|
 /// Create a new ParsedEditor with the given agent ID
 pub fn ParsedEditor::new(agent_id : String) -> ParsedEditor {
   let editor = Editor::new(agent_id)
-  let parser = @parser.new_imperative_parser("")
-  {
-    editor,
-    parser,
-    ast: None,
-    parse_dirty: true,
-    cached_text: "",
-    cached_errors: [],
-  }
+  let parser = @loom.new_reactive_parser("", @parser.lambda_grammar)
+  { editor, parser }
 }
 
 ///|
