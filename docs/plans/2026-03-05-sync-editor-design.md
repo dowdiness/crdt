@@ -1,6 +1,6 @@
 # SyncEditor Unified Facade — Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **Status:** COMPLETE (PR #17)
 
 **Goal:** Replace `ParsedEditor` + separate `UndoManager` global with a single `SyncEditor` facade that composes `TextDoc`, `UndoManager`, and `ReactiveParser` directly.
 
