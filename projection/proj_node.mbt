@@ -69,7 +69,7 @@ pub fn term_to_proj_node(
 ///|
 /// Check if two Term values have the same constructor tag.
 /// Used for LCS-based matching in children reconciliation.
-pub fn same_kind_tag(a : @ast.Term, b : @ast.Term) -> Bool {
+fn same_kind_tag(a : @ast.Term, b : @ast.Term) -> Bool {
   match (a, b) {
     (Int(_), Int(_)) => true
     (Var(_), Var(_)) => true
