@@ -17,7 +17,7 @@ pub fn text_lens_with_diff() -> LensDiff[CanonicalModel, String, ProjectionEdit]
 /// Get text from the canonical model (render AST to source code)
 pub fn text_lens_get(model : CanonicalModel) -> Result[String, String] {
   match model.get_ast() {
-    Some(ast) => Ok(@ast.print_ast_node(ast))
+    Some(ast) => Ok(@ast.print_term(ast.kind))
     None => Ok("")
   }
 }
@@ -30,7 +30,7 @@ pub fn text_lens_put(
   text : String,
 ) -> Result[CanonicalModel, String] {
   // Parse the new text
-  let (new_ast, _) = @parser.parse_with_error_recovery(text)
+  let (new_ast, _) = parse_to_proj_node(text)
 
   // Reconcile with existing AST to preserve node IDs where possible
   match model.get_ast() {
@@ -110,10 +110,10 @@ pub fn text_lens_diff(
 /// AST reconciliation: Preserve node IDs where possible when AST changes
 /// This is crucial for maintaining cursor stability and projection sync
 fn reconcile_ast(
-  old : @ast.AstNode,
-  new : @ast.AstNode,
+  old : ProjNode,
+  new : ProjNode,
   model : CanonicalModel,
-) -> @ast.AstNode {
+) -> ProjNode {
   // If structurally identical (same kind), keep old node ID
   match (old.kind, new.kind) {
     // Same kinds - try to reconcile
@@ -122,16 +122,16 @@ fn reconcile_ast(
         old // Completely identical
       } else {
         // Value changed, keep old ID but update value
-        @ast.AstNode::new(new.kind, new.start, new.end, old.node_id, [])
+        ProjNode::new(new.kind, new.start, new.end, old.node_id, [])
       }
     (Var(a), Var(b)) =>
       if a == b {
         old
       } else {
-        @ast.AstNode::new(new.kind, new.start, new.end, old.node_id, [])
+        ProjNode::new(new.kind, new.start, new.end, old.node_id, [])
       }
-    (Lam(param_old), Lam(param_new)) => {
-      // Reconcile body
+    (Lam(param_old, _), Lam(param_new, _)) => {
+      // Reconcile body (stored in children[0])
       let old_body = if old.children.length() > 0 {
         Some(old.children[0])
       } else {
@@ -142,29 +142,23 @@ fn reconcile_ast(
       } else {
         None
       }
-      let reconciled_body : Array[@ast.AstNode] = match (old_body, new_body) {
+      let reconciled_body : Array[ProjNode] = match (old_body, new_body) {
         (Some(o), Some(n)) => [reconcile_ast(o, n, model)]
         (None, Some(n)) => [assign_fresh_ids(n, model)]
         (Some(_), None) => []
         (None, None) => []
       }
       let new_kind = if param_old == param_new { old.kind } else { new.kind }
-      @ast.AstNode::new(
-        new_kind,
-        new.start,
-        new.end,
-        old.node_id,
-        reconciled_body,
-      )
+      ProjNode::new(new_kind, new.start, new.end, old.node_id, reconciled_body)
     }
-    (App, App) => {
+    (App(_, _), App(_, _)) => {
       // Reconcile both children
       let reconciled_children = reconcile_children(
         old.children,
         new.children,
         model,
       )
-      @ast.AstNode::new(
+      ProjNode::new(
         old.kind,
         new.start,
         new.end,
@@ -172,14 +166,14 @@ fn reconcile_ast(
         reconciled_children,
       )
     }
-    (Bop(op_old), Bop(op_new)) => {
+    (Bop(op_old, _, _), Bop(op_new, _, _)) => {
       let reconciled_children = reconcile_children(
         old.children,
         new.children,
         model,
       )
       let new_kind = if op_old == op_new { old.kind } else { new.kind }
-      @ast.AstNode::new(
+      ProjNode::new(
         new_kind,
         new.start,
         new.end,
@@ -187,14 +181,29 @@ fn reconcile_ast(
         reconciled_children,
       )
     }
-    (If, If) => {
+    (If(_, _, _), If(_, _, _)) => {
       let reconciled_children = reconcile_children(
         old.children,
         new.children,
         model,
       )
-      @ast.AstNode::new(
+      ProjNode::new(
         old.kind,
+        new.start,
+        new.end,
+        old.node_id,
+        reconciled_children,
+      )
+    }
+    (Let(name_old, _, _), Let(name_new, _, _)) => {
+      let reconciled_children = reconcile_children(
+        old.children,
+        new.children,
+        model,
+      )
+      let new_kind = if name_old == name_new { old.kind } else { new.kind }
+      ProjNode::new(
+        new_kind,
         new.start,
         new.end,
         old.node_id,
@@ -207,17 +216,17 @@ fn reconcile_ast(
 }
 
 ///|
-/// Check if two AstKind values have the same constructor tag.
+/// Check if two Term values have the same constructor tag.
 /// Used for LCS-based matching in children reconciliation.
-fn same_kind_tag(a : @ast.AstKind, b : @ast.AstKind) -> Bool {
+fn same_kind_tag(a : @ast.Term, b : @ast.Term) -> Bool {
   match (a, b) {
     (Int(_), Int(_)) => true
     (Var(_), Var(_)) => true
-    (Lam(_), Lam(_)) => true
-    (App, App) => true
-    (Bop(_), Bop(_)) => true
-    (If, If) => true
-    (Let(_), Let(_)) => true
+    (Lam(_, _), Lam(_, _)) => true
+    (App(_, _), App(_, _)) => true
+    (Bop(_, _, _), Bop(_, _, _)) => true
+    (If(_, _, _), If(_, _, _)) => true
+    (Let(_, _, _), Let(_, _, _)) => true
     (Error(_), Error(_)) => true
     _ => false
   }
@@ -229,10 +238,10 @@ fn same_kind_tag(a : @ast.AstKind, b : @ast.AstKind) -> Bool {
 /// their kind tags, preserving node IDs even when children are inserted, deleted,
 /// or reordered.
 fn reconcile_children(
-  old_children : Array[@ast.AstNode],
-  new_children : Array[@ast.AstNode],
+  old_children : Array[ProjNode],
+  new_children : Array[ProjNode],
   model : CanonicalModel,
-) -> Array[@ast.AstNode] {
+) -> Array[ProjNode] {
   let old_len = old_children.length()
   let new_len = new_children.length()
 
@@ -283,7 +292,7 @@ fn reconcile_children(
   }
 
   // Build result array following new_children order
-  let result : Array[@ast.AstNode] = []
+  let result : Array[ProjNode] = []
   for j = 0; j < new_len; j = j + 1 {
     if new_matched[j] >= 0 {
       // Matched with an old child - reconcile to preserve node IDs
@@ -307,7 +316,7 @@ fn reconcile_children(
 
 ///|
 /// Recursively unregister a node and all its children from the model's registry
-fn unregister_node_tree(node : @ast.AstNode, model : CanonicalModel) -> Unit {
+fn unregister_node_tree(node : ProjNode, model : CanonicalModel) -> Unit {
   model.unregister_node(NodeId(node.node_id))
   for child in node.children {
     unregister_node_tree(child, model)
@@ -316,14 +325,11 @@ fn unregister_node_tree(node : @ast.AstNode, model : CanonicalModel) -> Unit {
 
 ///|
 /// Assign fresh node IDs to a tree
-fn assign_fresh_ids(
-  node : @ast.AstNode,
-  model : CanonicalModel,
-) -> @ast.AstNode {
+fn assign_fresh_ids(node : ProjNode, model : CanonicalModel) -> ProjNode {
   let new_id = model.new_node_id()
-  let new_children : Array[@ast.AstNode] = []
+  let new_children : Array[ProjNode] = []
   for child in node.children {
     new_children.push(assign_fresh_ids(child, model))
   }
-  @ast.AstNode::new(node.kind, node.start, node.end, new_id.0, new_children)
+  ProjNode::new(node.kind, node.start, node.end, new_id.0, new_children)
 }

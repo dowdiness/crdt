@@ -3,7 +3,7 @@
 ///|
 test "SourceMap from_ast" {
   // Use the parser to create an AST
-  let (ast, _) = @parser.parse_with_error_recovery("42")
+  let (ast, _) = parse_to_proj_node("42")
   let source_map = SourceMap::from_ast(ast)
   inspect(source_map.node_count() >= 1, content="true")
 }
@@ -17,7 +17,7 @@ test "CanonicalModel creation" {
 ///|
 test "CanonicalModel from parsed AST" {
   // Use the parser to create an AST
-  let (ast, _) = @parser.parse_with_error_recovery("x")
+  let (ast, _) = parse_to_proj_node("x")
   let model = CanonicalModel::from_ast(ast)
   inspect(model.node_count() >= 1, content="true")
   inspect(model.has_errors(), content="false")
@@ -26,7 +26,7 @@ test "CanonicalModel from parsed AST" {
 ///|
 test "text_lens_get renders AST to text" {
   // Use the parser to create an AST
-  let (ast, _) = @parser.parse_with_error_recovery("x")
+  let (ast, _) = parse_to_proj_node("x")
   let model = CanonicalModel::from_ast(ast)
   match text_lens_get(model) {
     Ok(text) => inspect(text, content="x")
@@ -62,7 +62,7 @@ test "TreeEditorState creation" {
 
 ///|
 test "TreeEditorState from model" {
-  let (ast, _) = @parser.parse_with_error_recovery("x + 1")
+  let (ast, _) = parse_to_proj_node("x + 1")
   let model = CanonicalModel::from_ast(ast)
   let state = TreeEditorState::from_model(model)
   inspect(state.tree is Some(_), content="true")
@@ -70,7 +70,7 @@ test "TreeEditorState from model" {
 
 ///|
 test "InteractiveTreeNode from AstNode" {
-  let (ast, _) = @parser.parse_with_error_recovery("λx.x")
+  let (ast, _) = parse_to_proj_node("λx.x")
   let source_map = SourceMap::from_ast(ast)
   let tree = InteractiveTreeNode::from_term_node(ast, source_map)
   // Should be a lambda node - check first character is λ
@@ -207,7 +207,7 @@ test "text_lens_diff non-empty to empty" {
 test "reconcile_ast removes nodes from registry when children decrease" {
   // Create model with AST: (x y z) - application with 3 parts conceptually
   // Actually let's use a binary operation: x + y
-  let (ast1, _) = @parser.parse_with_error_recovery("1 + 2 + 3")
+  let (ast1, _) = parse_to_proj_node("1 + 2 + 3")
   let model = CanonicalModel::from_ast(ast1)
   let initial_count = model.node_count()
 
@@ -225,7 +225,7 @@ test "reconcile_ast removes nodes from registry when children decrease" {
 ///|
 test "reconcile preserves IDs for matching nodes" {
   // Parse initial expression
-  let (ast1, _) = @parser.parse_with_error_recovery("x + 1")
+  let (ast1, _) = parse_to_proj_node("x + 1")
   let model = CanonicalModel::from_ast(ast1)
 
   // Get the root node ID
