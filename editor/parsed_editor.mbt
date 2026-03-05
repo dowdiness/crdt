@@ -96,28 +96,24 @@ pub fn ParsedEditor::get_ast(self : ParsedEditor) -> @ast.AstNode {
 }
 
 ///|
-/// Incremental reparse using text diff
-/// Computes Edit from old→new text and incrementally reparses
+/// Incremental reparse using the Edit Bridge.
+/// Converts old→new text via loom's TextDelta API and applies the resulting
+/// edits to the incremental parser.
 fn ParsedEditor::reparse(self : ParsedEditor) -> Unit {
   let old_text = self.cached_text
   let new_text = self.editor.get_text()
-  let syntax_node = if old_text.length() == 0 && new_text.length() == 0 {
-    // Both empty - create an empty AST or error node
-    // For now, try to parse empty string
-    let edit = @parser.Edit::new(0, 0, 0)
-    self.parser.edit(edit, new_text)
-  } else if old_text.length() == 0 {
-    // Initial parse from empty to non-empty
-    let edit = @parser.Edit::new(0, 0, new_text.length())
-    self.parser.edit(edit, new_text)
+  let edits = merge_to_edits(old_text, new_text)
+  // text_to_delta always produces at most one contiguous change, so edits
+  // has length 0 (identical strings) or 1.
+  let syntax_node = if edits.is_empty() {
+    // No textual change (e.g., identical text or failed op).
+    // Apply a no-op edit at position 0 to obtain the current SyntaxNode.
+    self.parser.edit(@parser.Edit::new(0, 0, 0), new_text)
   } else {
-    // Incremental reparse
-    let edit = compute_edit(old_text, new_text)
-    self.parser.edit(edit, new_text)
+    self.parser.edit(edits[0], new_text)
   }
   let counter = Ref::new(0)
   let ast = @parser.syntax_node_to_ast_node(syntax_node, counter)
-  // Cache the AST and collect errors
   self.ast = Some(ast)
   self.cached_errors = @parser.collect_errors(ast)
   self.cached_text = new_text
@@ -144,33 +140,33 @@ pub fn ParsedEditor::is_parse_valid(self : ParsedEditor) -> Bool {
 }
 
 ///|
-/// Merge remote operations and update local state
-/// Marks AST as dirty for reparsing after merge
-pub fn ParsedEditor::merge_remote(
+/// Apply a sync message from a remote peer and update local state.
+/// Marks AST as dirty for reparsing after merge.
+pub fn ParsedEditor::apply_sync(
   self : ParsedEditor,
-  ops : Array[@core.Op],
-  frontier : Array[@core.RawVersion],
+  msg : @text.SyncMessage,
 ) -> Unit raise {
-  self.editor.merge_remote(ops, frontier)
+  self.editor.apply_sync(msg)
   self.parse_dirty = true
 }
 
 ///|
-/// Get all operations from the operation log
-pub fn ParsedEditor::get_operations(self : ParsedEditor) -> Array[@core.Op] {
-  self.editor.get_operations()
+/// Get the current version (for sync)
+pub fn ParsedEditor::get_version(self : ParsedEditor) -> @text.Version {
+  self.editor.get_version()
 }
 
 ///|
-/// Get the current version frontier
-pub fn ParsedEditor::get_frontier(self : ParsedEditor) -> @core.Frontier {
-  self.editor.get_frontier()
+/// Export all operations as a SyncMessage (for initial peer sync)
+pub fn ParsedEditor::export_all(self : ParsedEditor) -> @text.SyncMessage raise {
+  self.editor.export_all()
 }
 
 ///|
-/// Get frontier as RawVersions for network sync
-pub fn ParsedEditor::get_frontier_raw(
+/// Export operations since a peer's version (for delta sync)
+pub fn ParsedEditor::export_since(
   self : ParsedEditor,
-) -> Array[@core.RawVersion] raise {
-  self.editor.get_frontier_raw()
+  peer_version : @text.Version,
+) -> @text.SyncMessage raise {
+  self.editor.export_since(peer_version)
 }

@@ -80,7 +80,6 @@ test "property: insert then delete all gives empty" {
     editor.move_cursor(0)
     for _i = 0; _i < text.length(); _i = _i + 1 {
       let _ = editor.delete()
-
     }
     assert_eq(editor.get_text(), "")
   }
@@ -97,7 +96,6 @@ test "property: text length is never negative" {
         try! editor.insert("x")
       } else {
         let _ = editor.delete()
-
       }
 
       // Check length is valid after each operation
@@ -220,7 +218,6 @@ test "property: sequential operations maintain invariants" {
         try! editor.insert("a")
       } else if op < 0 {
         let _ = editor.delete()
-
       } else {
         editor.move_cursor(0)
       }
@@ -247,7 +244,6 @@ test "property: cursor invariant holds after operations" {
       } else {
         editor.move_cursor(0)
         let _ = editor.delete()
-
       }
       let cursor = editor.get_cursor()
       let len = editor.get_text().length()

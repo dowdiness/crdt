@@ -34,7 +34,7 @@ build-web: ## Build web application (MoonBit + Vite)
 	@./scripts/build-web.sh
 
 web-dev: build-js ## Build JS and start web dev server
-	@cp target/js/release/build/crdt.js web/public/
+	@cp _build/js/release/build/crdt.js web/public/
 	@cd web && npm run dev
 
 clean: ## Clean build artifacts
@@ -50,7 +50,7 @@ ci: check-all test-all ## Run all CI checks locally
 update: ## Update MoonBit dependencies
 	moon update
 	cd event-graph-walker && moon update
-	cd parser && moon update
+	cd loom/loom && moon update
 
 bench: ## Run benchmarks
 	moon bench --release
