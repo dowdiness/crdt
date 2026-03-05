@@ -144,9 +144,7 @@ pub fn get_errors_json(_handle : Int) -> String {
 pub fn export_all_json(_handle : Int) -> String {
   match editor.val {
     Some(ed) =>
-      try {
-        ed.export_all().to_json_string()
-      } catch {
+      ed.export_all().to_json_string() catch {
         _ => "{\"ops\":[],\"heads\":[]}"
       }
     None => "{\"ops\":[],\"heads\":[]}"

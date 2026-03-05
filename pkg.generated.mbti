@@ -2,6 +2,8 @@
 package "dowdiness/crdt"
 
 // Values
+pub fn apply_sync_json(Int, String) -> Unit
+
 pub fn backspace(Int) -> Bool
 
 pub fn backspace_and_record(Int, Int) -> Bool
@@ -14,6 +16,10 @@ pub fn delete_(Int) -> Bool
 
 pub fn delete_and_record(Int, Int) -> Bool
 
+pub fn export_all_json(Int) -> String
+
+pub fn export_since_json(Int, String) -> String
+
 pub fn get_ast_dot(Int) -> String
 
 pub fn get_ast_json(Int) -> String
@@ -22,21 +28,13 @@ pub fn get_cursor(Int) -> Int
 
 pub fn get_errors_json(Int) -> String
 
-pub fn get_frontier_json(Int) -> String
-
-pub fn get_frontier_raw_json(Int) -> String
-
-pub fn get_operations_json(Int) -> String
-
 pub fn get_text(Int) -> String
 
-pub fn get_version_vector_json(Int) -> String
+pub fn get_version_json(Int) -> String
 
 pub fn insert(Int, String) -> Unit
 
 pub fn insert_and_record(Int, String, Int) -> Unit
-
-pub fn merge_operations(Int, String, String, String) -> Unit
 
 pub fn set_cursor(Int, Int) -> Unit
 
@@ -50,11 +48,11 @@ pub fn undo_manager_can_undo(Int) -> Bool
 
 pub fn undo_manager_clear(Int) -> Unit
 
-pub fn undo_manager_redo(Int) -> String
+pub fn undo_manager_redo(Int) -> Bool
 
 pub fn undo_manager_set_tracking(Int, Bool) -> Unit
 
-pub fn undo_manager_undo(Int) -> String
+pub fn undo_manager_undo(Int) -> Bool
 
 // Errors
 
