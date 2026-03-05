@@ -230,7 +230,13 @@ fn update_node_in_tree(
     for child in root.children {
       new_children.push(update_node_in_tree(child, target_id, new_node))
     }
-    ProjNode::new(root.kind, root.start, root.end, root.node_id, new_children)
+    ProjNode::new(
+      rebuild_kind(root.kind, new_children),
+      root.start,
+      root.end,
+      root.node_id,
+      new_children,
+    )
   }
 }
 
@@ -243,7 +249,13 @@ fn remove_child_at(node : ProjNode, index : Int) -> ProjNode {
       new_children.push(child)
     }
   }
-  ProjNode::new(node.kind, node.start, node.end, node.node_id, new_children)
+  ProjNode::new(
+    rebuild_kind(node.kind, new_children),
+    node.start,
+    node.end,
+    node.node_id,
+    new_children,
+  )
 }
 
 ///|
@@ -260,7 +272,13 @@ fn insert_child_at(node : ProjNode, index : Int, child : ProjNode) -> ProjNode {
   if index >= node.children.length() {
     new_children.push(child)
   }
-  ProjNode::new(node.kind, node.start, node.end, node.node_id, new_children)
+  ProjNode::new(
+    rebuild_kind(node.kind, new_children),
+    node.start,
+    node.end,
+    node.node_id,
+    new_children,
+  )
 }
 
 ///|

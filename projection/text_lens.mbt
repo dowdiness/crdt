@@ -148,8 +148,14 @@ fn reconcile_ast(
         (Some(_), None) => []
         (None, None) => []
       }
-      let new_kind = if param_old == param_new { old.kind } else { new.kind }
-      ProjNode::new(new_kind, new.start, new.end, old.node_id, reconciled_body)
+      let reconciled_body_kind = rebuild_kind(new.kind, reconciled_body)
+      ProjNode::new(
+        reconciled_body_kind,
+        new.start,
+        new.end,
+        old.node_id,
+        reconciled_body,
+      )
     }
     (App(_, _), App(_, _)) => {
       // Reconcile both children
@@ -159,22 +165,21 @@ fn reconcile_ast(
         model,
       )
       ProjNode::new(
-        old.kind,
+        rebuild_kind(new.kind, reconciled_children),
         new.start,
         new.end,
         old.node_id,
         reconciled_children,
       )
     }
-    (Bop(op_old, _, _), Bop(op_new, _, _)) => {
+    (Bop(_, _, _), Bop(_, _, _)) => {
       let reconciled_children = reconcile_children(
         old.children,
         new.children,
         model,
       )
-      let new_kind = if op_old == op_new { old.kind } else { new.kind }
       ProjNode::new(
-        new_kind,
+        rebuild_kind(new.kind, reconciled_children),
         new.start,
         new.end,
         old.node_id,
@@ -188,22 +193,21 @@ fn reconcile_ast(
         model,
       )
       ProjNode::new(
-        old.kind,
+        rebuild_kind(new.kind, reconciled_children),
         new.start,
         new.end,
         old.node_id,
         reconciled_children,
       )
     }
-    (Let(name_old, _, _), Let(name_new, _, _)) => {
+    (Let(_, _, _), Let(_, _, _)) => {
       let reconciled_children = reconcile_children(
         old.children,
         new.children,
         model,
       )
-      let new_kind = if name_old == name_new { old.kind } else { new.kind }
       ProjNode::new(
-        new_kind,
+        rebuild_kind(new.kind, reconciled_children),
         new.start,
         new.end,
         old.node_id,
