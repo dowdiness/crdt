@@ -236,37 +236,20 @@ fn unwrap_expression_root(node : @seam.SyntaxNode) -> @seam.SyntaxNode {
 /// `children` provides the updated sub-terms.
 /// Leaf terms (Int, Var, Unit, Error) are returned unchanged.
 fn rebuild_kind(shape : @ast.Term, children : Array[ProjNode]) -> @ast.Term {
+  fn child_kind(i : Int) -> @ast.Term {
+    if i < children.length() {
+      children[i].kind
+    } else {
+      Error("missing")
+    }
+  }
+
   match shape {
-    Lam(param, _) =>
-      if children.length() > 0 {
-        Lam(param, children[0].kind)
-      } else {
-        shape
-      }
-    App(_, _) =>
-      if children.length() >= 2 {
-        App(children[0].kind, children[1].kind)
-      } else {
-        shape
-      }
-    Bop(op, _, _) =>
-      if children.length() >= 2 {
-        Bop(op, children[0].kind, children[1].kind)
-      } else {
-        shape
-      }
-    If(_, _, _) =>
-      if children.length() >= 3 {
-        If(children[0].kind, children[1].kind, children[2].kind)
-      } else {
-        shape
-      }
-    Let(name, _, _) =>
-      if children.length() >= 2 {
-        Let(name, children[0].kind, children[1].kind)
-      } else {
-        shape
-      }
+    Lam(param, _) => Lam(param, child_kind(0))
+    App(_, _) => App(child_kind(0), child_kind(1))
+    Bop(op, _, _) => Bop(op, child_kind(0), child_kind(1))
+    If(_, _, _) => If(child_kind(0), child_kind(1), child_kind(2))
+    Let(name, _, _) => Let(name, child_kind(0), child_kind(1))
     _ => shape
   }
 }

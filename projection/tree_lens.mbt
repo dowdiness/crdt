@@ -152,21 +152,26 @@ pub fn tree_lens_apply_edit(
         }
       }
     TreeEditOp::InsertChild(parent~, index~, kind~) => {
-      // Create a placeholder node based on the kind
-      let placeholder_text = match kind {
-        @ast.Term::Int(_) => "0"
-        @ast.Term::Var(_) => "_"
-        @ast.Term::Lam(_, _) => "λx.x"
-        @ast.Term::App(_, _) => "f x"
-        @ast.Term::Bop(_, _, _) => "0 + 0"
-        @ast.Term::If(_, _, _) => "if 0 then 0 else 0"
-        @ast.Term::Let(_, _, _) => "let x = 0 in x"
-        @ast.Term::Unit => "()"
-        @ast.Term::Error(_) => "_"
+      // Create a placeholder node based on the kind.
+      // Unit cannot be produced by parsing — construct directly.
+      let new_node = match kind {
+        @ast.Term::Unit => ProjNode::new(Unit, 0, 0, model.new_node_id().0, [])
+        _ => {
+          let placeholder_text = match kind {
+            @ast.Term::Int(_) => "0"
+            @ast.Term::Var(_) => "_"
+            @ast.Term::Lam(_, _) => "λx.x"
+            @ast.Term::App(_, _) => "f x"
+            @ast.Term::Bop(_, _, _) => "0 + 0"
+            @ast.Term::If(_, _, _) => "if 0 then 0 else 0"
+            @ast.Term::Let(_, _, _) => "let x = 0 in x"
+            @ast.Term::Unit => "()" // unreachable, handled above
+            @ast.Term::Error(_) => "_"
+          }
+          let (parsed, _) = parse_to_proj_node(placeholder_text)
+          assign_fresh_ids(parsed, model)
+        }
       }
-      let (parsed, _) = parse_to_proj_node(placeholder_text)
-      // Assign fresh IDs to avoid collisions with existing AST nodes
-      let new_node = assign_fresh_ids(parsed, model)
       let op = InsertNode(parent~, index~, node=new_node)
       match model.apply_operation(op) {
         Ok(_) => Ok(model)
