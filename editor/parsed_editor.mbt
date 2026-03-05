@@ -65,12 +65,10 @@ pub fn ParsedEditor::mark_dirty(self : ParsedEditor) -> Unit {
 }
 
 ///|
-/// Get the AST (lazy — recomputes only if source changed since last call).
-/// Returns @ast.AstNode for compatibility with current callsites.
-pub fn ParsedEditor::get_ast(self : ParsedEditor) -> @ast.AstNode {
+/// Get the AST as a Term (lazy — recomputes only if source changed since last call).
+pub fn ParsedEditor::get_ast(self : ParsedEditor) -> @ast.Term {
   let syntax_node = self.parser.term()
-  let counter = Ref::new(0)
-  @parser.syntax_node_to_ast_node(syntax_node, counter)
+  @parser.syntax_node_to_term(syntax_node)
 }
 
 ///|
