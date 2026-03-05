@@ -2,6 +2,7 @@ import {
   "dowdiness/event-graph-walker/text",
   "dowdiness/lambda" @parser,
   "dowdiness/lambda/ast" @ast,
+  "dowdiness/loom" @loom,
   "dowdiness/loom/core" @loom_core,
   "moonbitlang/core/quickcheck",
 }
