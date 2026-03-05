@@ -151,8 +151,8 @@ jobs:
         with:
           name: moonbit-js-build
           path: |
-            target/js/release/build/crdt.js
-            graphviz/target/js/release/build/browser/browser.js
+            _build/js/release/build/crdt.js
+            graphviz/_build/js/release/build/browser/browser.js
           retention-days: 7
 
   web-test:
