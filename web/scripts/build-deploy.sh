@@ -18,14 +18,14 @@ echo "==> Submodules initialized"
 echo "==> Running moon update (root)..."
 moon update
 echo "==> Running moon update (graphviz)..."
-cd graphviz && moon update && cd ..
+(cd graphviz && moon update)
 
 # Pre-build MoonBit modules explicitly
 echo "==> Building crdt module..."
 moon build --target js --release
 
 echo "==> Building graphviz module..."
-cd graphviz && moon build --target js --release && cd ..
+(cd graphviz && moon build --target js --release)
 
 cd web
 

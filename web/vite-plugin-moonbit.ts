@@ -250,9 +250,7 @@ async function buildAllModules(
   target: string,
   release: boolean
 ): Promise<void> {
-  for (const mod of modules) {
-    await buildModule(mod, target, release);
-  }
+  await Promise.all(modules.map(mod => buildModule(mod, target, release)));
   console.log('[MoonBit] All modules built successfully');
 }
 
