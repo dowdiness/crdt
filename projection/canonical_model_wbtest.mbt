@@ -845,11 +845,8 @@ test "tree_lens_apply_edit WrapInApp creates App with placeholder" {
           inspect(updated_ast.node_id == ast.node_id, content="true")
           // Verify the text output shows a transformation happened
           match text_lens_get(updated_model) {
-            Ok(text) =>
-              // The result should be different from just "f"
-              // (it's "(f a)" or similar)
-              inspect(text.length() > 1, content="true")
-            Err(_) => ()
+            Ok(text) => inspect(text, content="(f a)")
+            Err(e) => abort("text_lens_get failed: " + e)
           }
         }
         None => abort("AST missing after wrap")

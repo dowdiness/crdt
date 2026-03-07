@@ -120,7 +120,10 @@ pub fn tree_lens_apply_edit(
           let existing_text = @ast.print_term(existing.kind)
           // Parse a lambda wrapping it
           let lambda_text = "λ" + var_name + "." + existing_text
-          let (parsed, _) = parse_to_proj_node(lambda_text)
+          let (parsed, diagnostics) = parse_to_proj_node(lambda_text)
+          if diagnostics.length() > 0 {
+            return Err("Failed to parse wrapped lambda: " + diagnostics[0])
+          }
           // Assign fresh IDs to avoid collisions with existing AST nodes
           let new_node = assign_fresh_ids(parsed, model)
           // Replace the node
@@ -140,7 +143,10 @@ pub fn tree_lens_apply_edit(
           let existing_text = @ast.print_term(existing.kind)
           // Parse an application with a placeholder argument
           let app_text = "(" + existing_text + ") a"
-          let (parsed, _) = parse_to_proj_node(app_text)
+          let (parsed, diagnostics) = parse_to_proj_node(app_text)
+          if diagnostics.length() > 0 {
+            return Err("Failed to parse wrapped application: " + diagnostics[0])
+          }
           // Assign fresh IDs to avoid collisions with existing AST nodes
           let new_node = assign_fresh_ids(parsed, model)
           // Replace the node
@@ -164,7 +170,10 @@ pub fn tree_lens_apply_edit(
         @ast.Term::Unit => "()"
         @ast.Term::Error(_) => "a"
       }
-      let (parsed, _) = parse_to_proj_node(placeholder_text)
+      let (parsed, diagnostics) = parse_to_proj_node(placeholder_text)
+      if diagnostics.length() > 0 {
+        return Err("Failed to parse placeholder: " + diagnostics[0])
+      }
       // Assign fresh IDs to avoid collisions with existing AST nodes
       let new_node = assign_fresh_ids(parsed, model)
       let op = InsertNode(parent~, index~, node=new_node)
