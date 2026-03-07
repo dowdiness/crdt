@@ -18,6 +18,7 @@ These documents are draft designs and explicitly call out required API additions
   - [03 — Unified Editor](design/03-unified-editor.md) — Single `SyncEditor` facade
   - [04 — Awareness Protocol](design/04-awareness-protocol.md) — Peer cursors and presence
   - [05 — Tree Edit Roundtrip](design/05-tree-edit-roundtrip.md) — Structural AST edits via text CRDT
+  - [Design Concerns](design/design-concerns.md) — Future considerations and open problems
 
 ## Architecture
 
@@ -53,6 +54,7 @@ Detailed documentation for each module:
 ## Active Plans
 
 - [Sync Editor Design](plans/2026-03-05-sync-editor-design.md)
+- [Name Resolution Design](plans/2026-03-07-name-resolution-design.md)
 
 ## Archive
 
