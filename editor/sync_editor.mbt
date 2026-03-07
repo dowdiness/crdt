@@ -99,6 +99,12 @@ pub fn SyncEditor::get_ast(self : SyncEditor) -> @ast.Term {
 }
 
 ///|
+pub fn SyncEditor::get_ast_pretty(self : SyncEditor) -> String {
+  let ast = self.get_ast()
+  "Expression: " + @ast.print_term(ast) + "\n\nAST:\n" + @debug.to_string(ast)
+}
+
+///|
 pub fn SyncEditor::get_resolution(self : SyncEditor) -> @parser.Resolution {
   @parser.resolve(self.get_ast())
 }

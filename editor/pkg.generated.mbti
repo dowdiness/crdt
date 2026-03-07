@@ -48,6 +48,7 @@ pub fn SyncEditor::delete_and_record(Self, Int) -> Bool
 pub fn SyncEditor::export_all(Self) -> @text.SyncMessage raise
 pub fn SyncEditor::export_since(Self, @text.Version) -> @text.SyncMessage raise
 pub fn SyncEditor::get_ast(Self) -> @ast.Term
+pub fn SyncEditor::get_ast_pretty(Self) -> String
 pub fn SyncEditor::get_cursor(Self) -> Int
 pub fn SyncEditor::get_dot_resolved(Self) -> String
 pub fn SyncEditor::get_errors(Self) -> Array[String]

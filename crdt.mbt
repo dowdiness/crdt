@@ -108,6 +108,15 @@ pub fn get_ast_dot_resolved(_handle : Int) -> String {
 }
 
 ///|
+/// Get AST as pretty-printed string (expression + debug tree)
+pub fn get_ast_pretty(_handle : Int) -> String {
+  match editor.val {
+    Some(ed) => ed.get_ast_pretty()
+    None => ""
+  }
+}
+
+///|
 /// Get parse errors as JSON array
 pub fn get_errors_json(_handle : Int) -> String {
   match editor.val {
