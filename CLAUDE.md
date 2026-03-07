@@ -89,6 +89,8 @@ git commit -m "chore: update event-graph-walker submodule"
 
 - **Performance:** [docs/performance/](docs/performance/)
 
+- **Archive:** `docs/archive/` — completed plans and stale documents. Do not search here unless you need historical context.
+
 **Submodule docs:**
 - [event-graph-walker](event-graph-walker/README.md) - CRDT library
 - [loom](loom/README.md) - Loom framework (lambda calculus parser in `loom/examples/lambda/`)
