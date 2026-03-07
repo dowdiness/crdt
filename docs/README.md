@@ -53,7 +53,7 @@ Detailed documentation for each module:
 
 ## Active Plans
 
-- [Name Resolution Design](plans/2026-03-07-name-resolution-design.md)
+(none)
 
 ## Archive
 
@@ -63,6 +63,8 @@ Historical documentation and investigations:
 - [Branch Variance Investigations](archive/investigations/branch-variance/)
 - [Sync Editor Design](archive/completed-phases/2026-03-05-sync-editor-design.md) (Complete)
 - [ToDot/FromDot Traits Design](archive/completed-phases/2026-03-07-todot-fromdot-traits-design.md) (Complete)
+- [Name Resolution Design](archive/completed-phases/2026-03-07-name-resolution-design.md) (Complete)
+- [Name Resolution Implementation](archive/completed-phases/2026-03-07-name-resolution-implementation.md) (Complete)
 
 ## External Resources
 

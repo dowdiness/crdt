@@ -1,5 +1,7 @@
 # Name Resolution Implementation Plan
 
+**Status:** Complete
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Add name resolution (bound/free variable analysis) for lambda calculus Terms, completing boundary ③ of the incremental hylomorphism pipeline as a prototype.
