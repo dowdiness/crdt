@@ -4,15 +4,11 @@ package "dowdiness/crdt"
 // Values
 pub fn apply_sync_json(Int, String) -> Unit
 
-pub fn backspace(Int) -> Bool
-
 pub fn backspace_and_record(Int, Int) -> Bool
 
 pub fn create_editor(String) -> Int
 
 pub fn create_editor_with_undo(String, Int) -> Int
-
-pub fn delete_(Int) -> Bool
 
 pub fn delete_and_record(Int, Int) -> Bool
 
@@ -20,15 +16,9 @@ pub fn export_all_json(Int) -> String
 
 pub fn export_since_json(Int, String) -> String
 
-pub fn get_ast_dot(Int) -> String
-
 pub fn get_ast_dot_resolved(Int) -> String
 
-pub fn get_ast_json(Int) -> String
-
 pub fn get_ast_pretty(Int) -> String
-
-pub fn get_cursor(Int) -> Int
 
 pub fn get_errors_json(Int) -> String
 
@@ -36,11 +26,7 @@ pub fn get_text(Int) -> String
 
 pub fn get_version_json(Int) -> String
 
-pub fn insert(Int, String) -> Unit
-
 pub fn insert_and_record(Int, String, Int) -> Unit
-
-pub fn set_cursor(Int, Int) -> Unit
 
 pub fn set_text(Int, String) -> Unit
 

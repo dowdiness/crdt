@@ -1,7 +1,6 @@
 import {
   "dowdiness/crdt/editor",
   "dowdiness/event-graph-walker/text",
-  "dowdiness/lambda" @parser,
   "moonbitlang/core/json",
 }
 
@@ -10,15 +9,8 @@ options(
     "js": {
       "exports": [
         "create_editor",
-        "insert",
-        "delete_",
-        "backspace",
         "get_text",
         "set_text",
-        "get_cursor",
-        "set_cursor",
-        "get_ast_json",
-        "get_ast_dot",
         "get_ast_dot_resolved",
         "get_ast_pretty",
         "get_errors_json",

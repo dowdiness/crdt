@@ -15,33 +15,6 @@ pub fn create_editor(agent_id : String) -> Int {
 }
 
 ///|
-/// Insert text at cursor position
-pub fn insert(_handle : Int, text : String) -> Unit {
-  match editor.val {
-    Some(ed) => try! ed.insert(text)
-    None => ()
-  }
-}
-
-///|
-/// Delete character at cursor (forward delete)
-pub fn delete_(_handle : Int) -> Bool {
-  match editor.val {
-    Some(ed) => ed.delete()
-    None => false
-  }
-}
-
-///|
-/// Delete character before cursor (backspace)
-pub fn backspace(_handle : Int) -> Bool {
-  match editor.val {
-    Some(ed) => ed.backspace()
-    None => false
-  }
-}
-
-///|
 /// Get current text content
 pub fn get_text(_handle : Int) -> String {
   match editor.val {
@@ -56,45 +29,6 @@ pub fn set_text(_handle : Int, new_text : String) -> Unit {
   match editor.val {
     Some(ed) => ed.set_text(new_text)
     None => ()
-  }
-}
-
-///|
-/// Get cursor position
-pub fn get_cursor(_handle : Int) -> Int {
-  match editor.val {
-    Some(ed) => ed.get_cursor()
-    None => 0
-  }
-}
-
-///|
-/// Set cursor position
-pub fn set_cursor(_handle : Int, position : Int) -> Unit {
-  match editor.val {
-    Some(ed) => ed.move_cursor(position)
-    None => ()
-  }
-}
-
-///|
-/// Get AST as JSON string
-pub fn get_ast_json(_handle : Int) -> String {
-  match editor.val {
-    Some(ed) => ed.get_ast().to_json().stringify()
-    None => "{}"
-  }
-}
-
-///|
-/// Get AST as DOT format for graphviz visualization
-pub fn get_ast_dot(_handle : Int) -> String {
-  match editor.val {
-    Some(ed) => {
-      let ast = ed.get_ast()
-      @parser.term_to_dot(ast)
-    }
-    None => "digraph { }"
   }
 }
 
