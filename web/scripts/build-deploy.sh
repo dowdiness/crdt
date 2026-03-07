@@ -24,15 +24,23 @@ cd graphviz && moon update && cd ..
 echo "==> Building crdt module..."
 moon build --target js --release
 echo "==> crdt build exit code: $?"
-ls -la target/js/release/build/crdt.js 2>&1 || echo "WARNING: crdt.js not found at expected path"
-find target -name "crdt.js" 2>/dev/null || echo "WARNING: crdt.js not found anywhere in target/"
+
+# Debug: find where moon actually put the output
+echo "==> Searching for crdt.js output..."
+find . -name "crdt.js" -not -path "*/node_modules/*" -not -path "*/web/*" 2>/dev/null
+echo "==> Listing build directories..."
+ls -la target 2>/dev/null || echo "no target/"
+ls -la _build 2>/dev/null || echo "no _build/"
+ls -R target/js/ 2>/dev/null || echo "no target/js/"
+ls -R _build/js/ 2>/dev/null || echo "no _build/js/"
 
 echo "==> Building graphviz module..."
 cd graphviz
 moon build --target js --release
 echo "==> graphviz build exit code: $?"
-ls -la target/js/release/build/browser/browser.js 2>&1 || echo "WARNING: browser.js not found at expected path"
-find target -name "browser.js" 2>/dev/null || echo "WARNING: browser.js not found anywhere in target/"
+find . -name "browser.js" -not -path "*/node_modules/*" 2>/dev/null
+ls -R target/js/ 2>/dev/null || echo "no target/js/"
+ls -R _build/js/ 2>/dev/null || echo "no _build/js/"
 cd ..
 
 cd web
