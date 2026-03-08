@@ -6,6 +6,8 @@ Documentation for the CRDT collaborative editor architecture.
 
 - **[Module Structure](modules.md)** - Monorepo organization with git submodules
 - **[Projectional Editing](PROJECTIONAL_EDITING.md)** - Projectional editing architecture plan
+- **[Incremental Hylomorphism](Incremental-Hylomorphism.md)** - Theoretical foundations: cata/ana asymmetry, coalgebra locality, Finally Tagless, hylomorphism chains
+- **[Anamorphism Discipline](anamorphism-discipline.md)** - Actionable design guide: four laws, boundary audit, anti-patterns
 
 ## Quick Overview
 

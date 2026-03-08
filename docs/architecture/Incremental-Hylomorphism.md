@@ -6,7 +6,7 @@ This document summarizes the design principles that unify text editing, compilat
 
 > **Treat the AST as the source of truth. Unify construction from input (anamorphism) and projection to output (catamorphism) as a chain of incremental hylomorphisms.**
 
-This principle provides a foundation for understanding and designing serde-style serialization/deserialization, parsers, incremental computation, CRDTs, and UI rendering within the same theoretical framework.
+This principle provides a foundation for understanding parsers, incremental computation, CRDTs, serialization, and UI rendering within the same theoretical framework.
 
 ---
 
@@ -59,75 +59,98 @@ The intermediate structure μF is theoretically eliminable (deforestation), but 
 
 | Property | Catamorphism (Destruction) | Anamorphism (Construction) |
 |----------|---------------------------|---------------------------|
-| Knowledge location | Data type holds all knowledge | Knowledge is split between two parties |
+| Knowledge location | Data type holds all knowledge | Knowledge is split between producer and consumer |
 | Failure | Cannot occur | Occurs when input is malformed |
-| Polymorphism | One axis (output target) | Two axes (input source × target type) |
 | Impact of local changes | Tends to remain local | Can cause global structural changes |
+| Polymorphism | One axis (output target) | Two axes (input source x target type) |
 
-This asymmetry is the root cause of deserialization complexity. A parser (syntactic knowledge of input) and a target type (structural knowledge) are **two independent sources of knowledge** that must be coordinated. Serde's Visitor pattern is the mechanism that realizes this coordination protocol.
+This asymmetry has practical consequences for both sides. Catamorphisms are simple enough that a general abstraction strategy (Finally Tagless / Church encoding) works uniformly. Anamorphisms require a different discipline — the intermediate structure must be carefully designed so that the knowledge split between producer and consumer does not become a leaky abstraction. These two strategies are developed in sections 2 and 3.
 
 ---
 
-## 2. Finally Tagless: Unification via Church Encoding
+## 2. Coalgebra Locality: The Anamorphism Design Principle
 
-### Serialize as Church Encoding
+The coalgebra `S → F S` unfolds structure one layer at a time. Each layer is a local construction decision: "I saw these tokens, I grouped them into a node of this kind." The resulting structure is a record of all such decisions.
 
-Church encoding represents a data type as "the function that accepts its fold."
+For this record to serve as a good intermediate representation in a hylomorphism chain, each layer must be **self-contained** — its identity must not depend on where it sits in the larger structure. This is the principle of coalgebra locality.
+
+### Why Locality Matters
+
+Without locality, incremental reuse is prohibitively expensive. If a subtree's identity depends on its absolute position, reusing it at a different position requires O(n) normalization across the entire subtree. With locality, reuse is O(1) — the subtree is a pure value that means the same thing regardless of where it appears.
+
+This is the concrete mechanism behind the abstract observation that "local input changes can cause global structural changes" (the asymmetry table in section 1). Coalgebra locality is the design discipline that prevents local changes from propagating globally through the intermediate structure.
+
+### The Four Properties
+
+A good anamorphism abstraction produces structure that satisfies four properties. Each property addresses one row of the asymmetry table:
+
+**Completeness.** The intermediate structure preserves everything any downstream catamorphism could need. If a consumer must reach back to the original input, the boundary has leaked. This addresses the knowledge split: the structure must carry all of the producer's knowledge so the consumer never needs to coordinate with the producer.
+
+**Context-freedom.** Each fragment's identity is independent of its position in the larger structure. Achieved by storing only intrinsic properties (kind, relative width, children) and computing positional context lazily in a wrapper. This addresses the local-to-global impact problem: position-independent subtrees are unaffected by changes elsewhere.
+
+**Uniform error representation.** Malformed input produces the same kind of structure as well-formed input, with errors represented as values within the structure rather than through a separate channel. This addresses the failure problem: downstream consumers always receive a complete tree and can fold it uniformly.
+
+**Transparent structure.** The representation's shape is its meaning. No hidden invariants, no internal state that consumers must understand. This addresses the two-axis polymorphism problem: any consumer can interpret the structure by inspecting its public form, without coupling to the producer's construction logic.
+
+These properties are developed into actionable design guidelines in [Anamorphism Discipline Guide](./anamorphism-discipline.md).
+
+### Example: CstNode
+
+The CST in this project satisfies all four properties:
+
+- **Complete**: every byte of source is represented, including whitespace, comments, and error tokens.
+- **Context-free**: nodes store relative widths, not absolute positions. The same subtree object can appear at different locations without internal modification.
+- **Uniform errors**: `ErrorNode` is a `CstNode` with a different kind. The parser always produces a tree.
+- **Transparent**: `{ kind, children, width }`. Shape is meaning.
+
+Absolute positions are computed lazily by `SyntaxNode`, a wrapper that accumulates widths during traversal. This separation — intrinsic properties in the structure, contextual properties in the wrapper — is a direct application of coalgebra locality.
+
+---
+
+## 3. Finally Tagless: The Catamorphism Abstraction
+
+Where anamorphisms need carefully designed concrete structure, catamorphisms benefit from the opposite: abstracting away the structure entirely.
+
+Church encoding represents a data type as "the function that accepts its fold":
 
 ```
 Church Nat  = ∀r. (r → r) → r → r
 Church List = ∀r. (a → r → r) → r → r
-Serialize   = ∀S:SerializerSym. Self → S
 ```
 
-A `Serialize` implementation declares: "Given any algebra (any `SerializerSym` implementation), I can fold myself using that algebra." The `serialize` method is the data type presenting its own Church encoding.
+A natural number encoded this way declares: "Given any algebra (a successor function and a zero), I can fold myself using that algebra." The data type presents its own Church encoding — it holds all the knowledge needed for destruction, and the consumer provides only the interpretation. Serialization follows the same pattern: a `Serialize` trait turns any data type into a Church encoding over a serializer algebra.
 
-### SerializerSym: The Data Model as Protocol
+This is why catamorphisms are simple (section 1): the structure holder possesses all necessary knowledge. Church encoding / Finally Tagless makes this explicit by turning the fold into a protocol.
 
-```moonbit
-trait SerializerSym {
-  write_bool(Self, Bool) -> Self
-  write_int(Self, Int) -> Self
-  write_str(Self, String) -> Self
-  seq_begin(Self, Int) -> Self
-  seq_elem(Self, Self) -> Self
-  seq_end(Self) -> Self
-  struct_begin(Self, String, Int) -> Self
-  struct_field(Self, String, Self) -> Self
-  struct_end(Self) -> Self
+### The Trait as Protocol
+
+```
+trait ExprSym {
+  lit(Int) → Self
+  add(Self, Self) → Self
 }
 ```
 
-This has the same structure as Finally Tagless's `ExprSym`. Each format (JSON, MsgPack, YAML, ...) provides a different "interpretation" of this trait. By writing directly to the output without going through an intermediate value type `Value`, zero-allocation serialization is achieved.
+Each interpreter (evaluator, pretty-printer, compiler) provides a different implementation of this trait. The data type is folded through the trait without committing to a specific interpretation. This achieves:
 
-### Eliminating Deserialize
+- **Zero intermediate allocation**: the fold writes directly to the output format.
+- **Open extensibility**: new interpreters can be added without modifying existing code.
+- **Composability**: interpreters can be composed (e.g., evaluate and pretty-print simultaneously).
 
-The complexity of Serde's Visitor arises because the **consumer** of the Church encoding needs an associated type to select the target type.
+### Why This Works for Catamorphisms but Not Anamorphisms
 
-This complexity can be eliminated entirely by having each format's value type (JsonValue, MsgPackValue, etc.) implement `Serialize`.
+Finally Tagless produces opaque functions — `∀r. ExprSym r => r` cannot be inspected, compared, or partially reused. This is acceptable for catamorphisms because the fold consumes the structure once and produces a flat value.
 
-```
-Serialization:       Point.serialize(json_writer)         -- Point → JSON bytes
-Format conversion:   json_value.serialize(msgpack_writer)  -- JSON → MsgPack (no Value needed)
-Deserialization:     json_value.serialize(value_builder)   -- JsonValue → Value → Point
-```
+For anamorphisms, the intermediate structure must be inspected for incremental reuse (the ReuseCursor's four-condition protocol), compared for change detection, and partially shared across time. Opacity is a liability here, not an asset.
 
-Only three traits are needed:
-
-```moonbit
-trait SerializerSym { ... }  // Protocol (data model)
-trait Serialize { ... }      // Self → describe via protocol (Church encoding)
-trait FromValue { ... }      // Value → Self (Fixed-Type Projection)
-```
-
-The Deserialize trait, Visitor pattern, and MapAccess / SeqAccess all become unnecessary.
+This is the fundamental reason the two sides of the hylomorphism need different abstraction strategies: catamorphisms benefit from hiding structure (Church encoding), while anamorphisms require exposing it (coalgebra locality).
 
 ---
 
-## 3. The Boundary Pattern: Hylomorphisms at Every System Boundary
+## 4. The Boundary Pattern: Hylomorphisms at Every System Boundary
 
 ```
-External Representation₁ ←(ana)→ Internal Representation ←(cata)→ External Representation₂
+External Representation_1 <-(ana)-> Internal Representation <-(cata)-> External Representation_2
 ```
 
 This structure recurs at every system boundary.
@@ -135,7 +158,7 @@ This structure recurs at every system boundary.
 | System | Input (ana) | Internal Rep | Output (cata) |
 |--------|------------|--------------|---------------|
 | Compiler | Source code → AST | IR | IR → Target code |
-| serde | JSON bytes → JsonValue | Value / types | types → MsgPack bytes |
+| Serde | JSON bytes → JsonValue | Value / types | types → MsgPack bytes |
 | UI (TEA) | User actions → Model | Model | Model → View |
 | Editor | Text → AST | AST | AST → Screen display |
 | Network | Packets → Message types | Message types | Message types → App logic |
@@ -144,12 +167,12 @@ A compiler is not a single hylomorphism but a **chain of hylomorphisms where the
 
 ```
 ana₁ → μF₁ → cata₁/ana₂ → μF₂ → cata₂/ana₃ → μF₃ → cata₃
-parse    AST    lowering      MIR    codegen       ...
+parse   AST   lowering      MIR   codegen        ...
 ```
 
 ---
 
-## 4. The Full Pipeline: loom + incr + CRDT
+## 5. The Full Pipeline: loom + incr + CRDT
 
 ### Pipeline Diagram
 
@@ -169,7 +192,7 @@ parse    AST    lowering      MIR    codegen       ...
         │ ② ana (loom)               │ ② ana (loom)
         ▼                             ▼
   ┌───────────┐                ┌───────────┐
-  │    AST    │                │    AST    │
+  │    CST    │                │    CST    │
   │(holes +   │                │(holes +   │
   │ errors)   │                │ errors)   │
   └─────┬─────┘                └─────┬─────┘
@@ -192,23 +215,25 @@ parse    AST    lowering      MIR    codegen       ...
 **① CRDT Ops → Document State** (fold)
 - Fold the operation sequence to obtain the document's text state
 - eg-walker / FugueMax determines the ordering of concurrent insertions
-- Output: text buffer + damage region of changes
+- Output: text buffer. Damage region (what changed) should ideally be carried forward but is currently rediscovered via text diff.
 
-**② Document State → AST** (anamorphism — loom)
-- Tokenize and parse the text to construct an AST
-- Error recovery (`expect`, `skip_until`, `skip_until_balanced`) maintains structure even from incomplete input
-- Incremental parsing: only re-parse the damage region; reuse unchanged subtrees
-- Output: AST that may contain holes and error nodes
+**② Document State → CST** (anamorphism — loom)
+- Tokenize and parse the text to construct a concrete syntax tree
+- Error recovery (`expect`, `skip_until`, `skip_until_balanced`) ensures the parser always produces a complete tree
+- Incremental parsing via ReuseCursor: only re-parse the damage region, reuse unchanged subtrees at O(1) through position-independent structural sharing
+- Output: CstNode tree that satisfies the four properties. May contain error nodes.
 
-**③ AST → Typed AST** (catamorphism — incr)
+**③ CST → Typed AST** (catamorphism — incr)
 - Perform semantic analysis: name resolution, type checking, flow analysis
 - Track dependencies via an incr/Salsa-style dependency graph for incremental recomputation
-- Track cross-tree dependencies (name references, type propagation) that do not follow AST parent-child relationships
+- Track cross-tree dependencies (name references, type propagation) that do not follow CST parent-child relationships
 - Output: materialized views including type information, diagnostics, completion candidates
+- Status: aspirational. Current implementation has name resolution only.
 
 **④ Typed AST → Screen Display** (catamorphism)
-- Compute syntax highlighting, indentation, error display, etc. from the typed AST
+- Compute syntax highlighting, indentation, error display from the typed AST
 - Use virtual DOM / incremental rendering to redraw only the damage region
+- Status: MVP. Full re-render via DOT/Graphviz SVG. Projection module exists in MoonBit but is not wired to the web frontend.
 
 ### The Role of incr: Memoizing Hylomorphisms
 
@@ -219,11 +244,11 @@ Without incr: 1 char change → re-parse everything → re-typecheck everything 
 With incr:    1 char change → re-analyze 3 tokens → re-typecheck 2 functions → redraw affected lines
 ```
 
-This is the same concept as incremental maintenance of materialized views. The AST corresponds to the base table; type information and screen display correspond to materialized views. Updates to the base table propagate incrementally to the views.
+This is the same concept as incremental maintenance of materialized views. The CST corresponds to the base table; type information and screen display correspond to materialized views. Updates to the base table propagate incrementally to the views.
 
 ---
 
-## 5. Technical Challenges at Each Boundary
+## 6. Technical Challenges at Each Boundary
 
 ### Boundary ①: CRDT → Document State
 
@@ -231,154 +256,87 @@ This is the same concept as incremental maintenance of materialized views. The A
 
 **Non-deterministic arrival order.** In CRDTs, the order of operation arrival is not guaranteed. How concurrent edits from multiple users are ordered depends on FugueMax's ordering decisions, and the result can affect tokenization.
 
-**Required solution:** An adapter that converts character-position diffs into token-level damage regions.
+**The completeness gap.** The CRDT knows which position was affected by each operation, but this information is discarded when the document state is materialized as a flat string. The consumer must rediscover it via text diffing — an instance of the "Retrospective Diff" anti-pattern (see [Anamorphism Discipline Guide](./anamorphism-discipline.md)).
 
-### Boundary ②: Document State → Token Stream
+### Boundary ②: Document State → CST
 
 **Context-dependent lexer state.** Template literals, heredocs, nested comments, and similar constructs make lexer state depend on surrounding context. A single character change can fundamentally alter the lexer's state machine, potentially affecting all subsequent tokens.
 
-**Required solution:** Retain a lexer state snapshot at each token so that re-tokenization propagation can stop when it reaches "the same state as last time."
+**The context-freedom solution.** CstNode stores relative widths instead of absolute positions. This makes subtrees context-free: the same subtree object can be reused at a different position without any internal modification. The ReuseCursor exploits this by checking four conditions (kind match, leading token match, trailing context match, no damage overlap) before reusing a subtree at O(1).
 
-### Boundary ③: Token Stream → AST (The Hardest Part)
+### Boundary ③: CST → Typed AST (The Hardest Boundary)
 
-**Local changes cause global structural impact.** A single character change in the text can fundamentally alter AST parent-child relationships (e.g., deleting the `e` from `else` collapses the entire if-else structure).
+**Local changes cause global structural impact.** A single character change in the text can fundamentally alter CST parent-child relationships (e.g., deleting the `e` from `else` collapses the entire if-else structure). The CST handles this through context-freedom; the typed AST must handle it through context-free node identity (arena-based interning).
 
-**Error recovery stability.** Parse results under error conditions must be stable with respect to user edits. The same error situation must always produce the same recovery strategy (idempotency) to guarantee that unrelated parts of the AST do not fluctuate.
+**Error recovery stability.** Parse results under error conditions must be stable with respect to user edits. The same error situation must always produce the same recovery strategy (idempotency) to guarantee that unrelated parts of the tree do not fluctuate.
 
-**Construction is inherently less stable than destruction.** In catamorphisms, the impact of local changes tends to remain local. In anamorphisms, a local change to the input can trigger structural changes across the entire tree. This is the core difficulty of incremental parsing.
+**Dependencies that cross tree structure.** The CST is a tree, but semantic dependencies form a DAG. Type-checking function `foo` may depend on the type of function `bar` — a dependency that has nothing to do with parent-child relationships in the tree.
 
-### Boundary ④: AST → Semantic Analysis
+**Damage propagation through semantics.** Changing one function's signature can invalidate type-checking results in another file. Damage can jump to physically distant locations. An incr/Salsa-style query-based dependency graph is needed to track what must be recomputed.
 
-**Dependencies that cross tree structure.** The AST is a tree, but semantic dependencies form a DAG. Type-checking function `foo` may depend on the type of function `bar` — a dependency that has nothing to do with parent-child relationships in the AST.
-
-**Damage propagation through semantics.** Changing one function's signature can invalidate type-checking results in another file. Damage can jump to physically distant locations.
-
-**Required solution:** incr's dependency graph must be built based on name resolution and type dependencies rather than AST parent-child relationships (Salsa's query-based dependency tracking).
-
-### Cross-Boundary Problem: Granularity Mismatch
+### Cross-Boundary: Granularity Mismatch
 
 The "unit of change" differs at each stage.
 
 ```
 CRDT       → character level
 Lexer      → token level
-Parser     → AST node level
+Parser     → CST node level
 Type check → symbol / query level
 Rendering  → pixel / line level
 ```
 
-Converting "what changed" at one stage into "what to recompute" at the next stage has its own computational cost. The efficiency of each conversion is critical to completing the entire chain within 16ms.
+Converting "what changed" at one stage into "what to recompute" at the next stage has its own computational cost. At each conversion, a completeness gap means the next stage must rediscover change information that the previous stage already had.
 
 ---
 
-## 6. Extensibility via Finally Tagless
+## 7. Two-Layer Architecture
 
-### Representing Errors and Holes
+When both incremental construction and structural observation are needed, separate the anamorphism's output from the catamorphism's input into two layers.
 
-Finally Tagless trait extension allows holes and errors to be added in an open fashion.
+### Layer 1: Concrete (Anamorphism Output)
 
-```moonbit
-// Base language
-trait ExprSym {
-  lit(Int) -> Self
-  add(Self, Self) -> Self
-}
+Produced by the construction process. Must satisfy the four properties from section 2. Designed to be inspected, compared, and incrementally reused.
 
-// Adding holes — no changes to existing code
-trait HoleSym {
-  hole(HoleId) -> Self
-  error(ErrorInfo, Self) -> Self
-}
+In this project: `CstNode` — position-independent, lossless, uniform error nodes, transparent `{ kind, children, width }`.
+
+### Layer 2: Abstract (Catamorphism Input)
+
+Consumed by downstream folds. Provides typed, semantic access to the concrete structure without adding information. May use Finally Tagless (section 3) for open extensibility, or typed views for concrete navigation.
+
+In this project: `SyntaxNode` views — typed wrappers like `LambdaExprView` that cast by kind, name children, and skip trivia. `Term` conversion is a catamorphism over views.
+
+### The Boundary Between Layers
+
+Information flows monotonically from concrete to abstract: each step discards information, never adds it.
+
+```
+CstNode ──→ SyntaxNode ──→ View ──→ Term
+  all          derives        derives    semantic
+  info         positions      typed      only
+               (from widths)  names      (lossy)
+                              (from kinds)
 ```
 
-This corresponds to "extending the functor F" in recursion scheme terms. Adding variants to an enum (μF) is a closed operation, but adding traits is an open operation. The Expression Problem solution applies here as well.
+Each step derives new presentations from data already in the CstNode — no external information enters the chain. This monotonic flow is what makes the abstraction non-leaky. A leaky abstraction hides information that consumers eventually need, forcing them to reach behind the boundary. Here, the concrete layer hides nothing (it is complete and transparent), and each abstract layer projects from what it receives. No consumer needs to reach backwards.
 
-### Two-Layer Architecture
-
-When structural observation (optimization, transformation) is needed, combine Finally Tagless with a concrete enum in a two-layer structure.
-
-- **Layer 1 (Abstract):** Finally Tagless traits — extensible syntax definitions
-- **Layer 2 (Concrete):** Enum — structural observation, pattern matching, optimization
-
-```moonbit
-// Apply optimizations on the concrete AST, then reinterpret through the tagless API
-fn replay[T : ExprSym + HoleSym](e : ConcreteAst) -> T { ... }
-```
+The concrete layer is not an implementation detail hidden behind the abstract layer — it is a first-class artifact that the system depends on for incremental reuse. The abstract layer is a convenience for typed access, not a replacement for the concrete layer.
 
 ---
 
-## 7. Limits of Recursion Schemes
-
-It is important to recognize what recursion schemes can and cannot capture.
+## 8. Limits of Recursion Schemes
 
 ### What They Capture
 
-- **Structural transformation:** Conversion from one representation to another (parsing, code generation, serialization)
-- **Structural traversal:** Aggregation and projection over existing structures (evaluation, display, type information extraction)
-- **Incremental structural updates:** Incremental computation as memoization of hylomorphisms
+- **Structural transformation:** conversion from one representation to another (parsing, code generation, serialization)
+- **Structural traversal:** aggregation and projection over existing structures (evaluation, display, type information extraction)
+- **Incremental structural updates:** incremental computation as memoization of hylomorphisms
 
 ### What They Do Not Capture
 
-- **Bidirectional information flow:** When information flows up, down, and sideways through a structure — as in type inference with unification — a separate paradigm of constraint solving is required
+- **Bidirectional information flow:** type inference with unification requires constraint solving, not simple folds
 - **Integration of causally ordered operations:** CRDT operation integration requires causal graph traversal, not simple folds
-- **Reuse across time:** Incremental computation can be framed as memoized hylomorphisms, but the decision of what to reuse and what to invalidate lies outside the recursion scheme framework
-
-### Three Axes of Complexity
-
-Structural construction becomes harder along three independent axes:
-
-1. **More axes of polymorphism:** format × type, plus grammar rules
-2. **Bidirectional information flow:** Constraints propagate mutually, as in type inference
-3. **Time enters the picture:** Past results must be reused
-
-If only the first axis is involved, a Serde-style Visitor suffices. When the second axis enters, constraint solving is needed. When the third enters, incremental computation is needed. loom + incr addresses axes one and three simultaneously.
-
----
-
-## 8. Structural Construction Use Cases: From Simple to Complex
-
-| Complexity | Use Case | Polymorphism | Solution Paradigm |
-|------------|----------|--------------|-------------------|
-| Lowest | Literal parsing (`"42" → Int`) | None | Simple function |
-| Low | Fixed-schema parsing (`CSV → Point`) | None | Dedicated parser |
-| Medium | Single format × multiple types | Type axis only | Intermediate value + FromValue |
-| Medium-High | Multiple formats × multiple types | Both axes | SerializerSym three-stage decomposition |
-| High | Recursive AST construction | Both axes + recursion | Parser combinators (loom) |
-| High | Type inference | Bidirectional | Constraint solving / unification |
-| Highest | CRDT + incremental reconstruction | Both axes + time | Dependency graph tracking (incr) |
-
----
-
-## 9. Design Decision Guide
-
-### Protocol Design: Trait or Value?
-
-```
-Is structural destruction needed?
-├─ Yes → Finally Tagless (Church encoding)
-│        SerializerSym-style trait for zero allocation
-└─ No
-   └─ Is structural construction needed?
-      ├─ One axis (format fixed OR type fixed)
-      │  → Dedicated parser / dedicated FromValue
-      └─ Two axes (format × type)
-         ├─ Performance critical → Visitor (dual of Church encoding)
-         └─ Simplicity critical → Three-stage decomposition via Value
-```
-
-### Incrementalization Decision
-
-```
-How frequent are changes?
-├─ Batch (one-shot processing) → No incrementalization needed; simple hylo
-└─ Interactive (must complete within 16ms)
-   ├─ Is the impact of changes local?
-   │  ├─ Yes → Damage-region-based partial recomputation
-   │  └─ No  → incr / Salsa-style dependency graph tracking
-   └─ Are there concurrent edits from multiple users?
-      ├─ Yes → CRDT + damage propagation
-      └─ No  → Single-user incremental computation
-```
+- **Reuse across time:** incremental computation can be framed as memoized hylomorphisms, but the decision of what to reuse and what to invalidate lies outside the recursion scheme framework
 
 ---
 
@@ -389,4 +347,3 @@ How frequent are changes?
 - Omar, C. et al. (2019). *Hazel: A Live Functional Programming Environment with Typed Holes.*
 - Arvo, J. et al. (2022). *Grove: A Collaborative Structure Editor.*
 - Matklad. (2023). *Resilient LL Parsing Tutorial.*
-- Rust Serde documentation. https://serde.rs/
