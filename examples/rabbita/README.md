@@ -58,3 +58,17 @@ with `CI=true`.
 
 The scripts remain package-manager neutral, so `npm run build` still works
 locally if you already have npm set up.
+
+Recommended Cloudflare Pages settings for this example:
+
+- Root directory: `examples/rabbita`
+- Install command: `bun install`
+- Build command: `bun run build`
+- Build output directory: `dist`
+
+The Wrangler files under `web/` in this repo are for a different deployment
+target and do not configure `examples/rabbita`.
+
+If your Cloudflare project runs a deploy command such as `bunx wrangler deploy`,
+this example now includes a local `wrangler.jsonc` that declares `dist` as the
+static asset directory and enables SPA fallback routing.
