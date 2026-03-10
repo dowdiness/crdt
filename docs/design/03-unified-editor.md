@@ -227,4 +227,4 @@ pub fn TreeEditorState::refresh(
 ## Dependencies
 
 - **Depends on:** [§1 Edit Bridge](./01-edit-bridge.md), [§2 Reactive Pipeline](./02-reactive-pipeline.md)
-- **Depended on by:** [§4 Awareness](./04-awareness-protocol.md), [§5 Tree Edit Roundtrip](./05-tree-edit-roundtrip.md)
+- **Depended on by:** [§4 Ephemeral Store](./04-ephemeral-store.md), [§5 Tree Edit Roundtrip](./05-tree-edit-roundtrip.md)

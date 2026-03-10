@@ -16,7 +16,7 @@ These documents are draft designs and explicitly call out required API additions
   - [01 — Edit Bridge](design/01-edit-bridge.md) — CRDT ops → loom `Edit` without string diffing
   - [02 — Reactive Pipeline](design/02-reactive-pipeline.md) — Replace manual dirty-flags with `Signal`/`Memo`
   - [03 — Unified Editor](design/03-unified-editor.md) — Single `SyncEditor` facade
-  - [04 — Awareness Protocol](design/04-awareness-protocol.md) — Peer cursors and presence
+  - [04 — Ephemeral Store](design/04-ephemeral-store.md) — Peer cursors and presence
   - [05 — Tree Edit Roundtrip](design/05-tree-edit-roundtrip.md) — Structural AST edits via text CRDT
   - [Design Concerns](design/design-concerns.md) — Future considerations and open problems
 

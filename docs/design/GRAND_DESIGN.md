@@ -73,7 +73,7 @@ The grand design is realized through five sub-designs, each addressing a specifi
 | 1 | [Edit Bridge](./01-edit-bridge.md) | CRDT ops → loom `Edit` without string diffing |
 | 2 | [Reactive Pipeline Integration](./02-reactive-pipeline.md) | Replace manual dirty-flag with `Signal`/`Memo` |
 | 3 | [Unified Editor Facade](./03-unified-editor.md) | Single `SyncEditor` replacing `ParsedEditor` + `CanonicalModel` |
-| 4 | [Awareness Protocol](./04-awareness-protocol.md) | Peer cursors, selections, presence over network |
+| 4 | [Ephemeral Store](./04-ephemeral-store.md) | Peer cursors, selections, presence over network |
 | 5 | [Tree Edit Roundtrip](./05-tree-edit-roundtrip.md) | Structural AST edits → text CRDT ops → reparse |
 
 ### Dependency Graph
@@ -119,7 +119,7 @@ Documents 1 and 2 are foundational — everything else builds on them.
 | **Edit Bridge** | [§1](./01-edit-bridge.md) | `Op → Edit` converter using existing loom `TextDelta` |
 | **Reactive wiring** | [§2](./02-reactive-pipeline.md) | Connect CRDT text output to loom `Signal[String]` |
 | **`SyncEditor`** | [§3](./03-unified-editor.md) | Unified facade replacing `ParsedEditor` |
-| **Awareness transport** | [§4](./04-awareness-protocol.md) | Cursor/selection broadcast |
+| **Ephemeral store** | [§4](./04-ephemeral-store.md) | Cursor/selection broadcast |
 | **Tree → text roundtrip** | [§5](./05-tree-edit-roundtrip.md) | `ModelOperation` → text diff → CRDT ops |
 
 ### Required API Additions (for direct-path optimization)
