@@ -47,7 +47,27 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 
 ---
 
-## 4. Memory & Scalability
+## 4. Rabbita Projection Editor Performance
+
+**Impact:** High | **Effort:** High
+
+Tracked by:
+
+- `docs/performance/RABBITA_PROJECTION_EDITOR_ISSUES.md`
+- `docs/plans/2026-03-11-rabbita-projection-editor-performance-plan.md`
+
+- [ ] Add baseline timing instrumentation for text edit application, parser update, projection refresh, `TreeEditorState::refresh`, and Rabbita render/update
+- [ ] Add an edit-based `SyncEditor` text API for typing (`apply_text_edit(...)`) and stop using whole-string replacement from Rabbita `TextInput`
+- [ ] Feed incremental text edits into the parser layer instead of rebuilding from the entire source string on every keystroke
+- [ ] Split UI-only tree actions (`Select`, `Collapse`, `Expand`) from structural tree edits so they do not trigger parser/projection refresh
+- [ ] Introduce an explicit projection refresh boundary so text edits and structural tree refresh can be coalesced
+- [ ] Reduce `TreeEditorState::refresh` rebuild scope to changed subtrees where possible
+- [ ] Reduce Rabbita tree rerender/diff work for insert/reorder-heavy trees with keyed or identity-aware child rendering
+- [ ] Remove redundant render-time tree scans such as sidebar selection lookup from the full rendered tree
+
+---
+
+## 5. Memory & Scalability
 
 **Impact:** Medium | **Effort:** High
 
@@ -57,7 +77,7 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 
 ---
 
-## 5. Testing Gaps
+## 6. Testing Gaps
 
 **Impact:** Medium | **Effort:** Low-Medium
 
@@ -68,7 +88,7 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 
 ---
 
-## 6. Tree Edit Bridge Tech Debt
+## 7. Tree Edit Bridge Tech Debt
 
 **Impact:** Medium | **Effort:** Medium-High
 
@@ -98,7 +118,7 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
 
 ---
 
-## 7. Code Cleanup
+## 8. Code Cleanup
 
 **Impact:** Low | **Effort:** Low
 
@@ -106,7 +126,7 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
 
 ---
 
-## 7. Developer Experience
+## 9. Developer Experience
 
 **Impact:** Low-Medium | **Effort:** Low | **Status:** ✅ Done
 
@@ -125,9 +145,10 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
 | 3 | Complete WebSocket collaboration | High | High |
 | 4 | E2E browser tests | Low | Medium |
 | 5 | Benchmark regression CI | Medium | Medium |
-| 6 | Tree edit bridge tech debt | Medium-High | Medium |
-| 7 | Incremental parsing TODOs | Medium | Medium |
-| 8 | Single-command test runner | Low | Low-Med |
-| 9 | Code cleanup | Low | Low |
-| 10 | Memory optimization | High | Medium |
-| 11 | Fuzz testing | Medium | Medium |
+| 6 | Rabbita projection editor performance | High | High |
+| 7 | Tree edit bridge tech debt | Medium-High | Medium |
+| 8 | Incremental parsing TODOs | Medium | Medium |
+| 9 | Single-command test runner | Low | Low-Med |
+| 10 | Code cleanup | Low | Low |
+| 11 | Memory optimization | High | Medium |
+| 12 | Fuzz testing | Medium | Medium |
