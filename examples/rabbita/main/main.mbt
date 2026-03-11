@@ -2,7 +2,7 @@
 using @html {button, div, h1, h2, li, p, span, text, textarea, ul}
 
 ///|
-using @rabbita {type Cmd, type Dispatch, type Html}
+using @rabbita {type Cmd, type Dispatch, type Html, delay, none}
 
 ///|
 enum WorkspaceMode {
@@ -16,6 +16,7 @@ enum Msg {
   SetMode(WorkspaceMode)
   ToggleDiagnostics
   TextInput(String)
+  RefreshProjection
   TreeEdited(@proj.TreeEditOp)
 }
 
@@ -28,6 +29,8 @@ struct Model {
   diagnostics_open : Bool
   peers : Array[(String, Int)]
   next_timestamp : Int
+  projection_dirty : Bool
+  refresh_scheduled : Bool
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -87,6 +90,8 @@ fn init_model() -> Model {
     diagnostics_open: true,
     peers: [("alice", 18), ("bob", 33)],
     next_timestamp: 1,
+    projection_dirty: false,
+    refresh_scheduled: false,
   }
 }
 
@@ -100,8 +105,17 @@ fn refresh(model : Model) -> Model {
     model.editor.get_proj_node(),
     model.editor.get_source_map(),
   )
-  { ..model, text_view, tree_state }
+  {
+    ..model,
+    text_view,
+    tree_state,
+    projection_dirty: false,
+    refresh_scheduled: false,
+  }
 }
+
+///|
+let deferred_refresh_ms = 16
 
 ///|
 fn is_ui_only_tree_edit(op : @proj.TreeEditOp) -> Bool {
@@ -112,15 +126,19 @@ fn is_ui_only_tree_edit(op : @proj.TreeEditOp) -> Bool {
 }
 
 ///|
-fn update(msg : Msg, model : Model) -> Model {
+fn update(
+  dispatch : Dispatch[Msg],
+  msg : Msg,
+  model : Model,
+) -> (Cmd, Model) {
   match msg {
-    SetMode(mode) => { ..model, workspace_mode: mode }
+    SetMode(mode) => (none, { ..model, workspace_mode: mode })
     ToggleDiagnostics =>
-      { ..model, diagnostics_open: !model.diagnostics_open }
+      (none, { ..model, diagnostics_open: !model.diagnostics_open })
     TextInput(new_text) => {
       let old_text = model.editor.get_text()
       if old_text == new_text {
-        model
+        (none, model)
       } else {
         let splice = @editor.compute_text_splice(old_text, new_text)
         model.editor.apply_text_edit(
@@ -129,8 +147,27 @@ fn update(msg : Msg, model : Model) -> Model {
           splice.inserted,
           model.next_timestamp,
         )
-        let refreshed = refresh(model)
-        { ..refreshed, next_timestamp: model.next_timestamp + 1 }
+        let updated = {
+          ..model,
+          text_view: new_text,
+          next_timestamp: model.next_timestamp + 1,
+          projection_dirty: true,
+        }
+        if model.refresh_scheduled {
+          (none, updated)
+        } else {
+          (
+            delay(dispatch(RefreshProjection), deferred_refresh_ms),
+            { ..updated, refresh_scheduled: true },
+          )
+        }
+      }
+    }
+    RefreshProjection => {
+      if model.projection_dirty {
+        (none, refresh(model))
+      } else {
+        (none, { ..model, refresh_scheduled: false })
       }
     }
     TreeEdited(op) => {
@@ -138,15 +175,15 @@ fn update(msg : Msg, model : Model) -> Model {
       let tree_state = model.tree_state.apply_edit(op)
       let model = { ..model, tree_state }
       if is_ui_only_tree_edit(op) {
-        return model
+        return (none, model)
       }
       // Round-trip tree edit through text CRDT so ops are broadcastable
       match model.editor.apply_tree_edit(op, model.next_timestamp) {
         Ok(_) => {
           let refreshed = refresh(model)
-          { ..refreshed, next_timestamp: model.next_timestamp + 1 }
+          (none, { ..refreshed, next_timestamp: model.next_timestamp + 1 })
         }
-        Err(_) => model
+        Err(_) => (none, model)
       }
     }
   }
@@ -404,7 +441,11 @@ test "TreeEdited Collapse stays local to UI state" {
   let model = init_model()
   let root_id = root_node_id_for_test(model)
   let old_text = model.editor.get_text()
-  let updated = update(TreeEdited(@proj.Collapse(node_id=root_id)), model)
+  let (_, updated) = update(
+    _ => none,
+    TreeEdited(@proj.Collapse(node_id=root_id)),
+    model,
+  )
   inspect(updated.editor.get_text(), content=old_text)
   inspect(updated.next_timestamp, content="1")
   inspect(updated.text_view, content=old_text)
@@ -419,7 +460,11 @@ test "TreeEdited Select stays local to UI state" {
   let model = init_model()
   let root_id = root_node_id_for_test(model)
   let old_text = model.editor.get_text()
-  let updated = update(TreeEdited(@proj.Select(node_id=root_id)), model)
+  let (_, updated) = update(
+    _ => none,
+    TreeEdited(@proj.Select(node_id=root_id)),
+    model,
+  )
   inspect(updated.editor.get_text(), content=old_text)
   inspect(updated.next_timestamp, content="1")
   inspect(updated.tree_state.selection.length(), content="1")
@@ -430,7 +475,8 @@ test "TreeEdited Select stays local to UI state" {
 test "TreeEdited WrapInLambda still round-trips through editor" {
   let model = init_model()
   let root_id = root_node_id_for_test(model)
-  let updated = update(
+  let (_, updated) = update(
+    _ => none,
     TreeEdited(@proj.WrapInLambda(node_id=root_id, var_name="x")),
     model,
   )
@@ -438,10 +484,33 @@ test "TreeEdited WrapInLambda still round-trips through editor" {
   inspect(updated.editor.get_text().contains("λx."), content="true")
 }
 
+///|
+test "TextInput defers projection refresh" {
+  let model = init_model()
+  let new_text = "let id = λx.x in let apply = λf.λx.f x in apply id 99"
+  let (_, updated) = update(_ => none, TextInput(new_text), model)
+  inspect(updated.text_view, content=new_text)
+  inspect(updated.next_timestamp, content="2")
+  inspect(updated.projection_dirty, content="true")
+  inspect(updated.refresh_scheduled, content="true")
+  inspect(updated.editor.get_text(), content=new_text)
+}
+
+///|
+test "RefreshProjection clears deferred refresh flags" {
+  let model = init_model()
+  let new_text = "let id = λx.x in let apply = λf.λx.f x in apply id 99"
+  let (_, dirty) = update(_ => none, TextInput(new_text), model)
+  let (_, refreshed) = update(_ => none, RefreshProjection, dirty)
+  inspect(refreshed.projection_dirty, content="false")
+  inspect(refreshed.refresh_scheduled, content="false")
+  inspect(refreshed.text_view, content=new_text)
+}
+
 // ── Main ────────────────────────────────────────────────────────────
 
 ///|
 fn main {
-  let app = @rabbita.simple_cell(model=init_model(), update~, view~)
+  let app = @rabbita.cell(model=init_model(), update~, view~)
   @rabbita.new(app).mount("app")
 }
