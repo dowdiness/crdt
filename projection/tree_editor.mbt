@@ -26,11 +26,13 @@ pub fn InteractiveTreeNode::from_term_node(
   node : ProjNode,
   source_map : SourceMap,
 ) -> InteractiveTreeNode {
-  InteractiveTreeNode::from_term_node_with_state(
-    node,
-    source_map,
-    @immut/hashset.new(),
-  )
+  let ui_state : TreeUIState = {
+    collapsed_nodes: @immut/hashset.new(),
+    selection: @immut/hashset.new(),
+    editing_node: None,
+    drop_target: None,
+  }
+  from_term_node_with_optional_ids(node, source_map, ui_state, None)
 }
 
 ///|
@@ -56,20 +58,22 @@ pub fn InteractiveTreeNode::from_term_node_with_state(
     editing_node: None,
     drop_target: None,
   }
-  let valid_ids : Array[NodeId] = []
-  from_term_node_with_full_state_and_ids(node, source_map, ui_state, valid_ids)
+  from_term_node_with_optional_ids(node, source_map, ui_state, None)
 }
 
 ///|
-/// Create an interactive tree node with full UI state while collecting valid IDs.
-fn from_term_node_with_full_state_and_ids(
+/// Create an interactive tree node and optionally collect valid IDs.
+fn from_term_node_with_optional_ids(
   node : ProjNode,
   source_map : SourceMap,
   ui_state : TreeUIState,
-  valid_ids : Array[NodeId],
+  valid_ids : Array[NodeId]?,
 ) -> InteractiveTreeNode {
   let node_id = NodeId(node.node_id)
-  valid_ids.push(node_id)
+  match valid_ids {
+    Some(valid_ids) => valid_ids.push(node_id)
+    None => ()
+  }
   let text_range = match source_map.get_range(node_id) {
     Some(range) => range
     None => Range::new(node.start, node.end)
@@ -87,9 +91,7 @@ fn from_term_node_with_full_state_and_ids(
   let children : Array[InteractiveTreeNode] = []
   for child in node.children {
     children.push(
-      from_term_node_with_full_state_and_ids(
-        child, source_map, ui_state, valid_ids,
-      ),
+      from_term_node_with_optional_ids(child, source_map, ui_state, valid_ids),
     )
   }
   {
@@ -103,6 +105,17 @@ fn from_term_node_with_full_state_and_ids(
     drop_target,
     text_range,
   }
+}
+
+///|
+/// Create an interactive tree node with full UI state while collecting valid IDs.
+fn from_term_node_with_full_state_and_ids(
+  node : ProjNode,
+  source_map : SourceMap,
+  ui_state : TreeUIState,
+  valid_ids : Array[NodeId],
+) -> InteractiveTreeNode {
+  from_term_node_with_optional_ids(node, source_map, ui_state, Some(valid_ids))
 }
 
 ///|

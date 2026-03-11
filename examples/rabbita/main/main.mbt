@@ -148,7 +148,14 @@ let deferred_refresh_ms = 16
 ///|
 fn is_ui_only_tree_edit(op : @proj.TreeEditOp) -> Bool {
   match op {
-    @proj.Collapse(..) | @proj.Expand(..) => true
+    @proj.Select(..)
+    | @proj.SelectRange(..)
+    | @proj.StartEdit(..)
+    | @proj.CancelEdit
+    | @proj.StartDrag(..)
+    | @proj.DragOver(..)
+    | @proj.Collapse(..)
+    | @proj.Expand(..) => true
     _ => false
   }
 }
@@ -202,19 +209,20 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         (none, { ..model, refresh_scheduled: false })
       }
     TreeEdited(op) => {
-      // Update UI state (selection, collapse, drag)
-      let tree_state = model.tree_state.apply_edit(op)
-      let model = { ..model, tree_state, }
       if needs_tree_refresh(op) {
+        let tree_state = model.tree_state.apply_edit(op)
+        let model = { ..model, tree_state, }
         return (none, refresh(model))
       }
       if is_ui_only_tree_edit(op) {
-        return (none, model)
+        let tree_state = model.tree_state.apply_edit(op)
+        return (none, { ..model, tree_state, })
       }
       // Round-trip tree edit through text CRDT so ops are broadcastable
       match model.editor.apply_tree_edit(op, model.next_timestamp) {
         Ok(_) => {
-          let refreshed = refresh(model)
+          let tree_state = model.tree_state.apply_edit(op)
+          let refreshed = refresh({ ..model, tree_state, })
           (none, { ..refreshed, next_timestamp: model.next_timestamp + 1 })
         }
         Err(_) => (none, model)
@@ -534,6 +542,21 @@ test "TreeEdited Select stays local to UI state" {
 }
 
 ///|
+test "TreeEdited StartEdit stays local to UI state" {
+  let model = init_model()
+  let root_id = root_node_id_for_test(model)
+  let old_text = model.editor.get_text()
+  let (_, updated) = update(
+    _ => none,
+    TreeEdited(@proj.StartEdit(node_id=root_id)),
+    model,
+  )
+  inspect(updated.editor.get_text(), content=old_text)
+  inspect(updated.next_timestamp, content="1")
+  inspect(updated.tree_state.editing_node == Some(root_id), content="true")
+}
+
+///|
 test "TreeEdited WrapInLambda still round-trips through editor" {
   let model = init_model()
   let root_id = root_node_id_for_test(model)
@@ -544,6 +567,31 @@ test "TreeEdited WrapInLambda still round-trips through editor" {
   )
   inspect(updated.next_timestamp, content="2")
   inspect(updated.editor.get_text().contains("λx."), content="true")
+}
+
+///|
+test "TreeEdited Delete preserves UI state when editor rejects it" {
+  let model = init_model()
+  let root_id = root_node_id_for_test(model)
+  let (_, selected) = update(
+    _ => none,
+    TreeEdited(@proj.Select(node_id=root_id)),
+    model,
+  )
+  let old_text = selected.editor.get_text()
+  let (_, updated) = update(
+    _ => none,
+    TreeEdited(@proj.Delete(node_id=root_id)),
+    selected,
+  )
+  inspect(updated.editor.get_text(), content=old_text)
+  inspect(updated.next_timestamp, content="1")
+  inspect(updated.tree_state.selection.length(), content="1")
+  inspect(updated.tree_state.selection[0] == root_id, content="true")
+  match updated.tree_state.tree {
+    Some(root) => inspect(root.selected, content="true")
+    None => abort("expected selected tree after rejected delete")
+  }
 }
 
 ///|

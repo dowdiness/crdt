@@ -36,13 +36,13 @@ fn scenarios() -> Array[Scenario] {
       label: "medium",
       source: benchmark_source(80, "0"),
       edited_source: benchmark_source(80, "1"),
-      iterations: 1,
+      iterations: 5,
     },
     {
       label: "large",
       source: benchmark_source(320, "0"),
       edited_source: benchmark_source(320, "1"),
-      iterations: 1,
+      iterations: 5,
     },
   ]
 }
@@ -52,6 +52,8 @@ fn average_ms(
   scenario : Scenario,
   apply_step : (@app.BenchmarkSession, String) -> Unit,
 ) -> Int {
+  let warmup = @app.BenchmarkSession::new(scenario.source)
+  apply_step(warmup, scenario.edited_source)
   let samples : Array[ReportSample] = []
   let mut use_edited = true
   for _i = 0; _i < scenario.iterations; _i = _i + 1 {

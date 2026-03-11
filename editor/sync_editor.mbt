@@ -70,6 +70,7 @@ fn SyncEditor::sync_parser_after_text_change(
   self : SyncEditor,
   old_source : String,
   new_source : String,
+  known_edit : @parser.Edit?,
 ) -> Unit {
   if old_source == new_source {
     return
@@ -79,7 +80,10 @@ fn SyncEditor::sync_parser_after_text_change(
     self.set_parser_signals(new_source, None)
     return
   }
-  let edit = compute_edit(old_source, new_source)
+  let edit = match known_edit {
+    Some(edit) => edit
+    None => compute_edit(old_source, new_source)
+  }
   let syntax = self.parser.edit(edit, new_source)
   self.set_parser_signals(new_source, Some(syntax))
 }
@@ -107,9 +111,14 @@ fn SyncEditor::current_syntax_tree(self : SyncEditor) -> @seam.SyntaxNode {
 ///|
 pub fn SyncEditor::insert(self : SyncEditor, text : String) -> Unit raise {
   let old_source = self.doc.text()
+  let insert_start = self.cursor
   self.doc.insert(@text.Pos::at(self.cursor), text)
   self.cursor = self.cursor + text.length()
-  self.sync_parser_after_text_change(old_source, self.doc.text())
+  self.sync_parser_after_text_change(
+    old_source,
+    self.doc.text(),
+    Some(@parser.Edit::insert(insert_start, text.length())),
+  )
 }
 
 ///|
@@ -119,7 +128,11 @@ pub fn SyncEditor::delete(self : SyncEditor) -> Bool {
     _ => false
   } noraise {
     _ => {
-      self.sync_parser_after_text_change(old_source, self.doc.text())
+      self.sync_parser_after_text_change(
+        old_source,
+        self.doc.text(),
+        Some(@parser.Edit::delete(self.cursor, self.cursor + 1)),
+      )
       true
     }
   }
@@ -137,7 +150,11 @@ pub fn SyncEditor::backspace(self : SyncEditor) -> Bool {
       }
     } noraise {
       _ => {
-        self.sync_parser_after_text_change(old_source, self.doc.text())
+        self.sync_parser_after_text_change(
+          old_source,
+          self.doc.text(),
+          Some(@parser.Edit::delete(self.cursor, self.cursor + 1)),
+        )
         true
       }
     }
@@ -230,7 +247,7 @@ pub fn SyncEditor::apply_sync(
   let old_source = self.doc.text()
   self.doc.sync().apply(msg)
   self.adjust_cursor()
-  self.sync_parser_after_text_change(old_source, self.doc.text())
+  self.sync_parser_after_text_change(old_source, self.doc.text(), None)
 }
 
 ///|
@@ -316,7 +333,11 @@ fn SyncEditor::apply_text_edit_internal(
   } else {
     self.adjust_cursor()
   }
-  self.sync_parser_after_text_change(old_source, self.doc.text())
+  self.sync_parser_after_text_change(
+    old_source,
+    self.doc.text(),
+    Some(@parser.Edit::new(safe_start, safe_delete_len, inserted.length())),
+  )
 }
 
 ///|
@@ -379,6 +400,7 @@ pub fn SyncEditor::insert_and_record(
   timestamp_ms : Int,
 ) -> Unit raise {
   let old_source = self.doc.text()
+  let insert_start = self.cursor
   self.doc.insert_and_record(
     @text.Pos::at(self.cursor),
     text,
@@ -386,7 +408,11 @@ pub fn SyncEditor::insert_and_record(
     timestamp_ms~,
   )
   self.cursor = self.cursor + text.length()
-  self.sync_parser_after_text_change(old_source, self.doc.text())
+  self.sync_parser_after_text_change(
+    old_source,
+    self.doc.text(),
+    Some(@parser.Edit::insert(insert_start, text.length())),
+  )
 }
 
 ///|
@@ -401,7 +427,11 @@ pub fn SyncEditor::delete_and_record(
       self.undo,
       timestamp_ms~,
     )
-    self.sync_parser_after_text_change(old_source, self.doc.text())
+    self.sync_parser_after_text_change(
+      old_source,
+      self.doc.text(),
+      Some(@parser.Edit::delete(self.cursor, self.cursor + 1)),
+    )
     true
   } catch {
     _ => false
@@ -423,7 +453,11 @@ pub fn SyncEditor::backspace_and_record(
         timestamp_ms~,
       )
       self.cursor = new_pos
-      self.sync_parser_after_text_change(old_source, self.doc.text())
+      self.sync_parser_after_text_change(
+        old_source,
+        self.doc.text(),
+        Some(@parser.Edit::delete(new_pos, new_pos + 1)),
+      )
       true
     } catch {
       _ => false

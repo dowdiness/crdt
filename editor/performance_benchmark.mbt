@@ -37,7 +37,7 @@ test "parser benchmark - reactive full reparse medium" (b : @bench.T) {
   )
   ignore(parser.term())
   let mut use_edited = true
-  b.bench(fn() {
+  b.bench(() => {
     let next_source = if use_edited {
       scenario.edited_source
     } else {
@@ -58,7 +58,7 @@ test "parser benchmark - imperative incremental medium" (b : @bench.T) {
   )
   ignore(parser.parse())
   let mut use_edited = true
-  b.bench(fn() {
+  b.bench(() => {
     let edit = if use_edited {
       scenario.forward_edit
     } else {
@@ -83,7 +83,7 @@ test "parser benchmark - reactive full reparse large" (b : @bench.T) {
   )
   ignore(parser.term())
   let mut use_edited = true
-  b.bench(fn() {
+  b.bench(() => {
     let next_source = if use_edited {
       scenario.edited_source
     } else {
@@ -104,7 +104,7 @@ test "parser benchmark - imperative incremental large" (b : @bench.T) {
   )
   ignore(parser.parse())
   let mut use_edited = true
-  b.bench(fn() {
+  b.bench(() => {
     let edit = if use_edited {
       scenario.forward_edit
     } else {
