@@ -233,10 +233,7 @@ test "SyncEditor: apply_text_edit reuses parser structure on local edit" {
   ignore(se.get_ast())
   se.apply_text_edit(8, 1, "y", 1000)
   inspect(se.get_text(), content="λf.λx.f y")
-  inspect(
-    @ast.print_term(se.get_ast()),
-    content="(λf. (λx. (f y)))",
-  )
+  inspect(@ast.print_term(se.get_ast()), content="(λf. (λx. (f y)))")
 }
 
 ///|

@@ -104,6 +104,14 @@ fn refresh(model : Model) -> Model {
 }
 
 ///|
+fn is_ui_only_tree_edit(op : @proj.TreeEditOp) -> Bool {
+  match op {
+    @proj.Select(..) | @proj.Collapse(..) | @proj.Expand(..) => true
+    _ => false
+  }
+}
+
+///|
 fn update(msg : Msg, model : Model) -> Model {
   match msg {
     SetMode(mode) => { ..model, workspace_mode: mode }
@@ -129,6 +137,9 @@ fn update(msg : Msg, model : Model) -> Model {
       // Update UI state (selection, collapse, drag)
       let tree_state = model.tree_state.apply_edit(op)
       let model = { ..model, tree_state }
+      if is_ui_only_tree_edit(op) {
+        return model
+      }
       // Round-trip tree edit through text CRDT so ops are broadcastable
       match model.editor.apply_tree_edit(op, model.next_timestamp) {
         Ok(_) => {
@@ -378,6 +389,53 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
     toolbar(dispatch, model),
     workspace(dispatch, model),
   ])
+}
+
+///|
+fn root_node_id_for_test(model : Model) -> @proj.NodeId {
+  match model.tree_state.tree {
+    Some(root) => root.id
+    None => abort("expected initial Rabbita tree")
+  }
+}
+
+///|
+test "TreeEdited Collapse stays local to UI state" {
+  let model = init_model()
+  let root_id = root_node_id_for_test(model)
+  let old_text = model.editor.get_text()
+  let updated = update(TreeEdited(@proj.Collapse(node_id=root_id)), model)
+  inspect(updated.editor.get_text(), content=old_text)
+  inspect(updated.next_timestamp, content="1")
+  inspect(updated.text_view, content=old_text)
+  match updated.tree_state.tree {
+    Some(root) => inspect(root.collapsed, content="true")
+    None => abort("expected collapsed tree")
+  }
+}
+
+///|
+test "TreeEdited Select stays local to UI state" {
+  let model = init_model()
+  let root_id = root_node_id_for_test(model)
+  let old_text = model.editor.get_text()
+  let updated = update(TreeEdited(@proj.Select(node_id=root_id)), model)
+  inspect(updated.editor.get_text(), content=old_text)
+  inspect(updated.next_timestamp, content="1")
+  inspect(updated.tree_state.selection.length(), content="1")
+  inspect(updated.tree_state.selection[0] == root_id, content="true")
+}
+
+///|
+test "TreeEdited WrapInLambda still round-trips through editor" {
+  let model = init_model()
+  let root_id = root_node_id_for_test(model)
+  let updated = update(
+    TreeEdited(@proj.WrapInLambda(node_id=root_id, var_name="x")),
+    model,
+  )
+  inspect(updated.next_timestamp, content="2")
+  inspect(updated.editor.get_text().contains("λx."), content="true")
 }
 
 // ── Main ────────────────────────────────────────────────────────────
