@@ -2,6 +2,7 @@
 
 **Parent:** [Performance Issues](../performance/RABBITA_PROJECTION_EDITOR_ISSUES.md)
 **Related:** [2026-03-10 Memo-Derived ProjNode Design](./2026-03-10-memo-derived-projnode-design.md)
+**Phase 5 Detail:** [2026-03-11 Tree Editor Subtree Reuse And Elision](./2026-03-11-tree-editor-subtree-reuse-design.md)
 **Status:** Proposed
 **Date:** 2026-03-11
 
@@ -116,6 +117,24 @@ This does not need browser-grade profiling first. Simple timers around the curre
 
 - lightweight timing hooks or debug logging
 - one baseline note appended to the performance doc
+
+**Initial baseline from this branch (release, 2026-03-11)**
+
+- Parser microbenchmarks in `editor/performance_benchmark.mbt`:
+  - medium (80 lets): reactive full reparse `473.73 us`, imperative incremental `495.21 us`
+  - large (320 lets): reactive full reparse `5.18 ms`, imperative incremental `5.33 ms`
+- Rabbita typing-path benchmark note:
+  - the old Rabbita benchmark loops were discarded because they reused one mutable editor state across the whole run, which polluted the measurement with growing undo/history state
+  - `examples/rabbita/perf_report` is now wired through the real Rabbita reducer path via `BenchmarkSession`
+  - fresh medium release samples from the fixed harness:
+    - legacy `set_text + refresh`: `318 ms/edit`
+    - incremental `apply_text_edit + refresh`: `294 ms/edit`
+    - deferred `TextInput` only: `267 ms/edit`
+    - deferred full cycle (`TextInput` + `RefreshProjection`): `343 ms/edit`
+  - large release sample from the fixed harness:
+    - first large deferred `TextInput` edit did not complete within a `5+ minute` observation window, so large-tree keystroke latency is still effectively non-interactive
+
+These numbers imply the parser delta work alone is not the dominant win. The remaining bottleneck is still projection/tree refresh and downstream UI rebuild on non-trivial trees.
 
 ### Phase 1. Introduce Edit-Based Text APIs In SyncEditor
 

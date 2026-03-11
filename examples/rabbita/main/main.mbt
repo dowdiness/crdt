@@ -2,7 +2,7 @@
 using @html {button, div, h1, h2, li, p, span, text, textarea, ul}
 
 ///|
-using @rabbita {type Cmd, type Dispatch, type Html}
+using @rabbita {type Cmd, type Dispatch, type Html, delay, none}
 
 ///|
 enum WorkspaceMode {
@@ -16,6 +16,7 @@ enum Msg {
   SetMode(WorkspaceMode)
   ToggleDiagnostics
   TextInput(String)
+  RefreshProjection
   TreeEdited(@proj.TreeEditOp)
 }
 
@@ -28,7 +29,15 @@ struct Model {
   diagnostics_open : Bool
   peers : Array[(String, Int)]
   next_timestamp : Int
+  projection_dirty : Bool
+  refresh_scheduled : Bool
 }
+
+///|
+struct SelectedNodeDetails {
+  label : String
+  child_count : Int
+} derive(Eq, Show)
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -54,18 +63,40 @@ fn kind_of(label : String) -> String {
 }
 
 ///|
-fn find_selected(
-  node : @proj.InteractiveTreeNode
+fn find_tree_node_by_id(
+  node : @proj.InteractiveTreeNode,
+  target : @proj.NodeId,
 ) -> @proj.InteractiveTreeNode? {
-  if node.selected {
+  if node.id == target {
     return Some(node)
   }
-  node.children.fold(init=None, fn(acc, child) {
-    match acc {
-      Some(_) => acc
-      None => find_selected(child)
+  node.children.fold(init=None, fn(found, child) {
+    match found {
+      Some(_) => found
+      None => find_tree_node_by_id(child, target)
     }
   })
+}
+
+///|
+fn selected_tree_node(model : Model) -> @proj.InteractiveTreeNode? {
+  let selected = match model.tree_state.selection {
+    [selected, ..] => Some(selected)
+    [] => None
+  }
+  match (selected, model.tree_state.tree) {
+    (Some(node_id), Some(tree)) => find_tree_node_by_id(tree, node_id)
+    _ => None
+  }
+}
+
+///|
+fn selected_node_details(model : Model) -> SelectedNodeDetails? {
+  match selected_tree_node(model) {
+    Some(node) =>
+      Some({ label: node.label, child_count: node.children.length() })
+    None => None
+  }
 }
 
 // ── Init ────────────────────────────────────────────────────────────
@@ -87,6 +118,8 @@ fn init_model() -> Model {
     diagnostics_open: true,
     peers: [("alice", 18), ("bob", 33)],
     next_timestamp: 1,
+    projection_dirty: false,
+    refresh_scheduled: false,
   }
 }
 
@@ -100,35 +133,99 @@ fn refresh(model : Model) -> Model {
     model.editor.get_proj_node(),
     model.editor.get_source_map(),
   )
-  { ..model, text_view, tree_state }
+  {
+    ..model,
+    text_view,
+    tree_state,
+    projection_dirty: false,
+    refresh_scheduled: false,
+  }
 }
 
 ///|
-fn update(msg : Msg, model : Model) -> Model {
+let deferred_refresh_ms = 16
+
+///|
+fn is_ui_only_tree_edit(op : @proj.TreeEditOp) -> Bool {
+  match op {
+    @proj.Select(..)
+    | @proj.SelectRange(..)
+    | @proj.StartEdit(..)
+    | @proj.CancelEdit
+    | @proj.StartDrag(..)
+    | @proj.DragOver(..)
+    | @proj.Collapse(..)
+    | @proj.Expand(..) => true
+    _ => false
+  }
+}
+
+///|
+fn needs_tree_refresh(op : @proj.TreeEditOp) -> Bool {
+  match op {
+    @proj.Select(..) | @proj.SelectRange(..) => true
+    _ => false
+  }
+}
+
+///|
+fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
   match msg {
-    SetMode(mode) => { ..model, workspace_mode: mode }
+    SetMode(mode) => (none, { ..model, workspace_mode: mode })
     ToggleDiagnostics =>
-      { ..model, diagnostics_open: !model.diagnostics_open }
+      (none, { ..model, diagnostics_open: !model.diagnostics_open })
     TextInput(new_text) => {
-      // Update CRDT text; projection state derives from SyncEditor.
-      model.editor.set_text(new_text)
-      let tree_state = model.tree_state.refresh(
-        model.editor.get_proj_node(),
-        model.editor.get_source_map(),
-      )
-      { ..model, text_view: new_text, tree_state }
+      let old_text = model.editor.get_text()
+      if old_text == new_text {
+        (none, model)
+      } else {
+        let splice = @editor.compute_text_splice(old_text, new_text)
+        model.editor.apply_text_edit(
+          splice.start,
+          splice.delete_len,
+          splice.inserted,
+          model.next_timestamp,
+        )
+        let updated = {
+          ..model,
+          text_view: new_text,
+          next_timestamp: model.next_timestamp + 1,
+          projection_dirty: true,
+        }
+        if model.refresh_scheduled {
+          (none, updated)
+        } else {
+          (
+            delay(dispatch(RefreshProjection), deferred_refresh_ms),
+            { ..updated, refresh_scheduled: true },
+          )
+        }
+      }
     }
+    RefreshProjection =>
+      if model.projection_dirty {
+        (none, refresh(model))
+      } else {
+        (none, { ..model, refresh_scheduled: false })
+      }
     TreeEdited(op) => {
-      // Update UI state (selection, collapse, drag)
-      let tree_state = model.tree_state.apply_edit(op)
-      let model = { ..model, tree_state }
+      if needs_tree_refresh(op) {
+        let tree_state = model.tree_state.apply_edit(op)
+        let model = { ..model, tree_state, }
+        return (none, refresh(model))
+      }
+      if is_ui_only_tree_edit(op) {
+        let tree_state = model.tree_state.apply_edit(op)
+        return (none, { ..model, tree_state, })
+      }
       // Round-trip tree edit through text CRDT so ops are broadcastable
       match model.editor.apply_tree_edit(op, model.next_timestamp) {
         Ok(_) => {
-          let refreshed = refresh(model)
-          { ..refreshed, next_timestamp: model.next_timestamp + 1 }
+          let tree_state = model.tree_state.apply_edit(op)
+          let refreshed = refresh({ ..model, tree_state, })
+          (none, { ..refreshed, next_timestamp: model.next_timestamp + 1 })
         }
-        Err(_) => model
+        Err(_) => (none, model)
       }
     }
   }
@@ -137,11 +234,7 @@ fn update(msg : Msg, model : Model) -> Model {
 // ── View helpers ────────────────────────────────────────────────────
 
 ///|
-fn control(
-  label : String,
-  on_click~ : Cmd,
-  active~ : Bool = false
-) -> Html {
+fn control(label : String, on_click~ : Cmd, active? : Bool = false) -> Html {
   let class_name = if active { "control active" } else { "control" }
   div(class=class_name, on_click~, [text(label)])
 }
@@ -151,7 +244,7 @@ fn control(
 ///|
 fn view_tree_node(
   dispatch : Dispatch[Msg],
-  node : @proj.InteractiveTreeNode
+  node : @proj.InteractiveTreeNode,
 ) -> Html {
   let class_name = if node.selected {
     "tree-node selected"
@@ -243,18 +336,17 @@ fn text_panel(dispatch : Dispatch[Msg], model : Model) -> Html {
 
 ///|
 fn selection_section(model : Model) -> Html {
-  let content = match model.tree_state.tree {
-    Some(tree) =>
-      match find_selected(tree) {
-        Some(node) =>
-          div(class="sidebar-detail", [
-            p(class="sidebar-copy", "Node: \{node.label}"),
-            p(class="sidebar-copy", "Kind: \{kind_of(node.label)}"),
-            p(class="sidebar-copy", "Children: \{node.children.length()}"),
-          ])
-        None => p(class="sidebar-copy", "No node selected.")
+  let content = match selected_node_details(model) {
+    Some(node) =>
+      div(class="sidebar-detail", [
+        p(class="sidebar-copy", "Node: \{node.label}"),
+        p(class="sidebar-copy", "Children: \{node.child_count}"),
+      ])
+    None =>
+      match model.tree_state.tree {
+        Some(_) => p(class="sidebar-copy", "No node selected.")
+        None => p(class="sidebar-copy", "No tree available.")
       }
-    None => p(class="sidebar-copy", "No tree available.")
   }
   div(class="sidebar-section", [
     h2(class="sidebar-title", "Selection"),
@@ -373,10 +465,190 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
   ])
 }
 
+///|
+fn root_node_id_for_test(model : Model) -> @proj.NodeId {
+  match model.tree_state.tree {
+    Some(root) => root.id
+    None => abort("expected initial Rabbita tree")
+  }
+}
+
+///|
+fn node_id_for_label_for_test(
+  node : @proj.InteractiveTreeNode,
+  label : String,
+) -> @proj.NodeId? {
+  if node.label == label {
+    return Some(node.id)
+  }
+  node.children.fold(init=None, fn(found, child) {
+    match found {
+      Some(_) => found
+      None => node_id_for_label_for_test(child, label)
+    }
+  })
+}
+
+///|
+fn selected_node_id_for_test(model : Model, label : String) -> @proj.NodeId {
+  match model.tree_state.tree {
+    Some(root) =>
+      match node_id_for_label_for_test(root, label) {
+        Some(node_id) => node_id
+        None => abort("expected tree node")
+      }
+    None => abort("expected initial Rabbita tree")
+  }
+}
+
+///|
+test "TreeEdited Collapse stays local to UI state" {
+  let model = init_model()
+  let root_id = root_node_id_for_test(model)
+  let old_text = model.editor.get_text()
+  let (_, updated) = update(
+    _ => none,
+    TreeEdited(@proj.Collapse(node_id=root_id)),
+    model,
+  )
+  inspect(updated.editor.get_text(), content=old_text)
+  inspect(updated.next_timestamp, content="1")
+  inspect(updated.text_view, content=old_text)
+  match updated.tree_state.tree {
+    Some(root) => inspect(root.collapsed, content="true")
+    None => abort("expected collapsed tree")
+  }
+}
+
+///|
+test "TreeEdited Select stays local to UI state" {
+  let model = init_model()
+  let root_id = root_node_id_for_test(model)
+  let old_text = model.editor.get_text()
+  let (_, updated) = update(
+    _ => none,
+    TreeEdited(@proj.Select(node_id=root_id)),
+    model,
+  )
+  inspect(updated.editor.get_text(), content=old_text)
+  inspect(updated.next_timestamp, content="1")
+  inspect(updated.tree_state.selection.length(), content="1")
+  inspect(updated.tree_state.selection[0] == root_id, content="true")
+  match updated.tree_state.tree {
+    Some(root) => inspect(root.selected, content="true")
+    None => abort("expected selected tree")
+  }
+  inspect(selected_node_details(updated) is Some(_), content="true")
+}
+
+///|
+test "TreeEdited StartEdit stays local to UI state" {
+  let model = init_model()
+  let root_id = root_node_id_for_test(model)
+  let old_text = model.editor.get_text()
+  let (_, updated) = update(
+    _ => none,
+    TreeEdited(@proj.StartEdit(node_id=root_id)),
+    model,
+  )
+  inspect(updated.editor.get_text(), content=old_text)
+  inspect(updated.next_timestamp, content="1")
+  inspect(updated.tree_state.editing_node == Some(root_id), content="true")
+}
+
+///|
+test "TreeEdited WrapInLambda still round-trips through editor" {
+  let model = init_model()
+  let root_id = root_node_id_for_test(model)
+  let (_, updated) = update(
+    _ => none,
+    TreeEdited(@proj.WrapInLambda(node_id=root_id, var_name="x")),
+    model,
+  )
+  inspect(updated.next_timestamp, content="2")
+  inspect(updated.editor.get_text().contains("λx."), content="true")
+}
+
+///|
+test "TreeEdited Delete preserves UI state when editor rejects it" {
+  let model = init_model()
+  let root_id = root_node_id_for_test(model)
+  let (_, selected) = update(
+    _ => none,
+    TreeEdited(@proj.Select(node_id=root_id)),
+    model,
+  )
+  let old_text = selected.editor.get_text()
+  let (_, updated) = update(
+    _ => none,
+    TreeEdited(@proj.Delete(node_id=root_id)),
+    selected,
+  )
+  inspect(updated.editor.get_text(), content=old_text)
+  inspect(updated.next_timestamp, content="1")
+  inspect(updated.tree_state.selection.length(), content="1")
+  inspect(updated.tree_state.selection[0] == root_id, content="true")
+  match updated.tree_state.tree {
+    Some(root) => inspect(root.selected, content="true")
+    None => abort("expected selected tree after rejected delete")
+  }
+}
+
+///|
+test "TextInput defers projection refresh" {
+  let model = init_model()
+  let new_text = "let id = λx.x in let apply = λf.λx.f x in apply id 99"
+  let (_, updated) = update(_ => none, TextInput(new_text), model)
+  inspect(updated.text_view, content=new_text)
+  inspect(updated.next_timestamp, content="2")
+  inspect(updated.projection_dirty, content="true")
+  inspect(updated.refresh_scheduled, content="true")
+  inspect(updated.editor.get_text(), content=new_text)
+}
+
+///|
+test "Selected sidebar details stay on the stale tree until RefreshProjection" {
+  let model = init_model()
+  let literal_id = selected_node_id_for_test(model, "42")
+  let (_, selected) = update(
+    _ => none,
+    TreeEdited(@proj.Select(node_id=literal_id)),
+    model,
+  )
+  let new_text = "let id = λx.x in let apply = λf.λx.f x in apply id 99"
+  let (_, dirty) = update(_ => none, TextInput(new_text), selected)
+  match selected_node_details(dirty) {
+    Some(details) => {
+      inspect(details.label, content="42")
+      inspect(details.child_count, content="0")
+    }
+    None => abort("expected selected node details before refresh")
+  }
+  let (_, refreshed) = update(_ => none, RefreshProjection, dirty)
+  match selected_node_details(refreshed) {
+    Some(details) => {
+      inspect(details.label, content="99")
+      inspect(details.child_count, content="0")
+    }
+    None => abort("expected selected node details after refresh")
+  }
+}
+
+///|
+test "RefreshProjection clears deferred refresh flags" {
+  let model = init_model()
+  let new_text = "let id = λx.x in let apply = λf.λx.f x in apply id 99"
+  let (_, dirty) = update(_ => none, TextInput(new_text), model)
+  let (_, refreshed) = update(_ => none, RefreshProjection, dirty)
+  inspect(refreshed.projection_dirty, content="false")
+  inspect(refreshed.refresh_scheduled, content="false")
+  inspect(refreshed.text_view, content=new_text)
+}
+
 // ── Main ────────────────────────────────────────────────────────────
 
 ///|
 fn main {
-  let app = @rabbita.simple_cell(model=init_model(), update~, view~)
+  let app = @rabbita.cell(model=init_model(), update~, view~)
   @rabbita.new(app).mount("app")
 }

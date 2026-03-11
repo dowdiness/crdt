@@ -26,11 +26,13 @@ pub fn InteractiveTreeNode::from_term_node(
   node : ProjNode,
   source_map : SourceMap,
 ) -> InteractiveTreeNode {
-  InteractiveTreeNode::from_term_node_with_state(
-    node,
-    source_map,
-    @immut/hashset.new(),
-  )
+  let ui_state : TreeUIState = {
+    collapsed_nodes: @immut/hashset.new(),
+    selection: @immut/hashset.new(),
+    editing_node: None,
+    drop_target: None,
+  }
+  from_term_node_with_optional_ids(node, source_map, ui_state, None)
 }
 
 ///|
@@ -56,17 +58,22 @@ pub fn InteractiveTreeNode::from_term_node_with_state(
     editing_node: None,
     drop_target: None,
   }
-  from_term_node_with_full_state(node, source_map, ui_state)
+  from_term_node_with_optional_ids(node, source_map, ui_state, None)
 }
 
 ///|
-/// Create an interactive tree node with full UI state (internal)
-fn from_term_node_with_full_state(
+/// Create an interactive tree node and optionally collect valid IDs.
+fn from_term_node_with_optional_ids(
   node : ProjNode,
   source_map : SourceMap,
   ui_state : TreeUIState,
+  valid_ids : Array[NodeId]?,
 ) -> InteractiveTreeNode {
   let node_id = NodeId(node.node_id)
+  match valid_ids {
+    Some(valid_ids) => valid_ids.push(node_id)
+    None => ()
+  }
   let text_range = match source_map.get_range(node_id) {
     Some(range) => range
     None => Range::new(node.start, node.end)
@@ -83,7 +90,9 @@ fn from_term_node_with_full_state(
   }
   let children : Array[InteractiveTreeNode] = []
   for child in node.children {
-    children.push(from_term_node_with_full_state(child, source_map, ui_state))
+    children.push(
+      from_term_node_with_optional_ids(child, source_map, ui_state, valid_ids),
+    )
   }
   {
     id: node_id,
@@ -96,6 +105,17 @@ fn from_term_node_with_full_state(
     drop_target,
     text_range,
   }
+}
+
+///|
+/// Create an interactive tree node with full UI state while collecting valid IDs.
+fn from_term_node_with_full_state_and_ids(
+  node : ProjNode,
+  source_map : SourceMap,
+  ui_state : TreeUIState,
+  valid_ids : Array[NodeId],
+) -> InteractiveTreeNode {
+  from_term_node_with_optional_ids(node, source_map, ui_state, Some(valid_ids))
 }
 
 ///|
@@ -188,7 +208,20 @@ pub fn TreeEditorState::refresh(
 ) -> TreeEditorState {
   match proj {
     Some(ast) => {
-      let valid_ids = collect_all_ids_from_ast(ast)
+      let valid_id_list : Array[NodeId] = []
+      let selection_set = @immut/hashset.from_iter(self.selection.iter())
+      let ui_state : TreeUIState = {
+        collapsed_nodes: self.collapsed_nodes,
+        selection: selection_set,
+        editing_node: self.editing_node,
+        drop_target: self.drop_target,
+      }
+      let tree = Some(
+        from_term_node_with_full_state_and_ids(
+          ast, source_map, ui_state, valid_id_list,
+        ),
+      )
+      let valid_ids = @immut/hashset.from_iter(valid_id_list.iter())
       let collapsed_nodes = self.collapsed_nodes.intersection(valid_ids)
       let selection = self.selection.filter(fn(id) { valid_ids.contains(id) })
       let editing_node = match self.editing_node {
@@ -213,14 +246,6 @@ pub fn TreeEditorState::refresh(
       } else {
         self.drop_position
       }
-      let selection_set = @immut/hashset.from_iter(selection.iter())
-      let ui_state : TreeUIState = {
-        collapsed_nodes,
-        selection: selection_set,
-        editing_node,
-        drop_target,
-      }
-      let tree = Some(from_term_node_with_full_state(ast, source_map, ui_state))
       {
         tree,
         selection,
@@ -234,24 +259,6 @@ pub fn TreeEditorState::refresh(
     }
     None => { ..self, tree: None }
   }
-}
-
-///|
-/// Collect all node IDs from AST as immutable set
-fn collect_all_ids_from_ast(node : ProjNode) -> @immut/hashset.HashSet[NodeId] {
-  collect_ids_from_ast_helper(node, @immut/hashset.new())
-}
-
-///|
-fn collect_ids_from_ast_helper(
-  node : ProjNode,
-  result : @immut/hashset.HashSet[NodeId],
-) -> @immut/hashset.HashSet[NodeId] {
-  let mut acc = result.add(NodeId(node.node_id))
-  for child in node.children {
-    acc = collect_ids_from_ast_helper(child, acc)
-  }
-  acc
 }
 
 ///|

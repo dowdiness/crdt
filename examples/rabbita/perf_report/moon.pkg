@@ -1,0 +1,7 @@
+import {
+  "dowdiness/rabbita-projectional-editor/main" @app,
+}
+
+options(
+  "is-main": true,
+)

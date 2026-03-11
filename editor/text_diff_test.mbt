@@ -1,6 +1,54 @@
 // Tests for text diffing utilities
 
 ///|
+test "compute_text_splice - replace in middle" {
+  let splice = compute_text_splice("abc", "aXYc")
+  inspect(splice.start, content="1")
+  inspect(splice.delete_len, content="1")
+  inspect(splice.inserted, content="XY")
+}
+
+///|
+test "compute_text_splice - no change" {
+  let splice = compute_text_splice("abc", "abc")
+  inspect(splice.start, content="3")
+  inspect(splice.delete_len, content="0")
+  inspect(splice.inserted, content="")
+}
+
+///|
+test "compute_text_splice - replace at start" {
+  let splice = compute_text_splice("abc", "XYc")
+  inspect(splice.start, content="0")
+  inspect(splice.delete_len, content="2")
+  inspect(splice.inserted, content="XY")
+}
+
+///|
+test "compute_text_splice - replace at end" {
+  let splice = compute_text_splice("abc", "abXY")
+  inspect(splice.start, content="2")
+  inspect(splice.delete_len, content="1")
+  inspect(splice.inserted, content="XY")
+}
+
+///|
+test "compute_text_splice - empty to text" {
+  let splice = compute_text_splice("", "abc")
+  inspect(splice.start, content="0")
+  inspect(splice.delete_len, content="0")
+  inspect(splice.inserted, content="abc")
+}
+
+///|
+test "compute_text_splice - text to empty" {
+  let splice = compute_text_splice("abc", "")
+  inspect(splice.start, content="0")
+  inspect(splice.delete_len, content="3")
+  inspect(splice.inserted, content="")
+}
+
+///|
 test "compute_edit - insert at start" {
   let old = "abc"
   let new = "xabc"
