@@ -133,8 +133,32 @@ This does not need browser-grade profiling first. Simple timers around the curre
     - deferred full cycle (`TextInput` + `RefreshProjection`): `343 ms/edit`
   - large release sample from the fixed harness:
     - first large deferred `TextInput` edit did not complete within a `5+ minute` observation window, so large-tree keystroke latency is still effectively non-interactive
+  - current harness spot-check after adding `large` mode and iteration override:
+    - `timeout 60s moon run perf_report medium 1` emitted one completed line before timeout:
+      - legacy `set_text + refresh`: `336 ms/edit`
+    - the same bounded run did not complete the remaining medium cases within `60s`
+    - `timeout 60s moon run perf_report large 1` emitted no completed report lines before timing out
+    - practical conclusion: the harness is now easier to drive, but it still needs timeout-aware per-case reporting before it is a reliable large-tree measurement tool
 
 These numbers imply the parser delta work alone is not the dominant win. The remaining bottleneck is still projection/tree refresh and downstream UI rebuild on non-trivial trees.
+
+**Current practical analysis from this branch**
+
+- The subtree reuse / elision / hydration work is a meaningful architectural improvement, but it is not yet a large-tree performance fix.
+- The branch improves correctness and keeps more UI work local, especially for selection and collapsed-subtree handling.
+- The remaining worst-case cost still appears to be dominated by the structural pipeline rather than tree-widget work:
+  - projection rebuild / reconcile
+  - source map rebuild
+  - `TreeEditorState::refresh(...)`
+  - surrounding deferred full-cycle reducer work
+- Medium-path behavior may improve incrementally, especially on deferred interactions, but the current harness still shows eager legacy refresh in the hundreds of milliseconds per edit.
+- Large-tree behavior remains the blocking problem: even `large 1` still fails to produce a usable completed line within a practical bounded run.
+
+So the correct read of this branch is:
+
+- `yes` as an incremental structural/performance win
+- `no` as the final answer to large-tree responsiveness
+- `no` as evidence that stable `60fps` is now within reach without another round of structural pipeline optimization and better measurement
 
 ### Phase 1. Introduce Edit-Based Text APIs In SyncEditor
 

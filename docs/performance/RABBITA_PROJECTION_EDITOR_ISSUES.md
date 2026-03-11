@@ -241,6 +241,41 @@ This investigation was based on static code analysis rather than browser profili
 3. cost difference between text edits and UI-only tree actions
 4. subtree size sensitivity for node insertion and sibling reorder operations
 
+## Current Benchmark Status
+
+The current `examples/rabbita/perf_report` harness is now easier to drive than the original version:
+
+- `moon run perf_report medium`
+- `moon run perf_report large`
+- `moon run perf_report large 1`
+
+However, current branch measurements still show that the harness is not yet a reliable large-tree reporter.
+
+Latest bounded runs on this branch:
+
+- `timeout 60s moon run perf_report medium 1`
+  - emitted one completed line before timing out:
+    - `medium legacy set_text + refresh: ~336 ms/edit`
+  - did not complete the remaining medium cases within `60s`
+- `timeout 60s moon run perf_report large 1`
+  - emitted no completed report lines before timing out
+
+Practical interpretation:
+
+- medium performance is still in the hundreds of milliseconds per edit on the eager legacy path
+- large-tree behavior remains effectively non-interactive
+- the benchmark harness still needs timeout-aware per-case reporting and phase breakdowns before it can serve as the primary diagnostic tool for large-tree stalls
+- the subtree reuse / elision / hydration work should therefore be read as an incremental win in architecture and medium-path behavior, not as a worst-case large-tree fix
+- the most likely remaining bottleneck is still the structural pipeline:
+  - projection rebuild / reconcile
+  - source map rebuild
+  - `TreeEditorState::refresh(...)`
+  - deferred full-cycle reducer work around those steps
+
+That harness redesign is tracked separately in:
+
+- `docs/plans/2026-03-11-rabbita-perf-harness-redesign.md`
+
 ## Conclusion
 
 The Rabbita projectional editor is currently structured around whole-document and whole-tree recomputation. That architecture explains both the poor responsiveness and the awkward editing feel. The first meaningful improvement will come from changing the text input path to incremental edits and preventing unnecessary full refreshes for UI-only actions.
