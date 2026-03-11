@@ -63,14 +63,6 @@ fn kind_of(label : String) -> String {
 }
 
 ///|
-fn selected_proj_node(model : Model) -> @proj.ProjNode? {
-  match model.tree_state.selection {
-    [selected, ..] => model.editor.get_node(selected)
-    [] => None
-  }
-}
-
-///|
 fn find_tree_node_by_id(
   node : @proj.InteractiveTreeNode,
   target : @proj.NodeId,
@@ -100,21 +92,10 @@ fn selected_tree_node(model : Model) -> @proj.InteractiveTreeNode? {
 
 ///|
 fn selected_node_details(model : Model) -> SelectedNodeDetails? {
-  if model.projection_dirty {
-    match selected_tree_node(model) {
-      Some(node) =>
-        Some({ label: node.label, child_count: node.children.length() })
-      None => None
-    }
-  } else {
-    match selected_proj_node(model) {
-      Some(node) =>
-        Some({
-          label: node.kind.to_string(),
-          child_count: node.children.length(),
-        })
-      None => None
-    }
+  match selected_tree_node(model) {
+    Some(node) =>
+      Some({ label: node.label, child_count: node.children.length() })
+    None => None
   }
 }
 
@@ -167,7 +148,15 @@ let deferred_refresh_ms = 16
 ///|
 fn is_ui_only_tree_edit(op : @proj.TreeEditOp) -> Bool {
   match op {
-    @proj.Select(..) | @proj.Collapse(..) | @proj.Expand(..) => true
+    @proj.Collapse(..) | @proj.Expand(..) => true
+    _ => false
+  }
+}
+
+///|
+fn needs_tree_refresh(op : @proj.TreeEditOp) -> Bool {
+  match op {
+    @proj.Select(..) | @proj.SelectRange(..) => true
     _ => false
   }
 }
@@ -216,6 +205,9 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       // Update UI state (selection, collapse, drag)
       let tree_state = model.tree_state.apply_edit(op)
       let model = { ..model, tree_state, }
+      if needs_tree_refresh(op) {
+        return (none, refresh(model))
+      }
       if is_ui_only_tree_edit(op) {
         return (none, model)
       }
@@ -534,6 +526,10 @@ test "TreeEdited Select stays local to UI state" {
   inspect(updated.next_timestamp, content="1")
   inspect(updated.tree_state.selection.length(), content="1")
   inspect(updated.tree_state.selection[0] == root_id, content="true")
+  match updated.tree_state.tree {
+    Some(root) => inspect(root.selected, content="true")
+    None => abort("expected selected tree")
+  }
   inspect(selected_node_details(updated) is Some(_), content="true")
 }
 
@@ -583,7 +579,7 @@ test "Selected sidebar details stay on the stale tree until RefreshProjection" {
   let (_, refreshed) = update(_ => none, RefreshProjection, dirty)
   match selected_node_details(refreshed) {
     Some(details) => {
-      inspect(details.label.contains("99"), content="true")
+      inspect(details.label, content="99")
       inspect(details.child_count, content="0")
     }
     None => abort("expected selected node details after refresh")
