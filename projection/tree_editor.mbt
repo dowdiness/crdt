@@ -727,14 +727,16 @@ pub fn TreeEditorState::expand_node(
   proj : ProjNode?,
   source_map : SourceMap,
 ) -> TreeEditorState {
-  let expanded = self.apply_edit(Expand(node_id=node_id))
   match self.loaded_nodes.get(node_id) {
     Some(current_node) =>
       match current_node.children {
-        Elided(_) => expanded.hydrate_subtree(node_id, proj, source_map)
-        Loaded(_) => expanded
+        Elided(_) => {
+          let hydrated = self.hydrate_subtree(node_id, proj, source_map)
+          hydrated.apply_edit(Expand(node_id~))
+        }
+        Loaded(_) => self.apply_edit(Expand(node_id~))
       }
-    None => expanded
+    None => self
   }
 }
 
@@ -754,7 +756,7 @@ fn TreeEditorState::hydrate_subtree(
           match get_node_in_tree(proj, node_id) {
             Some(proj_node) => {
               let ui_state : TreeUIState = {
-                collapsed_nodes: self.collapsed_nodes,
+                collapsed_nodes: self.collapsed_nodes.remove(node_id),
                 selection: @immut/hashset.from_iter(self.selection.iter()),
                 editing_node: self.editing_node,
                 drop_target: self.drop_target,
@@ -962,23 +964,27 @@ pub fn TreeEditorState::apply_edit(
         self
       }
     Expand(node_id~) =>
-      // Guard: only expand if node exists in tree
-      if self.loaded_nodes.get(node_id) is Some(_) {
-        // Immutable remove from collapsed_nodes
-        let collapsed_nodes = self.collapsed_nodes.remove(node_id)
-        // Update tree node to reflect expanded state
-        let (tree, changed_nodes) = update_collapsed_state(
-          self.tree,
-          node_id,
-          false,
-        )
-        let loaded_nodes = update_loaded_nodes_for_path(
-          self.loaded_nodes,
-          changed_nodes,
-        )
-        { ..self, tree, collapsed_nodes, loaded_nodes }
-      } else {
-        self
+      match self.loaded_nodes.get(node_id) {
+        // Keep Expand atomic: callers must hydrate elided branches via
+        // `expand_node(...)` before clearing the collapsed flag.
+        Some(node) =>
+          match node.children {
+            Elided(_) => self
+            Loaded(_) => {
+              let collapsed_nodes = self.collapsed_nodes.remove(node_id)
+              let (tree, changed_nodes) = update_collapsed_state(
+                self.tree,
+                node_id,
+                false,
+              )
+              let loaded_nodes = update_loaded_nodes_for_path(
+                self.loaded_nodes,
+                changed_nodes,
+              )
+              { ..self, tree, collapsed_nodes, loaded_nodes }
+            }
+          }
+        None => self
       }
   }
 }

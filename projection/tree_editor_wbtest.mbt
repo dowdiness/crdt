@@ -186,6 +186,31 @@ test "hydrate_subtree expands an elided branch without full refresh" {
 }
 
 ///|
+test "apply_edit Expand is a no-op for elided branches" {
+  let (root, source_map, state) = tree_editor_test_state("(1 + 2) + (3 + 4)")
+  let tree = match state.tree {
+    Some(tree) => tree
+    None => abort("expected initial tree")
+  }
+  let right = tree_editor_test_loaded_children(tree)[1]
+  let elided = state
+    .apply_edit(Collapse(node_id=right.id))
+    .refresh(Some(root), source_map)
+  let expanded = elided.apply_edit(Expand(node_id=right.id))
+  let expanded_tree = match expanded.tree {
+    Some(tree) => tree
+    None => abort("expected expanded tree")
+  }
+  let expanded_right = tree_editor_test_loaded_children(expanded_tree)[1]
+
+  inspect(expanded_right.collapsed, content="true")
+  inspect(
+    tree_editor_test_elided_descendant_count(expanded_right) > 0,
+    content="true",
+  )
+}
+
+///|
 test "SelectRange collects nodes in preorder" {
   let (_, _, state) = tree_editor_test_state("1 + 2")
   let ids = tree_editor_test_ids(state.tree)

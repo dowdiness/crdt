@@ -699,14 +699,14 @@ test "TreeEdited Expand does not hydrate elided subtree while projection is dirt
   inspect(expanded.refresh_scheduled, content="true")
   match expanded.tree_state.tree {
     Some(root) => {
-      inspect(root.collapsed, content="false")
+      inspect(root.collapsed, content="true")
       match root.children {
         @proj.Elided(descendant_count) =>
           inspect(descendant_count > 0, content="true")
         @proj.Loaded(_) => abort("expected stale tree to remain unhydrated")
       }
     }
-    None => abort("expected expanded stale tree")
+    None => abort("expected stale tree")
   }
 }
 
