@@ -66,7 +66,7 @@ Recommended Cloudflare Pages settings for this example:
 - Build command: `bun run build`
 - Build output directory: `dist`
 
-The Wrangler files under `web/` in this repo are for a different deployment
+The Wrangler files under `examples/web/` in this repo are for a different deployment
 target and do not configure `examples/rabbita`.
 
 If your Cloudflare project runs a deploy command such as `bunx wrangler deploy`,

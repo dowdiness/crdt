@@ -76,7 +76,7 @@ Automates the web build workflow:
 ./scripts/build-web.sh
 # Equivalent to:
 # moon build --target js --release
-# cp target/js/release/build/crdt.js web/public/
+# cp target/js/release/build/crdt.js examples/web/public/
 ```
 
 #### `test-all.sh`
@@ -327,7 +327,7 @@ git commit -m "chore: format code"
 
 **If deployment fails:**
 1. Verify GitHub Pages is enabled
-2. Check that `web/dist` is created
+2. Check that `examples/web/dist` is created
 3. Review deploy.yml logs in Actions tab
 
 ## Success Criteria

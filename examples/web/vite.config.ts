@@ -7,12 +7,12 @@ export default defineConfig({
       modules: [
         {
           name: '@moonbit/crdt',
-          path: '..',
+          path: '../..',
           output: '_build/js/release/build/crdt.js'
         },
         {
           name: '@moonbit/graphviz',
-          path: '../graphviz',
+          path: '../../graphviz',
           output: '_build/js/release/build/browser/browser.js'
         }
       ]
@@ -21,7 +21,7 @@ export default defineConfig({
   server: {
     fs: {
       // Allow serving files from parent directory
-      allow: ['..']
+      allow: ['../..']
     }
   },
   build: {

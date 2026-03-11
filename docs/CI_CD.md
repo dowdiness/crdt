@@ -139,18 +139,18 @@ Automatically deploys to GitHub Pages on push to `main`.
 1. **MoonBit Build**
    ```bash
    moon build --target js --release
-   cp target/js/release/build/crdt.js web/public/
+   cp target/js/release/build/crdt.js examples/web/public/
    ```
 
 2. **Web Build**
    ```bash
-   cd web
+   cd examples/web
    npm ci
    npm run build
    ```
 
 3. **Deploy**
-   - Uploads `web/dist` to GitHub Pages
+   - Uploads `examples/web/dist` to GitHub Pages
    - Publishes to `https://dowdiness.github.io/crdt/`
 
 #### Setup Requirements
@@ -215,7 +215,7 @@ Automatically generates changelog from commits since last tag:
 Automatic dependency updates:
 
 - **GitHub Actions** - Weekly updates
-- **NPM packages** - Weekly updates (web, examples/demo-react, valtio)
+- **NPM packages** - Weekly updates (examples/web, examples/demo-react, valtio)
 - **Grouped updates** - Playwright and Vite updates grouped
 
 Dependabot creates PRs that are automatically tested by CI.

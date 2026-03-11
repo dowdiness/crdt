@@ -44,14 +44,14 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: examples/web/package-lock.json
 
       - name: Install web dependencies
-        working-directory: web
+        working-directory: examples/web
         run: npm ci
 
       - name: Build web application
-        working-directory: web
+        working-directory: examples/web
         run: npm run build
 
       - name: Setup Pages
@@ -60,7 +60,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: web/dist
+          path: examples/web/dist
 
   deploy:
     name: Deploy to GitHub Pages

@@ -34,13 +34,13 @@ build-web: ## Build web application (MoonBit + Vite)
 	@./scripts/build-web.sh
 
 web-dev: build-js ## Build JS and start web dev server
-	@cp _build/js/release/build/crdt.js web/public/
-	@cd web && npm run dev
+	@cp _build/js/release/build/crdt.js examples/web/public/
+	@cd examples/web && npm run dev
 
 clean: ## Clean build artifacts
 	moon clean
 	rm -rf target _build
-	rm -rf web/dist web/public/crdt.js
+	rm -rf examples/web/dist examples/web/public/crdt.js
 
 install-hooks: ## Install git pre-commit hooks
 	@./scripts/install-hooks.sh

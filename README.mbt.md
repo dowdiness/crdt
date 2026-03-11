@@ -21,7 +21,7 @@ crdt/
 ├── editor/               # Editor abstractions
 ├── projection/           # Projectional editing
 ├── cmd/                  # CLI entry points
-├── web/                  # Web frontend (Vite)
+├── examples/web/         # Web frontend (Vite)
 └── examples/demo-react/  # React demo
 ```
 
@@ -45,7 +45,7 @@ git submodule update --init --recursive
 
 ```sh
 moon build --target js
-cd web
+cd examples/web
 npm install
 npm run dev
 ```

@@ -27,7 +27,7 @@ moon build --target js --release
 echo "==> Building graphviz module..."
 (cd graphviz && moon build --target js --release)
 
-cd web
+cd examples/web
 
 # Build with Vite (modules should already exist)
 npx vite build

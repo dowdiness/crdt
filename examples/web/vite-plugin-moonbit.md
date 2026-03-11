@@ -41,8 +41,8 @@ A general-purpose Vite plugin for building and importing MoonBit modules.
 ```bash
 # Manual workflow
 cd ../moonbit-module && moon build --target js
-cp target/js/release/build/module.js ../web/public/
-cd ../web && npm run dev
+cp target/js/release/build/module.js ../examples/web/public/
+cd ../examples/web && npm run dev
 
 # For every change:
 # 1. Stop Vite
@@ -280,7 +280,7 @@ project/
 │               └── build/
 │                   ├── mymodule.js
 │                   └── mymodule.d.ts
-└── web/                    # Vite project
+└── examples/web/           # Vite project
     ├── src/
     │   └── main.ts
     ├── vite.config.ts

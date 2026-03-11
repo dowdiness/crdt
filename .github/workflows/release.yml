@@ -77,9 +77,9 @@ jobs:
             LICENSE
 
           # Package web build
-          cd web/dist
-          tar -czf ../../release/crdt-web-${VERSION}.tar.gz .
-          cd ../..
+          cd examples/web/dist
+          tar -czf ../../../release/crdt-web-${VERSION}.tar.gz .
+          cd ../../..
 
       - name: Generate changelog
         id: changelog

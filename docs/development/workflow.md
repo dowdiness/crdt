@@ -48,8 +48,8 @@ When adding features, consult:
 ## Web Development
 
 ```bash
-# From the web/ directory
-cd web
+# From the examples/web/ directory
+cd examples/web
 npm install
 npm run dev        # Start development server (http://localhost:5173)
 npm run build      # Build for production
@@ -63,8 +63,8 @@ After making changes to MoonBit code that affects the web interface:
 ```bash
 # From the crdt/ directory
 moon build --target js
-cp target/js/release/build/crdt.js web/public/
-cp target/js/release/build/crdt.d.ts web/public/
+cp target/js/release/build/crdt.js examples/web/public/
+cp target/js/release/build/crdt.d.ts examples/web/public/
 ```
 
 ## Git Commit Process

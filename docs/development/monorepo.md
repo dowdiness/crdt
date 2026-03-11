@@ -16,7 +16,7 @@ crdt/                           ← monorepo (dowdiness/crdt)
 ├── editor/                     ← monorepo package
 ├── projection/                 ← monorepo package
 ├── cmd/                        ← monorepo package
-├── web/                        ← monorepo (web frontend)
+├── examples/web/               ← monorepo (web frontend)
 └── examples/demo-react/        ← monorepo (React demo)
 ```
 
@@ -48,7 +48,7 @@ git submodule update --init --recursive
 
 ## Daily Workflow
 
-### Working on monorepo packages (editor/, projection/, cmd/, web/)
+### Working on monorepo packages (editor/, projection/, cmd/, examples/web/)
 
 No submodule awareness needed. Work as normal:
 

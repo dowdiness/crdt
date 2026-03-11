@@ -14,7 +14,7 @@ This guide gets you up and running with Cloudflare Workers in 5 minutes.
 npm install -g wrangler
 
 # Or use the local version
-cd web
+cd examples/web
 npm install -D wrangler
 
 # Login to Cloudflare
@@ -24,7 +24,7 @@ wrangler login
 ## 2. Deploy Signaling Server (1 minute)
 
 ```bash
-cd web
+cd examples/web
 
 # Deploy the WebSocket signaling server
 wrangler deploy --config wrangler-signaling.toml
@@ -42,7 +42,7 @@ wrangler deploy --config wrangler-signaling.toml
 
 ### Option A: Edit main.ts directly
 
-Open `web/src/main.ts` and replace line 35:
+Open `examples/web/src/main.ts` and replace line 35:
 
 ```typescript
 // Change this:
@@ -54,7 +54,7 @@ Open `web/src/main.ts` and replace line 35:
 
 ### Option B: Use environment variable
 
-Create `web/.env`:
+Create `examples/web/.env`:
 
 ```bash
 VITE_SIGNALING_URL=wss://crdt-signaling-server.YOUR-ACTUAL-SUBDOMAIN.workers.dev
@@ -63,7 +63,7 @@ VITE_SIGNALING_URL=wss://crdt-signaling-server.YOUR-ACTUAL-SUBDOMAIN.workers.dev
 ## 4. Test Locally (1 minute)
 
 ```bash
-cd web
+cd examples/web
 npm run dev
 ```
 
@@ -76,7 +76,7 @@ Open http://localhost:5173 in two browser windows:
 Deploy your editor to Cloudflare Pages:
 
 ```bash
-cd web
+cd examples/web
 
 # Build the site
 npm run build
@@ -115,7 +115,7 @@ wrangler deploy --config wrangler-signaling.toml
 
 ### TypeScript errors about `import.meta.env`
 
-Make sure `web/src/vite-env.d.ts` exists with the proper type definitions.
+Make sure `examples/web/src/vite-env.d.ts` exists with the proper type definitions.
 
 ## Cost Estimate
 

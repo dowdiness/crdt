@@ -132,7 +132,7 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
 
 - [x] Add top-level `Makefile` or `justfile` wrapping both-module test commands into a single invocation
 - [x] Add pre-commit hook running `moon check && moon fmt --check`
-- [x] Script the web build workflow (`moon build --target js && cp target/js/release/build/crdt.js web/public/`)
+- [x] Script the web build workflow (`moon build --target js && cp target/js/release/build/crdt.js examples/web/public/`)
 
 ---
 

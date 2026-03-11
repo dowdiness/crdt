@@ -160,7 +160,7 @@ Benchmarks can be noisy. Look for:
 
 1. Check repository settings → Pages
 2. Ensure source is set to "GitHub Actions"
-3. Verify `web/dist` directory is created during build
+3. Verify `examples/web/dist` directory is created during build
 
 ### Format Check Fails
 

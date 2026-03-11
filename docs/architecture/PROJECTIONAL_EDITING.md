@@ -630,10 +630,10 @@ enum ValidationLevel {
 - ✅ `projection/tree_editor.mbt` — TreeEditorState with immutable UI state
 - ✅ `projection/tree_editor_wbtest.mbt` — 14 whitebox tests for guards/immutability
 - ❌ `crdt/src/crdt.mbt` — Extended FFI for tree operations
-- ❌ `web/src/tree-editor.ts` — Unified tree editor component
-- ❌ `web/src/tree-renderer.ts` — SVG/Canvas tree rendering
-- ❌ `web/src/projection-manager.ts` — Projection synchronization
-- ❌ `web/src/editor.ts` — Integrate with projection system
+- ❌ `examples/web/src/tree-editor.ts` — Unified tree editor component
+- ❌ `examples/web/src/tree-renderer.ts` — SVG/Canvas tree rendering
+- ❌ `examples/web/src/projection-manager.ts` — Projection synchronization
+- ❌ `examples/web/src/editor.ts` — Integrate with projection system
 
 **Completed Deliverables**:
 1. ✅ `TreeEditorState` — Manages UI-only state separate from model:
@@ -762,8 +762,8 @@ enum ValidationLevel {
 **Files to create**:
 - `projection/projected_editor.mbt` — Unified editor facade
 - `crdt.mbt` (root) — FFI exports for JS
-- `web/src/event-router.ts` — JS event dispatcher
-- `web/src/moonbit-bridge.ts` — FFI wrapper
+- `examples/web/src/event-router.ts` — JS event dispatcher
+- `examples/web/src/moonbit-bridge.ts` — FFI wrapper
 
 **Unused Constructors Resolution**:
 The following will be used when the integration layer is built:

@@ -11,7 +11,7 @@ Lambda Calculus CRDT Editor - eg-walker implementation in MoonBit
 - `graphviz/` - Graphviz renderer (submodule → [dowdiness/graphviz](https://github.com/dowdiness/graphviz))
 - `valtio/` - Valtio state management (submodule → [dowdiness/valtio](https://github.com/dowdiness/valtio))
 - `editor/`, `projection/`, `cmd/` - Application packages (in monorepo)
-- `web/`, `examples/demo-react/` - Web frontends (in monorepo)
+- `examples/web/`, `examples/demo-react/` - Web frontends (in monorepo)
 
 **Modules:** 3 MoonBit modules (crdt + event-graph-walker + loom framework)
 
@@ -45,9 +45,9 @@ moon check                          # Lint
 
 ### Web Development
 ```bash
-cd web && npm run dev               # Dev server (localhost:5173)
+cd examples/web && npm run dev      # Dev server (localhost:5173)
 moon build --target js              # Build for web
-cp target/js/release/build/crdt.js web/public/
+cp target/js/release/build/crdt.js examples/web/public/
 ```
 
 ### Benchmarks

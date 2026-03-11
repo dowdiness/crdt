@@ -25,7 +25,7 @@ Part of the [dowdiness/crdt](https://github.com/dowdiness/crdt) monorepo.
 ### Development
 
 ```bash
-cd web
+cd examples/web
 npm install
 npm run dev
 

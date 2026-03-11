@@ -26,7 +26,7 @@ npm install -g wrangler
 Or install locally in your project:
 
 ```bash
-cd web
+cd examples/web
 npm install -D wrangler
 ```
 
@@ -42,7 +42,7 @@ This will open a browser window for authentication.
 
 ## Step 3: Deploy the Signaling Server
 
-From the `web/` directory:
+From the `examples/web/` directory:
 
 ```bash
 # Deploy the signaling server
@@ -80,7 +80,7 @@ Update your application to use the Cloudflare Workers URL instead of `localhost:
 
 ### Option A: Environment Variable
 
-Create a `.env` file in the `web/` directory:
+Create a `.env` file in the `examples/web/` directory:
 
 ```bash
 VITE_SIGNALING_URL=wss://crdt-signaling-server.<your-subdomain>.workers.dev

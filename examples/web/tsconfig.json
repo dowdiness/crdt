@@ -10,11 +10,11 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "paths": {
-      "@moonbit/crdt": ["../_build/js/release/build/crdt.d.ts"],
-      "@moonbit/crdt/moonbit": ["../_build/js/release/build/moonbit.d.ts"],
-      "@moonbit/graphviz": ["../graphviz/_build/js/release/build/browser/browser.d.ts"]
+      "@moonbit/crdt": ["../../_build/js/release/build/crdt.d.ts"],
+      "@moonbit/crdt/moonbit": ["../../_build/js/release/build/moonbit.d.ts"],
+      "@moonbit/graphviz": ["../../graphviz/_build/js/release/build/browser/browser.d.ts"]
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "../_build", "../graphviz/_build"]
+  "exclude": ["node_modules", "../../_build", "../../graphviz/_build"]
 }
