@@ -33,6 +33,12 @@ struct Model {
   refresh_scheduled : Bool
 }
 
+///|
+struct SelectedNodeDetails {
+  label : String
+  child_count : Int
+} derive(Eq, Show)
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 ///|
@@ -56,19 +62,58 @@ fn kind_of(label : String) -> String {
   }
 }
 
+fn selected_proj_node(model : Model) -> @proj.ProjNode? {
+  match model.tree_state.selection {
+    [selected, ..] => model.editor.get_node(selected)
+    [] => None
+  }
+}
+
 ///|
-fn find_selected(
-  node : @proj.InteractiveTreeNode
+fn find_tree_node_by_id(
+  node : @proj.InteractiveTreeNode,
+  target : @proj.NodeId,
 ) -> @proj.InteractiveTreeNode? {
-  if node.selected {
+  if node.id == target {
     return Some(node)
   }
-  node.children.fold(init=None, fn(acc, child) {
-    match acc {
-      Some(_) => acc
-      None => find_selected(child)
+  node.children.fold(init=None, fn(found, child) {
+    match found {
+      Some(_) => found
+      None => find_tree_node_by_id(child, target)
     }
   })
+}
+
+///|
+fn selected_tree_node(model : Model) -> @proj.InteractiveTreeNode? {
+  let selected = match model.tree_state.selection {
+    [selected, ..] => Some(selected)
+    [] => None
+  }
+  match (selected, model.tree_state.tree) {
+    (Some(node_id), Some(tree)) => find_tree_node_by_id(tree, node_id)
+    _ => None
+  }
+}
+
+///|
+fn selected_node_details(model : Model) -> SelectedNodeDetails? {
+  if model.projection_dirty {
+    match selected_tree_node(model) {
+      Some(node) => Some({ label: node.label, child_count: node.children.length() })
+      None => None
+    }
+  } else {
+    match selected_proj_node(model) {
+      Some(node) =>
+        Some({
+          label: node.kind.to_string(),
+          child_count: node.children.length(),
+        })
+      None => None
+    }
+  }
 }
 
 // ── Init ────────────────────────────────────────────────────────────
@@ -298,18 +343,17 @@ fn text_panel(dispatch : Dispatch[Msg], model : Model) -> Html {
 
 ///|
 fn selection_section(model : Model) -> Html {
-  let content = match model.tree_state.tree {
-    Some(tree) =>
-      match find_selected(tree) {
-        Some(node) =>
-          div(class="sidebar-detail", [
-            p(class="sidebar-copy", "Node: \{node.label}"),
-            p(class="sidebar-copy", "Kind: \{kind_of(node.label)}"),
-            p(class="sidebar-copy", "Children: \{node.children.length()}"),
-          ])
-        None => p(class="sidebar-copy", "No node selected.")
+  let content = match selected_node_details(model) {
+    Some(node) =>
+      div(class="sidebar-detail", [
+        p(class="sidebar-copy", "Node: \{node.label}"),
+        p(class="sidebar-copy", "Children: \{node.child_count}"),
+      ])
+    None =>
+      match model.tree_state.tree {
+        Some(_) => p(class="sidebar-copy", "No node selected.")
+        None => p(class="sidebar-copy", "No tree available.")
       }
-    None => p(class="sidebar-copy", "No tree available.")
   }
   div(class="sidebar-section", [
     h2(class="sidebar-title", "Selection"),
@@ -437,6 +481,34 @@ fn root_node_id_for_test(model : Model) -> @proj.NodeId {
 }
 
 ///|
+fn node_id_for_label_for_test(
+  node : @proj.InteractiveTreeNode,
+  label : String,
+) -> @proj.NodeId? {
+  if node.label == label {
+    return Some(node.id)
+  }
+  node.children.fold(init=None, fn(found, child) {
+    match found {
+      Some(_) => found
+      None => node_id_for_label_for_test(child, label)
+    }
+  })
+}
+
+///|
+fn selected_node_id_for_test(model : Model, label : String) -> @proj.NodeId {
+  match model.tree_state.tree {
+    Some(root) =>
+      match node_id_for_label_for_test(root, label) {
+        Some(node_id) => node_id
+        None => abort("expected tree node")
+      }
+    None => abort("expected initial Rabbita tree")
+  }
+}
+
+///|
 test "TreeEdited Collapse stays local to UI state" {
   let model = init_model()
   let root_id = root_node_id_for_test(model)
@@ -469,6 +541,7 @@ test "TreeEdited Select stays local to UI state" {
   inspect(updated.next_timestamp, content="1")
   inspect(updated.tree_state.selection.length(), content="1")
   inspect(updated.tree_state.selection[0] == root_id, content="true")
+  inspect(selected_node_details(updated) is Some(_), content="true")
 }
 
 ///|
@@ -494,6 +567,34 @@ test "TextInput defers projection refresh" {
   inspect(updated.projection_dirty, content="true")
   inspect(updated.refresh_scheduled, content="true")
   inspect(updated.editor.get_text(), content=new_text)
+}
+
+///|
+test "Selected sidebar details stay on the stale tree until RefreshProjection" {
+  let model = init_model()
+  let literal_id = selected_node_id_for_test(model, "42")
+  let (_, selected) = update(
+    _ => none,
+    TreeEdited(@proj.Select(node_id=literal_id)),
+    model,
+  )
+  let new_text = "let id = λx.x in let apply = λf.λx.f x in apply id 99"
+  let (_, dirty) = update(_ => none, TextInput(new_text), selected)
+  match selected_node_details(dirty) {
+    Some(details) => {
+      inspect(details.label, content="42")
+      inspect(details.child_count, content="0")
+    }
+    None => abort("expected selected node details before refresh")
+  }
+  let (_, refreshed) = update(_ => none, RefreshProjection, dirty)
+  match selected_node_details(refreshed) {
+    Some(details) => {
+      inspect(details.label.contains("99"), content="true")
+      inspect(details.child_count, content="0")
+    }
+    None => abort("expected selected node details after refresh")
+  }
 }
 
 ///|
