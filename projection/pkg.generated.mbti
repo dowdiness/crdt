@@ -55,7 +55,6 @@ pub struct InteractiveTreeNode {
   text_range : @core.Range
 }
 pub fn InteractiveTreeNode::from_term_node(ProjNode, SourceMap) -> Self
-pub fn InteractiveTreeNode::from_term_node_with_state(ProjNode, SourceMap, @hashset.HashSet[NodeId]) -> Self
 pub impl Show for InteractiveTreeNode
 
 pub enum LeafValue {

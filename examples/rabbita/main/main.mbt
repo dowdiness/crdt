@@ -202,14 +202,6 @@ fn is_ui_only_tree_edit(op : @proj.TreeEditOp) -> Bool {
 }
 
 ///|
-fn needs_tree_refresh(op : @proj.TreeEditOp) -> Bool {
-  match op {
-    @proj.Select(..) | @proj.SelectRange(..) => true
-    _ => false
-  }
-}
-
-///|
 fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
   match msg {
     SetMode(mode) => (none, { ..model, workspace_mode: mode })
@@ -265,11 +257,6 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           return (none, { ..model, tree_state, })
         }
         _ => ()
-      }
-      if needs_tree_refresh(op) {
-        let tree_state = model.tree_state.apply_edit(op)
-        let model = { ..model, tree_state, }
-        return (none, refresh(model))
       }
       if is_ui_only_tree_edit(op) {
         let tree_state = model.tree_state.apply_edit(op)

@@ -221,6 +221,50 @@ test "SelectRange collects nodes in preorder" {
 }
 
 ///|
+test "Select updates loaded tree flags locally" {
+  let (_, _, state) = tree_editor_test_state("1 + 2")
+  let tree = match state.tree {
+    Some(tree) => tree
+    None => abort("expected initial tree")
+  }
+  let root_children = tree_editor_test_loaded_children(tree)
+  let right = root_children[1]
+  let selected = state.apply_edit(Select(node_id=right.id))
+  let selected_tree = match selected.tree {
+    Some(tree) => tree
+    None => abort("expected selected tree")
+  }
+  let selected_children = tree_editor_test_loaded_children(selected_tree)
+
+  inspect(selected.selection.length(), content="1")
+  inspect(selected_children[0].selected, content="false")
+  inspect(selected_children[1].selected, content="true")
+}
+
+///|
+test "SelectRange updates loaded tree flags locally" {
+  let (_, _, state) = tree_editor_test_state("(1 + 2) + (3 + 4)")
+  let tree = match state.tree {
+    Some(tree) => tree
+    None => abort("expected initial tree")
+  }
+  let root_children = tree_editor_test_loaded_children(tree)
+  let selected = state.apply_edit(
+    SelectRange(start=root_children[0].id, end=root_children[1].id),
+  )
+  let selected_tree = match selected.tree {
+    Some(tree) => tree
+    None => abort("expected selected tree")
+  }
+  let selected_children = tree_editor_test_loaded_children(selected_tree)
+
+  inspect(selected.selection.length(), content="4")
+  inspect(selected_tree.selected, content="false")
+  inspect(selected_children[0].selected, content="true")
+  inspect(selected_children[1].selected, content="true")
+}
+
+///|
 test "SelectRange spans elided subtrees via structural indexes" {
   let (root, source_map, state) = tree_editor_test_state("(1 + 2) + (3 + 4)")
   let tree = match state.tree {
@@ -521,7 +565,7 @@ test "refresh builder limits UI-only selection invalidation to selected branch" 
   let right_children = tree_editor_test_loaded_children(root_children[1])
   let selected_leaf = right_children[1].id
   let selected_state = state.apply_edit(Select(node_id=selected_leaf))
-  let previous_nodes = build_loaded_node_index(selected_state.tree)
+  let previous_nodes = build_loaded_node_index(state.tree)
   let ui_state : TreeUIState = {
     collapsed_nodes: selected_state.collapsed_nodes,
     selection: @immut/hashset.from_iter(selected_state.selection.iter()),
