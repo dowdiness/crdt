@@ -110,6 +110,12 @@ fn selected_node_details(model : Model) -> SelectedNodeDetails? {
 }
 
 ///|
+fn has_hidden_selection(model : Model) -> Bool {
+  not(model.tree_state.selection.is_empty()) &&
+  selected_tree_node(model) is None
+}
+
+///|
 fn tree_node_is_elided(
   state : @proj.TreeEditorState,
   node_id : @proj.NodeId,
@@ -405,7 +411,15 @@ fn selection_section(model : Model) -> Html {
       ])
     None =>
       match model.tree_state.tree {
-        Some(_) => p(class="sidebar-copy", "No node selected.")
+        Some(_) =>
+          if has_hidden_selection(model) {
+            p(
+              class="sidebar-copy",
+              "Selected node is inside a collapsed subtree.",
+            )
+          } else {
+            p(class="sidebar-copy", "No node selected.")
+          }
         None => p(class="sidebar-copy", "No tree available.")
       }
   }
@@ -694,6 +708,27 @@ test "TreeEdited Expand does not hydrate elided subtree while projection is dirt
     }
     None => abort("expected expanded stale tree")
   }
+}
+
+///|
+test "Hidden selection stays visible in sidebar context after elision" {
+  let model = init_model()
+  let literal_id = selected_node_id_for_test(model, "42")
+  let (_, selected) = update(
+    _ => none,
+    TreeEdited(@proj.Select(node_id=literal_id)),
+    model,
+  )
+  let root_id = root_node_id_for_test(selected)
+  let (_, collapsed) = update(
+    _ => none,
+    TreeEdited(@proj.Collapse(node_id=root_id)),
+    selected,
+  )
+  let elided = refresh(collapsed)
+
+  inspect(selected_node_details(elided) is None, content="true")
+  inspect(has_hidden_selection(elided), content="true")
 }
 
 ///|
