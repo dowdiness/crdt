@@ -259,6 +259,46 @@ Potentially add:
 pub fn SyncEditor::refresh_projection_if_needed(self) -> Unit
 ```
 
+---
+
+## Roadmap To Stable 60fps
+
+The current Stage 1-5 tree-editor work should be treated as an intermediate step toward a `60fps` target, not the final performance fix. The next optimization work should proceed in this order:
+
+**Caveat:** This roadmap is a higher-level prioritization overlay, not a replacement for the phase plan above. If later edits change phase ordering or scope, this section should be updated to stay aligned with the main implementation plan.
+
+1. Add end-to-end timing for the deferred edit path.
+   Measure:
+   - text edit application
+   - parser update
+   - projection rebuild / reconcile
+   - `SourceMap` rebuild
+   - `TreeEditorState::refresh(...)`
+   - Rabbita update / render cost
+
+2. Fix the dominant large-tree hotspot before broad cleanup.
+   Large-tree deferred refresh is still effectively non-interactive, so the next phase should target the worst measured slice directly.
+
+3. Make projection metadata incremental by affected region.
+   The likely next wall is still whole-tree rebuild of structural metadata such as preorder indexes, parent links, and source maps. If those remain full-tree on every edit, stable frame-budget behavior is unlikely.
+
+4. Preserve strict separation between local UI work and structural refresh.
+   UI-only actions must remain immediate and should continue to avoid parser or projection work unless explicitly required.
+
+5. Allow structural refresh to be deferred/coalesced when it cannot fit the frame budget.
+   Immediate interaction response should be prioritized over forcing every full structural update into one synchronous turn.
+
+6. Revisit render-scope optimization after compute costs are bounded.
+   Only after the compute path is measured and improved should the next wave focus on Rabbita subtree diff/render behavior.
+
+7. Evaluate against frame-budget metrics, not just average benchmark throughput.
+   Track:
+   - p50 / p95 / p99 for UI-only operations
+   - p50 / p95 for deferred full-cycle refresh
+   - explicit `< 16ms` and `< 50ms` thresholds across small, medium, and large scenarios
+
+This ordering reflects the practical conclusion from the current branch: subtree reuse and elision improve medium deferred behavior, but worst-case large-tree latency still points to full projection metadata work as the next major bottleneck.
+
 Keep:
 
 - `apply_tree_edit(...)`
