@@ -1269,36 +1269,36 @@ fn update_node_collapsed(
 
 ///|
 /// Patch only the changed node path into the loaded-node index.
-/// Mutates `loaded_nodes` in place; callers must not retain the original.
 fn update_loaded_nodes_for_path(
   loaded_nodes : Map[NodeId, InteractiveTreeNode],
   changed_nodes : Array[InteractiveTreeNode],
 ) -> Map[NodeId, InteractiveTreeNode] {
+  let updated = loaded_nodes.copy()
   for node in changed_nodes {
-    loaded_nodes[node.id] = node
+    updated[node.id] = node
   }
-  loaded_nodes
+  updated
 }
 
 ///|
 /// Replace the materialized node index for one subtree and patch changed ancestors.
-/// Mutates `loaded_nodes` in place; callers must not retain the original.
 fn replace_loaded_nodes_for_subtree(
   loaded_nodes : Map[NodeId, InteractiveTreeNode],
   subtree_ids : Array[NodeId],
   replacement_nodes : Map[NodeId, InteractiveTreeNode],
   changed_nodes : Array[InteractiveTreeNode],
 ) -> Map[NodeId, InteractiveTreeNode] {
+  let updated = loaded_nodes.copy()
   for node_id in subtree_ids {
-    loaded_nodes.remove(node_id)
+    updated.remove(node_id)
   }
   for node_id, node in replacement_nodes {
-    loaded_nodes[node_id] = node
+    updated[node_id] = node
   }
   for node in changed_nodes {
-    loaded_nodes[node.id] = node
+    updated[node.id] = node
   }
-  loaded_nodes
+  updated
 }
 
 ///|
