@@ -28,9 +28,9 @@ updates:
           - "vite"
           - "@vitejs/*"
 
-  # Demo React dependencies
+  # Demo React example dependencies
   - package-ecosystem: "npm"
-    directory: "/demo-react"
+    directory: "/examples/demo-react"
     schedule:
       interval: "weekly"
     labels:

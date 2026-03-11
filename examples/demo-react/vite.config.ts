@@ -7,9 +7,9 @@ export default defineConfig({
   resolve: {
     alias: {
       // Alias to the valtio-egwalker module's TypeScript sources
-      'valtio-egwalker/stub': path.resolve(__dirname, '../valtio/src/egwalker_api_stub.ts'),
-      'valtio-egwalker/sync': path.resolve(__dirname, '../valtio/src/egwalker_api_sync.ts'),
-      'valtio-egwalker': path.resolve(__dirname, '../valtio/src/egwalker_api.ts'),
+      'valtio-egwalker/stub': path.resolve(__dirname, '../../valtio/src/egwalker_api_stub.ts'),
+      'valtio-egwalker/sync': path.resolve(__dirname, '../../valtio/src/egwalker_api_sync.ts'),
+      'valtio-egwalker': path.resolve(__dirname, '../../valtio/src/egwalker_api.ts'),
     },
   },
   server: {

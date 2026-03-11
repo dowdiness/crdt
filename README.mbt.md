@@ -22,7 +22,7 @@ crdt/
 ├── projection/           # Projectional editing
 ├── cmd/                  # CLI entry points
 ├── web/                  # Web frontend (Vite)
-└── demo-react/           # React demo
+└── examples/demo-react/  # React demo
 ```
 
 See [Monorepo & Submodule Guide](docs/development/monorepo.md) for the full workflow.

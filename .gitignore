@@ -11,7 +11,7 @@ dist/
 _build
 
 .playwright-mcp/
-demo-react/playwright-report/
-demo-react/test-results/
+examples/demo-react/playwright-report/
+examples/demo-react/test-results/
 .grepai/
 .worktrees/

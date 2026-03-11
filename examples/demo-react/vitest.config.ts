@@ -12,7 +12,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      'valtio-egwalker/stub': path.resolve(__dirname, '../valtio/src/egwalker_api_stub.ts'),
+      'valtio-egwalker/stub': path.resolve(__dirname, '../../valtio/src/egwalker_api_stub.ts'),
     },
   },
 });

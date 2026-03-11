@@ -215,7 +215,7 @@ Automatically generates changelog from commits since last tag:
 Automatic dependency updates:
 
 - **GitHub Actions** - Weekly updates
-- **NPM packages** - Weekly updates (web, demo-react, valtio)
+- **NPM packages** - Weekly updates (web, examples/demo-react, valtio)
 - **Grouped updates** - Playwright and Vite updates grouped
 
 Dependabot creates PRs that are automatically tested by CI.

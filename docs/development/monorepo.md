@@ -17,7 +17,7 @@ crdt/                           ← monorepo (dowdiness/crdt)
 ├── projection/                 ← monorepo package
 ├── cmd/                        ← monorepo package
 ├── web/                        ← monorepo (web frontend)
-└── demo-react/                 ← monorepo (React demo)
+└── examples/demo-react/        ← monorepo (React demo)
 ```
 
 The root MoonBit module (`dowdiness/crdt`) depends on submodules via path dependencies in `moon.mod.json`:

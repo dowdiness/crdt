@@ -2,7 +2,7 @@
 
 A demonstration of integrating React with the MoonBit Valtio FFI module (`valtio-egwalker`).
 
-Part of the [dowdiness/crdt](https://github.com/dowdiness/crdt) monorepo. Depends on the [valtio](../valtio/) and [event-graph-walker](../event-graph-walker/) submodules.
+Part of the [dowdiness/crdt](https://github.com/dowdiness/crdt) monorepo. Depends on the [valtio](../../valtio/) and [event-graph-walker](../../event-graph-walker/) submodules.
 
 ## Features
 
@@ -18,7 +18,7 @@ Make sure you cloned the monorepo with submodules:
 
 ```bash
 git clone --recursive https://github.com/dowdiness/crdt.git
-cd crdt/demo-react
+cd crdt/examples/demo-react
 npm install
 npm run dev
 ```
@@ -28,7 +28,7 @@ Open http://localhost:5174 in your browser.
 ## Project Structure
 
 ```
-demo-react/
+examples/demo-react/
 ├── src/
 │   ├── main.tsx           # Entry point
 │   ├── App.tsx            # Root component
@@ -114,7 +114,7 @@ Uses a JavaScript mock implementation - no MoonBit build required.
 ```typescript
 import { createEgWalkerProxy } from 'valtio-egwalker';
 ```
-Requires building MoonBit: `cd ../valtio && moon build --target js`
+Requires building MoonBit: `cd ../../valtio && moon build --target js`
 
 ## Vite Configuration
 
@@ -124,8 +124,8 @@ The demo uses path aliases to resolve the valtio-egwalker module from the monore
 // vite.config.ts
 resolve: {
   alias: {
-    'valtio-egwalker/stub': path.resolve(__dirname, '../valtio/src/egwalker_api_stub.ts'),
-    'valtio-egwalker': path.resolve(__dirname, '../valtio/src/egwalker_api.ts'),
+    'valtio-egwalker/stub': path.resolve(__dirname, '../../valtio/src/egwalker_api_stub.ts'),
+    'valtio-egwalker': path.resolve(__dirname, '../../valtio/src/egwalker_api.ts'),
   },
 },
 ```
