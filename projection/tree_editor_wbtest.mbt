@@ -25,9 +25,52 @@ fn tree_editor_test_collect(
   result : Array[NodeId],
 ) -> Unit {
   result.push(node.id)
-  for child in node.children {
-    tree_editor_test_collect(child, result)
+  match node.children {
+    Loaded(children) =>
+      for child in children {
+        tree_editor_test_collect(child, result)
+      }
+    Elided(_) => ()
   }
+}
+
+///|
+fn tree_editor_test_loaded_children(
+  node : InteractiveTreeNode,
+) -> Array[InteractiveTreeNode] {
+  match node.children {
+    Loaded(children) => children
+    Elided(_) => abort("expected loaded children")
+  }
+}
+
+///|
+fn tree_editor_test_elided_descendant_count(
+  node : InteractiveTreeNode,
+) -> Int {
+  match node.children {
+    Elided(descendant_count) => descendant_count
+    Loaded(_) => abort("expected elided children")
+  }
+}
+
+///|
+fn tree_editor_test_refresh_with_reuse(
+  node : ProjNode,
+  source_map : SourceMap,
+  ui_state : TreeUIState,
+  valid_ids : Array[NodeId],
+  previous_nodes : Map[NodeId, InteractiveTreeNode],
+) -> RefreshedInteractiveNode {
+  refresh_node_with_reuse_impl(
+    node,
+    source_map,
+    ui_state,
+    valid_ids,
+    previous_nodes,
+    None,
+    empty_tree_structure_indexes(),
+  )
 }
 
 ///|
@@ -46,9 +89,12 @@ test "Collapse sets collapsed state on node" {
   let root_id = tree_editor_test_ids(state.tree)[0]
   let collapsed = state.apply_edit(Collapse(node_id=root_id))
   inspect(collapsed.collapsed_nodes.contains(root_id), content="true")
-  match find_node(collapsed.tree, root_id) {
-    Some(node) => inspect(node.collapsed, content="true")
-    None => abort("Node not found")
+  match collapsed.loaded_nodes.get(root_id) {
+    Some(node) => {
+      inspect(node.collapsed, content="true")
+      inspect(tree_editor_test_loaded_children(node).length(), content="1")
+    }
+    None => abort("Loaded node not found")
   }
 }
 
@@ -60,9 +106,9 @@ test "Expand clears collapsed state on node" {
     .apply_edit(Collapse(node_id=root_id))
     .apply_edit(Expand(node_id=root_id))
   inspect(expanded.collapsed_nodes.contains(root_id), content="false")
-  match find_node(expanded.tree, root_id) {
+  match expanded.loaded_nodes.get(root_id) {
     Some(node) => inspect(node.collapsed, content="false")
-    None => abort("Node not found")
+    None => abort("Loaded node not found")
   }
 }
 
@@ -74,10 +120,70 @@ test "Collapse state survives refresh" {
     .apply_edit(Collapse(node_id=root_id))
     .refresh(Some(root), source_map)
   inspect(refreshed.collapsed_nodes.contains(root_id), content="true")
-  match find_node(refreshed.tree, root_id) {
+  match refreshed.loaded_nodes.get(root_id) {
     Some(node) => inspect(node.collapsed, content="true")
-    None => abort("Node not found")
+    None => abort("Loaded node not found")
   }
+}
+
+///|
+test "refresh elides collapsed descendants while keeping structural indexes" {
+  let (root, source_map, state) = tree_editor_test_state("(1 + 2) + (3 + 4)")
+  let tree = match state.tree {
+    Some(tree) => tree
+    None => abort("expected initial tree")
+  }
+  let root_children = tree_editor_test_loaded_children(tree)
+  let right = root_children[1]
+  let right_children = tree_editor_test_loaded_children(right)
+  let right_leaf_id = right_children[1].id
+
+  let refreshed = state
+    .apply_edit(Collapse(node_id=right.id))
+    .refresh(Some(root), source_map)
+  let refreshed_tree = match refreshed.tree {
+    Some(tree) => tree
+    None => abort("expected refreshed tree")
+  }
+  let refreshed_right = tree_editor_test_loaded_children(refreshed_tree)[1]
+
+  inspect(refreshed_right.collapsed, content="true")
+  inspect(tree_editor_test_elided_descendant_count(refreshed_right), content="2")
+  inspect(
+    refreshed.preorder_range_by_root.get(right.id) == Some((4, 6)),
+    content="true",
+  )
+  inspect(refreshed.loaded_nodes.get(right_leaf_id) is None, content="true")
+}
+
+///|
+test "hydrate_subtree expands an elided branch without full refresh" {
+  let (root, source_map, state) = tree_editor_test_state("(1 + 2) + (3 + 4)")
+  let tree = match state.tree {
+    Some(tree) => tree
+    None => abort("expected initial tree")
+  }
+  let root_children = tree_editor_test_loaded_children(tree)
+  let right = root_children[1]
+  let right_leaf_id = tree_editor_test_loaded_children(right)[1].id
+
+  let elided = state
+    .apply_edit(Collapse(node_id=right.id))
+    .refresh(Some(root), source_map)
+  let expanded = elided
+    .apply_edit(Expand(node_id=right.id))
+    .hydrate_subtree(right.id, Some(root), source_map)
+  let expanded_tree = match expanded.tree {
+    Some(tree) => tree
+    None => abort("expected hydrated tree")
+  }
+  let hydrated_right = tree_editor_test_loaded_children(expanded_tree)[1]
+  let hydrated_children = tree_editor_test_loaded_children(hydrated_right)
+
+  inspect(hydrated_right.collapsed, content="false")
+  inspect(hydrated_children.length(), content="2")
+  inspect(hydrated_children[1].label, content="4")
+  inspect(expanded.loaded_nodes.get(right_leaf_id) is Some(_), content="true")
 }
 
 ///|
@@ -88,6 +194,29 @@ test "SelectRange collects nodes in preorder" {
   inspect(selected.selection.length(), content="3")
   inspect(selected.selection[0] == ids[0], content="true")
   inspect(selected.selection[2] == ids[2], content="true")
+}
+
+///|
+test "SelectRange spans elided subtrees via structural indexes" {
+  let (root, source_map, state) = tree_editor_test_state("(1 + 2) + (3 + 4)")
+  let tree = match state.tree {
+    Some(tree) => tree
+    None => abort("expected initial tree")
+  }
+  let root_children = tree_editor_test_loaded_children(tree)
+  let left_id = root_children[0].id
+  let right_children = tree_editor_test_loaded_children(root_children[1])
+  let right_id = root_children[1].id
+  let right_leaf_id = right_children[1].id
+
+  let refreshed = state
+    .apply_edit(Collapse(node_id=right_id))
+    .refresh(Some(root), source_map)
+  let selected = refreshed.apply_edit(SelectRange(start=left_id, end=right_leaf_id))
+
+  inspect(selected.selection.length(), content="6")
+  inspect(selected.selection[0] == left_id, content="true")
+  inspect(selected.selection[5] == right_leaf_id, content="true")
 }
 
 ///|
@@ -109,6 +238,28 @@ test "Delete clears selection editing dragging and collapsed state" {
 }
 
 ///|
+test "Delete clears hidden descendant UI state when subtree is elided" {
+  let (root, source_map, state) = tree_editor_test_state("(1 + 2) + (3 + 4)")
+  let tree = match state.tree {
+    Some(tree) => tree
+    None => abort("expected initial tree")
+  }
+  let root_children = tree_editor_test_loaded_children(tree)
+  let right = root_children[1]
+  let hidden_leaf_id = tree_editor_test_loaded_children(right)[1].id
+  let collapsed = state
+    .apply_edit(Select(node_id=hidden_leaf_id))
+    .apply_edit(StartEdit(node_id=hidden_leaf_id))
+    .apply_edit(Collapse(node_id=right.id))
+    .refresh(Some(root), source_map)
+  let deleted = collapsed.apply_edit(Delete(node_id=right.id))
+
+  inspect(deleted.selection.length(), content="0")
+  inspect(deleted.editing_node is None, content="true")
+  inspect(deleted.edit_value, content="")
+}
+
+///|
 test "Delete clears drop target for removed node" {
   let (_, _, state) = tree_editor_test_state("1 + 2")
   let ids = tree_editor_test_ids(state.tree)
@@ -127,6 +278,42 @@ test "DragOver rejects self as drop target" {
   let dragover = state
     .apply_edit(StartDrag(node_id=ids[1]))
     .apply_edit(DragOver(target=ids[1], position=After))
+  inspect(dragover.drop_target is None, content="true")
+}
+
+///|
+test "DragOver rejects descendant as drop target" {
+  let (_, _, state) = tree_editor_test_state("λx.x + 1")
+  let tree = match state.tree {
+    Some(tree) => tree
+    None => abort("expected tree")
+  }
+  let root_id = tree.id
+  let root_children = tree_editor_test_loaded_children(tree)
+  let lambda_body = tree_editor_test_loaded_children(root_children[0])
+  let descendant_id = lambda_body[0].id
+  let dragover = state
+    .apply_edit(StartDrag(node_id=root_id))
+    .apply_edit(DragOver(target=descendant_id, position=Inside))
+  inspect(dragover.drop_target is None, content="true")
+}
+
+///|
+test "DragOver rejects elided descendant as drop target" {
+  let (root, source_map, state) = tree_editor_test_state("λx.x + 1")
+  let tree = match state.tree {
+    Some(tree) => tree
+    None => abort("expected tree")
+  }
+  let root_children = tree_editor_test_loaded_children(tree)
+  let lambda_body = tree_editor_test_loaded_children(root_children[0])
+  let descendant_id = lambda_body[0].id
+  let refreshed = state
+    .apply_edit(Collapse(node_id=tree.id))
+    .refresh(Some(root), source_map)
+  let dragover = refreshed
+    .apply_edit(StartDrag(node_id=tree.id))
+    .apply_edit(DragOver(target=descendant_id, position=Inside))
   inspect(dragover.drop_target is None, content="true")
 }
 
@@ -167,6 +354,76 @@ test "refresh prunes stale ids from UI state" {
 }
 
 ///|
+test "from_projection builds structural indexes" {
+  let (_, _, state) = tree_editor_test_state("(1 + 2) + (3 + 4)")
+  let ids = tree_editor_test_ids(state.tree)
+  let tree = match state.tree {
+    Some(tree) => tree
+    None => abort("expected tree")
+  }
+  let root_children = tree_editor_test_loaded_children(tree)
+  let right_children = tree_editor_test_loaded_children(root_children[1])
+  let root_id = tree.id
+  let left_id = root_children[0].id
+  let right_id = root_children[1].id
+  let right_leaf_id = right_children[1].id
+
+  inspect(state.preorder_ids == ids, content="true")
+  inspect(
+    state.preorder_range_by_root.get(root_id) == Some((0, ids.length() - 1)),
+    content="true",
+  )
+  inspect(
+    state.preorder_range_by_root.get(left_id) == Some((1, 3)),
+    content="true",
+  )
+  inspect(
+    state.preorder_range_by_root.get(right_id) == Some((4, 6)),
+    content="true",
+  )
+  inspect(state.parent_by_child.get(left_id) == Some(root_id), content="true")
+  inspect(
+    state.parent_by_child.get(right_leaf_id) == Some(right_id),
+    content="true",
+  )
+  inspect(state.loaded_nodes.get(right_leaf_id) is Some(_), content="true")
+}
+
+///|
+test "refresh rebuilds structural indexes for updated projection" {
+  let (old_root, _) = parse_to_proj_node("(1 + 2) + (3 + 4)")
+  let old_source_map = SourceMap::from_ast(old_root)
+  let state = TreeEditorState::from_projection(Some(old_root), old_source_map)
+  let (new_root, _) = parse_to_proj_node("(1 + 2) + (3 + 5)")
+  let reconciled = reconcile_ast(old_root, new_root, Ref::new(1000))
+  let source_map = SourceMap::from_ast(reconciled)
+  let refreshed = state.refresh(Some(reconciled), source_map)
+  let ids = tree_editor_test_ids(refreshed.tree)
+  let tree = match refreshed.tree {
+    Some(tree) => tree
+    None => abort("expected refreshed tree")
+  }
+  let root_children = tree_editor_test_loaded_children(tree)
+  let right_children = tree_editor_test_loaded_children(root_children[1])
+  let right_id = root_children[1].id
+  let right_leaf_id = right_children[1].id
+
+  inspect(refreshed.preorder_ids == ids, content="true")
+  inspect(
+    refreshed.preorder_range_by_root.get(right_id) == Some((4, 6)),
+    content="true",
+  )
+  inspect(
+    refreshed.parent_by_child.get(right_leaf_id) == Some(right_id),
+    content="true",
+  )
+  match refreshed.loaded_nodes.get(right_leaf_id) {
+    Some(node) => inspect(node.label, content="5")
+    None => abort("expected loaded node")
+  }
+}
+
+///|
 test "refresh builder reuses unchanged sibling subtree after unrelated leaf change" {
   let (old_root, _) = parse_to_proj_node("(1 + 2) + (3 + 4)")
   let old_source_map = SourceMap::from_ast(old_root)
@@ -183,7 +440,7 @@ test "refresh builder reuses unchanged sibling subtree after unrelated leaf chan
   }
 
   let root_valid_ids : Array[NodeId] = []
-  let refreshed_root = refresh_node_with_reuse(
+  let refreshed_root = tree_editor_test_refresh_with_reuse(
     reconciled,
     source_map,
     ui_state,
@@ -191,7 +448,7 @@ test "refresh builder reuses unchanged sibling subtree after unrelated leaf chan
     previous_nodes,
   )
   let left_valid_ids : Array[NodeId] = []
-  let refreshed_left = refresh_node_with_reuse(
+  let refreshed_left = tree_editor_test_refresh_with_reuse(
     reconciled.children[0],
     source_map,
     ui_state,
@@ -199,7 +456,7 @@ test "refresh builder reuses unchanged sibling subtree after unrelated leaf chan
     previous_nodes,
   )
   let right_valid_ids : Array[NodeId] = []
-  let refreshed_right = refresh_node_with_reuse(
+  let refreshed_right = tree_editor_test_refresh_with_reuse(
     reconciled.children[1],
     source_map,
     ui_state,
@@ -224,7 +481,7 @@ test "refresh builder reuses root when projection and UI state are unchanged" {
   }
 
   let valid_ids : Array[NodeId] = []
-  let refreshed = refresh_node_with_reuse(
+  let refreshed = tree_editor_test_refresh_with_reuse(
     root,
     source_map,
     ui_state,
@@ -242,7 +499,9 @@ test "refresh builder limits UI-only selection invalidation to selected branch" 
     Some(tree) => tree
     None => abort("expected initial tree")
   }
-  let selected_leaf = tree.children[1].children[1].id
+  let root_children = tree_editor_test_loaded_children(tree)
+  let right_children = tree_editor_test_loaded_children(root_children[1])
+  let selected_leaf = right_children[1].id
   let selected_state = state.apply_edit(Select(node_id=selected_leaf))
   let previous_nodes = build_loaded_node_index(selected_state.tree)
   let ui_state : TreeUIState = {
@@ -253,7 +512,7 @@ test "refresh builder limits UI-only selection invalidation to selected branch" 
   }
 
   let root_valid_ids : Array[NodeId] = []
-  let refreshed_root = refresh_node_with_reuse(
+  let refreshed_root = tree_editor_test_refresh_with_reuse(
     root,
     source_map,
     ui_state,
@@ -261,7 +520,7 @@ test "refresh builder limits UI-only selection invalidation to selected branch" 
     previous_nodes,
   )
   let left_valid_ids : Array[NodeId] = []
-  let refreshed_left = refresh_node_with_reuse(
+  let refreshed_left = tree_editor_test_refresh_with_reuse(
     root.children[0],
     source_map,
     ui_state,
@@ -269,7 +528,7 @@ test "refresh builder limits UI-only selection invalidation to selected branch" 
     previous_nodes,
   )
   let right_valid_ids : Array[NodeId] = []
-  let refreshed_right = refresh_node_with_reuse(
+  let refreshed_right = tree_editor_test_refresh_with_reuse(
     root.children[1],
     source_map,
     ui_state,
@@ -277,7 +536,7 @@ test "refresh builder limits UI-only selection invalidation to selected branch" 
     previous_nodes,
   )
   let leaf_valid_ids : Array[NodeId] = []
-  let refreshed_leaf = refresh_node_with_reuse(
+  let refreshed_leaf = tree_editor_test_refresh_with_reuse(
     root.children[1].children[1],
     source_map,
     ui_state,
@@ -300,8 +559,9 @@ test "TreeEditorState::refresh preserves unchanged sibling subtree through publi
     Some(tree) => tree
     None => abort("expected initial tree")
   }
-  let old_left = old_tree.children[0]
-  let old_right = old_tree.children[1]
+  let old_root_children = tree_editor_test_loaded_children(old_tree)
+  let old_left = old_root_children[0]
+  let old_right = old_root_children[1]
 
   let (new_root, _) = parse_to_proj_node("(1 + 2) + (3 + 5)")
   let reconciled = reconcile_ast(old_root, new_root, Ref::new(1000))
@@ -311,13 +571,15 @@ test "TreeEditorState::refresh preserves unchanged sibling subtree through publi
     Some(tree) => tree
     None => abort("expected refreshed tree")
   }
-  let refreshed_left = refreshed_tree.children[0]
-  let refreshed_right = refreshed_tree.children[1]
+  let refreshed_root_children = tree_editor_test_loaded_children(refreshed_tree)
+  let refreshed_left = refreshed_root_children[0]
+  let refreshed_right = refreshed_root_children[1]
+  let refreshed_right_children = tree_editor_test_loaded_children(refreshed_right)
 
   inspect(
     interactive_node_stamp(refreshed_left) == interactive_node_stamp(old_left),
     content="true",
   )
   inspect(interactive_node_stamp(refreshed_right) == interactive_node_stamp(old_right), content="true")
-  inspect(refreshed_right.children[1].label, content="5")
+  inspect(refreshed_right_children[1].label, content="5")
 }

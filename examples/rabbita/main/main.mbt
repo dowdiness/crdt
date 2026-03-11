@@ -70,12 +70,16 @@ fn find_tree_node_by_id(
   if node.id == target {
     return Some(node)
   }
-  node.children.fold(init=None, fn(found, child) {
-    match found {
-      Some(_) => found
-      None => find_tree_node_by_id(child, target)
-    }
-  })
+  match node.children {
+    @proj.Loaded(children) =>
+      children.fold(init=None, fn(found, child) {
+        match found {
+          Some(_) => found
+          None => find_tree_node_by_id(child, target)
+        }
+      })
+    @proj.Elided(_) => None
+  }
 }
 
 ///|
@@ -94,9 +98,40 @@ fn selected_tree_node(model : Model) -> @proj.InteractiveTreeNode? {
 fn selected_node_details(model : Model) -> SelectedNodeDetails? {
   match selected_tree_node(model) {
     Some(node) =>
-      Some({ label: node.label, child_count: node.children.length() })
+      Some({
+        label: node.label,
+        child_count: match node.children {
+          @proj.Loaded(children) => children.length()
+          @proj.Elided(descendant_count) => descendant_count
+        },
+      })
     None => None
   }
+}
+
+///|
+fn tree_node_is_elided(
+  state : @proj.TreeEditorState,
+  node_id : @proj.NodeId,
+) -> Bool {
+  match state.tree {
+    Some(tree) =>
+      match find_tree_node_by_id(tree, node_id) {
+        Some(node) =>
+          match node.children {
+            @proj.Elided(_) => true
+            @proj.Loaded(_) => false
+          }
+        None => false
+      }
+    None => false
+  }
+}
+
+///|
+fn can_hydrate_tree_node(model : Model, node_id : @proj.NodeId) -> Bool {
+  not(model.projection_dirty) &&
+  tree_node_is_elided(model.tree_state, node_id)
 }
 
 // ── Init ────────────────────────────────────────────────────────────
@@ -209,6 +244,23 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         (none, { ..model, refresh_scheduled: false })
       }
     TreeEdited(op) => {
+      match op {
+        @proj.Expand(node_id=node_id) => {
+          let hydrate_after_expand = can_hydrate_tree_node(model, node_id)
+          let tree_state = model.tree_state.apply_edit(op)
+          let tree_state = if hydrate_after_expand {
+            tree_state.hydrate_subtree(
+              node_id,
+              model.editor.get_proj_node(),
+              model.editor.get_source_map(),
+            )
+          } else {
+            tree_state
+          }
+          return (none, { ..model, tree_state, })
+        }
+        _ => ()
+      }
       if needs_tree_refresh(op) {
         let tree_state = model.tree_state.apply_edit(op)
         let model = { ..model, tree_state, }
@@ -259,13 +311,23 @@ fn view_tree_node(
   let toggle_label = if node.collapsed { "▶" } else { "▼" }
   let children_view = if node.collapsed {
     div(class="tree-collapsed", [text("…")])
-  } else if node.children.is_empty() {
-    div(class="hidden-note", [text("Leaf node")])
   } else {
-    div(
-      class="tree-children",
-      node.children.map(fn(child) { view_tree_node(dispatch, child) }),
-    )
+    match node.children {
+      @proj.Loaded(children) =>
+        if children.is_empty() {
+          div(class="hidden-note", [text("Leaf node")])
+        } else {
+          div(
+            class="tree-children",
+            children.map(fn(child) { view_tree_node(dispatch, child) }),
+          )
+        }
+      @proj.Elided(descendant_count) =>
+        div(
+          class="hidden-note",
+          [text("\{descendant_count} hidden descendants")],
+        )
+    }
   }
   div(class=class_name, [
     div(
@@ -481,12 +543,16 @@ fn node_id_for_label_for_test(
   if node.label == label {
     return Some(node.id)
   }
-  node.children.fold(init=None, fn(found, child) {
-    match found {
-      Some(_) => found
-      None => node_id_for_label_for_test(child, label)
-    }
-  })
+  match node.children {
+    @proj.Loaded(children) =>
+      children.fold(init=None, fn(found, child) {
+        match found {
+          Some(_) => found
+          None => node_id_for_label_for_test(child, label)
+        }
+      })
+    @proj.Elided(_) => None
+  }
 }
 
 ///|
@@ -554,6 +620,81 @@ test "TreeEdited StartEdit stays local to UI state" {
   inspect(updated.editor.get_text(), content=old_text)
   inspect(updated.next_timestamp, content="1")
   inspect(updated.tree_state.editing_node == Some(root_id), content="true")
+}
+
+///|
+test "TreeEdited Expand hydrates an elided subtree without editor refresh" {
+  let model = init_model()
+  let root_id = root_node_id_for_test(model)
+  let old_text = model.editor.get_text()
+  let (_, collapsed) = update(
+    _ => none,
+    TreeEdited(@proj.Collapse(node_id=root_id)),
+    model,
+  )
+  let elided = refresh(collapsed)
+  match elided.tree_state.tree {
+    Some(root) =>
+      match root.children {
+        @proj.Elided(_) => ()
+        @proj.Loaded(_) => abort("expected elided subtree after refresh")
+      }
+    None => abort("expected elided tree")
+  }
+
+  let (_, expanded) = update(
+    _ => none,
+    TreeEdited(@proj.Expand(node_id=root_id)),
+    elided,
+  )
+
+  inspect(expanded.editor.get_text(), content=old_text)
+  inspect(expanded.next_timestamp, content="1")
+  inspect(expanded.text_view, content=old_text)
+  match expanded.tree_state.tree {
+    Some(root) => {
+      inspect(root.collapsed, content="false")
+      match root.children {
+        @proj.Loaded(children) => inspect(children.length() > 0, content="true")
+        @proj.Elided(_) => abort("expected hydrated children")
+      }
+    }
+    None => abort("expected expanded tree")
+  }
+}
+
+///|
+test "TreeEdited Expand does not hydrate elided subtree while projection is dirty" {
+  let model = init_model()
+  let root_id = root_node_id_for_test(model)
+  let (_, collapsed) = update(
+    _ => none,
+    TreeEdited(@proj.Collapse(node_id=root_id)),
+    model,
+  )
+  let elided = refresh(collapsed)
+  let new_text = "let id = λx.x in let apply = λf.λx.f x in apply id 99"
+  let (_, dirty) = update(_ => none, TextInput(new_text), elided)
+
+  let (_, expanded) = update(
+    _ => none,
+    TreeEdited(@proj.Expand(node_id=root_id)),
+    dirty,
+  )
+
+  inspect(expanded.projection_dirty, content="true")
+  inspect(expanded.refresh_scheduled, content="true")
+  match expanded.tree_state.tree {
+    Some(root) => {
+      inspect(root.collapsed, content="false")
+      match root.children {
+        @proj.Elided(descendant_count) =>
+          inspect(descendant_count > 0, content="true")
+        @proj.Loaded(_) => abort("expected stale tree to remain unhydrated")
+      }
+    }
+    None => abort("expected expanded stale tree")
+  }
 }
 
 ///|
