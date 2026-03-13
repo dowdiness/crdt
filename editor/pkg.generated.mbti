@@ -10,6 +10,8 @@ import {
 }
 
 // Values
+pub fn adjust_position(Int, Int, Int, Int) -> Int
+
 pub fn compute_edit(String, String) -> @core.Edit
 
 pub fn compute_text_splice(String, String) -> TextSplice
@@ -36,6 +38,92 @@ pub fn Editor::insert_at(Self, Int, String) -> Unit raise
 pub fn Editor::move_cursor(Self, Int) -> Unit
 pub fn Editor::new(String) -> Self
 pub impl Show for Editor
+
+pub(all) enum EphemeralEventTrigger {
+  Local
+  Import
+  Timeout
+}
+pub impl Eq for EphemeralEventTrigger
+pub impl Show for EphemeralEventTrigger
+
+type EphemeralLocalEntry
+
+type EphemeralRecord
+
+pub struct EphemeralStore {
+  timeout_ms : UInt64
+  mut next_sub_id : Int
+  mut states : Map[String, EphemeralRecord]
+  mut local_subs : Array[EphemeralLocalEntry]
+  mut subs : Array[EphemeralSubscriberEntry]
+}
+pub fn EphemeralStore::apply(Self, Bytes) -> Unit raise
+pub fn EphemeralStore::delete(Self, String) -> Unit raise
+pub fn EphemeralStore::encode(Self, String) -> Bytes
+pub fn EphemeralStore::encode_all(Self) -> Bytes
+pub fn EphemeralStore::get(Self, String) -> EphemeralValue?
+pub fn EphemeralStore::get_all_states(Self) -> Map[String, EphemeralValue]
+pub fn EphemeralStore::keys(Self) -> Array[String]
+pub fn EphemeralStore::new(UInt64) -> Self
+pub fn EphemeralStore::remove_outdated(Self) -> Unit
+pub fn EphemeralStore::set(Self, String, EphemeralValue) -> Unit raise
+pub fn EphemeralStore::subscribe(Self, (EphemeralStoreEvent) -> Bool) -> EphemeralSubscription
+pub fn EphemeralStore::subscribe_local_updates(Self, (Bytes) -> Bool) -> EphemeralSubscription
+
+pub(all) struct EphemeralStoreEvent {
+  by : EphemeralEventTrigger
+  added : Array[String]
+  updated : Array[String]
+  removed : Array[String]
+}
+pub fn EphemeralStoreEvent::added(Self) -> Array[String]
+pub fn EphemeralStoreEvent::by(Self) -> EphemeralEventTrigger
+pub fn EphemeralStoreEvent::removed(Self) -> Array[String]
+pub fn EphemeralStoreEvent::updated(Self) -> Array[String]
+pub impl Show for EphemeralStoreEvent
+
+type EphemeralSubscriberEntry
+
+pub struct EphemeralSubscription {
+  store : EphemeralStore
+  id : Int
+}
+pub fn EphemeralSubscription::unsubscribe(Self) -> Unit
+
+pub(all) enum EphemeralValue {
+  Null
+  Bool(Bool)
+  I64(Int64)
+  F64(Double)
+  String(String)
+  Bytes(Bytes)
+  List(Array[EphemeralValue])
+  Map(Map[String, EphemeralValue])
+}
+pub impl Eq for EphemeralValue
+pub impl Show for EphemeralValue
+
+pub(all) struct PeerCursor {
+  mut raw_cursor : Int
+  mut adjusted_cursor : Int
+  mut display_name : String
+  mut color : String
+  mut selection : (Int, Int)?
+}
+pub impl Show for PeerCursor
+
+pub struct PeerCursorView {
+  cursors : Map[String, PeerCursor]
+}
+pub fn PeerCursorView::adjust_for_edit(Self, Int, Int, Int) -> Unit
+pub fn PeerCursorView::all_cursors(Self) -> Map[String, PeerCursor]
+pub fn PeerCursorView::apply_raw_update(Self, String, EphemeralValue) -> Unit
+pub fn PeerCursorView::from_store(EphemeralStore, String) -> Self
+pub fn PeerCursorView::get_cursor(Self, String) -> PeerCursor?
+pub fn PeerCursorView::new() -> Self
+pub fn PeerCursorView::remove(Self, String) -> Unit
+pub fn PeerCursorView::set_cursor(Self, String, Int, String, String, selection? : (Int, Int)?) -> Unit
 
 pub struct SyncEditor {
   // private fields
