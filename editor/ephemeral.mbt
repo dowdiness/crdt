@@ -86,12 +86,16 @@ pub struct EphemeralStore {
 }
 
 ///|
-/// Wall-clock milliseconds. Returns 0 on non-JS targets.
-/// Timeout tests use `remove_outdated_at(now)` with explicit timestamps
-/// rather than relying on this function. JS target override TBD.
+/// Wall-clock milliseconds for expiry checks.
 fn now_ms() -> UInt64 {
-  0UL
+  js_now_ms().reinterpret_as_uint64()
 }
+
+///|
+extern "js" fn js_now_ms() -> Int64 =
+  #|() => {
+  #|  return BigInt(Date.now());
+  #|}
 
 ///|
 pub fn EphemeralStore::new(timeout_ms : UInt64) -> EphemeralStore {
@@ -320,7 +324,10 @@ pub fn EphemeralStore::apply(self : EphemeralStore, data : Bytes) -> Unit raise 
         }
         self.states[key] = incoming
         match (existing.value, record.value) {
-          (Some(_), Some(_)) => updated.push(key)
+          (Some(old_value), Some(new_value)) =>
+            if old_value != new_value {
+              updated.push(key)
+            }
           (Some(_), None) => removed.push(key)
           (None, Some(_)) => added.push(key)
           (None, None) => ()
