@@ -53,7 +53,7 @@ Following Loro's `EphemeralStore` and Lomo's MoonBit port, we adopt a **generic 
 
 **No convergence for multi-writer keys.** If two peers both `set()` the same key concurrently without having received each other's updates, they may produce equal clock values. With the `existing.clock >= incoming.clock → discard` rule, both peers discard each other's write and permanently diverge. This is acceptable because the one-writer-per-key invariant prevents this scenario. If multi-writer keys are ever needed, add a tiebreaker (e.g., higher peer ID wins on equal clock).
 
-**Keys are numeric peer IDs at the wire level.** The binary encoding format represents keys as `UInt64` for compactness and Loro wire compatibility. Non-numeric string keys are silently dropped during encoding. The in-memory API accepts `String` keys, but only numeric strings survive a network roundtrip.
+**Keys are numeric peer IDs at the wire level.** The binary encoding format represents keys as `UInt64` for compactness and Loro wire compatibility. Non-numeric string keys are silently dropped during encoding. The in-memory API accepts `String` keys, but only numeric strings survive a network roundtrip. **`set()` should validate keys** — call `parse_peer_id(key)` and raise/return an error on failure, rather than silently succeeding locally while producing empty bytes for `subscribe_local_updates` callbacks.
 
 ---
 
@@ -558,6 +558,42 @@ pub fn ephemeral_remove_outdated(handle : Int) -> Unit
 10. **Graceful disconnect:** `delete()` immediately removes the peer's cursor from all connected peers.
 11. **Heartbeat keeps alive:** Idle peer that re-sends state every 30s is not timed out at 60s.
 12. **No CRDT contamination:** Ephemeral data never appears in `OpLog` or `SyncMessage`.
+
+---
+
+## Implementation Notes (from Lomo review)
+
+Notes from reviewing [Lomo's `awareness.mbt`](https://github.com/Lampese/lomo/blob/main/awareness.mbt) as the primary reference implementation. Lomo's LWW state machine, subscription plumbing, and binary codec are directly reusable with `EphemeralValue` replacing `@types.LoroValue`.
+
+### Encoding dependency
+
+Lomo imports `@encoding.write_uvarint`, `@encoding.read_uvarint`, `@encoding.write_ivarint`, `@encoding.read_ivarint`, `@encoding.write_string`, `@encoding.read_string`, and `@encoding.Reader` from its own codebase (~100 lines of varint/length-prefixed encoding). Before writing `ephemeral_encoding.mbt`, audit `event-graph-walker` for equivalent exports. Either reuse them or vendor the encoding utilities into the `editor/` package.
+
+### Testing timeout without time injection
+
+Lomo hardcodes `now_ms()` as `@env.now()`. Rather than injecting a clock parameter into the public API (adds noise to `set()`, `apply()`, `remove_outdated()`), use **whitebox tests** that directly backdate `EphemeralRecord.updated_at`:
+
+```moonbit
+// whitebox test — controls time by manipulating internal state
+test "timeout removes stale entries" {
+  let store = EphemeralStore::new(1000UL)
+  store.set("1", EphemeralValue::I64(42L))
+  // Backdate: set updated_at to 0 so now() >> 0 + 1000
+  store.states["1"] = { value: Some(EphemeralValue::I64(42L)), clock: 1L, updated_at: 0UL }
+  store.remove_outdated()
+  inspect!(store.get("1"), content="None")
+}
+```
+
+LWW ordering tests only depend on `clock` values, not wall time — no special setup needed.
+
+### Null-as-delete semantics
+
+Lomo treats `set(key, Null)` as deletion (calls `set_state(key, None)`). On the wire, deleted entries and explicit `Null` values both encode to tag `0x00`. After a network roundtrip they are indistinguishable. This is acceptable — presence data uses `Map`, `I64`, `String` values; no consumer stores top-level `Null` intentionally. Preserve this behavior; do not attempt to distinguish stored-null from deleted.
+
+### Cursor adjustment on heartbeat (known, deferred)
+
+When peer B heartbeats with an unchanged raw cursor position, `apply_raw_update` resets B's derived (adjusted) cursor to the raw value, undoing local adjustments from intervening edits. This produces a brief visual cursor jump. The race window is ~100ms/30s ≈ 0.3% of heartbeats, and the glitch self-corrects on B's next real cursor move. Addressing this properly requires **CRDT-relative positions** (see [Future: Relative Positions](#future-relative-positions)), not a raw-value equality check (which breaks when non-cursor Map fields change while cursor stays the same).
 
 ---
 
