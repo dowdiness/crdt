@@ -18,4 +18,8 @@ import {
 
 options(
   is_main: false,
+  targets: {
+    "ephemeral_time_js.mbt": [ "js" ],
+    "ephemeral_time_native.mbt": [ "not", "js" ],
+  },
 )
