@@ -10,10 +10,11 @@ priv struct ParserBenchScenario {
 fn parser_bench_source(let_count : Int, tail_literal : String) -> String {
   let segments : Array[String] = []
   for i = 0; i < let_count - 1; i = i + 1 {
-    segments.push("let x\{i} = 0 in ")
+    segments.push("let x\{i} = 0")
   }
-  segments.push("let x\{let_count - 1} = \{tail_literal} in x\{let_count - 1}")
-  segments.join("")
+  segments.push("let x\{let_count - 1} = \{tail_literal}")
+  segments.push("x\{let_count - 1}")
+  segments.join("\n")
 }
 
 ///|
@@ -33,7 +34,7 @@ test "parser benchmark - reactive full reparse medium" (b : @bench.T) {
   let scenario = parser_bench_scenario(80)
   let parser = @loom.new_reactive_parser(
     scenario.source,
-    @parser.lambda_grammar,
+    @parser.source_file_grammar,
   )
   ignore(parser.term())
   let mut use_edited = true
@@ -54,7 +55,7 @@ test "parser benchmark - imperative incremental medium" (b : @bench.T) {
   let scenario = parser_bench_scenario(80)
   let parser = @loom.new_imperative_parser(
     scenario.source,
-    @parser.lambda_grammar,
+    @parser.source_file_grammar,
   )
   ignore(parser.parse())
   let mut use_edited = true
@@ -79,7 +80,7 @@ test "parser benchmark - reactive full reparse large" (b : @bench.T) {
   let scenario = parser_bench_scenario(320)
   let parser = @loom.new_reactive_parser(
     scenario.source,
-    @parser.lambda_grammar,
+    @parser.source_file_grammar,
   )
   ignore(parser.term())
   let mut use_edited = true
@@ -100,7 +101,7 @@ test "parser benchmark - imperative incremental large" (b : @bench.T) {
   let scenario = parser_bench_scenario(320)
   let parser = @loom.new_imperative_parser(
     scenario.source,
-    @parser.lambda_grammar,
+    @parser.source_file_grammar,
   )
   ignore(parser.parse())
   let mut use_edited = true
