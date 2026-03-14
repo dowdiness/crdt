@@ -1,5 +1,6 @@
 import {
   "dowdiness/rabbita-projectional-editor/main" @app,
+  "moonbitlang/core/strconv" @strconv,
 }
 
 options(
