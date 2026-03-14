@@ -25,4 +25,6 @@ test "run_case times out before warmup when no budget remains" {
   )
   inspect(result.timed_out, content="true")
   inspect(result.completed, content="0")
+  inspect(result.total_ms, content="0")
+  inspect(result.timeout_elapsed_ms is Some(_), content="true")
 }

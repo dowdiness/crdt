@@ -2,11 +2,6 @@
 package "dowdiness/rabbita-projectional-editor/perf_report"
 
 // Values
-pub fn cli_iterations() -> Int?
-
-pub fn cli_mode() -> String
-
-pub fn cli_operation_filter() -> String?
 
 // Errors
 

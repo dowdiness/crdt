@@ -125,6 +125,21 @@ pub fn BenchmarkSession::deferred_full_cycle_timed(
   let t0 = now_ms()
   self.deferred_text_input(new_text)
   let t1 = now_ms()
+  if not(self.model.projection_dirty) {
+    // Match RefreshProjection's no-op behavior when the edit did not dirty
+    // the projection, such as identical text input.
+    self.refresh_projection()
+    let t2 = now_ms()
+    return {
+      total_ms: t2 - t0,
+      phases: [
+        ("text_input_ms", t1 - t0),
+        ("get_proj_node_ms", 0),
+        ("get_source_map_ms", 0),
+        ("tree_refresh_ms", 0),
+      ],
+    }
+  }
   // Phase 2: get_proj_node (triggers reactive parse + projection memo)
   let proj_node = self.model.editor.get_proj_node()
   let t2 = now_ms()

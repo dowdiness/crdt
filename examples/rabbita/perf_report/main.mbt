@@ -7,7 +7,7 @@ extern "js" fn cli_args() -> Array[String] =
   #|}
 
 ///|
-pub extern "js" fn cli_mode() -> String =
+extern "js" fn cli_mode() -> String =
   #|() => {
   #|  const argv =
   #|    typeof process !== "undefined" && Array.isArray(process.argv)
@@ -18,7 +18,7 @@ pub extern "js" fn cli_mode() -> String =
   #|}
 
 ///|
-pub extern "js" fn cli_iterations() -> Int? =
+extern "js" fn cli_iterations() -> Int? =
   #|() => {
   #|  const argv =
   #|    typeof process !== "undefined" && Array.isArray(process.argv)
@@ -38,7 +38,7 @@ pub extern "js" fn cli_iterations() -> Int? =
   #|}
 
 ///|
-pub extern "js" fn cli_operation_filter() -> String? =
+extern "js" fn cli_operation_filter() -> String? =
   #|() => {
   #|  const argv =
   #|    typeof process !== "undefined" && Array.isArray(process.argv)
@@ -152,6 +152,7 @@ struct BenchmarkResult {
   completed : Int
   timed_out : Bool
   total_ms : Int
+  timeout_elapsed_ms : Int?
   average_ms : Int
   phases : Array[(String, Int)]
 }
@@ -414,6 +415,10 @@ fn format_phases(phases : Array[(String, Int)]) -> String {
 
 ///|
 fn emit_json(result : BenchmarkResult) -> Unit {
+  let timeout_elapsed_json = match result.timeout_elapsed_ms {
+    Some(ms) => "\{ms}"
+    None => "null"
+  }
   let phases_json = if result.phases.is_empty() {
     ""
   } else {
@@ -425,7 +430,7 @@ fn emit_json(result : BenchmarkResult) -> Unit {
     ",\{joined}"
   }
   println(
-    "{\"scenario\":\"\{result.scenario}\",\"label\":\"\{result.label}\",\"iterations\":\{result.iterations},\"completed\":\{result.completed},\"timed_out\":\{result.timed_out},\"total_ms\":\{result.total_ms},\"average_ms\":\{result.average_ms}\{phases_json}}",
+    "{\"scenario\":\"\{result.scenario}\",\"label\":\"\{result.label}\",\"iterations\":\{result.iterations},\"completed\":\{result.completed},\"timed_out\":\{result.timed_out},\"total_ms\":\{result.total_ms},\"timeout_elapsed_ms\":\{timeout_elapsed_json},\"average_ms\":\{result.average_ms}\{phases_json}}",
   )
 }
 
@@ -477,7 +482,6 @@ fn run_case(
   let average = if completed > 0 { total_elapsed / completed } else { 0 }
   let avg_phases = average_phases(measurements)
   let wall_elapsed = @app.now_ms() - case_started_at
-  let reported_total = if timed_out { wall_elapsed } else { total_elapsed }
   // DONE / TIMEOUT line
   if timed_out {
     println(
@@ -495,7 +499,12 @@ fn run_case(
     iterations: case_.iterations,
     completed,
     timed_out,
-    total_ms: reported_total,
+    total_ms: total_elapsed,
+    timeout_elapsed_ms: if timed_out {
+      Some(wall_elapsed)
+    } else {
+      None
+    },
     average_ms: average,
     phases: avg_phases,
   }
