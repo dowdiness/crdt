@@ -15,12 +15,16 @@ pub struct SyncEditor {
   priv registry_memo : @incr.Memo[Map[@proj.NodeId, @proj.ProjNode]]
   priv source_map_memo : @incr.Memo[@proj.SourceMap]
   priv next_node_id : Ref[Int]
+  priv ephemeral : EphemeralStore
+  priv cursor_view : PeerCursorView
+  priv peer_id : String
 }
 
 ///|
 pub fn SyncEditor::new(
   agent_id : String,
   capture_timeout_ms? : Int = 500,
+  ephemeral_timeout_ms? : UInt64 = 60000UL,
 ) -> SyncEditor {
   let parser = @loom.new_imperative_parser("", @parser.lambda_grammar)
   let parser_rt = @incr.Runtime::new()
@@ -35,6 +39,29 @@ pub fn SyncEditor::new(
   let (proj_memo, registry_memo, source_map_memo) = build_projection_memos(
     parser_rt, source_text, syntax_tree, prev_proj_node, next_node_id,
   )
+  let ephemeral = EphemeralStore::new(ephemeral_timeout_ms)
+  let cursor_view = PeerCursorView::new()
+  // Subscribe to ephemeral store events to update cursor_view
+  ignore(
+    ephemeral.subscribe(fn(event) {
+      for key in event.added() {
+        match ephemeral.get(key) {
+          Some(value) => cursor_view.apply_raw_update(key, value)
+          None => ()
+        }
+      }
+      for key in event.updated() {
+        match ephemeral.get(key) {
+          Some(value) => cursor_view.apply_raw_update(key, value)
+          None => ()
+        }
+      }
+      for key in event.removed() {
+        cursor_view.remove(key)
+      }
+      true
+    }),
+  )
   {
     doc: @text.TextDoc::new(agent_id),
     undo: @undo.UndoManager::new(agent_id, capture_timeout_ms~),
@@ -48,6 +75,9 @@ pub fn SyncEditor::new(
     registry_memo,
     source_map_memo,
     next_node_id,
+    ephemeral,
+    cursor_view,
+    peer_id: agent_id,
   }
 }
 
@@ -246,8 +276,18 @@ pub fn SyncEditor::apply_sync(
 ) -> Unit raise {
   let old_source = self.doc.text()
   self.doc.sync().apply(msg)
+  let new_source = self.doc.text()
   self.adjust_cursor()
-  self.sync_parser_after_text_change(old_source, self.doc.text(), None)
+  self.sync_parser_after_text_change(old_source, new_source, None)
+  // Adjust derived cursor view for the text change
+  if old_source != new_source {
+    let splice = compute_text_splice(old_source, new_source)
+    self.cursor_view.adjust_for_edit(
+      splice.start,
+      splice.delete_len,
+      splice.inserted.length(),
+    )
+  }
 }
 
 ///|
@@ -509,4 +549,67 @@ pub fn SyncEditor::set_tracking(self : SyncEditor, enabled : Bool) -> Unit {
 ///|
 pub fn SyncEditor::clear_undo(self : SyncEditor) -> Unit {
   self.undo.clear()
+}
+
+// --- Ephemeral presence methods ---
+
+///|
+pub fn SyncEditor::set_local_presence(
+  self : SyncEditor,
+  name : String,
+  color : String,
+  selection? : (Int, Int)? = None,
+) -> Unit {
+  let map : Map[String, EphemeralValue] = {}
+  map["cursor"] = EphemeralValue::I64(self.cursor.to_int64())
+  map["name"] = EphemeralValue::String(name)
+  map["color"] = EphemeralValue::String(color)
+  match selection {
+    Some((start, end)) =>
+      map["selection"] = EphemeralValue::List([
+        EphemeralValue::I64(start.to_int64()),
+        EphemeralValue::I64(end.to_int64()),
+      ])
+    None => ()
+  }
+  self.ephemeral.set(self.peer_id, EphemeralValue::Map(map)) catch {
+    _ => ()
+  }
+}
+
+///|
+pub fn SyncEditor::apply_ephemeral(self : SyncEditor, data : Bytes) -> Unit {
+  self.ephemeral.apply(data) catch {
+    _ => ()
+  }
+}
+
+///|
+pub fn SyncEditor::encode_ephemeral_all(self : SyncEditor) -> Bytes {
+  self.ephemeral.encode_all()
+}
+
+///|
+pub fn SyncEditor::remove_ephemeral_outdated(self : SyncEditor) -> Unit {
+  self.ephemeral.remove_outdated()
+}
+
+///|
+pub fn SyncEditor::get_peer_cursors(
+  self : SyncEditor,
+) -> Map[String, PeerCursor] {
+  self.cursor_view.all_cursors()
+}
+
+///|
+pub fn SyncEditor::get_peer_id(self : SyncEditor) -> String {
+  self.peer_id
+}
+
+///|
+pub fn SyncEditor::subscribe_ephemeral_local(
+  self : SyncEditor,
+  callback : (Bytes) -> Bool,
+) -> EphemeralSubscription {
+  self.ephemeral.subscribe_local_updates(callback)
 }
