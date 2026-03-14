@@ -236,7 +236,7 @@ pub fn source_file_to_proj_node(
   root : @seam.SyntaxNode,
   counter : Ref[Int],
 ) -> ProjNode {
-  let defs : Array[(String, ProjNode, @seam.SyntaxNode)] = []
+  let defs : Array[(String, ProjNode, Int)] = []
   let mut final_proj : ProjNode? = None
   for child in root.children() {
     if @parser.LetDefView::cast(child) is Some(v) {
@@ -245,7 +245,7 @@ pub fn source_file_to_proj_node(
         None =>
           error_node_for_syntax("missing let binding value", child, counter)
       }
-      defs.push((v.name(), init, child))
+      defs.push((v.name(), init, child.start()))
     } else if final_proj is None {
       final_proj = Some(syntax_to_proj_node(child, counter))
     }
@@ -256,10 +256,10 @@ pub fn source_file_to_proj_node(
       ProjNode::new(Unit, root.end(), root.end(), next_proj_node_id(counter), [])
   }
   for i = defs.length() - 1; i >= 0; i = i - 1 {
-    let (name, init, def_node) = defs[i]
+    let (name, init, def_start) = defs[i]
     result = ProjNode::new(
       Let(name, init.kind, result.kind),
-      def_node.start(),
+      def_start,
       result.end,
       next_proj_node_id(counter),
       [init, result],
@@ -281,7 +281,7 @@ fn is_term_expression_node(node : @seam.SyntaxNode) -> Bool {
 }
 
 ///|
-pub fn unwrap_expression_root(node : @seam.SyntaxNode) -> @seam.SyntaxNode {
+fn unwrap_expression_root(node : @seam.SyntaxNode) -> @seam.SyntaxNode {
   if is_term_expression_node(node) {
     node
   } else {
@@ -352,8 +352,10 @@ fn same_kind_tag(a : @ast.Term, b : @ast.Term) -> Bool {
 }
 
 ///|
-/// Parse text and return a ProjNode tree (replaces @parser.parse_with_error_recovery).
-/// Uses ImperativeParser internally and preserves node-specific source ranges.
+/// Parse a single expression and return a ProjNode tree.
+/// Uses `lambda_grammar` (not `source_file_grammar`) because this is for
+/// sub-expression parsing in tree_lens operations, not whole-document parsing.
+/// The editor's top-level parsing uses `source_file_to_proj_node` instead.
 pub fn parse_to_proj_node(text : String) -> (ProjNode, Array[String]) {
   let ip = @loom.new_imperative_parser(text, @parser.lambda_grammar)
   let syntax_node : @seam.SyntaxNode = ip.parse()

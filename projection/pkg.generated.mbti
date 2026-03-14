@@ -26,8 +26,6 @@ pub fn syntax_to_proj_node(@seam.SyntaxNode, @ref.Ref[Int]) -> ProjNode
 
 pub fn text_lens_diff(String, String) -> Array[ProjectionEdit]
 
-pub fn unwrap_expression_root(@seam.SyntaxNode) -> @seam.SyntaxNode
-
 // Errors
 
 // Types and methods
