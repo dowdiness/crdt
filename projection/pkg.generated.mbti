@@ -20,6 +20,8 @@ pub fn parse_to_proj_node(String) -> (ProjNode, Array[String])
 
 pub fn reconcile_ast(ProjNode, ProjNode, @ref.Ref[Int]) -> ProjNode
 
+pub fn source_file_to_proj_node(@seam.SyntaxNode, @ref.Ref[Int]) -> ProjNode
+
 pub fn syntax_to_proj_node(@seam.SyntaxNode, @ref.Ref[Int]) -> ProjNode
 
 pub fn text_lens_diff(String, String) -> Array[ProjectionEdit]

@@ -226,6 +226,49 @@ pub fn syntax_to_proj_node(
 }
 
 ///|
+/// Convert a SourceFile SyntaxNode (LetDef* Expression?) to a ProjNode tree.
+/// Right-folds LetDef children into nested Let(name, init, body) ProjNodes,
+/// mirroring `syntax_node_to_source_file_term` but preserving spans and IDs.
+///
+/// Also handles inline `let x = 0 in body` (LetExpr nodes) — these are passed
+/// through to `syntax_to_proj_node` which already handles LetExprView.
+pub fn source_file_to_proj_node(
+  root : @seam.SyntaxNode,
+  counter : Ref[Int],
+) -> ProjNode {
+  let defs : Array[(String, ProjNode, @seam.SyntaxNode)] = []
+  let mut final_proj : ProjNode? = None
+  for child in root.children() {
+    if @parser.LetDefView::cast(child) is Some(v) {
+      let init = match v.init() {
+        Some(n) => syntax_to_proj_node(n, counter)
+        None =>
+          error_node_for_syntax("missing let binding value", child, counter)
+      }
+      defs.push((v.name(), init, child))
+    } else if final_proj is None {
+      final_proj = Some(syntax_to_proj_node(child, counter))
+    }
+  }
+  let mut result = match final_proj {
+    Some(p) => p
+    None =>
+      ProjNode::new(Unit, root.end(), root.end(), next_proj_node_id(counter), [])
+  }
+  for i = defs.length() - 1; i >= 0; i = i - 1 {
+    let (name, init, def_node) = defs[i]
+    result = ProjNode::new(
+      Let(name, init.kind, result.kind),
+      def_node.start(),
+      result.end,
+      next_proj_node_id(counter),
+      [init, result],
+    )
+  }
+  result
+}
+
+///|
 fn is_term_expression_node(node : @seam.SyntaxNode) -> Bool {
   @parser.IntLiteralView::cast(node) is Some(_) ||
   @parser.VarRefView::cast(node) is Some(_) ||
