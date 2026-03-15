@@ -1,6 +1,6 @@
-// Shared text-change adapter for contiguous edits.
-// Debt rule: if another root package needs old/new text diffing, extend this
-// package instead of re-implementing prefix/suffix scans locally.
+// Compatibility adapter over the shared dowdiness/text_change leaf module.
+// Keep parser-facing helpers here only for existing callers; the pure diff
+// owner now lives outside the root crdt module.
 
 ///|
 pub struct TextChange {
@@ -10,31 +10,22 @@ pub struct TextChange {
 } derive(Eq, Show)
 
 ///|
-fn text_change_from_deltas(deltas : Array[@loom_core.TextDelta]) -> TextChange {
-  let mut start = 0
-  let mut delete_len = 0
-  let mut inserted = ""
-  let mut seen_change = false
-  for delta in deltas {
-    match delta {
-      @loom_core.TextDelta::Retain(n) => if not(seen_change) { start += n }
-      @loom_core.TextDelta::Delete(n) => {
-        delete_len += n
-        seen_change = true
-      }
-      @loom_core.TextDelta::Insert(text) => {
-        inserted = inserted + text
-        seen_change = true
-      }
-    }
+fn TextChange::from_shared(
+  change : @shared_text_change.TextChange,
+) -> TextChange {
+  {
+    start: change.start,
+    delete_len: change.delete_len,
+    inserted: change.inserted,
   }
-  { start, delete_len, inserted }
 }
 
 ///|
 /// Compute the minimal contiguous text change between two strings.
 pub fn compute_text_change(old_text : String, new_text : String) -> TextChange {
-  text_change_from_deltas(@loom_core.text_to_delta(old_text, new_text))
+  TextChange::from_shared(
+    @shared_text_change.compute_text_change(old_text, new_text),
+  )
 }
 
 ///|

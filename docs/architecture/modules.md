@@ -57,12 +57,22 @@ Application layer that uses event-graph-walker and parser as path dependencies.
 ### `/` (root)
 JavaScript FFI bindings (`crdt.mbt`) that expose the editor API to JavaScript.
 
+### `lib/text-change/`
+Leaf MoonBit module with the pure contiguous `TextChange` algorithm shared by
+`crdt`, `loom`, and `valtio`.
+Inside this monorepo it is consumed via path dependencies; standalone packaging
+is deferred until the shared API shape settles.
+
 ### `editor/`
 High-level editor abstractions (application-specific).
 
 - `SyncEditor` - Unified facade composing `TextDoc`, `UndoManager`, an edit-aware `ImperativeParser`, and memo-derived projection views
-- `text_change/` - Shared contiguous text-change adapter used by editor/projection diff code
 - `Editor` - Thin compatibility shim for CLI/tests; not the primary editor path
+
+### `text_change/`
+Root compatibility adapter that preserves the older parser-facing
+`dowdiness/crdt/text_change` API while delegating the pure diff algorithm to
+`lib/text-change/`.
 
 ### `projection/`
 Projectional editing support.
@@ -87,7 +97,9 @@ event-graph-walker (independent, quickcheck only)
 
 loom (independent: loom/seam/incr/lambda submodules)
 
-crdt (depends on event-graph-walker + dowdiness/lambda + dowdiness/loom via path deps)
+text-change (leaf module shared by crdt + loom + valtio)
+
+crdt (depends on event-graph-walker + dowdiness/lambda + dowdiness/loom + dowdiness/text_change via path deps)
 ```
 
 ## MoonBit Module Configuration
@@ -98,6 +110,7 @@ The root `moon.mod.json` declares path dependencies on the submodules:
 {
   "deps": {
     "dowdiness/event-graph-walker": { "path": "./event-graph-walker" },
+    "dowdiness/text_change": { "path": "./lib/text-change" },
     "dowdiness/lambda": { "path": "./loom/examples/lambda" },
     "dowdiness/loom": { "path": "./loom/loom" }
   }
@@ -107,6 +120,7 @@ The root `moon.mod.json` declares path dependencies on the submodules:
 ## Run Tests
 
 ```bash
+cd lib/text-change && moon test               # Shared text-change leaf
 moon test                                    # crdt module
 cd event-graph-walker && moon test          # CRDT library
 cd loom/loom && moon test                   # Parser framework

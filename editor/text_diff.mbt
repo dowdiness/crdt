@@ -1,28 +1,19 @@
-// Text diffing utilities for computing Edit objects from text changes.
-// Keep this file as a parser-facing adapter only; shared diff logic belongs in
-// dowdiness/crdt/text_change rather than another local implementation.
-
-///|
-pub struct TextSplice {
-  start : Int
-  delete_len : Int
-  inserted : String
-} derive(Eq, Show)
+// Text diffing utilities for computing parser Edits from the shared
+// dowdiness/text_change leaf module.
 
 ///|
 /// Compute the minimal single-span splice between two strings.
-pub fn compute_text_splice(old_text : String, new_text : String) -> TextSplice {
-  let change = @text_change.compute_text_change(old_text, new_text)
-  {
-    start: change.start,
-    delete_len: change.delete_len,
-    inserted: change.inserted,
-  }
+pub fn compute_text_splice(
+  old_text : String,
+  new_text : String,
+) -> @text_change.TextChange {
+  @text_change.compute_text_change(old_text, new_text)
 }
 
 ///|
 /// Compute an Edit from the difference between old and new text
 /// using the shared text_change adapter.
 pub fn compute_edit(old_text : String, new_text : String) -> @parser.Edit {
-  @text_change.compute_text_change(old_text, new_text).to_parser_edit()
+  let change = @text_change.compute_text_change(old_text, new_text)
+  @parser.Edit::new(change.start, change.delete_len, change.inserted.length())
 }

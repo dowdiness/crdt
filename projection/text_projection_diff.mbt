@@ -1,5 +1,5 @@
 // Text/projection diff adapter for legacy projection edit consumers.
-// Shared diff logic stays in dowdiness/crdt/text_change; this file only maps it
+// Shared diff logic stays in dowdiness/text_change; this file only maps it
 // into the compatibility-era ProjectionEdit surface.
 
 ///|

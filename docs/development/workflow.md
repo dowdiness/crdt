@@ -54,7 +54,12 @@ The CRDT implementation is split across two modules:
 - `editor/editor.mbt` - Basic editor with cursor tracking
 - `editor/sync_editor*.mbt` - Active editor facade and parser/sync/undo orchestration
 - `editor/text_diff.mbt` - Text diffing utilities
-- `text_change/` - Shared contiguous text-change helpers
+- `lib/text-change/` - Shared leaf contiguous text-change module
+- `text_change/` - Root compatibility adapter over the shared leaf
+
+The shared `lib/text-change/` module is monorepo-local for now. Standalone
+packaging for submodules that consume it is a follow-up after the API shape
+stops moving.
 
 When adding features, consult:
 - [event-graph-walker/README.md](../../event-graph-walker/README.md)

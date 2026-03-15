@@ -6,6 +6,9 @@
     "dowdiness/event-graph-walker": {
       "path": "./event-graph-walker"
     },
+    "dowdiness/text_change": {
+      "path": "./lib/text-change"
+    },
     "dowdiness/incr": {
       "path": "./loom/incr"
     },
