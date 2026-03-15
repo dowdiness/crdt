@@ -7,13 +7,10 @@ import {
   "dowdiness/lambda",
   "dowdiness/lambda/ast",
   "dowdiness/loom/core",
-  "dowdiness/text_change",
 }
 
 // Values
 pub fn compute_edit(String, String) -> @core.Edit
-
-pub fn compute_text_splice(String, String) -> @text_change.TextChange
 
 pub fn merge_to_edits(String, String) -> Array[@core.Edit]
 

@@ -51,7 +51,7 @@ pub fn BenchmarkSession::incremental_eager_refresh(
   self : BenchmarkSession,
   new_text : String,
 ) -> Unit {
-  let splice = @editor.compute_text_splice(
+  let splice = @text_change.compute_text_change(
     self.model.editor.get_text(),
     new_text,
   )

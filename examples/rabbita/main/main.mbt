@@ -183,7 +183,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       if old_text == new_text {
         (none, model)
       } else {
-        let splice = @editor.compute_text_splice(old_text, new_text)
+        let splice = @text_change.compute_text_change(old_text, new_text)
         model.editor.apply_text_edit(
           splice.start,
           splice.delete_len,

@@ -69,11 +69,6 @@ High-level editor abstractions (application-specific).
 - `SyncEditor` - Unified facade composing `TextDoc`, `UndoManager`, an edit-aware `ImperativeParser`, and memo-derived projection views
 - `Editor` - Thin compatibility shim for CLI/tests; not the primary editor path
 
-### `text_change/`
-Root compatibility adapter that preserves the older parser-facing
-`dowdiness/crdt/text_change` API while delegating the pure diff algorithm to
-`lib/text-change/`.
-
 ### `projection/`
 Projectional editing support.
 

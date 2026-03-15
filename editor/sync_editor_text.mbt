@@ -161,7 +161,7 @@ pub fn SyncEditor::set_text(self : SyncEditor, new_text : String) -> Unit {
   if old_text == new_text {
     return
   }
-  let splice = compute_text_splice(old_text, new_text)
+  let splice = @text_change.compute_text_change(old_text, new_text)
   self.apply_text_edit_internal(
     splice.start,
     splice.delete_len,
@@ -182,7 +182,7 @@ pub fn SyncEditor::set_text_and_record(
   if old_text == new_text {
     return
   }
-  let splice = compute_text_splice(old_text, new_text)
+  let splice = @text_change.compute_text_change(old_text, new_text)
   self.apply_text_edit_internal(
     splice.start,
     splice.delete_len,

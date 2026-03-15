@@ -1,8 +1,0 @@
-import {
-  "dowdiness/text_change" @shared_text_change,
-  "dowdiness/loom/core" @loom_core,
-}
-
-options(
-  is_main: false,
-)
