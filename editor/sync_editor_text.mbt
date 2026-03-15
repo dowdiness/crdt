@@ -78,44 +78,18 @@ pub fn SyncEditor::get_cursor(self : SyncEditor) -> Int {
 }
 
 ///|
-fn SyncEditor::apply_delete_span(
+fn SyncEditor::apply_replace_span(
   self : SyncEditor,
   start : Int,
   deleted_len : Int,
-  timestamp_ms : Int,
-  record_undo : Bool,
-) -> Unit {
-  // TextDoc only exposes single-character delete today. Keep the span-delete
-  // workaround isolated here until event-graph-walker adds a range delete API.
-  // Do not duplicate this loop in more editor call sites; pay the debt in the
-  // owning CRDT package when the API is extended.
-  for _i = 0; _i < deleted_len; _i = _i + 1 {
-    if record_undo {
-      self.doc.delete_and_record(@text.Pos::at(start), self.undo, timestamp_ms~) catch {
-        _ => ()
-      }
-    } else {
-      self.doc.delete(@text.Pos::at(start)) catch {
-        _ => ()
-      }
-    }
-  }
-}
-
-///|
-fn SyncEditor::apply_insert_span(
-  self : SyncEditor,
-  start : Int,
   inserted : String,
   timestamp_ms : Int,
   record_undo : Bool,
 ) -> Unit {
-  if inserted.length() == 0 {
-    return
-  }
+  let range = @text.Range::from_ints(start, start + deleted_len)
   if record_undo {
-    self.doc.insert_and_record(
-      @text.Pos::at(start),
+    self.doc.replace_range_and_record(
+      range,
       inserted,
       self.undo,
       timestamp_ms~,
@@ -123,7 +97,7 @@ fn SyncEditor::apply_insert_span(
       _ => ()
     }
   } else {
-    self.doc.insert(@text.Pos::at(start), inserted) catch {
+    self.doc.replace_range(range, inserted) catch {
       _ => ()
     }
   }
@@ -156,10 +130,15 @@ fn SyncEditor::apply_text_edit_internal(
   } else {
     deleted_len
   }
-  // Funnel all bulk text mutation through one helper so temporary CRDT API
-  // workarounds stay localized and are easy to remove later.
-  self.apply_delete_span(safe_start, safe_delete_len, timestamp_ms, record_undo)
-  self.apply_insert_span(safe_start, inserted, timestamp_ms, record_undo)
+  // Funnel all bulk text mutation through one helper so CRDT range-edit and
+  // undo behavior stay aligned at a single boundary.
+  self.apply_replace_span(
+    safe_start,
+    safe_delete_len,
+    inserted,
+    timestamp_ms,
+    record_undo,
+  )
   if move_cursor_to_edit_end {
     self.cursor = safe_start + inserted.length()
   } else {

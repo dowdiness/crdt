@@ -227,6 +227,17 @@ test "SyncEditor: apply_text_edit records undo" {
 }
 
 ///|
+test "SyncEditor: apply_text_edit records multi-character range undo" {
+  let se = SyncEditor::new("agent1")
+  try! insert_each_and_record(se, "abcdef", 1000)
+  se.apply_text_edit(1, 3, "XYZ", 2000)
+  inspect(se.get_text(), content="aXYZef")
+  let undone = se.undo()
+  inspect(undone, content="true")
+  inspect(se.get_text(), content="abcdef")
+}
+
+///|
 test "SyncEditor: apply_text_edit reuses parser structure on local edit" {
   let se = SyncEditor::new("agent1")
   se.set_text("λf.λx.f x")
