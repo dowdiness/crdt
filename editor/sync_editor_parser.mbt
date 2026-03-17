@@ -140,14 +140,15 @@ pub fn SyncEditor::get_ast_pretty(self : SyncEditor) -> String {
 
 ///|
 pub fn SyncEditor::get_resolution(self : SyncEditor) -> @parser.Resolution {
-  @parser.resolve(self.get_ast())
+  let (_, res) = @parser.resolve(self.get_ast())
+  res
 }
 
 ///|
 pub fn SyncEditor::get_dot_resolved(self : SyncEditor) -> String {
   let ast = self.get_ast()
-  let res = @parser.resolve(ast)
-  @parser.term_to_dot_resolved(ast, res)
+  let (resolved_ast, res) = @parser.resolve(ast)
+  @parser.term_to_dot_resolved(resolved_ast, res)
 }
 
 ///|

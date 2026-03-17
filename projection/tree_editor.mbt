@@ -116,6 +116,7 @@ fn interactive_node_shape(kind : @ast.Term) -> InteractiveNodeShape {
     If(_, _, _) => If
     Let(name, _, _) => Let(name)
     Unit => Unit
+    Unbound(name) => Var(name) // Unbound rendered same as Var in editor
     Error(msg) => Error(msg)
   }
 }
@@ -550,6 +551,7 @@ fn get_node_label(kind : @ast.Term) -> String {
     If(_, _, _) => "if"
     Let(name, _, _) => "let " + name
     Unit => "()"
+    Unbound(name) => "?" + name
     Error(msg) => "Error: " + msg
   }
 }
