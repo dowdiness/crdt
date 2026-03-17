@@ -156,6 +156,18 @@ pub fn SyncEditor::apply_text_edit(
 }
 
 ///|
+/// Replace the document text with `new_text` via a single range edit.
+///
+/// **CRDT position caveat:** `replace_range` inserts all characters as a
+/// contiguous batch, so the internal FugueMax tree has no interleaving
+/// points between them. A subsequent `insert` / `insert_and_record` at
+/// position 0 may resolve to the *end* of the batch rather than prepending,
+/// because FugueMax's tie-breaking places the new character after the
+/// batch's root. Use `set_text` only for bulk initialization or
+/// synchronization; for interactive typing, prefer the per-character
+/// `insert` / `insert_and_record` methods which create proper interleaving
+/// points. See `resolve_applied_edit` in `sync_editor_parser.mbt` for how
+/// the cursor adjustment layer compensates for this divergence.
 pub fn SyncEditor::set_text(self : SyncEditor, new_text : String) -> Unit {
   let old_text = self.doc.text()
   if old_text == new_text {
