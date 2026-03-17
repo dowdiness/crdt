@@ -111,3 +111,18 @@ pub fn reconcile_flat_proj(
 
   { defs: result_defs, final_expr }
 }
+
+///|
+/// Print a FlatProj to text. Equivalent to @ast.print_term on the nested spine.
+pub fn print_flat_proj(fp : FlatProj) -> String {
+  let parts : Array[String] = []
+  for def in fp.defs {
+    let (name, init, _, _) = def
+    parts.push("let " + name + " = " + @ast.print_term(init.kind))
+  }
+  match fp.final_expr {
+    Some(expr) => parts.push(@ast.print_term(expr.kind))
+    None => parts.push("()")
+  }
+  parts.join("\n")
+}

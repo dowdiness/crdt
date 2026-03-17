@@ -132,3 +132,49 @@ test "reconcile_flat_proj: final_expr reconciled" {
   // Value changed
   inspect(reconciled.final_expr.unwrap().kind, content="Int(99)")
 }
+
+///|
+test "print_flat_proj: single expression" {
+  let ip = @loom.new_imperative_parser("42", @parser.lambda_grammar)
+  let fp = to_flat_proj(ip.parse(), Ref::new(0))
+  inspect(print_flat_proj(fp), content="42")
+}
+
+///|
+test "print_flat_proj: single let + expression" {
+  let ip = @loom.new_imperative_parser("let x = 1\nx", @parser.lambda_grammar)
+  let fp = to_flat_proj(ip.parse(), Ref::new(0))
+  inspect(print_flat_proj(fp), content="let x = 1\nx")
+}
+
+///|
+test "print_flat_proj: multiple lets" {
+  let ip = @loom.new_imperative_parser(
+    "let x = 1\nlet y = 2\nx + y", @parser.lambda_grammar,
+  )
+  let fp = to_flat_proj(ip.parse(), Ref::new(0))
+  inspect(print_flat_proj(fp), content="let x = 1\nlet y = 2\n(x + y)")
+}
+
+///|
+test "print_flat_proj: defs only (no final expression)" {
+  let ip = @loom.new_imperative_parser("let x = 1\n", @parser.lambda_grammar)
+  let fp = to_flat_proj(ip.parse(), Ref::new(0))
+  inspect(print_flat_proj(fp), content="let x = 1\n()")
+}
+
+///|
+test "print_flat_proj: equivalence with print_term on nested spine" {
+  let text = "let x = 1\nlet y = 2\nx + y"
+  let ip = @loom.new_imperative_parser(text, @parser.lambda_grammar)
+  let syntax = ip.parse()
+  let counter = Ref::new(0)
+  let nested = to_proj_node(syntax, counter)
+  let counter2 = Ref::new(0)
+  let ip2 = @loom.new_imperative_parser(text, @parser.lambda_grammar)
+  let flat = to_flat_proj(ip2.parse(), counter2)
+  inspect(
+    print_flat_proj(flat) == @ast.print_term(nested.kind),
+    content="true",
+  )
+}
