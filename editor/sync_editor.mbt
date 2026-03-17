@@ -10,8 +10,9 @@ pub struct SyncEditor {
   priv source_text : @incr.Signal[String]
   priv syntax_tree : @incr.Signal[@seam.SyntaxNode?]
   priv mut cursor : Int
-  priv prev_proj_node : Ref[@proj.ProjNode?]
-  priv proj_memo : @incr.Memo[@proj.ProjNode?]
+  priv prev_flat_proj : Ref[@proj.FlatProj?]
+  priv proj_memo : @incr.Memo[@proj.FlatProj?]
+  priv cached_proj_node : @incr.Memo[@proj.ProjNode?]
   priv registry_memo : @incr.Memo[Map[@proj.NodeId, @proj.ProjNode]]
   priv source_map_memo : @incr.Memo[@proj.SourceMap]
   priv next_node_id : Ref[Int]
@@ -30,10 +31,10 @@ pub fn SyncEditor::new(
     None,
     label="editor_syntax_tree",
   )
-  let prev_proj_node : Ref[@proj.ProjNode?] = Ref::new(None)
+  let prev_flat_proj : Ref[@proj.FlatProj?] = Ref::new(None)
   let next_node_id : Ref[Int] = Ref::new(0)
-  let (proj_memo, registry_memo, source_map_memo) = build_projection_memos(
-    parser_rt, source_text, syntax_tree, prev_proj_node, next_node_id,
+  let (proj_memo, cached_proj_node, registry_memo, source_map_memo) = build_projection_memos(
+    parser_rt, source_text, syntax_tree, prev_flat_proj, next_node_id,
   )
   {
     doc: @text.TextDoc::new(agent_id),
@@ -43,8 +44,9 @@ pub fn SyncEditor::new(
     source_text,
     syntax_tree,
     cursor: 0,
-    prev_proj_node,
+    prev_flat_proj,
     proj_memo,
+    cached_proj_node,
     registry_memo,
     source_map_memo,
     next_node_id,

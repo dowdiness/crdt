@@ -1,4 +1,4 @@
-// Projection Memo: Reactive derivation of ProjNode, registry, and source map
+// Projection Memo: Reactive derivation of FlatProj, ProjNode, registry, and source map
 // from SyncEditor's incremental parser-backed signals.
 
 ///|
@@ -6,45 +6,64 @@ fn build_projection_memos(
   rt : @incr.Runtime,
   source_text : @incr.Signal[String],
   syntax_tree : @incr.Signal[@seam.SyntaxNode?],
-  prev_proj_ref : Ref[@proj.ProjNode?],
+  prev_flat_proj_ref : Ref[@proj.FlatProj?],
   next_id_ref : Ref[Int],
 ) -> (
+  @incr.Memo[@proj.FlatProj?],
   @incr.Memo[@proj.ProjNode?],
   @incr.Memo[Map[@proj.NodeId, @proj.ProjNode]],
   @incr.Memo[@proj.SourceMap],
 ) {
-  let proj_memo : @incr.Memo[@proj.ProjNode?] = @incr.Memo::new(
+  let proj_memo : @incr.Memo[@proj.FlatProj?] = @incr.Memo::new(
     rt,
-    fn() -> @proj.ProjNode? {
+    fn() -> @proj.FlatProj? {
       if source_text.get() == "" {
-        prev_proj_ref.val = None
+        prev_flat_proj_ref.val = None
         return None
       }
       let syntax_root = match syntax_tree.get() {
         Some(root) => root
         None => {
-          prev_proj_ref.val = None
+          prev_flat_proj_ref.val = None
           return None
         }
       }
       let counter = Ref::new(next_id_ref.val)
-      let new_proj = @proj.to_proj_node(syntax_root, counter)
-      let reconciled = match prev_proj_ref.val {
-        None => new_proj
-        Some(prev) => @proj.reconcile_ast(prev, new_proj, counter)
+      let new_fp = @proj.to_flat_proj(syntax_root, counter)
+      let reconciled = match prev_flat_proj_ref.val {
+        None => new_fp
+        Some(prev) => @proj.reconcile_flat_proj(prev, new_fp, counter)
       }
       next_id_ref.val = counter.val
-      prev_proj_ref.val = Some(reconciled)
+      prev_flat_proj_ref.val = Some(reconciled)
       Some(reconciled)
     },
     label="proj_node",
+  )
+
+  // Single conversion FlatProj -> ProjNode, shared by registry + source_map + get_proj_node.
+  // Counter write-back ensures Unit fallback IDs don't collide with future IDs.
+  let cached_proj_node : @incr.Memo[@proj.ProjNode?] = @incr.Memo::new(
+    rt,
+    fn() -> @proj.ProjNode? {
+      match proj_memo.get() {
+        Some(fp) => {
+          let counter = Ref::new(next_id_ref.val)
+          let proj = fp.to_proj_node(counter)
+          next_id_ref.val = counter.val
+          Some(proj)
+        }
+        None => None
+      }
+    },
+    label="cached_proj_node",
   )
 
   let registry_memo : @incr.Memo[Map[@proj.NodeId, @proj.ProjNode]] = @incr.Memo::new(
     rt,
     fn() -> Map[@proj.NodeId, @proj.ProjNode] {
       let registry : Map[@proj.NodeId, @proj.ProjNode] = {}
-      match proj_memo.get() {
+      match cached_proj_node.get() {
         Some(root) => register_node_tree(root, registry)
         None => ()
       }
@@ -56,7 +75,7 @@ fn build_projection_memos(
   let source_map_memo : @incr.Memo[@proj.SourceMap] = @incr.Memo::new(
     rt,
     fn() -> @proj.SourceMap {
-      match proj_memo.get() {
+      match cached_proj_node.get() {
         Some(root) => @proj.SourceMap::from_ast(root)
         None => @proj.SourceMap::new()
       }
@@ -64,7 +83,7 @@ fn build_projection_memos(
     label="source_map",
   )
 
-  (proj_memo, registry_memo, source_map_memo)
+  (proj_memo, cached_proj_node, registry_memo, source_map_memo)
 }
 
 ///|
@@ -79,8 +98,14 @@ fn register_node_tree(
 }
 
 ///|
-pub fn SyncEditor::get_proj_node(self : SyncEditor) -> @proj.ProjNode? {
+pub fn SyncEditor::get_flat_proj(self : SyncEditor) -> @proj.FlatProj? {
   self.proj_memo.get()
+}
+
+///|
+/// Returns the cached ProjNode (converted from FlatProj once per invalidation).
+pub fn SyncEditor::get_proj_node(self : SyncEditor) -> @proj.ProjNode? {
+  self.cached_proj_node.get()
 }
 
 ///|
@@ -89,11 +114,11 @@ pub fn SyncEditor::get_source_map(self : SyncEditor) -> @proj.SourceMap {
 }
 
 ///|
-fn SyncEditor::seed_proj_node(
+fn SyncEditor::seed_flat_proj(
   self : SyncEditor,
-  proj : @proj.ProjNode?,
+  fp : @proj.FlatProj?,
 ) -> Unit {
-  self.prev_proj_node.val = proj
+  self.prev_flat_proj.val = fp
 }
 
 ///|

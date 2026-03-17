@@ -41,7 +41,7 @@ pub fn SyncEditor::apply_tree_edit(
 
   // Seed memo reconciliation with the structurally edited tree so the
   // subsequent reparse preserves node identities from the edit result.
-  self.seed_proj_node(Some(new_proj))
+  self.seed_flat_proj(Some(@proj.FlatProj::from_proj_node(new_proj)))
   self.set_text_and_record(new_text, timestamp_ms)
   self.move_cursor(old_cursor)
   Ok(())
