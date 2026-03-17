@@ -335,6 +335,65 @@ test "SyncEditor: remote sync tracks actual merged text positions" {
 }
 
 ///|
+test "SyncEditor: apply_sync does not pollute undo stack" {
+  let se1 = SyncEditor::new("alice", capture_timeout_ms=500)
+  let se2 = SyncEditor::new("bob", capture_timeout_ms=500)
+
+  // Alice types
+  try! se1.insert_and_record("hello", 1000)
+
+  // Sync to Bob
+  try! se2.apply_sync(try! se1.export_all())
+
+  // Bob's undo stack should be empty — remote ops must not be tracked
+  inspect(se2.can_undo(), content="false")
+}
+
+///|
+test "SyncEditor: undo returns sync message for peer broadcast" {
+  let se = SyncEditor::new("alice", capture_timeout_ms=500)
+
+  // Type some text
+  try! se.insert_and_record("hello", 1000)
+
+  // Undo
+  let msg = se.undo_and_export()
+  inspect(se.get_text(), content="")
+
+  // The returned message should contain ops
+  match msg {
+    Some(m) => inspect(m.is_empty(), content="false")
+    None => inspect(false, content="true") // should have returned Some
+  }
+}
+
+///|
+test "SyncEditor: undo sync ops can be applied to peer" {
+  let se1 = SyncEditor::new("alice", capture_timeout_ms=500)
+  let se2 = SyncEditor::new("bob", capture_timeout_ms=500)
+
+  // Alice types
+  try! se1.insert_and_record("hello", 1000)
+
+  // Sync initial state to Bob
+  try! se2.apply_sync(try! se1.export_all())
+  inspect(se2.get_text(), content="hello")
+
+  // Alice undoes and gets sync ops
+  let msg = se1.undo_and_export()
+  inspect(se1.get_text(), content="")
+
+  // Apply undo ops to Bob
+  match msg {
+    Some(m) => try! se2.apply_sync(m)
+    None => ()
+  }
+
+  // Bob should converge with Alice
+  inspect(se2.get_text(), content="")
+}
+
+///|
 test "SyncEditor: get_resolution returns bound/free info" {
   let se = SyncEditor::new("agent1")
   // λx. (x + y) — x is bound, y is free
