@@ -33,8 +33,29 @@ pub fn to_flat_proj(root : @seam.SyntaxNode, counter : Ref[Int]) -> FlatProj {
 }
 
 ///|
+/// Build occurrence-indexed keys for LCS matching.
+/// Disambiguates shadowed names: first `x` gets key (x,0), second `x` gets (x,1).
+fn def_keys(
+  defs : Array[(String, ProjNode, Int, NodeId)],
+) -> Array[(String, Int)] {
+  let counts : Map[String, Int] = {}
+  let keys : Array[(String, Int)] = []
+  for def in defs {
+    let name = def.0
+    let idx = match counts.get(name) {
+      Some(n) => n
+      None => 0
+    }
+    keys.push((name, idx))
+    counts[name] = idx + 1
+  }
+  keys
+}
+
+///|
 /// Reconcile two FlatProjs, preserving node IDs where entries match.
-/// Uses LCS on def names for alignment; reconciles init subtrees individually.
+/// Uses LCS on (name, occurrence_index) for alignment — handles shadowed names.
+/// Reconciles init subtrees individually via reconcile_ast.
 pub fn reconcile_flat_proj(
   old_fp : FlatProj,
   new_fp : FlatProj,
@@ -44,8 +65,10 @@ pub fn reconcile_flat_proj(
   let new_defs = new_fp.defs
   let old_len = old_defs.length()
   let new_len = new_defs.length()
+  let old_keys = def_keys(old_defs)
+  let new_keys = def_keys(new_defs)
 
-  // LCS DP on def names
+  // LCS DP on (name, occurrence_index) keys
   let dp : Array[Array[Int]] = []
   for i = 0; i <= old_len; i = i + 1 {
     let row : Array[Int] = []
@@ -56,7 +79,7 @@ pub fn reconcile_flat_proj(
   }
   for i = 1; i <= old_len; i = i + 1 {
     for j = 1; j <= new_len; j = j + 1 {
-      if old_defs[i - 1].0 == new_defs[j - 1].0 {
+      if old_keys[i - 1] == new_keys[j - 1] {
         dp[i][j] = dp[i - 1][j - 1] + 1
       } else {
         dp[i][j] = @cmp.maximum(dp[i - 1][j], dp[i][j - 1])
@@ -72,7 +95,7 @@ pub fn reconcile_flat_proj(
   let mut i = old_len
   let mut j = new_len
   while i > 0 && j > 0 {
-    if old_defs[i - 1].0 == new_defs[j - 1].0 {
+    if old_keys[i - 1] == new_keys[j - 1] {
       new_matched[j - 1] = i - 1
       i = i - 1
       j = j - 1

@@ -252,3 +252,84 @@ test "FlatProj roundtrip: from_proj_node -> to_proj_node preserves text" {
     content="true",
   )
 }
+
+///|
+test "reconcile_flat_proj: duplicate/shadowed names preserve correct IDs" {
+  // old: let x = 1, let x = 2, x  →  new: let x = 1, let x = 2, x
+  let counter = Ref::new(0)
+  let ip1 = @loom.new_imperative_parser(
+    "let x = 1\nlet x = 2\nx", @parser.lambda_grammar,
+  )
+  let old = to_flat_proj(ip1.parse(), counter)
+  let old_id_0 = old.defs[0].3 // first x
+  let old_id_1 = old.defs[1].3 // second x
+
+  let ip2 = @loom.new_imperative_parser(
+    "let x = 1\nlet x = 2\nx", @parser.lambda_grammar,
+  )
+  let new_fp = to_flat_proj(ip2.parse(), counter)
+  let reconciled = reconcile_flat_proj(old, new_fp, counter)
+
+  // Both IDs preserved in correct positions
+  inspect(reconciled.defs[0].3 == old_id_0, content="true")
+  inspect(reconciled.defs[1].3 == old_id_1, content="true")
+}
+
+///|
+test "reconcile_flat_proj: shadow with insertion preserves first x ID" {
+  // old: [x=1], x  →  new: [x=1, x=2], x
+  let counter = Ref::new(0)
+  let ip1 = @loom.new_imperative_parser("let x = 1\nx", @parser.lambda_grammar)
+  let old = to_flat_proj(ip1.parse(), counter)
+  let old_x_id = old.defs[0].3
+
+  let ip2 = @loom.new_imperative_parser(
+    "let x = 1\nlet x = 2\nx", @parser.lambda_grammar,
+  )
+  let new_fp = to_flat_proj(ip2.parse(), counter)
+  let reconciled = reconcile_flat_proj(old, new_fp, counter)
+
+  inspect(reconciled.defs.length(), content="2")
+  // First x preserves old ID
+  inspect(reconciled.defs[0].3 == old_x_id, content="true")
+  // Second x gets a fresh ID (different from first)
+  inspect(reconciled.defs[1].3 != old_x_id, content="true")
+}
+
+///|
+test "reconcile_flat_proj: empty old defs" {
+  let counter = Ref::new(0)
+  let ip1 = @loom.new_imperative_parser("42", @parser.lambda_grammar)
+  let old = to_flat_proj(ip1.parse(), counter)
+
+  let ip2 = @loom.new_imperative_parser("let x = 1\n42", @parser.lambda_grammar)
+  let new_fp = to_flat_proj(ip2.parse(), counter)
+  let reconciled = reconcile_flat_proj(old, new_fp, counter)
+
+  inspect(reconciled.defs.length(), content="1")
+  inspect(reconciled.defs[0].0, content="x")
+}
+
+///|
+test "reconcile_flat_proj: empty new defs" {
+  let counter = Ref::new(0)
+  let ip1 = @loom.new_imperative_parser("let x = 1\n42", @parser.lambda_grammar)
+  let old = to_flat_proj(ip1.parse(), counter)
+
+  let ip2 = @loom.new_imperative_parser("42", @parser.lambda_grammar)
+  let new_fp = to_flat_proj(ip2.parse(), counter)
+  let reconciled = reconcile_flat_proj(old, new_fp, counter)
+
+  inspect(reconciled.defs.length(), content="0")
+}
+
+///|
+test "print_flat_proj: defs-only roundtrips through tree edit" {
+  let text = "let x = 1\nlet y = 2\n"
+  let ip = @loom.new_imperative_parser(text, @parser.lambda_grammar)
+  let fp = to_flat_proj(ip.parse(), Ref::new(0))
+  let printed = print_flat_proj(fp)
+  // Reconstruct via nested spine and verify equivalence
+  let proj = fp.to_proj_node(Ref::new(100))
+  inspect(printed == @ast.print_term(proj.kind), content="true")
+}
