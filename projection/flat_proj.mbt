@@ -152,7 +152,9 @@ pub fn FlatProj::from_proj_node(root : ProjNode) -> FlatProj {
     match current.kind {
       Let(name, _, _) =>
         if current.children.length() >= 2 {
-          defs.push((name, current.children[0], current.start, NodeId(current.node_id)))
+          defs.push(
+            (name, current.children[0], current.start, NodeId(current.node_id)),
+          )
           current = current.children[1]
         } else {
           break

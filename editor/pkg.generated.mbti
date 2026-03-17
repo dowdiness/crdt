@@ -55,6 +55,7 @@ pub fn SyncEditor::get_ast_pretty(Self) -> String
 pub fn SyncEditor::get_cursor(Self) -> Int
 pub fn SyncEditor::get_dot_resolved(Self) -> String
 pub fn SyncEditor::get_errors(Self) -> Array[String]
+pub fn SyncEditor::get_flat_proj(Self) -> @projection.FlatProj?
 pub fn SyncEditor::get_node(Self, @projection.NodeId) -> @projection.ProjNode?
 pub fn SyncEditor::get_node_range(Self, @projection.NodeId) -> @core.Range?
 pub fn SyncEditor::get_proj_node(Self) -> @projection.ProjNode?

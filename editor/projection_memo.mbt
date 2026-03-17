@@ -114,10 +114,7 @@ pub fn SyncEditor::get_source_map(self : SyncEditor) -> @proj.SourceMap {
 }
 
 ///|
-fn SyncEditor::seed_flat_proj(
-  self : SyncEditor,
-  fp : @proj.FlatProj?,
-) -> Unit {
+fn SyncEditor::seed_flat_proj(self : SyncEditor, fp : @proj.FlatProj?) -> Unit {
   self.prev_flat_proj.val = fp
 }
 

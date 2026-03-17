@@ -173,10 +173,7 @@ test "print_flat_proj: equivalence with print_term on nested spine" {
   let counter2 = Ref::new(0)
   let ip2 = @loom.new_imperative_parser(text, @parser.lambda_grammar)
   let flat = to_flat_proj(ip2.parse(), counter2)
-  inspect(
-    print_flat_proj(flat) == @ast.print_term(nested.kind),
-    content="true",
-  )
+  inspect(print_flat_proj(flat) == @ast.print_term(nested.kind), content="true")
 }
 
 ///|
