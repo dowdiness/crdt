@@ -18,10 +18,14 @@ pub fn SyncEditor::apply_tree_edit(
   let old_text = self.get_text()
   let old_cursor = self.get_cursor()
 
+  // Use cached ProjNode — same tree the registry was built from.
+  // Avoids rematerializing a separate ProjNode with potentially different
+  // Unit fallback IDs that wouldn't match the registry.
   let proj = match self.get_proj_node() {
     Some(p) => p
     None => return Err("No ProjNode available")
   }
+
   let new_proj = match
     @proj.apply_edit_to_proj(
       proj,
@@ -32,16 +36,18 @@ pub fn SyncEditor::apply_tree_edit(
     Ok(updated) => updated
     Err(msg) => return Err(msg)
   }
-  let new_text = @ast.print_term(new_proj.kind)
 
-  // 3. Skip CRDT ops if text unchanged (UI-only ops: Select, Collapse, etc.)
+  // Convert result back to FlatProj
+  let new_fp = @proj.FlatProj::from_proj_node(new_proj)
+  let new_text = @proj.print_flat_proj(new_fp)
+
+  // Skip CRDT ops if text unchanged (UI-only ops: Select, Collapse, etc.)
   if old_text == new_text {
     return Ok(())
   }
 
-  // Seed memo reconciliation with the structurally edited tree so the
-  // subsequent reparse preserves node identities from the edit result.
-  self.seed_proj_node(Some(new_proj))
+  // Seed FlatProj for next reconciliation
+  self.seed_flat_proj(Some(new_fp))
   self.set_text_and_record(new_text, timestamp_ms)
   self.move_cursor(old_cursor)
   Ok(())
