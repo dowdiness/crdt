@@ -32,8 +32,10 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 **Impact:** High | **Effort:** High
 
 - [ ] Complete WebSocket client integration (sync protocol designed, TypeScript API stub exists)
-- [ ] Fix P2-1: Remote sync pollutes undo history — add `suppressUndoTracking` for remote changes (see `valtio/PLAN.md`)
-- [ ] Fix P2-2: Position-based undo replays stale positions after concurrent edits — switch to snapshot-based undo (see `valtio/PLAN.md`)
+- [x] Fix P2-1: Remote sync pollutes undo history — `UndoManager.set_tracking()` implemented; valtio TS layer suppresses tracking during remote op application (see `event-graph-walker/docs/UNDO_MANAGER_DESIGN.md`)
+- [x] Fix P2-2: Position-based undo replays stale positions after concurrent edits — replaced with LV-based UndoManager; tombstone revival restores characters at exact CRDT position regardless of concurrent edits (Phase 1+2 complete, see `event-graph-walker/docs/UNDO_MANAGER_DESIGN.md`)
+- [ ] Wire `apply_sync` to suppress undo tracking — `SyncEditor::apply_sync` doesn't disable tracking before applying remote ops; also `crdt.mbt` JS binding `apply_sync_json` is missing tracking suppression
+- [ ] Sync undo/redo ops to peers — `SyncEditor::undo()`/`redo()` don't capture inverse ops via `export_since()` for peer broadcast (see design doc pattern)
 - [ ] Add remote cursor/selection tracking
 
 ---
@@ -141,7 +143,8 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
 | # | Proposal | Effort | Impact |
 |---|----------|--------|--------|
 | 1 | CI test automation | Low | High |
-| 2 | Fix undo/redo (P2-1, P2-2) | Medium | High |
+| 2 | ~~Fix undo/redo (P2-1, P2-2)~~ ✅ Done | ~~Medium~~ | ~~High~~ |
+| 2a | Wire apply_sync tracking suppression + sync undo ops to peers | Low-Medium | High |
 | 3 | Complete WebSocket collaboration | High | High |
 | 4 | E2E browser tests | Low | Medium |
 | 5 | Benchmark regression CI | Medium | Medium |
