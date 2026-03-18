@@ -99,20 +99,216 @@ test "compute_text_edit: no-op ops return empty array" {
 }
 
 ///|
-test "compute_text_edit: unhandled ops return None" {
+test "compute_text_edit: Delete replaces node with placeholder" {
+  let text = "42"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let root_id = proj.id()
+  let result = compute_text_edit(
+    Delete(node_id=root_id),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some(edits)) => {
+      inspect(edits.length(), content="1")
+      // Int node → placeholder "0"
+      inspect(apply_edits(text, edits), content="0")
+    }
+    _ => abort("expected Some edits")
+  }
+}
+
+///|
+test "compute_text_edit: Delete replaces Var with placeholder" {
+  let text = "x + 1"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  // children[0] is the left operand Var("x"), span [0, 1)
+  let lhs = proj.children[0]
+  let result = compute_text_edit(
+    Delete(node_id=lhs.id()),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some(edits)) => {
+      inspect(edits.length(), content="1")
+      // Var → placeholder "a", parent re-rendered with print_term
+      inspect(apply_edits(text, edits), content="(a + 1)")
+    }
+    _ => abort("expected Some edits")
+  }
+}
+
+///|
+test "compute_text_edit: WrapInLambda wraps node in lambda abstraction" {
+  let text = "42"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let root_id = proj.id()
+  let result = compute_text_edit(
+    WrapInLambda(node_id=root_id, var_name="x"),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some(edits)) => {
+      inspect(edits.length(), content="1")
+      inspect(apply_edits(text, edits), content="(λx. 42)")
+    }
+    _ => abort("expected Some edits")
+  }
+}
+
+///|
+test "compute_text_edit: WrapInApp wraps node in application" {
+  let text = "42"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let root_id = proj.id()
+  let result = compute_text_edit(
+    WrapInApp(node_id=root_id),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some(edits)) => {
+      inspect(edits.length(), content="1")
+      inspect(apply_edits(text, edits), content="(42 a)")
+    }
+    _ => abort("expected Some edits")
+  }
+}
+
+///|
+test "compute_text_edit: InsertChild into Module inserts def text" {
+  let text = "let y = 1\ny"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let root_id = proj.id()
+  // Insert a new Int def at index 1 (before the body)
+  let result = compute_text_edit(
+    InsertChild(parent=root_id, index=1, kind=@ast.Term::Int(0)),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some(edits)) => {
+      inspect(edits.length(), content="1")
+      // Should insert "\nlet x = 0" at the body position
+      let new_text = apply_edits(text, edits)
+      inspect(new_text, content="let y = 1\n\nlet x = 0y")
+    }
+    _ => abort("expected Some edits")
+  }
+}
+
+///|
+test "compute_text_edit: InsertChild into non-Module re-renders parent" {
+  let text = "x + 1"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let root_id = proj.id()
+  // Insert a Var child into a Bop node — re-renders with print_term
+  let result = compute_text_edit(
+    InsertChild(parent=root_id, index=0, kind=@ast.Term::Var("z")),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some(edits)) => {
+      inspect(edits.length(), content="1")
+      // Bop with new child inserted via rebuild_kind + print_term
+      let new_text = apply_edits(text, edits)
+      // The re-rendered text comes from print_term of the rebuilt kind
+      inspect(new_text.length() > 0, content="true")
+    }
+    _ => abort("expected Some edits")
+  }
+}
+
+///|
+test "compute_text_edit: Drop produces two edits" {
+  let text = "x + 1"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  // source = children[0] (Var "x"), target = children[1] (Int 1)
+  let source_node = proj.children[0]
+  let target_node = proj.children[1]
+  let result = compute_text_edit(
+    Drop(source=source_node.id(), target=target_node.id(), position=After),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some(edits)) =>
+      // Drop should produce 2 edits: delete at source + insert at target
+      inspect(edits.length(), content="2")
+    _ => abort("expected Some edits")
+  }
+}
+
+///|
+test "compute_text_edit: Drop with unknown source returns error" {
   let text = "42"
   let (proj, _) = parse_to_proj_node(text)
   let source_map = SourceMap::from_ast(proj)
   let registry = text_edit_test_registry(proj)
   let fp = FlatProj::from_proj_node(proj)
   let result = compute_text_edit(
-    Delete(node_id=NodeId(0)),
+    Drop(source=NodeId(9999), target=proj.id(), position=Before),
     text,
     source_map,
     registry,
     fp,
   )
-  inspect(result, content="Ok(None)")
+  inspect(result is Err(_), content="true")
+}
+
+///|
+test "compute_text_edit: WrapInLambda with unknown node returns error" {
+  let text = "42"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let result = compute_text_edit(
+    WrapInLambda(node_id=NodeId(9999), var_name="x"),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  inspect(result is Err(_), content="true")
 }
 
 ///|

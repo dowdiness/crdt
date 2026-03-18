@@ -59,12 +59,7 @@ pub fn SyncEditor::apply_tree_edit(
     None => return Err("No ProjNode available")
   }
   let new_proj = match
-    @proj.apply_edit_to_proj(
-      proj,
-      op,
-      registry,
-      self.next_node_id,
-    ) {
+    @proj.apply_edit_to_proj(proj, op, registry, self.next_node_id) {
     Ok(updated) => updated
     Err(msg) => return Err(msg)
   }
