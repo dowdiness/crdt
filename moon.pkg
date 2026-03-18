@@ -36,6 +36,8 @@ options(
         "ephemeral_delete_presence",
         "ephemeral_remove_outdated",
         "ephemeral_get_peer_cursors_json",
+        "get_proj_node_json",
+        "get_source_map_json",
       ],
     },
   },

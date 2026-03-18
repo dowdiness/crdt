@@ -382,3 +382,31 @@ pub fn ephemeral_get_peer_cursors_json(_handle : Int) -> String {
     None => "[]"
   }
 }
+
+// ============================================================
+// Projection JSON API (for ProseMirror bridge)
+// ============================================================
+
+///|
+/// Get the ProjNode tree as JSON string.
+/// Returns "null" if no projection is available.
+pub fn get_proj_node_json(_handle : Int) -> String {
+  match editor.val {
+    Some(ed) =>
+      match ed.get_proj_node() {
+        Some(proj) => proj.to_json().stringify()
+        None => "null"
+      }
+    None => "null"
+  }
+}
+
+///|
+/// Get the SourceMap as JSON string.
+/// Returns an array of {node_id, start, end} entries.
+pub fn get_source_map_json(_handle : Int) -> String {
+  match editor.val {
+    Some(ed) => ed.get_source_map().to_json().stringify()
+    None => "[]"
+  }
+}

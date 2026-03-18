@@ -38,6 +38,10 @@ pub fn get_ast_pretty(Int) -> String
 
 pub fn get_errors_json(Int) -> String
 
+pub fn get_proj_node_json(Int) -> String
+
+pub fn get_source_map_json(Int) -> String
+
 pub fn get_text(Int) -> String
 
 pub fn get_version_json(Int) -> String
