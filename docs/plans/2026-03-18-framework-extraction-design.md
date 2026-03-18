@@ -2,10 +2,22 @@
 
 **Date:** 2026-03-18
 **Status:** Approved
+**Prerequisite:** Text-delta tree edit design (`loom/docs/plans/2026-03-18-projectional-edit-text-delta-design.md`)
 
 ## Goal
 
 Extract a general-purpose projectional editor framework from the current lambda calculus CRDT editor. The framework supports any grammar that provides a parser + AST structure. Target consumers: MoonBit library authors (primary) and web developers via JS FFI (secondary).
+
+## Key Architectural Premise: Read-Only Projection
+
+After the text-delta design is implemented, the ProjNode tree becomes **read-only** — a projection derived from text, never mutated directly. All edits (text and structural) converge at `TextDelta → CRDT → reparse`:
+
+```
+Text edit:  keystroke → TextDelta → CRDT → reparse → projection updates
+Tree edit:  TreeEditOp → compute_text_delta(op, source_map, text) → TextDelta → CRDT → reparse
+```
+
+This eliminates the need for `rebuild` / `apply_edit_to_proj` / `from_proj_node` and the FlatProj unparse roundtrip. The projection is purely a catamorphism from text → CST → T → ProjNode[T]. It is never written to.
 
 ## Architecture
 
@@ -22,39 +34,49 @@ CRDT Ops →(fold)→ Text →(ana/loom)→ CstNode →(cata)→ T →(cata)→ 
 - **Layer 1 (Concrete):** CstNode — position-independent, lossless, already generic via loom
 - **Layer 2 (Abstract):** T → ProjNode[T] — parameterized over grammar, uses capability traits
 
-The boundary between layers is `cst_to_ast: SyntaxNode → T?`, a grammar-specific catamorphism provided by each language package.
+The boundary between layers is `cst_to_ast: SyntaxNode → T?`, a grammar-specific catamorphism provided by each language package. Spans flow from Layer 1 (CstNode positions via SyntaxNode) into ProjNode during the CST→ProjNode conversion in the memo chain. This is the existing pipeline — no "patch later" step needed.
 
 ## Capability Traits
 
-Three traits following MoonBit's Self-based pattern (see `moonbit-traits` patterns):
+Two core traits following MoonBit's Self-based pattern (see `moonbit-traits` patterns):
 
 ```moonbit
-///| Tree structure — children and reconstruction (Pattern 1: Self-closed algebra)
+///| Tree structure (Pattern 1: Self-closed algebra)
 pub trait TreeNode {
   children(Self) -> Array[Self]
-  rebuild(Self, Array[Self]) -> Self
   same_kind(Self, Self) -> Bool
 }
 
-///| Rendering — how nodes appear in the projectional UI (Pattern 2: Fixed projection)
+///| Rendering + text (Pattern 2: Fixed projection)
 pub trait Renderable {
   kind_tag(Self) -> String
   label(Self) -> String
   placeholder(Self) -> String
-}
-
-///| Text roundtrip — parse/unparse at the hylomorphism boundary
-pub trait Parseable {
-  parse(String) -> Self?
   unparse(Self) -> String
 }
 ```
 
-**`same_kind`** is in `TreeNode` because reconciliation is a structural operation. It matches the current `same_kind_tag` behavior: constructor-tag comparison only, ignoring leaf data. `same_kind(Lam("x", _), Lam("y", _))` returns `true` — parameter renames preserve node IDs. This matches the current reconciliation semantics where `(Lam(_, _), Lam(_, _))` preserves the old node ID regardless of parameter name.
+**`rebuild` is removed.** ProjNode is read-only after the text-delta design. The framework never reconstructs AST nodes — all edits go through text deltas. `unparse` moves to `Renderable` because it's a projection from `Self` to `String` (Pattern 2: fixed-type projection).
 
-**Why traits, not record-of-functions:** MoonBit's Self-based traits naturally express catamorphism algebras (Finally Tagless pattern). `parse(String) -> Self?` works as a factory method (same pattern as `Monoid::empty() -> Self`). Traits provide compile-time checking that all methods are implemented. JS FFI consumers use a concrete wrapper type (`DynamicNode`) that implements the traits.
+**`Parseable` is removed as a framework trait.** Parsing is handled by loom's `ImperativeParser` which is already generic over the AST type. The `cst_to_ast` function parameter on `SyncEditor::new` provides the grammar-specific CST→T catamorphism. There is no need for a `parse(String) -> Self?` method on the AST type itself — the parser framework handles that.
 
-## Generic ProjNode[T]
+**`same_kind`** matches the current `same_kind_tag` behavior: constructor-tag comparison only, ignoring leaf data. `same_kind(Lam("x", _), Lam("y", _))` returns `true` — parameter renames preserve node IDs.
+
+Lambda implementation:
+```moonbit
+impl TreeNode for Term with children(self) {
+  match self { Lam(_, body) => [body]; App(f, a) => [f, a]; Let(_, i, b) => [i, b]; _ => [] }
+}
+impl TreeNode for Term with same_kind(self, other) {
+  match (self, other) { (Lam(_, _), Lam(_, _)) => true; (App(_, _), App(_, _)) => true; ... }
+}
+impl Renderable for Term with kind_tag(self) { ... }
+impl Renderable for Term with label(self) { ... }
+impl Renderable for Term with placeholder(self) { ... }
+impl Renderable for Term with unparse(self) { @ast.print_term(self) }
+```
+
+## Generic ProjNode[T] (Read-Only)
 
 ```moonbit
 pub struct ProjNode[T] {
@@ -66,47 +88,30 @@ pub struct ProjNode[T] {
 }
 ```
 
-`T` propagates through: `FlatProj[T]`, `ProjNode[T]`, `InteractiveTreeNode[T]`, `SyncEditor[T]`.
+ProjNode is **read-only** — derived from text via the parsing pipeline, never mutated by edits. All structural edits produce text deltas instead.
+
+`T` propagates through: `ProjNode[T]`, `InteractiveTreeNode[T]`, `SyncEditor[T]`.
 
 `SourceMap` does NOT gain `T` — it stores only `NodeId` and `Range` (where `Range` stays in loom as an external dep). `NodeId` moves to `framework/core/`.
 
 ### The kind-children invariant
 
-`ProjNode[T]` stores `kind: T` and `children: Array[ProjNode[T]]`. For recursive AST types like `App(t1, t2)`, the children exist in TWO places: embedded in `kind` (as sub-Terms) and in `ProjNode.children` (as child ProjNodes). These must agree.
+`ProjNode[T]` stores `kind: T` and `children: Array[ProjNode[T]]`. For recursive AST types like `App(t1, t2)`, the children exist in TWO places: embedded in `kind` (as sub-Terms) and in `ProjNode.children` (as child ProjNodes). These must agree. The invariant is maintained by the CST→ProjNode conversion (the only code that creates ProjNodes), not by edit operations (which never mutate ProjNodes).
 
-The framework maintains this invariant via `TreeNode::rebuild`: when modifying children, the framework extracts `Array[T]` from `ProjNode[T].children.map(fn(c) { c.kind })`, calls `T::rebuild(parent.kind, new_children_kinds)`, and updates both `kind` and `children` atomically. The `rebuild` implementation is responsible for placing the child `T` values into the correct positions of the parent `T` constructor.
+### FlatProj is language-specific
 
-### FlatProj[T]
+`FlatProj` is NOT part of the generic framework. It is a concept specific to "module-shaped" grammars (languages with top-level definitions). Building `FlatProj` requires language-specific knowledge of binding names, def boundaries, and body positions that cannot be derived from `TreeNode + Renderable` alone.
 
-`FlatProj[T]` is parameterized alongside `ProjNode[T]`:
+Languages that have a module structure (like lambda calculus with `let` defs) implement `FlatProj[T]` in their language package (`lang/lambda/`). Languages without a module structure (single-expression calculators, JSON editors) skip it entirely.
 
-```moonbit
-pub struct FlatProj[T] {
-  defs : Array[(String, ProjNode[T], Int, NodeId)]
-  final_expr : ProjNode[T]?
-}
-```
-
-**`to_flat_proj`** — currently calls `syntax_to_proj_node` which is lambda-specific. In the framework, this becomes a generic function that uses `cst_to_ast` (the hylomorphism boundary) plus `T::children` / `T::kind_tag` to extract the module structure:
-
-```moonbit
-fn[T : TreeNode + Renderable] to_flat_proj(ast : T, ...) -> FlatProj[T]?
-```
-
-The incremental fast-path (`to_flat_proj_incremental` using `physical_equal` CstNode comparison) is preserved: it operates at the CstNode level (Layer 1), before `T` is involved. Only changed CstNode subtrees trigger the `cst_to_ast` catamorphism. This is critical for performance.
-
-**Unparse path:** Currently `print_flat_proj` calls `@ast.print_term`. In the framework:
-1. `FlatProj[T]` → reconstruct `T` from `ProjNode[T].kind` values
-2. Call `T::unparse()` on the reconstructed `T`
-
-This replaces the direct `@ast.print_term` call with the generic trait method.
+The framework's projection pipeline produces `ProjNode[T]` directly. Language packages optionally wrap it with flattening logic.
 
 ### Reconciliation
 
-Currently pattern-matches on `@ast.Term` constructors. Changes to use `T::same_kind`:
+Uses `T::same_kind` for node matching:
 
 ```moonbit
-fn[T : TreeNode + Renderable] reconcile_ast(
+fn[T : TreeNode + Renderable] reconcile(
   old : ProjNode[T], new : ProjNode[T], counter : Ref[Int]
 ) -> ProjNode[T] {
   if T::same_kind(old.kind, new.kind) {
@@ -117,13 +122,9 @@ fn[T : TreeNode + Renderable] reconcile_ast(
 }
 ```
 
-### Position assignment
-
-`build_proj_node` sets `start: 0, end: 0` as defaults. The memo chain in `SyncEditor` patches positions from the SyntaxNode traversal, since positions are a property of the concrete layer (CstNode), not the abstract layer (T).
+The incremental fast-path (CstNode `physical_equal` comparison) is preserved: it operates at Layer 1 before `T` is involved. Only changed CstNode subtrees trigger the `cst_to_ast` catamorphism.
 
 ## Three-Tier Tree Edit API
-
-The current monolithic `TreeEditOp` enum splits into three tiers:
 
 ### Tier 1: UI State (no pipeline, O(1))
 
@@ -139,31 +140,54 @@ pub fn TreeEditorState::cancel_edit(self) -> TreeEditorState
 
 `TreeEditorState` is immutable — each method returns a new state. UI calls these directly without going through `SyncEditor`. This is Phase 3 (UI state separation).
 
-### Tier 2: Generic Structural Edits (framework, triggers pipeline)
+### Tier 2: Generic Text-Delta Edits (framework, triggers pipeline)
 
-Methods on `SyncEditor[T]`:
+All structural edits are **text span replacements** via `compute_text_delta`. The framework provides:
 
 ```moonbit
-pub fn[T : TreeNode + Renderable + Parseable] SyncEditor::delete_node(self, NodeId) -> Result[Unit, String]
-pub fn[T : TreeNode + Renderable + Parseable] SyncEditor::move_child(self, source: NodeId, target: NodeId, index: Int) -> Result[Unit, String]
-pub fn[T : TreeNode + Renderable + Parseable] SyncEditor::commit_edit(self, NodeId, String) -> Result[Unit, String]
-pub fn[T : TreeNode + Renderable + Parseable] SyncEditor::insert_child(self, parent: NodeId, index: Int) -> Result[Unit, String]
+pub fn[T : TreeNode + Renderable] SyncEditor::delete_node(
+  self, node_id : NodeId, timestamp_ms : Int
+) -> Result[Unit, String]
+
+pub fn[T : TreeNode + Renderable] SyncEditor::commit_edit(
+  self, node_id : NodeId, new_text : String, timestamp_ms : Int
+) -> Result[Unit, String]
+
+pub fn[T : TreeNode + Renderable] SyncEditor::move_node(
+  self, source : NodeId, target : NodeId, position : DropPosition, timestamp_ms : Int
+) -> Result[Unit, String]
 ```
 
-These use trait methods: `T::rebuild()` for tree modification, `T::unparse()` for text roundtrip, `T::parse()` for reparsing, `T::placeholder()` for insertions.
+Internally, each method:
+1. Looks up the node's span from `SourceMap`
+2. Computes replacement text (using `T::placeholder()` for delete, `T::unparse()` for move, user text for commit)
+3. Produces a `TextDelta`
+4. Applies the delta via CRDT (`apply_text_edit`)
+5. The reparse → reconcile → projection update happens automatically via the memo chain
 
-### Tier 3: Language-Specific Transforms (closure-based)
+No `rebuild`, no ProjNode mutation, no FlatProj roundtrip.
+
+### Tier 3: Language-Specific Text-Delta Transforms (closure-based)
 
 ```moonbit
-pub fn[T : TreeNode + Renderable + Parseable] SyncEditor::apply_transform(
+pub fn[T : TreeNode + Renderable] SyncEditor::apply_text_transform(
   self,
   target : NodeId,
-  transform : (ProjNode[T], NodeId) -> Result[ProjNode[T], String],
+  compute_replacement : (String, Int, Int) -> Result[String, String],
+    // (source_text, span_start, span_end) -> replacement_text
   timestamp_ms : Int,
 ) -> Result[Unit, String]
 ```
 
-Framework handles: find node → call transform → unparse → set_text → reparse → reconcile → undo group. Language provides the `transform` closure.
+The language provides a closure that computes replacement text given the current source text and the target node's span. The framework handles: span lookup → call closure → TextDelta → CRDT → reparse.
+
+Example — wrap in lambda:
+```moonbit
+editor.apply_text_transform(node_id, fn(source, start, end) {
+  let existing = source.substring(start, end)
+  Ok("(λx. " + existing + ")")
+}, timestamp)
+```
 
 **UI discovery:**
 
@@ -172,11 +196,11 @@ pub struct EditAction[T] {
   label : String
   shortcut : String?
   applicable : (ProjNode[T], NodeId) -> Bool
-  apply : (ProjNode[T], NodeId) -> Result[ProjNode[T], String]
+  compute_replacement : (String, Int, Int) -> Result[String, String]
 }
 ```
 
-Language packages export edit actions as data. UI renders as context menus. Not a framework extension mechanism — just a convention.
+Language packages export edit actions as data. UI renders as context menus.
 
 ### TreeEditOp migration
 
@@ -186,8 +210,8 @@ Language packages export edit actions as data. UI renders as context menus. Not 
 | StartEdit, CancelEdit | Tier 1: TreeEditorState methods |
 | CommitEdit | Tier 2: SyncEditor::commit_edit |
 | Delete | Tier 2: SyncEditor::delete_node |
-| InsertChild | Tier 2: SyncEditor::insert_child |
-| DragOver, Drop | Tier 2: SyncEditor::move_child |
+| InsertChild | Tier 3: language-specific (computes insertion text + position) |
+| DragOver, Drop | Tier 2: SyncEditor::move_node |
 | WrapInLambda, WrapInApp | Tier 3: lang/lambda EditAction[Term] |
 
 ## Generic SyncEditor[T]
@@ -202,10 +226,9 @@ pub struct SyncEditor[T] {
   priv parser : @loom.ImperativeParser[T]
   priv parser_rt : @incr.Runtime
 
-  // Reactive pipeline (parameterized)
+  // Reactive pipeline (read-only projection)
   priv source_text : @incr.Signal[String]
   priv syntax_tree : @incr.Signal[@seam.SyntaxNode?]
-  priv proj_memo : @incr.Memo[FlatProj[T]?]
   priv cached_proj_node : @incr.Memo[ProjNode[T]?]
   priv registry_memo : @incr.Memo[Map[NodeId, ProjNode[T]]]
   priv source_map_memo : @incr.Memo[SourceMap]
@@ -217,22 +240,22 @@ pub struct SyncEditor[T] {
   priv ephemeral : EphemeralStore
   priv cursor_view : PeerCursorView
   priv peer_id : String
-
-  // Performance (from CRDT optimization — InsertCursor lives in Document, not here)
 }
 ```
+
+Note: `proj_memo : Memo[FlatProj[T]?]` is removed from the framework. Language packages that need FlatProj implement it as an additional memo in their wrapper.
 
 ### Construction
 
 ```moonbit
-pub fn[T : TreeNode + Renderable + Parseable] SyncEditor::new(
+pub fn[T : TreeNode + Renderable] SyncEditor::new(
   agent_id : String,
   grammar : @loom.Grammar,
-  cst_to_ast : (SyntaxNode) -> T?,
+  cst_to_ast : (@seam.SyntaxNode) -> T?,
 ) -> SyncEditor[T]
 ```
 
-`cst_to_ast` is the hylomorphism boundary — the grammar-specific catamorphism from concrete layer to abstract layer.
+`cst_to_ast` is the hylomorphism boundary — the grammar-specific catamorphism from concrete layer to abstract layer. The `grammar` parameter configures loom's parser. Together they fully define a language for the framework.
 
 ### Refresh boundary (Phase 4)
 
@@ -248,14 +271,15 @@ Consumers call `refresh()` when ready to re-render. Multiple edits between refre
 
 ```
 framework/
-  framework/traits/     # TreeNode, Renderable, Parseable (no deps)
-  framework/core/       # ProjNode[T], FlatProj[T], SourceMap, NodeId, reconciliation
-  framework/editor/     # SyncEditor[T], TreeEditorState, generic structural edits, apply_transform
+  framework/traits/     # TreeNode, Renderable (no deps)
+  framework/core/       # ProjNode[T], SourceMap, NodeId, reconciliation
+  framework/editor/     # SyncEditor[T], TreeEditorState, text-delta edits
 
 lang/lambda/
   lang/lambda/ast/      # Term enum (from loom/examples/lambda/)
-  lang/lambda/projection/  # impl TreeNode/Renderable/Parseable for Term
-  lang/lambda/edits/    # EditAction[Term] — wrap-in-lambda, etc.
+  lang/lambda/traits/   # impl TreeNode/Renderable for Term
+  lang/lambda/flat/     # FlatProj[Term], to_flat_proj, reconcile_flat_proj (language-specific)
+  lang/lambda/edits/    # EditAction[Term], compute_text_delta for lambda ops
   lang/lambda/bridge/   # cst_to_ast: SyntaxNode → Term
 
 editor/                 # Application (framework + lang/lambda)
@@ -273,23 +297,29 @@ framework/traits  →  framework/core  →  framework/editor
 
 ## Extraction Approach: Bottom-Up
 
-Each step is a standalone change that passes all tests:
+**Prerequisite:** Implement text-delta tree edit design first (eliminates FlatProj from edit path, makes ProjNode read-only).
+
+Then extract incrementally — each step passes all tests:
 
 1. Parameterize `ProjNode[T]` — replace `kind: @ast.Term` with generic `T`
-2. Add capability traits, implement for `Term`
+2. Add capability traits (`TreeNode`, `Renderable`), implement for `Term`
 3. Separate UI state from model pipeline (Phase 3)
-4. Parameterize `SyncEditor[T]`
-5. Add refresh boundary (Phase 4)
-6. Extract framework packages, move lambda code to language package
+4. Move FlatProj to language package (no longer framework-level)
+5. Parameterize `SyncEditor[T]` — accept grammar + cst_to_ast
+6. Add refresh boundary (Phase 4)
+7. Extract framework packages, move lambda code to language package
 
 ## Testing Strategy
 
 **Framework tests:** Use a minimal `TestExpr` enum (not lambda) to prove the framework works independently:
 - ProjNode[TestExpr] construction and reconciliation
 - TreeEditorState UI operations without pipeline
-- SyncEditor[TestExpr] roundtrip
-- Generic structural edits and apply_transform
+- SyncEditor[TestExpr] text edit → reparse → projection roundtrip
+- Text-delta structural edits (delete, commit_edit, move)
+- apply_text_transform with a test transform
 - Refresh boundary protocol
+- Incremental CST reuse (physical_equal) preserved after parameterization
+- SourceMap span correctness after reconciliation
 
 **TestExpr definition:**
 ```moonbit
@@ -299,9 +329,6 @@ enum TestExpr {
 }
 impl TreeNode for TestExpr with children(self) {
   match self { Leaf(_) => []; Node(_, cs) => cs }
-}
-impl TreeNode for TestExpr with rebuild(self, cs) {
-  match self { Leaf(_) => self; Node(tag, _) => Node(tag, cs) }
 }
 impl TreeNode for TestExpr with same_kind(self, other) {
   match (self, other) { (Leaf(_), Leaf(_)) => true; (Node(_, _), Node(_, _)) => true; _ => false }
@@ -315,16 +342,15 @@ impl Renderable for TestExpr with label(self) {
 impl Renderable for TestExpr with placeholder(self) {
   match self { Leaf(_) => "?"; Node(_, _) => "node(?)" }
 }
-impl Parseable for TestExpr with parse(s) { Some(Leaf(s)) }
-impl Parseable for TestExpr with unparse(self) {
-  match self { Leaf(s) => s; Node(tag, cs) => tag + "(" + cs.map(Parseable::unparse).join(", ") + ")" }
+impl Renderable for TestExpr with unparse(self) {
+  match self { Leaf(s) => s; Node(tag, cs) => tag + "(" + cs.map(Renderable::unparse).join(", ") + ")" }
 }
 ```
 
 **Edge case tests:**
 - Empty tree reconciliation (no children)
-- Roundtrip property: `parse(unparse(t))` produces structurally equivalent result
-- Error handling in structural edits (delete root, move to invalid position)
+- Roundtrip: edit text → reparse → projection has correct structure and spans
+- Error handling in text-delta edits (node not in source map, invalid span)
 
 **Lambda tests:** Existing 232 tests continue to pass as a framework consumer.
 
@@ -345,9 +371,13 @@ struct DynamicNode {
 }
 
 impl TreeNode for DynamicNode with children(self) { self.child_nodes }
+impl TreeNode for DynamicNode with same_kind(self, other) { self.tag == other.tag }
 impl Renderable for DynamicNode with kind_tag(self) { self.tag }
-impl Parseable for DynamicNode with parse(s) { /* JS callback */ }
-impl Parseable for DynamicNode with unparse(self) { self.source }
+impl Renderable for DynamicNode with label(self) { self.text }
+impl Renderable for DynamicNode with placeholder(self) { "?" }
+impl Renderable for DynamicNode with unparse(self) { self.source }
 ```
 
-JS constructs `DynamicNode` instances via FFI. The framework works with trait bounds — same code path as MoonBit consumers.
+JS consumers provide `cst_to_ast` as a callback that constructs `DynamicNode` from `SyntaxNode`. The framework's `SyncEditor[DynamicNode]` handles everything else — same code path as MoonBit consumers.
+
+The intended JS model is **"MoonBit framework, JS UI only"**: parsing and projection happen in MoonBit (via loom), the JS layer handles rendering and user interaction. JS does NOT need to implement its own parser — it provides a `cst_to_ast` callback that maps loom's generic `SyntaxNode` to `DynamicNode`.
