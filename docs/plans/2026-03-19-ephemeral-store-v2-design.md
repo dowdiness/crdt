@@ -66,14 +66,17 @@ Single multiplexed WebSocket connection. WebSocket framing handles message bound
 
 ```
 WebSocket message:
-  [message_type: u8][payload: bytes]
+  [version: u8][message_type: u8][payload: bytes]
+
+version:
+  0x01 = v1 (this design)
 
 message_type:
   0x01 = CRDT ops (eg-walker events)
   0x02 = Ephemeral update
   0x03 = CRDT sync request (pull missing events)
   0x04 = CRDT sync response
-  0x05 = Room control (join/leave/peer list)
+  0x05 = Room control
 
 Ephemeral update payload (0x02):
   [namespace: u8][existing EphemeralStore binary encoding]
@@ -83,6 +86,13 @@ namespace:
   0x02 = edit_mode (node being edited)
   0x03 = drag (source node + drop target + position)
   0x04 = presence (display name, color, status)
+
+Room control payload (0x05):
+  [sub_type: u8][payload]
+  sub_type:
+    0x01 = Join(peer_id as uvarint-prefixed string)
+    0x02 = Leave(peer_id as uvarint-prefixed string)
+    0x03 = PeerList(uvarint count + peer_id strings)  // future
 ```
 
 **`SyncMessage` enum:**
@@ -131,6 +141,7 @@ pub enum EphemeralNamespace {
 
 pub struct EphemeralHub {
   local_peer_id : String
+  wire_peer_id : String          // to_wire_peer_id(local_peer_id) — used as key in all stores
   stores : Map[EphemeralNamespace, EphemeralStore]
 }
 ```
@@ -176,9 +187,11 @@ hub.remove_outdated() -> Unit
 hub.on_peer_leave(peer_id) -> Unit
 ```
 
-**`encode_all()` wire format:** `[namespace_count: u8]` then for each namespace: `[namespace: u8][entry_count: u16][entries...]`. Reuses existing `encode_entries()` per store.
+**Key mapping:** The hub converts `local_peer_id` to a wire peer ID via `to_wire_peer_id()` at construction time. All store operations use this wire ID as the key, matching the existing `EphemeralStore.set()` validation that requires numeric peer IDs. Read operations accept either the wire ID or the original peer ID (the hub resolves the mapping).
 
-**`on_peer_leave()` clears across all namespaces.** One call removes cursor, edit mode, drag, and presence for the departing peer.
+**`encode_all()` wire format:** `[namespace_count: u8]` then for each namespace: `[namespace: u8][existing encode_entries() output]`. The existing `encode_entries()` uses uvarint for entry count, so this embeds directly with no format mismatch.
+
+**`on_peer_leave(peer_id)` calls `store.delete(wire_peer_id)` on each namespace store.** This fires `removed` subscription events per store, so `PeerCursorView` and other listeners are notified automatically. One call removes cursor, edit mode, drag, and presence for the departing peer.
 
 ### View Types
 
@@ -196,6 +209,10 @@ pub(all) struct PeerCursor {
 
 `PeerCursorView` continues to handle `adjust_for_edit()`. Its role narrows: it derives from `hub.cursor_store` subscriptions rather than being standalone.
 
+**Cursor/presence field ownership:** The cursor namespace stores position and selection only. Display name and color live in the presence namespace. `PeerCursorView` joins data from both namespaces: it subscribes to cursor store for position updates and to presence store for name/color. The `apply_raw_update()` method is split into `apply_cursor_update()` and `apply_presence_update()`. This avoids redundant data across namespaces at the cost of slightly more complex subscription wiring.
+
+**Cursor timeout note:** The 30s cursor timeout is safe because cursor updates are event-driven — every cursor movement resets the timer. The 30s timeout only triggers for truly idle cursors (peer has not moved their cursor in 30s), which is the correct behavior for removing stale indicators.
+
 **New view types:**
 
 ```moonbit
@@ -211,8 +228,7 @@ pub(all) enum DragPosition {
 
 pub(all) struct DragState {
   source_id : String
-  target_id : String?
-  position : DragPosition?
+  target : (String, DragPosition)?  // (target_id, position) — both present or both absent
 }
 
 pub(all) enum PresenceStatus {
@@ -267,7 +283,8 @@ transport.on_receive → decode_message(bytes) match {
   │
   ├─ SyncResponse(bytes) → crdt_doc.apply_remote(bytes)
   │
-  ├─ PeerJoined(peer_id) → transport.send(encode(EphemeralUpdate(*, hub.encode_all())))
+  ├─ PeerJoined(peer_id) → for each namespace ns:
+  │                          transport.send(encode(EphemeralUpdate(ns, hub.encode_ns(ns))))
   │
   └─ PeerLeft(peer_id) → hub.on_peer_leave(peer_id)
 }
@@ -304,7 +321,9 @@ Called every 10s. Each store applies its own timeout threshold.
 - `editor/in_memory_transport.mbt` — `InMemoryTransport`, `InMemoryRoom`
 
 **Modified files:**
-- `editor/cursor_view.mbt` — `PeerCursorView` derives from hub subscription instead of standalone store
+- `editor/sync_editor.mbt` — replaces `ephemeral: EphemeralStore` + `cursor_view: PeerCursorView` with `hub: EphemeralHub` + `transport: &SyncTransport` + `peer_id: String`
+- `editor/sync_editor_sync.mbt` — adds message demuxer (`decode_message` → route to CRDT or hub)
+- `editor/cursor_view.mbt` — `PeerCursorView` joins cursor + presence namespaces; `apply_raw_update()` split into `apply_cursor_update()` + `apply_presence_update()`
 - `editor/moon.pkg.json` — no new external dependencies
 
 **Unchanged:**
@@ -339,7 +358,7 @@ When `peer_a.send(bytes)`, the room calls `on_receive` handlers on all other pee
 5. **Peer leave cleanup** — A disconnects. B receives `PeerLeft("A")`. Verify all of A's entries (cursor, edit mode, drag, presence) are removed from B's hub.
 6. **CRDT-then-ephemeral ordering** — A sends a text edit + cursor update. B processes CRDT ops first, then cursor. Verify cursor position is correct relative to new document state.
 7. **Timeout expiry** — Peer A sets presence, then goes silent. After 120s (simulated via backdating), verify A's presence is removed and timeout event fires.
-8. **Convergence** — Three peers make concurrent edits. After all messages propagate, verify all three hubs have identical ephemeral state per namespace.
+8. **Convergence** — Three peers each set `edit_mode` on the same node concurrently with different clocks. After all messages propagate, verify all three hubs resolve to the highest-clock value. Then each peer sets cursor to a different position. After propagation, verify each hub has all three cursors with correct positions.
 
 **Not tested in v2 (future work):**
 - Network partitions
