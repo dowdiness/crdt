@@ -157,6 +157,32 @@ pub fn backspace_and_record(_handle : Int, timestamp_ms : Int) -> Bool {
 }
 
 ///|
+/// Insert text at a specific position without moving the cursor.
+/// Records the operation for undo. Used by ProseMirror bridge.
+pub fn insert_at(
+  _handle : Int,
+  position : Int,
+  text : String,
+  timestamp_ms : Int,
+) -> Unit {
+  match editor.val {
+    Some(ed) => ed.insert_at(position, text, timestamp_ms)
+    None => ()
+  }
+}
+
+///|
+/// Delete the character at a specific position without moving the cursor.
+/// Records the operation for undo. Returns false if position is out of bounds.
+/// Used by ProseMirror bridge.
+pub fn delete_at(_handle : Int, position : Int, timestamp_ms : Int) -> Bool {
+  match editor.val {
+    Some(ed) => ed.delete_at(position, timestamp_ms)
+    None => false
+  }
+}
+
+///|
 /// Set text content directly and record changes for undo
 pub fn set_text_and_record(
   _handle : Int,
@@ -354,5 +380,59 @@ pub fn ephemeral_get_peer_cursors_json(_handle : Int) -> String {
       "[" + items.join(",") + "]"
     }
     None => "[]"
+  }
+}
+
+// ============================================================
+// Projection JSON API (for ProseMirror bridge)
+// ============================================================
+
+///|
+/// Get the ProjNode tree as JSON string.
+/// Returns "null" if no projection is available.
+pub fn get_proj_node_json(_handle : Int) -> String {
+  match editor.val {
+    Some(ed) =>
+      match ed.get_proj_node() {
+        Some(proj) => proj.to_json().stringify()
+        None => "null"
+      }
+    None => "null"
+  }
+}
+
+///|
+/// Get the SourceMap as JSON string.
+/// Returns an array of {node_id, start, end} entries.
+pub fn get_source_map_json(_handle : Int) -> String {
+  match editor.val {
+    Some(ed) => ed.get_source_map().to_json().stringify()
+    None => "[]"
+  }
+}
+
+///|
+/// Apply a structural tree edit from a JSON-encoded TreeEditOp.
+/// Returns "ok" on success, or "error: <message>" on failure.
+pub fn apply_tree_edit_json(
+  _handle : Int,
+  op_json : String,
+  timestamp_ms : Int,
+) -> String {
+  match editor.val {
+    Some(ed) => {
+      let json = @json.parse(op_json) catch {
+        _ => return "error: invalid JSON"
+      }
+      match @editor.parse_tree_edit_op(json) {
+        Ok(op) =>
+          match ed.apply_tree_edit(op, timestamp_ms) {
+            Ok(_) => "ok"
+            Err(msg) => "error: " + msg
+          }
+        Err(msg) => "error: " + msg
+      }
+    }
+    None => "error: no editor"
   }
 }

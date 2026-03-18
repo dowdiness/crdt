@@ -297,3 +297,30 @@ test "print_flat_proj: defs-only roundtrips through tree edit" {
   let proj = fp.to_proj_node(Ref::new(100))
   inspect(printed == @ast.print_term(proj.kind), content="true")
 }
+
+///|
+test "FlatProj::to_proj_node: Module node_id is stable across rebuilds" {
+  let text = "let x = 1\nlet y = 2\nx + y"
+  let counter = Ref::new(0)
+  let fp1 = to_flat_proj(parse_syntax(text), counter)
+  let proj1 = fp1.to_proj_node(counter)
+  let module_id_1 = proj1.node_id
+
+  // Rebuild with same text — should preserve Module node_id when seeded
+  let counter2 = Ref::new(counter.val)
+  let fp2 = to_flat_proj(parse_syntax(text), counter2)
+  let proj2 = fp2.to_proj_node_with_prev_module_id(counter2, Some(module_id_1))
+  let module_id_2 = proj2.node_id
+
+  inspect(module_id_1 == module_id_2, content="true")
+}
+
+///|
+test "FlatProj::to_proj_node: Module node_id seeded None still allocates fresh" {
+  let text = "let x = 1\nx"
+  let counter = Ref::new(0)
+  let fp = to_flat_proj(parse_syntax(text), counter)
+  let proj = fp.to_proj_node_with_prev_module_id(counter, None)
+  // Without seed: fresh ID allocated from counter (>=0, valid)
+  inspect(proj.node_id >= 0, content="true")
+}

@@ -16,6 +16,8 @@ pub fn compute_edit(String, String) -> @core.Edit
 
 pub fn merge_to_edits(String, String) -> Array[@core.Edit]
 
+pub fn parse_tree_edit_op(Json) -> Result[@projection.TreeEditOp, String]
+
 // Errors
 
 // Types and methods
@@ -133,6 +135,7 @@ pub fn SyncEditor::can_undo(Self) -> Bool
 pub fn SyncEditor::clear_undo(Self) -> Unit
 pub fn SyncEditor::delete(Self) -> Bool
 pub fn SyncEditor::delete_and_record(Self, Int) -> Bool
+pub fn SyncEditor::delete_at(Self, Int, Int) -> Bool
 pub fn SyncEditor::delete_local_presence(Self) -> Unit
 pub fn SyncEditor::encode_ephemeral_all(Self) -> Bytes
 pub fn SyncEditor::export_all(Self) -> @text.SyncMessage raise
@@ -154,6 +157,7 @@ pub fn SyncEditor::get_text(Self) -> String
 pub fn SyncEditor::get_version(Self) -> @text.Version
 pub fn SyncEditor::insert(Self, String) -> Unit raise
 pub fn SyncEditor::insert_and_record(Self, String, Int) -> Unit raise
+pub fn SyncEditor::insert_at(Self, Int, String, Int) -> Unit
 pub fn SyncEditor::is_parse_valid(Self) -> Bool
 pub fn SyncEditor::mark_dirty(Self) -> Unit
 pub fn SyncEditor::move_cursor(Self, Int) -> Unit

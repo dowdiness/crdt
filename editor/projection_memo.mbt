@@ -56,17 +56,29 @@ fn build_projection_memos(
 
   // Single conversion FlatProj -> ProjNode, shared by registry + source_map + get_proj_node.
   // Counter write-back ensures Unit fallback IDs don't collide with future IDs.
+  // prev_module_id_ref holds the Module node_id from the most recent successful
+  // conversion, so stable Module IDs survive incremental rebuilds.
+  let prev_module_id_ref : Ref[Int?] = Ref::new(None)
   let cached_proj_node : @incr.Memo[@proj.ProjNode?] = @incr.Memo::new(
     rt,
     fn() -> @proj.ProjNode? {
       match proj_memo.get() {
         Some(fp) => {
           let counter = Ref::new(next_id_ref.val)
-          let proj = fp.to_proj_node(counter)
+          let proj = fp.to_proj_node_with_prev_module_id(
+            counter,
+            prev_module_id_ref.val,
+          )
           next_id_ref.val = counter.val
+          // Remember the Module id (or the root id if no defs) for next rebuild
+          prev_module_id_ref.val = Some(proj.node_id)
           Some(proj)
         }
-        None => None
+        None =>
+          // Keep prev_module_id_ref intact on transient projection misses
+          // so stable Module IDs survive intermediate states.
+          // Only the explicit empty-source paths in proj_memo clear it.
+          None
       }
     },
     label="cached_proj_node",
@@ -89,7 +101,16 @@ fn build_projection_memos(
     rt,
     fn() -> @proj.SourceMap {
       match cached_proj_node.get() {
-        Some(root) => @proj.SourceMap::from_ast(root)
+        Some(root) => {
+          let sm = @proj.SourceMap::from_ast(root)
+          // Populate token-level spans (param names, let-def names) for PM bridge.
+          // Requires the syntax tree to extract token positions from the CST.
+          match syntax_tree.get() {
+            Some(syntax_root) => sm.populate_token_spans(syntax_root, root)
+            None => ()
+          }
+          sm
+        }
         None => @proj.SourceMap::new()
       }
     },

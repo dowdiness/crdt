@@ -185,6 +185,39 @@ pub fn SyncEditor::set_text(self : SyncEditor, new_text : String) -> Unit {
 }
 
 ///|
+/// Insert text at a specific position without moving the cursor.
+/// Records the operation for undo. Used by ProseMirror bridge.
+pub fn SyncEditor::insert_at(
+  self : SyncEditor,
+  position : Int,
+  text : String,
+  timestamp_ms : Int,
+) -> Unit {
+  let text_len = self.doc.len()
+  if position < 0 || position > text_len {
+    return
+  }
+  self.apply_text_edit_internal(position, 0, text, timestamp_ms, true, false)
+}
+
+///|
+/// Delete the character at a specific position without moving the cursor.
+/// Records the operation for undo. Returns false if position is out of bounds.
+/// Used by ProseMirror bridge.
+pub fn SyncEditor::delete_at(
+  self : SyncEditor,
+  position : Int,
+  timestamp_ms : Int,
+) -> Bool {
+  let text_len = self.doc.len()
+  if position < 0 || position >= text_len {
+    return false
+  }
+  self.apply_text_edit_internal(position, 1, "", timestamp_ms, true, false)
+  true
+}
+
+///|
 pub fn SyncEditor::set_text_and_record(
   self : SyncEditor,
   new_text : String,

@@ -50,6 +50,7 @@ pub struct FlatProj {
 pub fn FlatProj::empty() -> Self
 pub fn FlatProj::from_proj_node(ProjNode) -> Self
 pub fn FlatProj::to_proj_node(Self, @ref.Ref[Int]) -> ProjNode
+pub fn FlatProj::to_proj_node_with_prev_module_id(Self, @ref.Ref[Int], Int?) -> ProjNode
 pub impl Eq for FlatProj
 pub impl Show for FlatProj
 
@@ -74,6 +75,7 @@ pub fn InteractiveTreeNode::from_term_node(ProjNode, SourceMap) -> Self
 pub impl Show for InteractiveTreeNode
 
 pub struct NodeId(Int)
+pub fn NodeId::from_int(Int) -> Self
 #deprecated
 pub fn NodeId::inner(Self) -> Int
 pub impl Compare for NodeId
@@ -92,22 +94,28 @@ pub fn ProjNode::id(Self) -> NodeId
 pub fn ProjNode::new(@ast.Term, Int, Int, Int, Array[Self]) -> Self
 pub impl Eq for ProjNode
 pub impl Show for ProjNode
+pub impl ToJson for ProjNode
 
 pub struct SourceMap {
   node_to_range : Map[NodeId, @core.Range]
   ranges : Array[(@core.Range, NodeId)]
+  token_spans : Map[NodeId, Map[String, @core.Range]]
 }
 pub fn SourceMap::apply_edit(Self, Int, @core.Range) -> Unit
 pub fn SourceMap::from_ast(ProjNode) -> Self
 pub fn SourceMap::get_range(Self, NodeId) -> @core.Range?
+pub fn SourceMap::get_token_span(Self, NodeId, String) -> @core.Range?
 pub fn SourceMap::innermost_node_at(Self, Int) -> NodeId?
 pub fn SourceMap::new() -> Self
 pub fn SourceMap::node_count(Self) -> Int
 pub fn SourceMap::nodes_at_position(Self, Int) -> Array[NodeId]
 pub fn SourceMap::nodes_in_range(Self, @core.Range) -> Array[NodeId]
+pub fn SourceMap::populate_token_spans(Self, @seam.SyntaxNode, ProjNode) -> Unit
 pub fn SourceMap::rebuild(Self, ProjNode) -> Unit
+pub fn SourceMap::set_token_span(Self, NodeId, String, @core.Range) -> Unit
 pub impl Eq for SourceMap
 pub impl Show for SourceMap
+pub impl ToJson for SourceMap
 
 pub(all) struct SpanEdit {
   start : Int

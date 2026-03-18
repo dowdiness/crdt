@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CRDT Projectional Editor — ProseMirror</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 40px; }
+    #editor { border: 1px solid #ccc; padding: 8px; min-height: 200px; }
+    .ProseMirror { outline: none; font-family: monospace; font-size: 16px; line-height: 1.8; }
+    /* Module container */
+    .pm-module { display: block; }
+    /* Let definitions on their own lines */
+    .pm-let-def { display: block; margin: 2px 0; }
+    .pm-let-keyword { color: #60a5fa; font-weight: bold; }
+    .pm-let-eq { color: #888; }
+    .pm-let-init { display: inline; }
+    /* Lambda */
+    .pm-lambda { display: inline; }
+    .pm-lambda-prefix { color: #c084fc; font-weight: bold; }
+    .pm-lambda-dot { color: #888; }
+    .pm-lambda-body { display: inline; }
+    /* Compound terms: inline */
+    .pm-application { display: inline; }
+    .pm-application > * { margin-right: 4px; }
+    .pm-binary-op { display: inline; }
+    .pm-binary-op > *:first-child::after { content: " + "; color: #f59e0b; font-weight: bold; }
+    .pm-if-expr { display: inline; }
+    /* Leaf nodes */
+    .pm-leaf { display: inline-block; vertical-align: baseline; }
+    /* Force ALL CM6 editors inside PM to be inline */
+    .ProseMirror .cm-editor { display: inline-block !important; vertical-align: baseline; }
+    .ProseMirror .cm-content { display: inline !important; }
+    .ProseMirror .cm-line { display: inline !important; }
+    .ProseMirror .cm-scroller { display: inline !important; overflow: visible !important; }
+    .pm-leaf .cm-editor { background: rgba(99, 102, 241, 0.08); border-radius: 3px; padding: 0 2px; }
+    .pm-leaf .cm-focused { outline: 2px solid rgba(99, 102, 241, 0.4); }
+    .pm-lambda-param .cm-editor, .pm-let-name .cm-editor {
+      background: rgba(99, 102, 241, 0.08); border-radius: 3px; padding: 0 2px;
+    }
+    /* Error/special */
+    .pm-error-node { color: #ef4444; font-style: italic; }
+    .pm-unit { color: #888; }
+    .pm-unbound-ref { text-decoration: wavy underline #ef4444; }
+    /* Sync status */
+    .status { font-size: 12px; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-bottom: 8px; }
+    .status.connected { background: #dcfce7; color: #166534; }
+    .status.disconnected { background: #fef9c3; color: #854d0e; }
+    .status.error { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+  <h1>ProseMirror + eg-walker</h1>
+  <div id="status" class="status disconnected" role="status" aria-live="polite" aria-atomic="true">Connecting...</div>
+  <div id="editor"></div>
+  <pre id="debug"></pre>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
