@@ -164,7 +164,7 @@ test "FlatProj::to_proj_node: single expression" {
 }
 
 ///|
-test "FlatProj::to_proj_node: let defs reconstruct nested spine" {
+test "FlatProj::to_proj_node: let defs reconstruct Module" {
   let fp = to_flat_proj(
     parse_syntax("let x = 1\nlet y = 2\nx + y"),
     Ref::new(0),
@@ -172,20 +172,23 @@ test "FlatProj::to_proj_node: let defs reconstruct nested spine" {
   let proj = fp.to_proj_node(Ref::new(100))
   inspect(
     proj.kind,
-    content="Let(\"x\", Int(1), Let(\"y\", Int(2), Bop(Plus, Var(\"x\"), Var(\"y\"))))",
+    content=(
+      #|Module([("x", Int(1)), ("y", Int(2))], Bop(Plus, Var("x"), Var("y")))
+    ),
   )
 }
 
 ///|
-test "FlatProj::to_proj_node: def NodeIds used as Let node IDs" {
+test "FlatProj::to_proj_node: Module node gets fresh ID (not def ID)" {
   let fp = to_flat_proj(parse_syntax("let x = 1\nx"), Ref::new(0))
   let def_id = fp.defs[0].3
   let proj = fp.to_proj_node(Ref::new(100))
-  inspect(proj.node_id == def_id.0, content="true")
+  // Module node gets a fresh counter ID, not the first def's stored ID
+  inspect(proj.node_id == def_id.0, content="false")
 }
 
 ///|
-test "FlatProj::from_proj_node: extracts Let spine" {
+test "FlatProj::from_proj_node: extracts Module defs" {
   let (proj, _) = parse_to_proj_node("let x = 1\nlet y = 2\nx + y")
   let fp = FlatProj::from_proj_node(proj)
   inspect(fp.defs.length(), content="2")
@@ -194,7 +197,7 @@ test "FlatProj::from_proj_node: extracts Let spine" {
 }
 
 ///|
-test "FlatProj::from_proj_node: single expression (no Let)" {
+test "FlatProj::from_proj_node: single expression (no Module)" {
   let (proj, _) = parse_to_proj_node("42")
   let fp = FlatProj::from_proj_node(proj)
   inspect(fp.defs.length(), content="0")

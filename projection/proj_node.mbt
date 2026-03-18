@@ -211,10 +211,10 @@ pub fn syntax_to_proj_node(
 
 ///|
 /// Convert a SourceFile SyntaxNode (LetDef* Expression?) to a ProjNode tree.
-/// Right-folds LetDef children into nested Let(name, init, body) ProjNodes,
+/// Collects LetDef children into a flat Module(defs, body) ProjNode,
 /// mirroring `syntax_node_to_term` but preserving spans and IDs.
 ///
-/// LetDef children are right-folded into nested Let(name, init, body) nodes.
+/// LetDef children are collected into a single Module node with flat children.
 pub fn to_proj_node(root : @seam.SyntaxNode, counter : Ref[Int]) -> ProjNode {
   let defs : Array[(String, ProjNode, Int)] = []
   let mut final_proj : ProjNode? = None
@@ -235,14 +235,18 @@ pub fn to_proj_node(root : @seam.SyntaxNode, counter : Ref[Int]) -> ProjNode {
     None =>
       ProjNode::new(Unit, root.end(), root.end(), next_proj_node_id(counter), [])
   }
-  for i = defs.length() - 1; i >= 0; i = i - 1 {
-    let (name, init, def_start) = defs[i]
+  if defs.length() > 0 {
+    let children : Array[ProjNode] = defs.map(fn(d) { d.1 })
+    children.push(result)
+    let term_defs : Array[(@ast.VarName, @ast.Term)] = defs.map(fn(d) {
+      (d.0, d.1.kind)
+    })
     result = ProjNode::new(
-      Let(name, init.kind, result.kind),
-      def_start,
+      Module(term_defs, result.kind),
+      defs[0].2,
       result.end,
       next_proj_node_id(counter),
-      [init, result],
+      children,
     )
   }
   result
@@ -279,9 +283,14 @@ fn rebuild_kind(shape : @ast.Term, children : Array[ProjNode]) -> @ast.Term {
       } else {
         shape
       }
-    Let(name, _, _) =>
-      if children.length() >= 2 {
-        Let(name, children[0].kind, children[1].kind)
+    Module(old_defs, _) =>
+      if children.length() >= 1 {
+        let new_defs : Array[(@ast.VarName, @ast.Term)] = []
+        for i = 0; i < children.length() - 1; i = i + 1 {
+          let name = if i < old_defs.length() { old_defs[i].0 } else { "_" }
+          new_defs.push((name, children[i].kind))
+        }
+        Module(new_defs, children[children.length() - 1].kind)
       } else {
         shape
       }
@@ -300,7 +309,7 @@ fn same_kind_tag(a : @ast.Term, b : @ast.Term) -> Bool {
     (App(_, _), App(_, _)) => true
     (Bop(_, _, _), Bop(_, _, _)) => true
     (If(_, _, _), If(_, _, _)) => true
-    (Let(_, _, _), Let(_, _, _)) => true
+    (Module(_, _), Module(_, _)) => true
     (Unit, Unit) => true
     (Error(_), Error(_)) => true
     _ => false

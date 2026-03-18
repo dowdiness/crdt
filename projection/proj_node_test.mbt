@@ -15,7 +15,12 @@ test "to_proj_node: single expression" {
 test "to_proj_node: single let def + expression" {
   let syntax = parse_syntax("let x = 1\nx")
   let proj = @projection.to_proj_node(syntax, Ref::new(0))
-  inspect(proj.kind, content="Let(\"x\", Int(1), Var(\"x\"))")
+  inspect(
+    proj.kind,
+    content=(
+      #|Module([("x", Int(1))], Var("x"))
+    ),
+  )
   inspect(proj.children.length(), content="2")
 }
 
@@ -25,15 +30,24 @@ test "to_proj_node: multiple let defs" {
   let proj = @projection.to_proj_node(syntax, Ref::new(0))
   inspect(
     proj.kind,
-    content="Let(\"x\", Int(1), Let(\"y\", Int(2), Bop(Plus, Var(\"x\"), Var(\"y\"))))",
+    content=(
+      #|Module([("x", Int(1)), ("y", Int(2))], Bop(Plus, Var("x"), Var("y")))
+    ),
   )
+  // Module has 3 children: 2 init ProjNodes + 1 body ProjNode
+  inspect(proj.children.length(), content="3")
 }
 
 ///|
 test "to_proj_node: no final expression defaults to Unit" {
   let syntax = parse_syntax("let x = 1\n")
   let proj = @projection.to_proj_node(syntax, Ref::new(0))
-  inspect(proj.kind, content="Let(\"x\", Int(1), Unit)")
+  inspect(
+    proj.kind,
+    content=(
+      #|Module([("x", Int(1))], Unit)
+    ),
+  )
 }
 
 ///|
@@ -47,5 +61,10 @@ test "to_proj_node: empty document" {
 test "to_proj_node: single let def with expression" {
   let syntax = parse_syntax("let x = 1\nx")
   let proj = @projection.to_proj_node(syntax, Ref::new(0))
-  inspect(proj.kind, content="Let(\"x\", Int(1), Var(\"x\"))")
+  inspect(
+    proj.kind,
+    content=(
+      #|Module([("x", Int(1))], Var("x"))
+    ),
+  )
 }

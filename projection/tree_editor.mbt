@@ -58,7 +58,7 @@ priv enum InteractiveNodeShape {
   App
   Bop(@ast.Bop)
   If
-  Let(String)
+  Module
   Unit
   Error(String)
 } derive(Eq)
@@ -114,7 +114,7 @@ fn interactive_node_shape(kind : @ast.Term) -> InteractiveNodeShape {
     App(_, _) => App
     Bop(op, _, _) => Bop(op)
     If(_, _, _) => If
-    Let(name, _, _) => Let(name)
+    Module(_, _) => Module
     Unit => Unit
     Unbound(name) => Var(name) // Unbound rendered same as Var in editor
     Error(msg) => Error(msg)
@@ -549,7 +549,10 @@ fn get_node_label(kind : @ast.Term) -> String {
     App(_, _) => "App"
     Bop(op, _, _) => op.to_string()
     If(_, _, _) => "if"
-    Let(name, _, _) => "let " + name
+    Module(defs, _) => {
+      let names = defs.map(fn(d) { d.0 })
+      "module [" + names.join(", ") + "]"
+    }
     Unit => "()"
     Unbound(name) => "?" + name
     Error(msg) => "Error: " + msg

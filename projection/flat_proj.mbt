@@ -114,10 +114,10 @@ pub fn reconcile_flat_proj(
 }
 
 ///|
-/// Reconstruct a nested Let ProjNode spine from FlatProj.
-/// Uses stored NodeIds for Let nodes. Counter only used for Unit fallback.
+/// Reconstruct a Module ProjNode from FlatProj.
+/// Uses stored NodeIds for the Module node. Counter only used for Unit fallback.
 pub fn FlatProj::to_proj_node(self : FlatProj, counter : Ref[Int]) -> ProjNode {
-  let mut result = match self.final_expr {
+  let body = match self.final_expr {
     Some(expr) => expr
     None => {
       // Use last def's end position so the synthetic Unit node doesn't
@@ -130,44 +130,54 @@ pub fn FlatProj::to_proj_node(self : FlatProj, counter : Ref[Int]) -> ProjNode {
       ProjNode::new(Unit, end_pos, end_pos, next_proj_node_id(counter), [])
     }
   }
-  for i = self.defs.length() - 1; i >= 0; i = i - 1 {
-    let (name, init, def_start, id) = self.defs[i]
-    result = ProjNode::new(
-      Let(name, init.kind, result.kind),
-      def_start,
-      result.end,
-      id.0,
-      [init, result],
-    )
+  if self.defs.is_empty() {
+    return body
   }
-  result
+  let children : Array[ProjNode] = self.defs.map(fn(d) { d.1 })
+  children.push(body)
+  let term_defs : Array[(@ast.VarName, @ast.Term)] = self.defs.map(fn(d) {
+    (d.0, d.1.kind)
+  })
+  let start = self.defs[0].2
+  ProjNode::new(
+    Module(term_defs, body.kind),
+    start,
+    body.end,
+    next_proj_node_id(counter),
+    children,
+  )
 }
 
 ///|
-/// Extract a FlatProj from a nested ProjNode Let spine.
-/// Walks the Let chain collecting entries until a non-Let node is found.
+/// Extract a FlatProj from a Module ProjNode.
+/// Reads def entries from Module children and extracts the body.
 pub fn FlatProj::from_proj_node(root : ProjNode) -> FlatProj {
-  let defs : Array[(String, ProjNode, Int, NodeId)] = []
-  let mut current = root
-  while true {
-    match current.kind {
-      Let(name, _, _) =>
-        if current.children.length() >= 2 {
+  match root.kind {
+    Module(term_defs, _) => {
+      let defs : Array[(String, ProjNode, Int, NodeId)] = []
+      for i = 0; i < term_defs.length(); i = i + 1 {
+        if i < root.children.length() - 1 {
+          let init_child = root.children[i]
           defs.push(
-            (name, current.children[0], current.start, NodeId(current.node_id)),
+            (
+              term_defs[i].0,
+              init_child,
+              init_child.start,
+              NodeId(init_child.node_id),
+            ),
           )
-          current = current.children[1]
-        } else {
-          break
         }
-      _ => break
+      }
+      let body_child = root.children[root.children.length() - 1]
+      let final_expr = match body_child.kind {
+        Unit => None
+        _ => Some(body_child)
+      }
+      { defs, final_expr }
     }
+    Unit => { defs: [], final_expr: None }
+    _ => { defs: [], final_expr: Some(root) }
   }
-  let final_expr = match current.kind {
-    Unit => None
-    _ => Some(current)
-  }
-  { defs, final_expr }
 }
 
 ///|

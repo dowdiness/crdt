@@ -89,7 +89,7 @@ pub fn reconcile_ast(
         reconciled_children,
       )
     }
-    (Let(_, _, _), Let(_, _, _)) => {
+    (Module(_, _), Module(_, _)) => {
       let reconciled_children = reconcile_children(
         old.children,
         new.children,
