@@ -6,7 +6,16 @@
   <style>
     body { font-family: system-ui, sans-serif; margin: 40px; }
     #editor { border: 1px solid #ccc; padding: 8px; min-height: 200px; }
-    .ProseMirror { outline: none; font-family: monospace; }
+    .ProseMirror { outline: none; font-family: monospace; font-size: 16px; line-height: 1.6; }
+    .pm-leaf { display: inline-block; }
+    .pm-lambda { display: inline; }
+    .pm-lambda-prefix { color: #c084fc; font-weight: bold; }
+    .pm-lambda-dot { color: #888; }
+    .pm-let-def { margin: 4px 0; }
+    .pm-let-keyword { color: #60a5fa; font-weight: bold; }
+    .pm-let-eq { color: #888; }
+    /* Atom nodes get a subtle background */
+    .pm-leaf .cm-editor { background: rgba(99, 102, 241, 0.08); border-radius: 3px; }
   </style>
 </head>
 <body>
