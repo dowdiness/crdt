@@ -245,8 +245,10 @@ test "compute_text_edit: InsertChild into non-Module re-renders parent" {
       inspect(edits.length(), content="1")
       // Bop re-rendered via rebuild_kind + print_term with new child inserted
       let new_text = apply_edits(text, edits)
-      // Verify the result is non-empty and different from original
-      inspect(new_text.length() > 0 && new_text != text, content="true")
+      // Pin exact expected output from rebuild_kind + print_term
+      inspect(new_text, content=(
+        #|(z + x)
+      ))
     }
     _ => abort("expected Some edits")
   }
@@ -274,8 +276,9 @@ test "compute_text_edit: Drop produces two edits" {
       // Drop should produce 2 edits: delete at source + insert at target
       inspect(edits.length(), content="2")
       let new_text = apply_edits(text, edits)
-      // Source "x" removed from position 0, inserted after "1" at position 5
-      inspect(new_text.length() > 0, content="true")
+      inspect(new_text, content=(
+        #| + 1x
+      ))
     }
     _ => abort("expected Some edits")
   }
