@@ -157,6 +157,32 @@ pub fn backspace_and_record(_handle : Int, timestamp_ms : Int) -> Bool {
 }
 
 ///|
+/// Insert text at a specific position without moving the cursor.
+/// Records the operation for undo. Used by ProseMirror bridge.
+pub fn insert_at(
+  _handle : Int,
+  position : Int,
+  text : String,
+  timestamp_ms : Int,
+) -> Unit {
+  match editor.val {
+    Some(ed) => ed.insert_at(position, text, timestamp_ms)
+    None => ()
+  }
+}
+
+///|
+/// Delete the character at a specific position without moving the cursor.
+/// Records the operation for undo. Returns false if position is out of bounds.
+/// Used by ProseMirror bridge.
+pub fn delete_at(_handle : Int, position : Int, timestamp_ms : Int) -> Bool {
+  match editor.val {
+    Some(ed) => ed.delete_at(position, timestamp_ms)
+    None => false
+  }
+}
+
+///|
 /// Set text content directly and record changes for undo
 pub fn set_text_and_record(
   _handle : Int,

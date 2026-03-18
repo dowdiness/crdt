@@ -12,6 +12,8 @@ pub fn create_editor_with_undo(String, Int) -> Int
 
 pub fn delete_and_record(Int, Int) -> Bool
 
+pub fn delete_at(Int, Int, Int) -> Bool
+
 pub fn ephemeral_apply(Int, Bytes) -> Unit
 
 pub fn ephemeral_delete_presence(Int) -> Unit
@@ -41,6 +43,8 @@ pub fn get_text(Int) -> String
 pub fn get_version_json(Int) -> String
 
 pub fn insert_and_record(Int, String, Int) -> Unit
+
+pub fn insert_at(Int, Int, String, Int) -> Unit
 
 pub fn redo_and_export_json(Int) -> String
 
