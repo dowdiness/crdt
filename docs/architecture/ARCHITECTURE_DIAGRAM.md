@@ -15,7 +15,6 @@ graph TD
         Parser[Incremental Parser]
         AST[AST Term]
         ProjNode[ProjNode Tree\n(Stable IDs)]
-        Memo[Memoization Cache]
     end
 
     subgraph "Projection Layer"
@@ -60,7 +59,7 @@ graph TD
     classDef net fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
 
     class Doc,OpLog,Undo text;
-    class Parser,AST,ProjNode,Memo model;
+    class Parser,AST,ProjNode model;
     class TreeEditor,TextEditor,SyncEditor proj;
     class Peers,Ephemeral net;
 ```

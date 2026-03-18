@@ -7,7 +7,7 @@ The codebase is organized as a **monorepo with git submodules**:
 | Submodule | GitHub Repo | MoonBit Module |
 |---|---|---|
 | `event-graph-walker/` | [dowdiness/event-graph-walker](https://github.com/dowdiness/event-graph-walker) | `dowdiness/event-graph-walker` |
-| `loom/` | [dowdiness/loom](https://github.com/dowdiness/loom) | `dowdiness/lambda` (examples/lambda root pkg) |
+| `loom/` | [dowdiness/loom](https://github.com/dowdiness/loom) | `dowdiness/loom`, `dowdiness/seam`, `dowdiness/incr`, `dowdiness/lambda` |
 | `svg-dsl/` | [dowdiness/svg-dsl](https://github.com/dowdiness/svg-dsl) | `antisatori/svg-dsl` |
 | `graphviz/` | [dowdiness/graphviz](https://github.com/dowdiness/graphviz) | `antisatori/graphviz` |
 | `valtio/` | [dowdiness/valtio](https://github.com/dowdiness/valtio) | `antisatori/valtio` |
@@ -41,8 +41,8 @@ CRDT document model (general-purpose text document).
 
 ## `loom/` Module (Lambda Calculus Parser + Framework)
 
-Rabbita-style monorepo containing the incremental parser framework and lambda calculus example.
-The `crdt` module uses `dowdiness/lambda` (`loom/examples/lambda/`) — the root package is aliased `@parser` in pkg files for source compatibility.
+Monorepo containing the incremental parser framework and lambda calculus example.
+The `crdt` module depends on `dowdiness/lambda` (`loom/examples/lambda/`) and `dowdiness/loom` (`loom/loom/`).
 
 - `loom/loom/` — `dowdiness/loom`: generic parser framework (core, bridge, pipeline, incremental, viz)
 - `loom/seam/` — `dowdiness/seam`: language-agnostic CST (`CstNode`, `SyntaxNode`)

@@ -4,13 +4,19 @@
 
 This plan outlines a **general theoretical architecture** for Projectional Editing that can be applied to any domain, with specific implementation guidance for the Lambda Calculus CRDT Editor. The core insight is treating **projections as lenses** over a canonical model, with **bidirectional transformations** maintaining semantic equivalence (bisimulation).
 
-> Status note (2026-03-15): this document is partly historical. The active
-> implementation no longer uses `CanonicalModel`, `projection/canonical_model.mbt`,
-> or `projection/text_lens.mbt`. The live path is `SyncEditor` +
-> memo-derived `ProjNode`/`SourceMap` + `TreeEditorState::from_projection` /
-> `refresh`. See [docs/design/03-unified-editor.md](../design/03-unified-editor.md),
-> [docs/design/05-tree-edit-roundtrip.md](../design/05-tree-edit-roundtrip.md),
-> and [docs/architecture/modules.md](./modules.md) for the current structure.
+> **Status note (2026-03-18): This document is partly historical.**
+>
+> **What's current:**
+> - Part 1 (theoretical architecture) — lens abstraction, bisimulation, edit action calculus. Sound theory, independent of implementation.
+> - Phase 3 completed deliverables — `TreeEditorState`, `InteractiveTreeNode`, tree edit round-trip via `SyncEditor`.
+>
+> **What's retired or stale:**
+> - `CanonicalModel`, `projection/canonical_model.mbt`, `projection/text_lens.mbt` — replaced by `SyncEditor` + memo-derived `ProjNode`/`SourceMap`.
+> - The `CstNode` struct definition in §2.3 predates the seam library and is wrong — the actual `CstNode` is `{ kind: RawKind, children: Array[CstElement], text_len: Int, hash: Int, token_count: Int, has_any_error: Bool }`.
+> - "AST-first canonical model" (§2.2, Confirmed Decisions) — the live system uses **text (CRDT) as ground truth** with AST derived via incremental parsing. The AST is not the canonical model.
+> - "Future CST-aware version" labels in §2.4 — loom already provides CST-based incremental parsing via `CstNode`/`SyntaxNode`/`ReuseCursor`. The "future" is partially the present.
+>
+> **Live architecture:** `SyncEditor` + `TreeEditorState::from_projection` / `refresh`. See [modules.md](./modules.md) for the current structure.
 
 ---
 
@@ -213,7 +219,7 @@ The existing codebase has:
 | AST (TermNode) | ✅ Complete | `loom/examples/lambda/src/ast/` |
 | AST Visualization | ✅ DOT export | `loom/examples/lambda/src/dot_node.mbt` |
 | AST↔CRDT Bridge | ✅ Complete | `editor/sync_editor*.mbt` |
-| CanonicalModel | Retired | Historical docs/plans only |
+| CanonicalModel | Retired | Replaced by SyncEditor + memo-derived ProjNode/SourceMap |
 | SourceMap | ✅ Complete | `projection/source_map.mbt` |
 | Text diff adapter | ✅ Complete | `projection/text_projection_diff.mbt` |
 | TreeLens | ✅ Complete | `projection/tree_lens.mbt` |
@@ -248,8 +254,8 @@ graph TD
     end
     
     subgraph "Model Layer (MoonBit)"
-        PE[ProjectedEditor]
-        CM[CanonicalModel]
+        PE[SyncEditor]
+        CM[ProjNode + SourceMap\n(derived from AST)]
         CRDT[TextCRDT\n(FugueMax)]
     end
     
@@ -261,9 +267,9 @@ graph TD
     TreeLens <--> Registry
     
     Registry <--> PE
-    PE <--> CM
+    PE --> CM
     
-    CM -- "sync via TextLens" --> CRDT
+    CRDT -- "incremental parse" --> CM
     
     %% Styling
     classDef ui fill:#bbdefb,stroke:#1976d2,stroke-width:2px;
@@ -277,10 +283,11 @@ graph TD
 
 ### 2.3 Core Data Structures
 
-#### CanonicalModel
+#### CanonicalModel (RETIRED — see status note)
 
 ```moonbit
-/// The single source of truth for the program (current implementation)
+/// RETIRED: replaced by SyncEditor + memo-derived ProjNode/SourceMap.
+/// Kept here for historical reference.
 struct CanonicalModel {
   ast: TermNode                        // Current AST
   node_registry: Map[NodeId, TermNode] // Fast node lookup
@@ -302,29 +309,28 @@ struct SourceMap {
   range_to_nodes: IntervalTree[NodeId]    // text range → AST nodes
 }
 
-/// Concrete syntax tree + mapping to AST nodes (PLANNED - NOT YET IMPLEMENTED)
+/// Concrete syntax tree — IMPLEMENTED in seam (dowdiness/seam).
+/// The actual definition (not the historical sketch above):
 struct CstNode {
-  kind: CstKind
-  tokens: Array[Token]
-  children: Array[CstNode]
+  kind: RawKind
+  children: Array[CstElement]  // CstElement = Token(CstToken) | Node(CstNode)
+  text_len: Int                // relative width, not absolute position
+  hash: Int                    // structural content hash for incremental reuse
+  token_count: Int             // non-trivia leaf count
+  has_any_error: Bool          // fast error-skip flag
 }
 
-struct CstSpan {
-  start_token: Int
-  end_token: Int
-}
-
-struct AstCstMap {
-  ast_to_cst: Map[NodeId, CstSpan]
-  cst_to_ast: IntervalTree[NodeId]
-}
+/// AstCstMap is not yet implemented. CstFold (memoized catamorphism)
+/// handles CST→AST conversion incrementally without an explicit map.
 ```
 
-#### CST Invariants (PLANNED)
+#### CST Invariants (IMPLEMENTED in seam)
 
-- CST nodes preserve token order; spans are non-overlapping and cover each node's tokens.
-- Trivia (whitespace/comments) is attached to the leading token of the following CST node.
-- `ast_cst_map` points to the smallest enclosing CST node that fully represents the AST node.
+- CstNode stores relative widths, not absolute positions — subtrees are position-independent for O(1) incremental reuse.
+- All source bytes are represented (whitespace, comments, error tokens) — the CST is lossless.
+- ErrorNode is a CstNode with a different kind — the parser always produces a complete tree.
+- SyntaxNode is an ephemeral positioned wrapper that computes absolute offsets lazily from widths.
+- See [Incremental Hylomorphism §2](./Incremental-Hylomorphism.md) for the four structural independence properties.
 
 #### Formatting Policy
 
@@ -460,19 +466,20 @@ TextEditToModel(old_text, new_text, model):
   6. Return new model
 ```
 
-**Future CST-aware version** (PLANNED - NOT YET IMPLEMENTED):
+**CST-aware version** (PARTIALLY IMPLEMENTED via loom):
+
+loom's `ImperativeParser` already handles steps 1-4 incrementally:
 ```
 TextEditToModel(old_text, new_text, model):
-  1. Compute text diff: edits = diff(old_text, new_text)
-  2. Update CST tokens/trivia for each edit (local token patch)
-  3. Determine affected CST span and map to AST nodes via ast_cst_map
-     - Use the smallest enclosing CST node that fully covers the diff
-  4. Reparse only the affected CST subtree into AST
-     - Reconcile with old AST to preserve unchanged IDs
-  5. Update ast_cst_map + source_map for changed regions
-  6. Mark AST projection as dirty
-  7. Return new model
+  1. Compute edit: Edit { start, old_len, new_len }
+  2. ImperativeParser::edit(edit, new_text) →
+     - TokenBuffer re-lexes only the damage region
+     - ReuseCursor reuses unchanged CST subtrees at O(1)
+     - CstFold incrementally converts CST → AST (cache hits for unchanged subtrees)
+  3. Reconcile AST with projection (preserve node IDs) — still needed
+  4. Return new model
 ```
+The gap: step 3 (AST reconciliation with stable node IDs for the projection layer) is not yet wired to loom's incremental output.
 
 #### Algorithm 2: AST Edit → Model Update
 
@@ -490,18 +497,18 @@ ASTEditToModel(ast_operation, model):
   5. Return success/failure
 ```
 
-**Future CST-aware version** (PLANNED - NOT YET IMPLEMENTED):
+**CST-aware version** (PARTIALLY DESIGNED — see active plan):
+
+The reverse direction (AST edit → text diff) requires unparsing the modified AST subtree
+and computing a minimal text delta. This is the subject of the active
+[projectional edit text delta design](../plans/2026-03-18-projectional-edit-text-delta-design.md).
 ```
 ASTEditToModel(ast_operation, model):
-  1. Apply operation to model.ast (same as current)
-  2. Locate affected CST span via ast_cst_map
-  3. Regenerate only the CST subtree for that span
-     - Preserve trivia outside the span
-  4. Emit minimal text diff from CST token changes for CRDT sync
-     - Whitespace-only edits are preserved as trivia, no formatting normalization
-  5. Update ast_cst_map + source_map for changed regions
-  6. Mark Text projection as dirty
-  7. Return new model
+  1. Apply operation to model.ast
+  2. Unparse affected subtree → new text fragment
+  3. Compute text delta (Edit { start, old_len, new_len })
+  4. Apply delta to CRDT → incremental reparse via loom
+  5. Return new model
 ```
 
 #### Algorithm 3: AST Reconciliation (Preserve Node IDs)
@@ -558,12 +565,10 @@ enum TermKind {
   Partial(expected: String)    // Incomplete input (PLANNED)
 }
 
-/// CST error handling (PLANNED - NOT YET IMPLEMENTED)
-enum CstKind {
-  // ... existing kinds ...
-  ErrorToken(message: String)
-  PartialNode(expected: String)
-}
+/// CST error handling (IMPLEMENTED in seam/loom)
+/// ErrorNode is a CstNode with error_kind. IncompleteNode uses incomplete_kind.
+/// Both are regular CstNodes — the parser always produces a complete tree.
+/// See LanguageSpec { error_kind, incomplete_kind } in loom/core.
 
 /// Validation levels (PLANNED)
 enum ValidationLevel {
@@ -915,43 +920,45 @@ test "comments preserved across text edit" {
 
 ## Confirmed Design Decisions
 
-Based on user input:
+Based on user input (updated 2026-03-18 to reflect current architecture):
 
 | Decision | Choice | Implication |
 |----------|--------|-------------|
-| **Canonical model** | AST-first | AST is truth, text is derived via unparser |
-| **CRDT granularity** | Text CRDT only (temporary) | Keep existing FugueMax, regenerate AST per-peer |
-| **Error handling** | Error nodes | Invalid regions become `TermKind::Error` nodes |
+| **Ground truth** | Text CRDT (FugueMax) | Text is truth; AST is derived via incremental parsing (loom). This reversed the earlier "AST-first" plan. |
+| **CRDT granularity** | Text CRDT only | Keep existing FugueMax, regenerate AST per-peer via `ImperativeParser` |
+| **Error handling** | Error nodes | Invalid regions become `Term::Error(msg)` in AST, `ErrorNode` in CST |
+| **Incremental parsing** | loom framework | `CstNode`/`SyntaxNode` two-tree model with `ReuseCursor` for O(1) subtree reuse |
 
-### Temporary Constraints
+### Current Constraints
 
 - Local single-projection edit lock to simplify conflict handling.
-- Text CRDT only while CST-based transformations mature.
+- Tree edits round-trip through text (unparse → text delta → CRDT → reparse).
 
-### Architecture Consequence
+### Architecture Consequence (Updated)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   AST (Canonical Model)                     │
-│  TermNode with persistent NodeIds, supports Error nodes     │
+│               Text CRDT (Ground Truth)                      │
+│  FugueMax document, collaborative, character-level ops      │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼ incremental parse (loom)
+┌─────────────────────────────────────────────────────────────┐
+│               CST → AST (Derived)                           │
+│  CstNode (seam) → SyntaxNode → CstFold → Term              │
+│  ProjNode/SourceMap reconciled with stable NodeIds          │
 └────────────────────────┬────────────────────────────────────┘
                          │
          ┌───────────────┴───────────────┐
          │                               │
          ▼                               ▼
-┌─────────────────┐             ┌─────────────────┐
-│   TextLens      │             │   TreeLens      │
-│   (unparse)     │             │   (identity+)   │
-└────────┬────────┘             └────────┬────────┘
-         │                               │
-         ▼                               ▼
 ┌─────────────────┐             ┌─────────────────────────┐
-│   Text CRDT     │◀───sync────▶│   Unified Tree Editor   │
-│   (FugueMax)    │             │   (View + Edit in one)  │
+│   Text View     │             │   Unified Tree Editor   │
+│   (source text) │             │   (View + Edit in one)  │
 └─────────────────┘             └─────────────────────────┘
 ```
 
 **Data flow**:
-1. AST edit → unparse → text diff → CRDT ops → broadcast
-2. Remote CRDT ops → apply → reparse → reconcile AST (preserve IDs)
-3. Text edit → parse → reconcile AST → update AST editor
+1. Text edit → CRDT op → incremental reparse (loom) → new AST → update tree editor
+2. Tree edit → unparse → text diff → CRDT op → incremental reparse → reconcile
+3. Remote CRDT ops → apply → incremental reparse → reconcile AST (preserve IDs)
