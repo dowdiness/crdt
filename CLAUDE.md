@@ -1,20 +1,22 @@
 # Claude Code Quick Reference
 
-Lambda Calculus CRDT Editor - eg-walker implementation in MoonBit
+Canopy — incremental projectional editor with CRDT collaboration, built in MoonBit.
 
 ## Project Structure
 
 **Monorepo with git submodules:**
-- `event-graph-walker/` - Reusable CRDT library (submodule → [dowdiness/event-graph-walker](https://github.com/dowdiness/event-graph-walker))
-- `loom/` - Loom framework (submodule → [dowdiness/loom](https://github.com/dowdiness/loom))
+- `event-graph-walker/` - CRDT library (submodule → [dowdiness/event-graph-walker](https://github.com/dowdiness/event-graph-walker))
+- `loom/` - Incremental parser framework (submodule → [dowdiness/loom](https://github.com/dowdiness/loom))
+  - `loom/loom/` — `dowdiness/loom`: parser framework (core, pipeline, incremental, viz)
+  - `loom/seam/` — `dowdiness/seam`: language-agnostic CST (CstNode, SyntaxNode)
+  - `loom/incr/` — `dowdiness/incr`: reactive signals (Signal, Memo)
+  - `loom/examples/lambda/` — `dowdiness/lambda`: lambda calculus parser
 - `svg-dsl/` - SVG DSL (submodule → [dowdiness/svg-dsl](https://github.com/dowdiness/svg-dsl))
 - `graphviz/` - Graphviz renderer (submodule → [dowdiness/graphviz](https://github.com/dowdiness/graphviz))
 - `valtio/` - Valtio state management (submodule → [dowdiness/valtio](https://github.com/dowdiness/valtio))
 - `rle/` - RLE data structure library (submodule → [dowdiness/rle](https://github.com/dowdiness/rle))
 - `editor/`, `projection/`, `cmd/` - Application packages (in monorepo)
 - `examples/web/`, `examples/demo-react/` - Web frontends (in monorepo)
-
-**Modules:** 3 MoonBit modules (crdt + event-graph-walker + loom framework)
 
 ## MoonBit Language Notes
 
@@ -37,9 +39,11 @@ git submodule update --init --recursive
 
 ### Test & Build
 ```bash
-moon test                           # crdt module tests
+moon test                           # canopy module tests
 cd event-graph-walker && moon test # CRDT library tests
-cd loom && moon test               # Loom framework tests
+cd loom/loom && moon test          # Parser framework tests
+cd loom/seam && moon test          # CST library tests
+cd loom/examples/lambda && moon test # Lambda parser tests
 moon info && moon fmt               # Format & update interfaces
 moon check                          # Lint
 ```
@@ -48,13 +52,13 @@ moon check                          # Lint
 ```bash
 cd examples/web && npm run dev      # Dev server (localhost:5173)
 moon build --target js              # Build for web
-cp target/js/release/build/crdt.js examples/web/public/
 ```
 
 ### Benchmarks
 ```bash
 moon bench --release                # Always use --release
 cd event-graph-walker && moon bench --release
+cd loom/examples/lambda && moon bench --release
 ```
 
 ## Submodule Workflow
@@ -81,6 +85,8 @@ git commit -m "chore: update event-graph-walker submodule"
 
 - **Architecture:** [docs/architecture/](docs/architecture/)
   - [Module Structure](docs/architecture/modules.md)
+  - [Incremental Hylomorphism](docs/architecture/Incremental-Hylomorphism.md)
+  - [Anamorphism Discipline](docs/architecture/anamorphism-discipline.md)
   - [Projectional Editing](docs/architecture/PROJECTIONAL_EDITING.md)
 
 - **Development:** [docs/development/](docs/development/)
@@ -98,10 +104,11 @@ git commit -m "chore: update event-graph-walker submodule"
 
 ## Key Facts
 
+**Project:** Canopy — incremental projectional editor
 **CRDT:** eg-walker algorithm with FugueMax sequence CRDT
 **Language:** MoonBit
-**Parser:** Lambda calculus with arithmetic (`λx.x`, `1+2`, `if-then-else`)
-**Modules:** 3 MoonBit modules (crdt app + event-graph-walker lib + loom framework)
+**Parser:** Lambda calculus with arithmetic (`λx.x`, `1+2`, `if-then-else`, `let x = 1`)
+**Ground truth:** Text CRDT (FugueMax), AST derived via incremental parsing (loom)
 **Submodules:** 6 git submodules (event-graph-walker, loom, svg-dsl, graphviz, valtio, rle)
 
 ## Development Workflow
@@ -116,8 +123,6 @@ git commit -m "chore: update event-graph-walker submodule"
 4. **CLI testing**: If applicable, verify help text, flag behavior, and check for shadowing issues
 5. **Interface review**: Update `.mbti` files and verify API changes are intentional
 6. **Format & lint**: Run `moon fmt` and `moon check` before completing
-
-This workflow addresses common friction points: dependency issues, syntax errors, test assertion mismatches, and functional bugs in CLI tools.
 
 ### Standard Workflow
 
@@ -148,13 +153,13 @@ This workflow addresses common friction points: dependency issues, syntax errors
 
 ## Important Notes
 
-- **Quality verification:** Use `/moonbit-check` skill for all MoonBit implementations to catch dependency issues, syntax errors, and test failures early
+- **Quality verification:** Use `/moonbit-check` skill for all MoonBit implementations
 - **Character-level ops:** Split multi-char inserts into individual chars
 - **Submodules:** After cloning, run `git submodule update --init --recursive`
 - **Snapshots:** Use `moon test --update` when behavior changes
 - **Interfaces:** Check `.mbti` files after refactoring
 - **Benchmarks:** Always use `--release` flag
-- **Parser module:** Now `dowdiness/lambda` in `loom/examples/lambda/` (via loom submodule). Source code `@parser` alias unchanged.
+- **Parser module:** `dowdiness/lambda` in `loom/examples/lambda/`
 
 ## Git Workflow
 
