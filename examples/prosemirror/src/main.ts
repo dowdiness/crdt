@@ -7,7 +7,9 @@ import { TermLeafView } from "./leaf-view";
 import { LambdaView } from "./lambda-view";
 import { LetDefView } from "./let-def-view";
 import { CrdtBridge } from "./bridge";
+import type { CrdtModule } from "./bridge";
 import { structuralKeymap } from "./keymap";
+import { setupSync } from "./sync";
 
 // Create CRDT editor with sample text
 const handle = crdt.create_editor("pm-agent");
@@ -18,7 +20,7 @@ const projJson = JSON.parse(crdt.get_proj_node_json(handle));
 const doc = projNodeToDoc(projJson);
 
 // Create bridge
-const bridge = new CrdtBridge(handle, crdt);
+const bridge = new CrdtBridge(handle, crdt as CrdtModule);
 
 // Create PM EditorState and EditorView
 const state = EditorState.create({
@@ -42,8 +44,14 @@ const view = new EditorView(document.getElementById("editor")!, {
 
 bridge.setPmView(view);
 
+// Set up WebSocket sync
+const agentId = "pm-" + Math.random().toString(36).slice(2, 8);
+const { broadcast, disconnect } = setupSync(handle, crdt as CrdtModule, bridge, agentId);
+bridge.setBroadcast(broadcast);
+
+// Clean up on page unload
+window.addEventListener("beforeunload", () => disconnect());
+
 // Debug: show doc structure
 document.getElementById("debug")!.textContent = doc.toString();
-
 console.log("PM Doc:", doc.toString());
-console.log("ProjNode:", JSON.stringify(projJson, null, 2));

@@ -3,15 +3,38 @@ import { Transaction } from "prosemirror-state";
 import { reconcile } from "./reconciler";
 import { ProjNodeJson } from "./types";
 
+/** Type for the MoonBit CRDT FFI module imported as @moonbit/crdt */
+export interface CrdtModule {
+  create_editor(agentId: string): number;
+  get_text(handle: number): string;
+  set_text(handle: number, text: string): void;
+  insert_at(handle: number, position: number, text: string, timestampMs: number): void;
+  delete_at(handle: number, position: number, timestampMs: number): boolean;
+  get_proj_node_json(handle: number): string;
+  get_source_map_json(handle: number): string;
+  get_version_json(handle: number): string;
+  export_all_json(handle: number): string;
+  export_since_json(handle: number, peerVersionJson: string): string;
+  apply_sync_json(handle: number, syncJson: string): void;
+  apply_tree_edit_json(handle: number, opJson: string, timestampMs: number): string;
+  [key: string]: any;
+}
+
 export class CrdtBridge {
   private pmView!: PmView;
   private handle: number;
-  private crdt: any;
+  private crdt: CrdtModule;
   private reconcileRafId: number | null = null;
+  private broadcastFn: (() => void) | null = null;
 
-  constructor(handle: number, crdt: any) {
+  constructor(handle: number, crdt: CrdtModule) {
     this.handle = handle;
     this.crdt = crdt;
+  }
+
+  /** Register a broadcast callback for sync */
+  setBroadcast(fn: () => void): void {
+    this.broadcastFn = fn;
   }
 
   /** Must be called after PM EditorView is created */
@@ -63,8 +86,7 @@ export class CrdtBridge {
       posOffset += change.insert.length;
     }
 
-    // Schedule reconcile on next frame
-    this.scheduleReconcile();
+    this.afterLocalEdit();
   }
 
   /** Called by CM6 NodeViews when a token sub-span changes (e.g. lambda param, let-def name) */
@@ -92,7 +114,7 @@ export class CrdtBridge {
       posOffset += change.insert.length;
     }
 
-    this.scheduleReconcile();
+    this.afterLocalEdit();
   }
 
   /** Apply a structural edit (delete, wrap, etc.) via the CRDT TreeEditOp bridge */
@@ -104,6 +126,18 @@ export class CrdtBridge {
       console.error("Structural edit failed:", result);
       return;
     }
+    this.afterLocalEdit();
+  }
+
+  /** Apply remote CRDT ops and reconcile PM state */
+  applyRemote(syncJson: string): void {
+    this.crdt.apply_sync_json(this.handle, syncJson);
+    this.reconcile();
+  }
+
+  /** Called after any local edit — broadcast to peers + schedule reconcile */
+  private afterLocalEdit(): void {
+    if (this.broadcastFn) this.broadcastFn();
     this.scheduleReconcile();
   }
 
