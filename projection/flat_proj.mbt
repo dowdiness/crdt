@@ -200,6 +200,22 @@ pub fn reconcile_flat_proj(
 /// Reconstruct a Module ProjNode from FlatProj.
 /// Uses stored NodeIds for the Module node. Counter only used for Unit fallback.
 pub fn FlatProj::to_proj_node(self : FlatProj, counter : Ref[Int]) -> ProjNode {
+  self.to_proj_node_with_prev_module_id(counter, None)
+}
+
+///|
+/// Reconstruct a Module ProjNode from FlatProj, optionally reusing a previous
+/// Module node_id for stability across rebuilds.
+///
+/// When `prev_module_id` is `Some(id)`, the Module node reuses that id instead
+/// of allocating a fresh one from the counter. This ensures the root Module
+/// node_id is stable across incremental rebuilds when the content hasn't
+/// changed structurally — which is required for ProseMirror document identity.
+pub fn FlatProj::to_proj_node_with_prev_module_id(
+  self : FlatProj,
+  counter : Ref[Int],
+  prev_module_id : Int?,
+) -> ProjNode {
   let body = match self.final_expr {
     Some(expr) => expr
     None => {
@@ -222,11 +238,15 @@ pub fn FlatProj::to_proj_node(self : FlatProj, counter : Ref[Int]) -> ProjNode {
     (d.0, d.1.kind)
   })
   let start = self.defs[0].2
+  let module_id = match prev_module_id {
+    Some(id) => id
+    None => next_proj_node_id(counter)
+  }
   ProjNode::new(
     Module(term_defs, body.kind),
     start,
     body.end,
-    next_proj_node_id(counter),
+    module_id,
     children,
   )
 }
