@@ -70,10 +70,8 @@ WebSocket message:
 
 flags (bit field, reserved for BFT — see bft-adapter-design.md):
   0x00 = no BFT (default for v1)
-  bit 0 = has_digest
-  bit 1 = has_signature
-  bit 2 = has_author_key
-  bit 3 = has_dep_digests
+  bit 0 = has_bft (all BFT fields follow payload: digest, signature, author_key, dep_digests)
+  bits 1-7 = reserved
 
 version:
   0x01 = v1 (this design)

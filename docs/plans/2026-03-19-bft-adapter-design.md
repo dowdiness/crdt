@@ -22,6 +22,8 @@ Add a Byzantine fault tolerance layer that protects CRDT document operations aga
 
 The v2 wire format includes a `flags` byte that reserves space for BFT fields, so BFT can be enabled without a protocol version bump.
 
+4. **eg-walker public API prerequisite:** The BFT adapter needs access to `OpRun` and `RawVersion` from eg-walker, but these types live in `internal/core/` (not accessible from `editor/`), and `SyncMessage.runs`/`.heads` are `priv` fields. Before implementation, eg-walker's `text/` package must expose: (a) getter methods on `SyncMessage` for `runs()` and `heads()`, and (b) re-export `OpRun` and `RawVersion` types. This is a public API addition, not an internal change.
+
 ## Threat Model
 
 **Byzantine peers may:**
@@ -60,11 +62,12 @@ Inbound:
     → CrdtDoc.apply_remote(op)          — only if accepted
 ```
 
-**Why 3 steps, not 4:** eg-walker's `OpLog.apply_remote_ops()` already handles causal delivery (buffers ops waiting for parents via the `pending` array). The BFT adapter does NOT duplicate this. It only adds:
+**Why 4 steps, not 5:** Converge's BFT adapter has 5 steps including causal delivery buffering. eg-walker's `OpLog.apply_remote_ops()` already handles causal delivery (buffers ops waiting for parents via the `pending` array). The BFT adapter does NOT duplicate this. It only adds:
 
 1. Hash integrity check
 2. Signature verification
 3. Equivocation detection
+4. Dep digest verification (all referenced predecessors are accepted)
 
 Causal ordering is eg-walker's responsibility.
 
@@ -115,22 +118,31 @@ eg-walker's `OpRun` implements this. The serialization must be deterministic:
 - No floating-point ambiguity (use canonical byte representation)
 - Dependency hashes included in the canonical form
 
-Format (following converge's approach):
+Format: **binary canonical form** (not text-based, to avoid delimiter escaping issues):
+
 ```
-id:<agent>:<seq>|l:<lamport>|op:<serialized_op>|deps:<sorted_dep_digests>
+[agent_len: uvarint][agent: utf8_bytes]
+[start_seq: uvarint]
+[start_lv: uvarint]
+[count: uvarint]
+[op_content_tag: u8][op_content_payload: ...]
+[origin_left_present: u8][origin_left: agent_len+agent+seq if present]
+[origin_right_present: u8][origin_right: agent_len+agent+seq if present]
+[heads_count: uvarint][sorted_heads: (agent_len+agent+seq)*]
+[dep_count: uvarint][sorted_dep_digests: 32_bytes*]
 ```
 
-Where `<serialized_op>` encodes the operation content (Insert/Delete/Undelete with position data).
+Fields are in fixed order. `origin_left`/`origin_right` are included (positioning is part of semantic meaning — without this, a Byzantine peer could insert text at a different position than claimed). Heads and dep_digests are sorted for determinism. `None` values use `present = 0x00`.
 
 ### Newtype Wrappers (Pattern 6)
 
 ```moonbit
-pub(all) struct Digest(String)      derive(Eq, Compare, Hash, Show)
-pub(all) struct Signature(String)   derive(Eq, Show)
-pub(all) struct PublicKey(String)   derive(Eq, Hash, Show)
+pub(all) struct Digest(Bytes)       derive(Eq, Compare, Hash, Show)
+pub(all) struct Signature(Bytes)    derive(Eq, Show)
+pub(all) struct PublicKey(Bytes)    derive(Eq, Hash, Show)
 ```
 
-Newtypes prevent accidentally mixing digests, signatures, and public keys. The inner `String` holds the hex-encoded value.
+Newtypes prevent accidentally mixing digests, signatures, and public keys. The inner `Bytes` holds the raw binary value (32 bytes for SHA-256 digest, 64 bytes for Ed25519 signature, 32 bytes for Ed25519 public key). Use `to_hex()` methods for display/serialization. Raw `Bytes` halves memory and comparison cost vs hex-encoded strings.
 
 ### SignedEvent
 
@@ -153,15 +165,15 @@ pub(all) struct SignedEvent {
 pub struct BFTAdapter {
   hasher : &Hasher
   verifier : &Verifier
-  accepted_digests : Map[String, Bool]        // digest.0 → true
-  event_digests : Map[String, Digest]         // "agent:seq" → first-seen digest
-  alerts : Array[BFTAlert]                    // accumulated fault reports
+  accepted_digests : @hashset.HashSet[Digest]  // set of accepted digests
+  event_digests : Map[String, Digest]          // "agent:seq" → first-seen digest
+  alerts : Array[BFTAlert]                     // accumulated fault reports
 }
 ```
 
-**Note:** No `pending_buffer`. Causal delivery is eg-walker's job.
+**Note:** No `pending_buffer`. Causal delivery is eg-walker's job. The `Signer` is not stored — only needed for outbound signing, passed as parameter to `sign()`.
 
-### Validation Pipeline (3 Steps)
+### Validation Pipeline (4 Steps)
 
 ```moonbit
 pub enum DeliveryResult {
@@ -173,6 +185,7 @@ pub enum BFTAlertKind {
   HashMismatch
   InvalidSignature
   Equivocation
+  MissingDepDigest
 }
 
 pub(all) struct BFTAlert {
@@ -202,13 +215,21 @@ Catches: forged operations, impersonation.
 **Step 3 — Equivocation detection:**
 ```
 for each op in signed.op_runs:
-  eq_key = op.agent + ":" + op.start_seq.to_string()
-  match event_digests.get(eq_key):
-    Some(existing) if existing != signed.digest → Rejected(Equivocation)
-    Some(_) → skip (idempotent, already accepted)
-    None → record event_digests[eq_key] = signed.digest
+  for seq in op.start_seq .. (op.start_seq + op.count):
+    eq_key = op.agent + ":" + seq.to_string()
+    match event_digests.get(eq_key):
+      Some(existing) if existing != signed.digest → Rejected(Equivocation)
+      Some(_) → skip (idempotent, already accepted)
+      None → record event_digests[eq_key] = signed.digest
 ```
-Catches: peer sending different operations with the same identity to different peers.
+Catches: peer sending different operations with the same identity to different peers. All sequence numbers in the run `[start_seq, start_seq + count)` are indexed, preventing equivocation on subsequences within a batch.
+
+**Step 4 — Dep digest verification:**
+```
+for each dep in signed.dep_digests:
+  if !accepted_digests.contains(dep) → Rejected(MissingDepDigest)
+```
+Catches: Byzantine peer referencing nonexistent predecessors to create a fabricated causal history. Note: the first event by a peer has empty `dep_digests`, which passes trivially. For late-joining peers, see "Dep digest bootstrap" in Open Questions.
 
 **On acceptance:**
 - Store `signed.digest` in `accepted_digests`
@@ -241,16 +262,14 @@ WebSocket message:
   [version: u8][message_type: u8][flags: u8][payload]
 
 flags (bit field):
-  bit 0 = has_digest      (32 bytes SHA-256 follow payload)
-  bit 1 = has_signature    (64 bytes Ed25519 follow digest)
-  bit 2 = has_author_key   (32 bytes Ed25519 pubkey follow signature)
-  bit 3 = has_dep_digests  (uvarint count + 32-byte digests follow author_key)
+  bit 0 = has_bft          (all BFT fields follow payload)
+  bits 1-7 = reserved for future use
 
 Without BFT (flags = 0x00):
   [0x01][0x01][0x00][crdt_ops_payload]
 
-With BFT (flags = 0x0F):
-  [0x01][0x01][0x0F][crdt_ops_payload][digest:32][signature:64][author_key:32][dep_count:uvarint][dep_digests:32*n]
+With BFT (flags = 0x01):
+  [0x01][0x01][0x01][crdt_ops_payload][digest:32][signature:64][author_key:32][dep_count:uvarint][dep_digests:32*n]
 ```
 
 **Backward compatible:** Peers with `flags = 0x00` send unsigned operations. The BFT adapter can be configured to accept unsigned ops (permissive mode) or reject them (strict mode).
@@ -282,7 +301,7 @@ With BFT (flags = 0x0F):
 | Topological sort | eg-walker CausalGraph (existing) |
 | Operation storage | eg-walker OpLog (existing) |
 
-No code in `event-graph-walker/` is modified. The BFT adapter receives `SignedEvent`, validates it, extracts `op_runs` + `heads`, and passes them to `TextDoc.sync().apply()`.
+No internal eg-walker logic is modified. The only change is adding public accessors to `text/` package: `SyncMessage::runs()`, `SyncMessage::heads()`, and re-exporting `OpRun`/`RawVersion` types (see Prerequisites). The BFT adapter receives `SignedEvent`, validates it, extracts `op_runs` + `heads`, and passes them to `TextDoc.sync().apply()`.
 
 ### What About Shared Types?
 
@@ -292,14 +311,14 @@ The analysis of eg-walker's internals showed:
 - **RawVersion could be shared** if the sync protocol needs it. But for now, the BFT adapter only reads `OpRun.agent` and `OpRun.start_seq` — it doesn't need to import eg-walker's internal types.
 - **VersionVector is useful for sync** but not for BFT.
 
-Decision: No type extraction for BFT. The adapter depends on eg-walker's public API (`OpRun`, `RawVersion`, `TextDoc.sync()`) only.
+Decision: No type extraction for BFT. The adapter depends on eg-walker's public API (`OpRun`, `RawVersion`, `TextDoc.sync()`) only. These types must be re-exported from `text/` package (see Prerequisites).
 
 ## What Changes
 
 **New files:**
 - `editor/bft_types.mbt` — `Digest`, `Signature`, `PublicKey`, `SignedEvent`, `BFTAlert`, `BFTAlertKind`, `DeliveryResult`
 - `editor/bft_crypto.mbt` — `Hasher`, `Signer`, `Verifier` traits + `MockHasher`, `MockSigner`, `MockVerifier`
-- `editor/bft_adapter.mbt` — `BFTAdapter` struct with `sign()`, `deliver()`
+- `editor/bft_adapter.mbt` — `BFTAdapter` struct with `sign()`, `deliver()` (4-step pipeline)
 - `editor/bft_serialize.mbt` — `ToCanonicalBytes` trait + impl for `OpRun`
 - `editor/bft_adapter_test.mbt` — tests (see below)
 
@@ -324,12 +343,15 @@ Decision: No type extraction for BFT. The adapter depends on eg-walker's public 
 7. **Dep digest chain** — sign event with dep_digests referencing prior event, verify hash includes deps
 8. **Permissive mode** — deliver unsigned message (flags=0x00), assert accepted when adapter is permissive
 9. **Strict mode** — deliver unsigned message, assert rejected when adapter is strict
+10. **Missing dep digest** — sign event with dep_digests referencing unknown digest, assert `Rejected(MissingDepDigest)`
+11. **OpRun batch equivocation** — deliver OpRun with count=3 covering seqs 5-7, then deliver conflicting op at seq 6, assert `Rejected(Equivocation)`
 
 **Integration tests (with InMemoryTransport from v2):**
 
-10. **Two-peer signed sync** — Peer A signs and sends ops, peer B validates and applies. Verify documents converge.
-11. **Tampered relay** — Inject a modified message between peers. Verify BFT adapter rejects it.
-12. **Alert accumulation** — Multiple faults from same peer. Verify alerts array records all incidents.
+12. **Two-peer signed sync** — Peer A signs and sends ops, peer B validates and applies. Verify documents converge.
+13. **Tampered relay** — Inject a modified message between peers. Verify BFT adapter rejects it.
+14. **Alert accumulation** — Multiple faults from same peer. Verify alerts array records all incidents.
+15. **Mixed BFT/non-BFT peers** — Peer A sends signed (flags=0x01), peer B sends unsigned (flags=0x00). In permissive mode, both accepted. In strict mode, B rejected.
 
 **Benchmarks:**
 
@@ -357,18 +379,19 @@ Decision: No type extraction for BFT. The adapter depends on eg-walker's public 
 
 ## Implementation Order
 
-1. **Newtype wrappers + crypto traits** — `Digest`, `Signature`, `PublicKey`, `Hasher`, `Signer`, `Verifier`
+0. **eg-walker API additions** — add `SyncMessage::runs()`, `SyncMessage::heads()` getters and re-export `OpRun`/`RawVersion` from `text/` package
+1. **Newtype wrappers + crypto traits** — `Digest(Bytes)`, `Signature(Bytes)`, `PublicKey(Bytes)`, `Hasher`, `Signer`, `Verifier`
 2. **Mock implementations** — `MockHasher` (FNV-1a), `MockSigner`, `MockVerifier`
-3. **Canonical serialization** — `ToCanonicalBytes` for `OpRun`
-4. **BFTAdapter core** — `sign()` + `deliver()` with 3-step pipeline
-5. **Unit tests** — all 9 scenarios with mock crypto
+3. **Canonical serialization** — `ToCanonicalBytes` binary format for `OpRun`
+4. **BFTAdapter core** — `sign()` + `deliver()` with 4-step pipeline
+5. **Unit tests** — all 11 scenarios with mock crypto
 6. **Wire format extension** — add `flags` byte to v2 sync protocol
 7. **Integration tests** — with InMemoryTransport
 8. **WebCrypto implementations** — SHA-256 + Ed25519 via JS FFI (deferred to web integration phase)
 
 ## What This Does NOT Change
 
-- The eg-walker CRDT (entire submodule untouched)
+- The eg-walker CRDT internals (public API additions only: getter methods + type re-exports in `text/`)
 - The incremental parser / loom framework
 - Ephemeral state handling (cursors, presence, drag, edit mode)
 - The EphemeralHub design
