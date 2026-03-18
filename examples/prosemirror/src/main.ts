@@ -35,8 +35,8 @@ const view = new EditorView(document.getElementById("editor")!, {
     int_literal: (node, view, getPos) => new TermLeafView(node, view, getPos, bridge),
     var_ref: (node, view, getPos) => new TermLeafView(node, view, getPos, bridge),
     unbound_ref: (node, view, getPos) => new TermLeafView(node, view, getPos, bridge),
-    lambda: (node, view, getPos) => new LambdaView(node, view, getPos),
-    let_def: (node, view, getPos) => new LetDefView(node, view, getPos),
+    lambda: (node, view, getPos) => new LambdaView(node, view, getPos, bridge),
+    let_def: (node, view, getPos) => new LetDefView(node, view, getPos, bridge),
   },
 });
 

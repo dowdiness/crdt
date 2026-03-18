@@ -67,6 +67,34 @@ export class CrdtBridge {
     this.scheduleReconcile();
   }
 
+  /** Called by CM6 NodeViews when a token sub-span changes (e.g. lambda param, let-def name) */
+  handleTokenEdit(nodeId: number, tokenRole: string, changes: { from: number; to: number; insert: string }[]): void {
+    const smJson = JSON.parse(this.crdt.get_source_map_json(this.handle));
+    const entry = smJson.find((r: any) => r.node_id === nodeId);
+    if (!entry?.token_spans?.[tokenRole]) {
+      console.warn("Token span not found:", nodeId, tokenRole);
+      return;
+    }
+    const basePos: number = entry.token_spans[tokenRole].start;
+    const ts = Date.now();
+
+    // Same char-at-a-time logic as handleLeafEdit
+    let posOffset = 0;
+    for (const change of changes) {
+      const deleteLen = change.to - change.from;
+      for (let i = deleteLen - 1; i >= 0; i--) {
+        this.crdt.delete_at(this.handle, basePos + change.from + i + posOffset, ts);
+      }
+      posOffset -= deleteLen;
+      for (let i = 0; i < change.insert.length; i++) {
+        this.crdt.insert_at(this.handle, basePos + change.from + posOffset + i, change.insert[i], ts);
+      }
+      posOffset += change.insert.length;
+    }
+
+    this.scheduleReconcile();
+  }
+
   /** Apply a structural edit (delete, wrap, etc.) via the CRDT TreeEditOp bridge */
   handleStructuralEdit(opType: string, nodeId: number, extra?: Record<string, unknown>): void {
     const opJson = JSON.stringify({ type: opType, node_id: nodeId, ...extra });
