@@ -413,9 +413,11 @@ fn SourceMap::collect_token_spans_expr(
         self.collect_token_spans_expr(operands[0], innermost.children[0])
         self.collect_token_spans_expr(operands[1], innermost.children[1])
       }
+      // BinaryExpr innermost eats operands[0] and operands[1],
+      // so back-walk starts from operands[2]: op_idx = chain.length() - i
       for i = proj_chain.length() - 2; i >= 0; i = i - 1 {
         let parent = proj_chain[i]
-        let op_idx = proj_chain.length() - 1 - i
+        let op_idx = proj_chain.length() - i
         if op_idx < operands.length() && parent.children.length() >= 2 {
           self.collect_token_spans_expr(operands[op_idx], parent.children[1])
         }

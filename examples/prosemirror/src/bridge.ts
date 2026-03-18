@@ -70,7 +70,11 @@ export class CrdtBridge {
     const basePos: number = entry.start;
     const ts = Date.now();
 
-    if (!this.applyCharChanges(basePos, ts, changes)) return;
+    if (!this.applyCharChanges(basePos, ts, changes)) {
+      // Delete failed — CM6 is out of sync with CRDT. Reconcile to resync.
+      this.scheduleReconcile();
+      return;
+    }
     this.afterLocalEdit();
   }
 
@@ -85,7 +89,10 @@ export class CrdtBridge {
     const basePos: number = entry.token_spans[tokenRole].start;
     const ts = Date.now();
 
-    if (!this.applyCharChanges(basePos, ts, changes)) return;
+    if (!this.applyCharChanges(basePos, ts, changes)) {
+      this.scheduleReconcile();
+      return;
+    }
     this.afterLocalEdit();
   }
 
