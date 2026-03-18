@@ -4,7 +4,6 @@ export const editorSchema = new Schema({
   nodes: {
     doc: {
       content: "module | term",
-      toDOM() { return ["div", { class: "pm-doc" }, 0] as const; },
     },
     module: {
       content: "let_def* term",

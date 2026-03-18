@@ -100,7 +100,16 @@ fn build_projection_memos(
     rt,
     fn() -> @proj.SourceMap {
       match cached_proj_node.get() {
-        Some(root) => @proj.SourceMap::from_ast(root)
+        Some(root) => {
+          let sm = @proj.SourceMap::from_ast(root)
+          // Populate token-level spans (param names, let-def names) for PM bridge.
+          // Requires the syntax tree to extract token positions from the CST.
+          match syntax_tree.get() {
+            Some(syntax_root) => sm.populate_token_spans(syntax_root, root)
+            None => ()
+          }
+          sm
+        }
         None => @proj.SourceMap::new()
       }
     },
