@@ -106,7 +106,7 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
 
 ### Diff logic triplication
 
-- [ ] **Consolidate prefix/suffix diff** — The same longest-common-prefix/suffix algorithm exists in three places: `projection/text_lens.mbt` (`text_lens_diff`), `editor/sync_editor.mbt` (`set_text_and_record` inline), and `editor/text_diff.mbt` (`compute_edit`). Each returns a different type. Extract a shared diff core with adapters per return type.
+- [x] **Consolidate prefix/suffix diff** — Already resolved: `projection/text_lens.mbt` was deleted in earlier refactoring. Both `set_text_and_record` and `compute_edit` now delegate to the shared `@text_change.compute_text_change()` in `lib/text-change/`. The remaining `compute_text_edits` in `editor/text_diff.mbt` is a separate LCS-based multi-edit diff for batch remote merges — not a duplicate.
 
 ### TextInput path efficiency
 
