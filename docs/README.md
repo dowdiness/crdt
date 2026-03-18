@@ -64,6 +64,7 @@ Detailed documentation for each module:
 - [Tree Editor Subtree Reuse Design](plans/2026-03-11-tree-editor-subtree-reuse-design.md)
 - [Rabbita Projection Editor Performance Plan](plans/2026-03-11-rabbita-projection-editor-performance-plan.md)
 - [Rabbita Perf Harness Redesign](plans/2026-03-11-rabbita-perf-harness-redesign.md)
+- [Ephemeral Store v2 — Hub, Namespaces & Sync Protocol](plans/2026-03-19-ephemeral-store-v2-design.md)
 ## Archive
 
 Historical documentation and investigations:
