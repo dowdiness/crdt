@@ -6,11 +6,13 @@ Companion to [Incremental Hylomorphism](./Incremental-Hylomorphism.md) (theory).
 
 ---
 
-## 1. The Four Laws
+## 1. The Four Properties
 
-These laws apply at boundaries where the intermediate structure will be incrementally reused or where partial results must be consumed by downstream stages. At one-shot or terminal boundaries (batch compiler, final display output), they are guidelines, not requirements.
+These properties apply at boundaries where the intermediate structure will be incrementally reused or where partial results must be consumed by downstream stages. At one-shot or terminal boundaries (batch compiler, final display output), they are guidelines, not requirements.
 
-A good anamorphism produces structure where each part is a complete, context-free, transparent record of a local construction decision, including the decision that construction failed.
+> **Scope note.** These are engineering design principles motivated by the requirements of incremental reuse — not formal laws derived from coalgebra theory. See [Incremental Hylomorphism §2](./Incremental-Hylomorphism.md) for the theoretical context.
+
+A good anamorphism output is a complete, context-free, transparent record of local construction decisions, including the decision that construction failed.
 
 ### Completeness
 
@@ -48,14 +50,15 @@ The representation's shape is its meaning. No hidden invariants, no internal sta
 
 ### Correspondence to the Asymmetry
 
-Each law addresses one way anamorphisms are harder than catamorphisms:
+Each property addresses one way anamorphisms are harder than catamorphisms (see [Incremental Hylomorphism §1](./Incremental-Hylomorphism.md)):
 
-| Anamorphism difficulty | Law |
+| Anamorphism difficulty | Property |
 |---|---|
 | Knowledge split between producer and consumer | Completeness |
 | Local input changes cause global structural changes | Context-freedom |
-| Construction can fail | Uniform error representation |
-| Two axes of polymorphism (source x target) | Transparent structure |
+| Structural failure (malformed input) | Uniform error representation |
+
+Transparent structure is cross-cutting: it ensures any consumer can interpret the representation by inspecting its public form, without coupling to the producer's construction logic.
 
 ---
 
@@ -116,7 +119,7 @@ Uniform errors:   pass — ErrorNode is a CstNode with a different kind.
                   Same type. parse_cst_recover always produces structure.
 Transparency:     pass — kind, children, width. Shape is meaning.
 
-Gaps: none. Reference implementation of the four laws.
+Gaps: none. Reference implementation of the four properties.
 ```
 
 **Boundary ③: CST → Typed AST (aspirational)**
@@ -137,7 +140,7 @@ Uniform errors:   partial — Term::Error(msg) exists for parse errors.
 Transparency:     not designed.
 
 Gaps: This boundary needs design. This audit becomes the requirements spec:
-      the typed AST must satisfy all four laws for incremental semantic
+      the typed AST must satisfy all four properties for incremental semantic
       analysis to work.
 ```
 
@@ -235,7 +238,7 @@ Not every boundary needs the same investment. Match the solution to the complexi
 | Low | Fixed schema, no recursion | Dedicated parser |
 | Medium | One axis of polymorphism | Intermediate value + projection |
 | High | Recursion + failure | Parser combinators with error recovery |
-| Highest | Both axes + incremental reuse | Full four-law compliance, dependency tracking |
+| Highest | Both axes + incremental reuse | Full four-property compliance, dependency tracking |
 
 ---
 
