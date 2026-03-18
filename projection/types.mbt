@@ -8,6 +8,13 @@ using @loomcore {type Range}
 pub struct NodeId(Int) derive(Show, Eq, Hash, Compare)
 
 ///|
+/// Construct a NodeId from a raw integer.
+/// Used by cross-package JSON parsers that cannot directly construct NodeId.
+pub fn NodeId::from_int(n : Int) -> NodeId {
+  NodeId(n)
+}
+
+///|
 /// Drop position for drag-and-drop operations
 pub enum DropPosition {
   /// Insert before the target

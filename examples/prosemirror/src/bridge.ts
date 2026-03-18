@@ -67,6 +67,18 @@ export class CrdtBridge {
     this.scheduleReconcile();
   }
 
+  /** Apply a structural edit (delete, wrap, etc.) via the CRDT TreeEditOp bridge */
+  handleStructuralEdit(opType: string, nodeId: number, extra?: Record<string, unknown>): void {
+    const opJson = JSON.stringify({ type: opType, node_id: nodeId, ...extra });
+    const ts = Date.now();
+    const result = this.crdt.apply_tree_edit_json(this.handle, opJson, ts);
+    if (result !== "ok") {
+      console.error("Structural edit failed:", result);
+      return;
+    }
+    this.scheduleReconcile();
+  }
+
   /** Reconcile PM state from CRDT's ProjNode */
   reconcile(): void {
     const projJsonStr = this.crdt.get_proj_node_json(this.handle);

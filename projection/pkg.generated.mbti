@@ -75,6 +75,7 @@ pub fn InteractiveTreeNode::from_term_node(ProjNode, SourceMap) -> Self
 pub impl Show for InteractiveTreeNode
 
 pub struct NodeId(Int)
+pub fn NodeId::from_int(Int) -> Self
 #deprecated
 pub fn NodeId::inner(Self) -> Int
 pub impl Compare for NodeId

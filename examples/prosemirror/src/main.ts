@@ -7,6 +7,7 @@ import { TermLeafView } from "./leaf-view";
 import { LambdaView } from "./lambda-view";
 import { LetDefView } from "./let-def-view";
 import { CrdtBridge } from "./bridge";
+import { structuralKeymap } from "./keymap";
 
 // Create CRDT editor with sample text
 const handle = crdt.create_editor("pm-agent");
@@ -20,7 +21,13 @@ const doc = projNodeToDoc(projJson);
 const bridge = new CrdtBridge(handle, crdt);
 
 // Create PM EditorState and EditorView
-const state = EditorState.create({ doc, schema: editorSchema });
+const state = EditorState.create({
+  doc,
+  schema: editorSchema,
+  plugins: [
+    structuralKeymap(bridge),
+  ],
+});
 const view = new EditorView(document.getElementById("editor")!, {
   state,
   dispatchTransaction: (tr) => bridge.handleTransaction(tr),

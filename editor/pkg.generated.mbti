@@ -16,6 +16,8 @@ pub fn compute_edit(String, String) -> @core.Edit
 
 pub fn merge_to_edits(String, String) -> Array[@core.Edit]
 
+pub fn parse_tree_edit_op(Json) -> Result[@projection.TreeEditOp, String]
+
 // Errors
 
 // Types and methods

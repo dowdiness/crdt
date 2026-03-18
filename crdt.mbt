@@ -410,3 +410,29 @@ pub fn get_source_map_json(_handle : Int) -> String {
     None => "[]"
   }
 }
+
+///|
+/// Apply a structural tree edit from a JSON-encoded TreeEditOp.
+/// Returns "ok" on success, or "error: <message>" on failure.
+pub fn apply_tree_edit_json(
+  _handle : Int,
+  op_json : String,
+  timestamp_ms : Int,
+) -> String {
+  match editor.val {
+    Some(ed) => {
+      let json = @json.parse(op_json) catch {
+        _ => return "error: invalid JSON"
+      }
+      match @editor.parse_tree_edit_op(json) {
+        Ok(op) =>
+          match ed.apply_tree_edit(op, timestamp_ms) {
+            Ok(_) => "ok"
+            Err(msg) => "error: " + msg
+          }
+        Err(msg) => "error: " + msg
+      }
+    }
+    None => "error: no editor"
+  }
+}
