@@ -20,19 +20,23 @@ This plan outlines a **general theoretical architecture** for Projectional Editi
 
 #### The Projection Triangle
 
-```
-                    ┌─────────────────────┐
-                    │   Canonical Model   │
-                    │  (Source of Truth)  │
-                    └──────────┬──────────┘
-                               │
-              ┌────────────────┼────────────────┐
-              │                │                │
-              ▼                ▼                ▼
-       ┌──────────┐     ┌──────────┐     ┌──────────┐
-       │Projection│     │Projection│     │Projection│
-       │  (Text)  │     │  (AST)   │     │(Diagram) │
-       └──────────┘     └──────────┘     └──────────┘
+```mermaid
+graph TD
+    Canonical[Canonical Model\nSource of Truth]
+    
+    ProjText[Projection\nText]
+    ProjAST[Projection\nAST]
+    ProjDiag[Projection\nDiagram]
+    
+    Canonical -- "Project" --> ProjText
+    Canonical -- "Project" --> ProjAST
+    Canonical -- "Project" --> ProjDiag
+    
+    classDef model fill:#e1bee7,stroke:#8e24aa,stroke-width:2px;
+    classDef proj fill:#b2dfdb,stroke:#00897b,stroke-width:2px;
+    
+    class Canonical model;
+    class ProjText,ProjAST,ProjDiag proj;
 ```
 
 **Key Principle**: All projections are *derived views* of a single canonical model. Edits in any projection are transformed back to model operations, then propagated to all other projections.
@@ -229,44 +233,46 @@ The existing codebase has:
 
 ### 2.2 Proposed Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Projection Layer (Web UI)                     │
-├─────────────────────────────────────────────────────────────────────┤
-│  ┌─────────────────────────┐  ┌───────────────────────────────┐   │
-│  │      Text Editor        │  │   Unified Tree Editor         │   │
-│  │    (contenteditable)    │  │   (SVG/Canvas - edit+view)    │   │
-│  └───────────┬─────────────┘  └───────────────┬───────────────┘   │
-│              │                                │                    │
-│              ▼                                ▼                    │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                   Lens Registry                              │   │
-│  │  textLens: ProjectedEditor ↔ String                         │   │
-│  │  treeLens: ProjectedEditor ↔ InteractiveTree                │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                      Model Layer (MoonBit)                          │
-├─────────────────────────────────────────────────────────────────────┤
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                 ProjectedEditor                              │   │
-│  │  ┌──────────────────────────────────────────────────────┐   │   │
-│  │  │  CanonicalModel                                       │   │   │
-│  │  │  ├─ ast: TermNode (with persistent node IDs)         │   │   │
-│  │  │  ├─ cst: CstNode (tokens + trivia)                   │   │   │
-│  │  │  ├─ ast_cst_map: NodeId → CstSpan                    │   │   │
-│  │  │  ├─ source_map: NodeId → (start, end) positions      │   │   │
-│  │  │  └─ edit_history: Array[ModelOperation]              │   │   │
-│  │  └──────────────────────────────────────────────────────┘   │   │
-│  │                                                              │   │
-│  │  ┌──────────────────────────────────────────────────────┐   │   │
-│  │  │  TextCRDT (event-graph-walker Document)              │   │   │
-│  │  │  └─ Synchronized via TextLens                         │   │   │
-│  │  └──────────────────────────────────────────────────────┘   │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    %% Layers
+    subgraph "Projection Layer (Web UI)"
+        TextUI[Text Editor\n(contenteditable)]
+        TreeUI[Unified Tree Editor\n(SVG/Canvas)]
+    end
+    
+    subgraph "Lens Layer"
+        Registry[Lens Registry]
+        TextLens[TextLens]
+        TreeLens[TreeLens]
+    end
+    
+    subgraph "Model Layer (MoonBit)"
+        PE[ProjectedEditor]
+        CM[CanonicalModel]
+        CRDT[TextCRDT\n(FugueMax)]
+    end
+    
+    %% Connections
+    TextUI <--> TextLens
+    TreeUI <--> TreeLens
+    
+    TextLens <--> Registry
+    TreeLens <--> Registry
+    
+    Registry <--> PE
+    PE <--> CM
+    
+    CM -- "sync via TextLens" --> CRDT
+    
+    %% Styling
+    classDef ui fill:#bbdefb,stroke:#1976d2,stroke-width:2px;
+    classDef lens fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
+    classDef model fill:#c8e6c9,stroke:#388e3c,stroke-width:2px;
+    
+    class TextUI,TreeUI ui;
+    class Registry,TextLens,TreeLens lens;
+    class PE,CM,CRDT model;
 ```
 
 ### 2.3 Core Data Structures

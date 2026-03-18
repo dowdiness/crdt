@@ -1,8 +1,58 @@
-# Module Structure
+## Module Structure
 
 The codebase is organized as a **monorepo with git submodules**:
 
+```mermaid
+graph TD
+    %% Core Libraries
+    subgraph "Core Libraries (Submodules)"
+        EGW[event-graph-walker]
+        Loom[loom]
+        TC[lib/text-change]
+    end
+
+    %% Application Layer
+    subgraph "Application (crdt module)"
+        Editor[editor]
+        Proj[projection]
+        Cmd[cmd]
+        Bindings[crdt.mbt (JS FFI)]
+    end
+
+    %% External
+    subgraph "Frontend"
+        Web[examples/web]
+    end
+
+    %% Dependencies
+    Editor --> EGW
+    Editor --> Loom
+    Editor --> TC
+
+    Proj --> Editor
+    Proj --> Loom
+
+    Bindings --> Editor
+
+    Cmd --> Editor
+    Cmd --> Proj
+
+    Web -.-> Bindings : WASM/JS Bridge
+
+    %% Internal Library Deps
+    Loom --> TC
+
+    classDef core fill:#d4edda,stroke:#28a745,stroke-width:2px;
+    classDef app fill:#e2e3e5,stroke:#6c757d,stroke-width:2px;
+    classDef web fill:#fff3cd,stroke:#ffc107,stroke-width:2px;
+
+    class EGW,Loom,TC core;
+    class Editor,Proj,Cmd,Bindings app;
+    class Web web;
+```
+
 ## Git Submodules (Standalone Libraries)
+
 
 | Submodule | GitHub Repo | MoonBit Module |
 |---|---|---|

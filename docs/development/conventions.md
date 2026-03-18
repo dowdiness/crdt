@@ -122,6 +122,15 @@ Each module should have:
 - `README.md` - User-facing documentation
 - `moon.pkg.json` - Package metadata
 
+### Project Documentation
+
+When making changes that affect the public API or architecture, update the corresponding documentation:
+
+- **API Changes**: Update `docs/development/API_REFERENCE.md`.
+- **JS FFI Changes**: Update `docs/development/JS_INTEGRATION.md` and `examples/web/`.
+- **Structural Editing**: Update `docs/development/TREE_EDIT_MANUAL.md`.
+- **Architecture**: Update `docs/architecture/ARCHITECTURE_DIAGRAM.md` or `modules.md` if dependency graph changes.
+
 ## Error Handling
 
 Prefer pattern matching over exceptions:

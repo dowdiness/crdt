@@ -26,6 +26,7 @@ design docs describe the remaining target architecture and intended cleanup.
 
 Understand the system design and CRDT implementation.
 
+- [System Architecture](architecture/ARCHITECTURE_DIAGRAM.md) - High-level data flow diagram
 - [Module Structure](architecture/modules.md) - Monorepo organization with git submodules
 - [Projectional Editing](architecture/PROJECTIONAL_EDITING.md) - Projectional editing architecture
 
@@ -33,6 +34,9 @@ Understand the system design and CRDT implementation.
 
 Guides for contributing and developing.
 
+- [API Reference](development/API_REFERENCE.md) - High-level MoonBit API overview
+- [JS Integration Guide](development/JS_INTEGRATION.md) - How to use the editor from JavaScript/Web
+- [Tree Editing Manual](development/TREE_EDIT_MANUAL.md) - Structural projectional editing reference
 - [Monorepo & Submodules](development/monorepo.md) - Git submodule setup, daily cheat sheet, and workflows
 - [Workflow](development/workflow.md) - Development process and common commands
 - [Conventions](development/conventions.md) - MoonBit coding standards
