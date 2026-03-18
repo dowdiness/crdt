@@ -9,7 +9,7 @@
     "outDir": "dist",
     "rootDir": "src",
     "paths": {
-      "@moonbit/crdt": ["../../_build/js/release/build/crdt.d.ts"]
+      "@moonbit/canopy": ["../../_build/js/release/build/canopy.d.ts"]
     }
   },
   "include": ["src"],

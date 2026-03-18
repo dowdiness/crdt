@@ -6,7 +6,7 @@ export default defineConfig({
     moonbitPlugin({
       modules: [
         {
-          name: '@moonbit/crdt',
+          name: '@moonbit/canopy',
           path: '../..',
           output: '_build/js/release/build/canopy.js'
         }
@@ -23,6 +23,6 @@ export default defineConfig({
     target: 'esnext'
   },
   optimizeDeps: {
-    exclude: ['@moonbit/crdt']
+    exclude: ['@moonbit/canopy']
   }
 });

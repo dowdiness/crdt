@@ -3,7 +3,7 @@ import { Transaction } from "prosemirror-state";
 import { reconcile } from "./reconciler";
 import { ProjNodeJson } from "./types";
 
-/** Type for the MoonBit CRDT FFI module imported as @moonbit/crdt */
+/** Type for the MoonBit FFI module imported as @moonbit/canopy */
 export interface CrdtModule {
   create_editor(agentId: string): number;
   get_text(handle: number): string;
