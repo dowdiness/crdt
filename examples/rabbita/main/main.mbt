@@ -115,7 +115,7 @@ fn can_hydrate_tree_node(model : Model, node_id : @proj.NodeId) -> Bool {
 
 ///|
 fn init_model() -> Model {
-  let init_text = "let id = λx.x in let apply = λf.λx.f x in apply id 42"
+  let init_text = "let id = λx.x\nlet apply = λf.λx.f x\napply id 42"
   let editor = @editor.SyncEditor::new("local")
   editor.set_text(init_text)
   let tree_state = @proj.TreeEditorState::from_projection(
