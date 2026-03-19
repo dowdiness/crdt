@@ -2,6 +2,7 @@ import {
   "dowdiness/canopy/editor",
   "dowdiness/canopy/relay",
   "dowdiness/event-graph-walker/text",
+  "moonbitlang/core/buffer",
   "moonbitlang/core/json",
 }
 
