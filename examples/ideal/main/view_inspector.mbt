@@ -38,19 +38,19 @@ fn view_node_details(node : @proj.InteractiveTreeNode) -> Html {
   div(class="panel-section", [
     span(class="panel-label", [text("NODE")]),
     div(class="inspector-row", [
-      strong(class="inspector-key", [text("Kind")]),
+      span(class="inspector-key", [text("Kind")]),
       span(class="inspector-value kind-\{kind}", [text(kind)]),
     ]),
     div(class="inspector-row", [
-      strong(class="inspector-key", [text("Label")]),
+      span(class="inspector-key", [text("Label")]),
       span(class="inspector-value", [text(node.label)]),
     ]),
     div(class="inspector-row", [
-      strong(class="inspector-key", [text("Children")]),
+      span(class="inspector-key", [text("Children")]),
       span(class="inspector-value", [text(count.to_string())]),
     ]),
     div(class="inspector-row", [
-      strong(class="inspector-key", [text("ID")]),
+      span(class="inspector-key", [text("ID")]),
       span(class="inspector-value", [text(node_id_to_string(node.id))]),
     ]),
   ])
@@ -86,15 +86,15 @@ fn view_crdt_info(model : Model) -> Html {
   div(class="panel-section", [
     span(class="panel-label", [text("CRDT")]),
     div(class="inspector-row", [
-      strong(class="inspector-key", [text("Agent")]),
+      span(class="inspector-key", [text("Agent")]),
       span(class="inspector-value", [text("local")]),
     ]),
     div(class="inspector-row", [
-      strong(class="inspector-key", [text("Timestamp")]),
+      span(class="inspector-key", [text("Timestamp")]),
       span(class="inspector-value", [text(model.next_timestamp.to_string())]),
     ]),
     div(class="inspector-row", [
-      strong(class="inspector-key", [text("Text length")]),
+      span(class="inspector-key", [text("Text length")]),
       span(class="inspector-value", [
         text(model.editor.get_text().length().to_string()),
       ]),

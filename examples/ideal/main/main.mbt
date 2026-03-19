@@ -1,5 +1,5 @@
 ///|
-using @html {button, div, p, span, strong, text}
+using @html {button, div, p, span, text}
 
 ///|
 using @rabbita {type Cmd, type Dispatch, type Html, none}
