@@ -1,0 +1,15 @@
+{
+  "name": "dowdiness/ideal-editor",
+  "version": "0.1.0",
+  "deps": {
+    "moonbit-community/rabbita": "0.11.5",
+    "dowdiness/canopy": {
+      "path": "../.."
+    },
+    "dowdiness/text_change": {
+      "path": "../../lib/text-change"
+    }
+  },
+  "source": ".",
+  "preferred-target": "js"
+}

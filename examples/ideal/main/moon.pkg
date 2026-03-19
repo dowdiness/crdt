@@ -1,0 +1,11 @@
+import {
+  "moonbit-community/rabbita",
+  "moonbit-community/rabbita/html",
+  "dowdiness/canopy/editor",
+  "dowdiness/canopy/projection",
+  "dowdiness/text_change",
+}
+
+options(
+  "is-main": true,
+)
