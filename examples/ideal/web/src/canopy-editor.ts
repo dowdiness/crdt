@@ -6,7 +6,9 @@ import { TermLeafView } from "./leaf-editor";
 import { LambdaView, LetDefView } from "./text-nodeview";
 import { structuralKeymap } from "./keymap";
 import { CanopyEvents } from "./events";
-import type { CrdtModule } from './types';
+import { CrdtBridge } from "./bridge";
+import { projNodeToDoc } from "./convert";
+import type { CrdtModule, ProjNodeJson } from './types';
 
 /** Extract a human-readable label from a PM node based on its type */
 function getNodeLabel(node: PmNode): string {
@@ -24,6 +26,7 @@ export class CanopyEditor extends HTMLElement {
   private shadow: ShadowRoot;
   private editorContainer: HTMLDivElement;
   private pmView: EditorView | null = null;
+  private bridge: CrdtBridge | null = null;
   private _crdtHandle: number | null = null;
   private _crdt: CrdtModule | null = null;
 
@@ -79,10 +82,21 @@ export class CanopyEditor extends HTMLElement {
     this._crdtHandle = crdtHandle;
     this._crdt = crdt;
 
-    // For now, create an empty doc — reconciler (Task 5) will handle conversion
-    const doc = editorSchema.node("doc", null, [
-      editorSchema.node("module", { nodeId: 0 }),
-    ]);
+    // Create the bridge
+    this.bridge = new CrdtBridge(crdtHandle, crdt);
+
+    // Get initial ProjNode from the CRDT and build PM doc from it
+    let doc: PmNode;
+    const projJsonStr = crdt.get_proj_node_json(crdtHandle);
+    if (projJsonStr && projJsonStr !== "null") {
+      const projJson: ProjNodeJson = JSON.parse(projJsonStr);
+      doc = projNodeToDoc(projJson);
+    } else {
+      // Fallback: empty module
+      doc = editorSchema.node("doc", null, [
+        editorSchema.node("module", { nodeId: 0 }),
+      ]);
+    }
 
     const pmState = EditorState.create({
       doc,
@@ -91,14 +105,16 @@ export class CanopyEditor extends HTMLElement {
       ],
     });
 
+    const bridge = this.bridge;
+
     this.pmView = new EditorView(this.editorContainer, {
       state: pmState,
       nodeViews: {
-        int_literal: (node, view, getPos) => new TermLeafView(node, view, getPos, null),
-        var_ref: (node, view, getPos) => new TermLeafView(node, view, getPos, null),
-        unbound_ref: (node, view, getPos) => new TermLeafView(node, view, getPos, null),
-        lambda: (node, view, getPos) => new LambdaView(node, view, getPos, null),
-        let_def: (node, view, getPos) => new LetDefView(node, view, getPos, null),
+        int_literal: (node, view, getPos) => new TermLeafView(node, view, getPos, bridge),
+        var_ref: (node, view, getPos) => new TermLeafView(node, view, getPos, bridge),
+        unbound_ref: (node, view, getPos) => new TermLeafView(node, view, getPos, bridge),
+        lambda: (node, view, getPos) => new LambdaView(node, view, getPos, bridge),
+        let_def: (node, view, getPos) => new LetDefView(node, view, getPos, bridge),
       },
       dispatchTransaction: (tr) => {
         if (!this.pmView) return;
@@ -121,16 +137,21 @@ export class CanopyEditor extends HTMLElement {
         }
       },
     });
+
+    this.bridge.setPmView(this.pmView);
   }
 
   // --- Properties (Rabbita -> PM) ---
 
   set projNode(json: string) {
-    // Task 5: reconcile PM from new ProjNode
+    // Bridge reads ProjNode directly from CRDT — just trigger reconcile
+    if (this.bridge) {
+      this.bridge.reconcile();
+    }
   }
 
-  set sourceMap(json: string) {
-    // Task 5: update source map for position mapping
+  set sourceMap(_json: string) {
+    // No-op: bridge reads source map from CRDT on demand
   }
 
   set peers(json: string) {
@@ -152,6 +173,11 @@ export class CanopyEditor extends HTMLElement {
   set mode(m: 'text' | 'structure') {
     this.setAttribute('mode', m);
     // Task 10: re-render NodeViews in new style
+  }
+
+  /** Expose the bridge for external consumers (e.g. Rabbita host for sync) */
+  getBridge(): CrdtBridge | null {
+    return this.bridge;
   }
 }
 
