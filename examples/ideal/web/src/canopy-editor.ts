@@ -27,8 +27,6 @@ export class CanopyEditor extends HTMLElement {
   private editorContainer: HTMLDivElement;
   private pmView: EditorView | null = null;
   private bridge: CrdtBridge | null = null;
-  private _crdtHandle: number | null = null;
-  private _crdt: CrdtModule | null = null;
 
   static get observedAttributes() {
     return ['mode', 'readonly'];
@@ -67,6 +65,10 @@ export class CanopyEditor extends HTMLElement {
   }
 
   disconnectedCallback() {
+    if (this.bridge) {
+      this.bridge.destroy();
+      this.bridge = null;
+    }
     if (this.pmView) {
       this.pmView.destroy();
       this.pmView = null;
@@ -79,9 +81,6 @@ export class CanopyEditor extends HTMLElement {
 
   // Called by Rabbita's raw_effect(AfterRender)
   mount(crdtHandle: number, crdt: CrdtModule): void {
-    this._crdtHandle = crdtHandle;
-    this._crdt = crdt;
-
     // Create the bridge
     this.bridge = new CrdtBridge(crdtHandle, crdt);
 
@@ -139,6 +138,16 @@ export class CanopyEditor extends HTMLElement {
     });
 
     this.bridge.setPmView(this.pmView);
+
+    // Wire keymap: structural-edit-request → bridge
+    this.addEventListener(CanopyEvents.STRUCTURAL_EDIT_REQUEST, ((e: CustomEvent) => {
+      if (!this.bridge) return;
+      e.stopPropagation(); // Don't bubble to Rabbita — bridge handles this
+      const { op, nodeId } = e.detail;
+      this.bridge.handleStructuralEdit(op, Number(nodeId));
+    }) as EventListener);
+    // Note: request-undo / request-redo already bubble with composed:true
+    // so Rabbita (which owns undo via SyncEditor) can listen for them.
   }
 
   // --- Properties (Rabbita -> PM) ---

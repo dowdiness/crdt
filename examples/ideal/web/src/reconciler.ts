@@ -1,7 +1,7 @@
 import { Transaction } from "prosemirror-state";
 import { EditorState } from "prosemirror-state";
 import { Node as PmNode } from "prosemirror-model";
-import { projNodeToPmNode } from "./convert";
+import { projNodeToPmNode, attrsForKind } from "./convert";
 import { ProjNodeJson, getKindTag, TermKindTag } from "./types";
 
 /**
@@ -19,38 +19,6 @@ const kindToPmType: Record<TermKindTag, string> = {
   If: "if_expr",
   Module: "module",
 };
-
-/**
- * Extract the attrs a ProjNode would produce for a given PM node.
- * Must stay in sync with projNodeToPmNode in convert.ts.
- */
-function projAttrs(
-  proj: ProjNodeJson,
-  tag: TermKindTag,
-): Record<string, unknown> {
-  switch (tag) {
-    case "Int":
-      return { value: proj.kind[1], nodeId: proj.node_id };
-    case "Var":
-      return { name: proj.kind[1], nodeId: proj.node_id };
-    case "Unbound":
-      return { name: proj.kind[1], nodeId: proj.node_id };
-    case "Unit":
-      return { nodeId: proj.node_id };
-    case "Error":
-      return { message: proj.kind[1] || "", nodeId: proj.node_id };
-    case "Lam":
-      return { param: proj.kind[1], nodeId: proj.node_id };
-    case "App":
-      return { nodeId: proj.node_id };
-    case "Bop":
-      return { op: proj.kind[1], nodeId: proj.node_id };
-    case "If":
-      return { nodeId: proj.node_id };
-    case "Module":
-      return { nodeId: proj.node_id };
-  }
-}
 
 /**
  * Compare two PM attribute objects for shallow equality.
@@ -135,7 +103,7 @@ function diffNode(
   }
 
   // 3. Check attributes
-  const newAttrs = projAttrs(proj, tag);
+  const newAttrs = attrsForKind(proj, tag);
   if (!attrsEqual(pmNode.attrs as Record<string, unknown>, newAttrs)) {
     const mappedPos = tr.mapping.map(pmPos);
     tr.setNodeMarkup(mappedPos, null, newAttrs);
@@ -214,7 +182,7 @@ function diffModule(
   pmPos: number,
 ): void {
   // Check module-level attributes
-  const newModuleAttrs = projAttrs(proj, "Module");
+  const newModuleAttrs = attrsForKind(proj, "Module");
   if (
     !attrsEqual(pmNode.attrs as Record<string, unknown>, newModuleAttrs)
   ) {
@@ -227,24 +195,18 @@ function diffModule(
   const numDefs = projChildren.length - 1; // all except last (body)
   const bodyProj = projChildren[projChildren.length - 1];
 
-  // Count PM children
-  let pmChildCount = 0;
-  pmNode.forEach(() => {
-    pmChildCount++;
-  });
-
-  // If structural mismatch in child count, replace entire module
-  // PM should have numDefs let_defs + 1 body = numDefs + 1 = projChildren.length
-  if (pmChildCount !== projChildren.length) {
-    replaceSubtree(tr, pmNode, proj, pmPos);
-    return;
-  }
-
-  // Collect PM children first (can't bail out of forEach)
+  // Collect PM children in a single pass
   const pmChildren: { node: PmNode; offset: number }[] = [];
   pmNode.forEach((child, offset) => {
     pmChildren.push({ node: child, offset });
   });
+
+  // If structural mismatch in child count, replace entire module
+  // PM should have numDefs let_defs + 1 body = numDefs + 1 = projChildren.length
+  if (pmChildren.length !== projChildren.length) {
+    replaceSubtree(tr, pmNode, proj, pmPos);
+    return;
+  }
 
   for (let childIndex = 0; childIndex < pmChildren.length; childIndex++) {
     const { node: pmChild, offset } = pmChildren[childIndex];

@@ -21,6 +21,7 @@ export class CrdtBridge {
   private crdt: CrdtModule;
   private reconcileRafId: number | null = null;
   private broadcastFn: (() => void) | null = null;
+  private cachedSourceMap: any[] | null = null;
 
   constructor(handle: number, crdt: CrdtModule) {
     this.handle = handle;
@@ -37,9 +38,28 @@ export class CrdtBridge {
     this.pmView = pmView;
   }
 
+  /** Cancel pending RAF on teardown */
+  destroy(): void {
+    if (this.reconcileRafId !== null) {
+      cancelAnimationFrame(this.reconcileRafId);
+      this.reconcileRafId = null;
+    }
+  }
+
+  private getSourceMap(): any[] {
+    if (this.cachedSourceMap === null) {
+      this.cachedSourceMap = JSON.parse(this.crdt.get_source_map_json(this.handle)) as any[];
+    }
+    return this.cachedSourceMap;
+  }
+
+  private invalidateSourceMap(): void {
+    this.cachedSourceMap = null;
+  }
+
   /** Called by CM6 NodeViews when leaf text changes (int_literal, var_ref, unbound_ref) */
   handleLeafEdit(nodeId: number, changes: { from: number; to: number; insert: string }[]): void {
-    const smJson = JSON.parse(this.crdt.get_source_map_json(this.handle));
+    const smJson = this.getSourceMap();
     const entry = smJson.find((r: any) => r.node_id === nodeId);
     if (!entry) {
       console.warn("SourceMap entry not found for nodeId:", nodeId);
@@ -58,7 +78,7 @@ export class CrdtBridge {
 
   /** Called by CM6 NodeViews when a token sub-span changes (e.g. lambda param, let-def name) */
   handleTokenEdit(nodeId: number, tokenRole: string, changes: { from: number; to: number; insert: string }[]): void {
-    const smJson = JSON.parse(this.crdt.get_source_map_json(this.handle));
+    const smJson = this.getSourceMap();
     const entry = smJson.find((r: any) => r.node_id === nodeId);
     if (!entry?.token_spans?.[tokenRole]) {
       console.warn("Token span not found:", nodeId, tokenRole);
@@ -89,11 +109,16 @@ export class CrdtBridge {
   /** Apply remote CRDT ops and reconcile PM state */
   applyRemote(syncJson: string): void {
     this.crdt.apply_sync_json(this.handle, syncJson);
+    if (this.reconcileRafId !== null) {
+      cancelAnimationFrame(this.reconcileRafId);
+      this.reconcileRafId = null;
+    }
     this.reconcile();
   }
 
   /** Reconcile PM state from CRDT's ProjNode */
   reconcile(): void {
+    this.invalidateSourceMap();
     const projJsonStr = this.crdt.get_proj_node_json(this.handle);
     if (projJsonStr === "null") return;
     const projJson: ProjNodeJson = JSON.parse(projJsonStr);
@@ -130,6 +155,7 @@ export class CrdtBridge {
 
   /** Called after any local edit — broadcast to peers + schedule reconcile */
   private afterLocalEdit(): void {
+    this.invalidateSourceMap();
     if (this.broadcastFn) this.broadcastFn();
     this.scheduleReconcile();
   }
