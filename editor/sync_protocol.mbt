@@ -30,25 +30,6 @@ fn message_type_byte(msg : SyncMessage) -> Byte {
 }
 
 ///|
-fn write_msg_uvarint(buf : @buffer.Buffer, value : Int) -> Unit {
-  let mut v = value
-  while v >= 0x80 {
-    buf.write_byte(((v & 0x7F) | 0x80).to_byte())
-    v = v >> 7
-  }
-  buf.write_byte(v.to_byte())
-}
-
-///|
-fn write_msg_string(buf : @buffer.Buffer, s : String) -> Unit {
-  let tmp = @buffer.new()
-  tmp.write_string(s)
-  let bytes = tmp.to_bytes()
-  write_msg_uvarint(buf, bytes.length())
-  buf.write_bytes(bytes)
-}
-
-///|
 pub fn encode_message(msg : SyncMessage) -> Bytes {
   let buf = @buffer.new()
   buf.write_byte(protocol_version)
@@ -63,49 +44,14 @@ pub fn encode_message(msg : SyncMessage) -> Bytes {
     }
     PeerJoined(peer_id) => {
       buf.write_byte(b'\x01') // sub_type: Join
-      write_msg_string(buf, peer_id)
+      write_string(buf, peer_id)
     }
     PeerLeft(peer_id) => {
       buf.write_byte(b'\x02') // sub_type: Leave
-      write_msg_string(buf, peer_id)
+      write_string(buf, peer_id)
     }
   }
   buf.to_bytes()
-}
-
-///|
-fn read_msg_uvarint(data : Bytes, offset : Ref[Int]) -> Int {
-  let mut result = 0
-  let mut shift = 0
-  while offset.val < data.length() {
-    let b = data[offset.val].to_int()
-    offset.val = offset.val + 1
-    result = result | ((b & 0x7F) << shift)
-    if (b & 0x80) == 0 {
-      break
-    }
-    shift = shift + 7
-  }
-  result
-}
-
-///|
-fn read_msg_string(data : Bytes, offset : Ref[Int]) -> String {
-  let len = read_msg_uvarint(data, offset)
-  if offset.val + len > data.length() {
-    return ""
-  }
-  let str_bytes = data.view(start=offset.val, end=offset.val + len).to_bytes()
-  offset.val = offset.val + len
-  str_bytes.to_unchecked_string()
-}
-
-///|
-fn slice_from(data : Bytes, start : Int) -> Bytes {
-  if start >= data.length() {
-    return Bytes::new(0)
-  }
-  data.view(start~, end=data.length()).to_bytes()
 }
 
 ///|
@@ -113,33 +59,69 @@ pub fn decode_message(data : Bytes) -> SyncMessage? {
   if data.length() < 3 {
     return None
   }
-  let version = data[0]
-  if version != protocol_version {
+  if data[0] != protocol_version {
     return None
   }
   let msg_type = data[1]
   // data[2] = flags (ignored in v1)
-  let payload = slice_from(data, 3)
+  let payload_start = 3
   match msg_type {
-    b'\x01' => Some(CrdtOps(payload))
+    b'\x01' =>
+      Some(
+        CrdtOps(
+          if payload_start < data.length() {
+            data.view(start=payload_start, end=data.length()).to_bytes()
+          } else {
+            Bytes::new(0)
+          },
+        ),
+      )
     b'\x02' => {
-      if payload.length() < 1 {
+      if payload_start >= data.length() {
         return None
       }
-      match namespace_from_byte(payload[0]) {
-        Some(ns) => Some(EphemeralUpdate(ns, slice_from(payload, 1)))
+      match namespace_from_byte(data[payload_start]) {
+        Some(ns) => {
+          let ns_payload_start = payload_start + 1
+          let ns_payload = if ns_payload_start < data.length() {
+            data.view(start=ns_payload_start, end=data.length()).to_bytes()
+          } else {
+            Bytes::new(0)
+          }
+          Some(EphemeralUpdate(ns, ns_payload))
+        }
         None => None
       }
     }
-    b'\x03' => Some(SyncRequest(payload))
-    b'\x04' => Some(SyncResponse(payload))
+    b'\x03' =>
+      Some(
+        SyncRequest(
+          if payload_start < data.length() {
+            data.view(start=payload_start, end=data.length()).to_bytes()
+          } else {
+            Bytes::new(0)
+          },
+        ),
+      )
+    b'\x04' =>
+      Some(
+        SyncResponse(
+          if payload_start < data.length() {
+            data.view(start=payload_start, end=data.length()).to_bytes()
+          } else {
+            Bytes::new(0)
+          },
+        ),
+      )
     b'\x05' => {
-      if payload.length() < 1 {
+      if payload_start >= data.length() {
         return None
       }
-      let sub_type = payload[0]
-      let offset = Ref::new(1)
-      let peer_id = read_msg_string(payload, offset)
+      let sub_type = data[payload_start]
+      let reader = Reader::new(
+        data.view(start=payload_start + 1, end=data.length()).to_bytes(),
+      )
+      let peer_id = read_string(reader) catch { _ => return None }
       match sub_type {
         b'\x01' => Some(PeerJoined(peer_id))
         b'\x02' => Some(PeerLeft(peer_id))

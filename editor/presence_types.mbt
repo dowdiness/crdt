@@ -110,17 +110,28 @@ pub fn DragState::from_ephemeral(value : EphemeralValue) -> DragState? {
 }
 
 ///|
+fn presence_status_to_string(status : PresenceStatus) -> String {
+  match status {
+    Active => "active"
+    Idle => "idle"
+  }
+}
+
+///|
+fn presence_status_from_string(s : String) -> PresenceStatus {
+  match s {
+    "idle" => Idle
+    _ => Active // default to Active for forward-compatibility
+  }
+}
+
+///|
 pub fn PeerPresence::to_ephemeral(self : PeerPresence) -> EphemeralValue {
   let map : Map[String, EphemeralValue] = {}
   map["peer_id"] = EphemeralValue::String(self.peer_id)
   map["display_name"] = EphemeralValue::String(self.display_name)
   map["color"] = EphemeralValue::String(self.color)
-  map["status"] = EphemeralValue::String(
-    match self.status {
-      Active => "active"
-      Idle => "idle"
-    },
-  )
+  map["status"] = EphemeralValue::String(presence_status_to_string(self.status))
   EphemeralValue::Map(map)
 }
 
@@ -141,8 +152,7 @@ pub fn PeerPresence::from_ephemeral(value : EphemeralValue) -> PeerPresence? {
         _ => return None
       }
       let status = match map.get("status") {
-        Some(EphemeralValue::String("active")) => Active
-        Some(EphemeralValue::String("idle")) => Idle
+        Some(EphemeralValue::String(s)) => presence_status_from_string(s)
         _ => Active
       }
       Some({ peer_id, display_name, color, status })

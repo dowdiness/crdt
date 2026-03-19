@@ -253,16 +253,11 @@ pub fn EphemeralHub::encode_all(self : EphemeralHub) -> Bytes {
     }
   }
   let buf = @buffer.new()
-  buf.write_byte(entries.length().to_byte())
+  write_uvarint(buf, entries.length().to_uint64())
   for entry in entries {
     let (ns, data) = entry
     buf.write_byte(namespace_to_byte(ns))
-    let len = data.length()
-    buf.write_byte((len & 0xFF).to_byte())
-    buf.write_byte(((len >> 8) & 0xFF).to_byte())
-    buf.write_byte(((len >> 16) & 0xFF).to_byte())
-    buf.write_byte(((len >> 24) & 0xFF).to_byte())
-    buf.write_bytes(data)
+    write_len_bytes(buf, data)
   }
   buf.to_bytes()
 }
@@ -283,31 +278,16 @@ pub fn EphemeralHub::apply_all(self : EphemeralHub, data : Bytes) -> Unit {
   if data.length() == 0 {
     return
   }
-  let count = data[0].to_int()
-  let mut offset = 1
+  let reader = Reader::new(data)
+  let count = safe_uvarint_to_int(read_uvarint(reader)) catch { _ => return }
   for _i = 0; _i < count; _i = _i + 1 {
-    if offset >= data.length() {
-      break
-    }
-    let ns = match namespace_from_byte(data[offset]) {
+    let ns_byte = reader.read_byte() catch { _ => break }
+    let ns = match namespace_from_byte(ns_byte) {
       Some(ns) => ns
       None => break
     }
-    offset = offset + 1
-    if offset + 4 > data.length() {
-      break
-    }
-    let len = data[offset].to_int() |
-      (data[offset + 1].to_int() << 8) |
-      (data[offset + 2].to_int() << 16) |
-      (data[offset + 3].to_int() << 24)
-    offset = offset + 4
-    if offset + len > data.length() {
-      break
-    }
-    let ns_data = data.view(start=offset, end=offset + len).to_bytes()
+    let ns_data = read_len_bytes(reader) catch { _ => break }
     self.apply(ns, ns_data)
-    offset = offset + len
   }
 }
 
