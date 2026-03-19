@@ -54,6 +54,7 @@ pub enum Msg {
   RefreshProjection
   Undo
   Redo
+  TreeEdited(@projection.TreeEditOp)
   LoadExample(String)
   OutlineNodeClicked(String)
 }

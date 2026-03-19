@@ -12,6 +12,8 @@ pub enum Msg {
   // Undo/redo
   Undo
   Redo
+  // Tree editing (outline collapse/expand)
+  TreeEdited(@proj.TreeEditOp)
   // UI
   LoadExample(String)
   OutlineNodeClicked(String)

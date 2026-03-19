@@ -1,5 +1,5 @@
 ///|
-using @html {button, div, span, text}
+using @html {button, div, p, span, text}
 
 ///|
 using @rabbita {type Cmd, type Dispatch, type Html, none}
@@ -66,6 +66,29 @@ fn view_toolbar(dispatch : Dispatch[Msg], model : Model) -> Html {
 }
 
 ///|
+/// Check if a tree node has elided children in the outline state.
+fn tree_node_is_elided(
+  state : @proj.TreeEditorState,
+  node_id : @proj.NodeId,
+) -> Bool {
+  match state.get_loaded_node(node_id) {
+    Some(node) =>
+      match node.children {
+        @proj.Elided(_) => true
+        @proj.Loaded(_) => false
+      }
+    None => false
+  }
+}
+
+///|
+/// Check if expanding a node should hydrate its elided subtree.
+fn can_hydrate_tree_node(model : Model, node_id : @proj.NodeId) -> Bool {
+  not(model.projection_dirty) &&
+  tree_node_is_elided(model.outline_state, node_id)
+}
+
+///|
 fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
   match msg {
     SetMode(mode) =>
@@ -88,6 +111,27 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       ignore(node_id)
       (none, model)
     }
+    TreeEdited(op) =>
+      match op {
+        @proj.Expand(node_id~) => {
+          let hydrate_after_expand = can_hydrate_tree_node(model, node_id)
+          let outline_state = if hydrate_after_expand {
+            model.outline_state.expand_node(
+              node_id,
+              model.editor.get_proj_node(),
+              model.editor.get_source_map(),
+            )
+          } else {
+            model.outline_state.apply_edit(op)
+          }
+          return (none, { ..model, outline_state, })
+        }
+        @proj.Collapse(..) | @proj.Select(..) | @proj.SelectRange(..) => {
+          let outline_state = model.outline_state.apply_edit(op)
+          return (none, { ..model, outline_state, })
+        }
+        _ => (none, model)
+      }
     RefreshProjection =>
       if model.projection_dirty {
         (none, refresh(model))
@@ -109,9 +153,9 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       let cmd = @rabbita.effect(fn() { js_reconcile_editor() })
       (cmd, refresh(model))
     }
-    OutlineNodeClicked(_node_id) =>
+    OutlineNodeClicked(node_id) =>
       // TODO: send selectedNode to Web Component
-      (none, model)
+      (none, { ..model, selected_node: Some(node_id) })
   }
 }
 
@@ -119,7 +163,14 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
 fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
   div(class="app-shell", [
     view_toolbar(dispatch, model),
-    div(class="workspace", [view_editor(dispatch, model)]),
+    div(class="workspace", [
+      if model.workspace.outline_visible {
+        view_outline(dispatch, model)
+      } else {
+        @html.nothing
+      },
+      view_editor(dispatch, model),
+    ]),
   ])
 }
 
