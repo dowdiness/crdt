@@ -45,8 +45,25 @@ fn refresh(model : Model) -> Model {
 }
 
 ///|
+let examples : Array[(String, String)] = [
+  ("Identity", "let id = \\x.x in id 42"),
+  ("Church 2", "let two = \\f.\\x.f (f x) in two"),
+  ("Add", "let add = \\x.\\y.x + y in add 1 2"),
+  ("Conditional", "if 1 > 0 then 42 else 0"),
+  ("Apply", "let apply = \\f.\\x.f x in apply (\\x.x + 1) 5"),
+]
+
+///|
 fn view_toolbar(dispatch : Dispatch[Msg], model : Model) -> Html {
-  div(class="toolbar", [
+  let example_buttons : Array[Html] = examples.map(fn(pair) {
+    let (label, code) = pair
+    button(
+      class="toolbar-btn example-btn",
+      on_click=dispatch(LoadExample(code)),
+      [text(label)],
+    )
+  })
+  let toolbar_items : Array[Html] = [
     span(class="toolbar-title", [text("Canopy Editor")]),
     div(class="toolbar-spacer", [text("")]),
     button(
@@ -62,7 +79,10 @@ fn view_toolbar(dispatch : Dispatch[Msg], model : Model) -> Html {
     div(class="toolbar-spacer", [text("")]),
     button(class="toolbar-btn", on_click=dispatch(Undo), [text("Undo")]),
     button(class="toolbar-btn", on_click=dispatch(Redo), [text("Redo")]),
-  ])
+    div(class="toolbar-spacer", [text("")]),
+  ]
+  example_buttons.each(fn(b) { toolbar_items.push(b) })
+  div(class="toolbar", toolbar_items)
 }
 
 ///|
