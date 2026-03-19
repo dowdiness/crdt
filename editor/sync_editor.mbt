@@ -17,6 +17,7 @@ pub struct SyncEditor {
   priv hub : EphemeralHub
   priv cursor_view : PeerCursorView
   priv peer_id : String
+  priv mut ws : JsWebSocket?
 }
 
 ///|
@@ -89,6 +90,7 @@ pub fn SyncEditor::new(
     hub,
     cursor_view,
     peer_id: agent_id,
+    ws: None,
   }
 }
 
@@ -161,6 +163,28 @@ pub fn SyncEditor::get_peer_id(self : SyncEditor) -> String {
 ///|
 pub fn SyncEditor::get_hub(self : SyncEditor) -> EphemeralHub {
   self.hub
+}
+
+///|
+pub fn SyncEditor::set_ws(self : SyncEditor, ws : JsWebSocket) -> Unit {
+  self.ws = Some(ws)
+}
+
+///|
+pub fn SyncEditor::disconnect_ws(self : SyncEditor) -> Unit {
+  match self.ws {
+    Some(ws) => ws.close()
+    None => ()
+  }
+  self.ws = None
+}
+
+///|
+pub fn SyncEditor::ws_send(self : SyncEditor, data : Bytes) -> Unit {
+  match self.ws {
+    Some(ws) => ws.send_bytes(data)
+    None => ()
+  }
 }
 
 ///|
