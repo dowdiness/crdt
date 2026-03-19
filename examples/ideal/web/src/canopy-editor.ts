@@ -14,8 +14,10 @@ import {
   peerCursorKey,
   errorDecoPlugin,
   errorDecoKey,
+  evalGhostPlugin,
+  evalGhostKey,
 } from "./decorations";
-import type { PeerCursor, ErrorRange } from "./decorations";
+import type { PeerCursor, ErrorRange, EvalResult } from "./decorations";
 import type { CrdtModule, ProjNodeJson } from './types';
 
 /** Extract a human-readable label from a PM node based on its type */
@@ -111,6 +113,7 @@ export class CanopyEditor extends HTMLElement {
         structuralKeymap(this),
         peerCursorPlugin(),
         errorDecoPlugin(),
+        evalGhostPlugin(),
       ],
     });
 
@@ -196,6 +199,19 @@ export class CanopyEditor extends HTMLElement {
       this.pmView.dispatch(tr);
     } catch (err) {
       console.error("[canopy-editor] Failed to parse errors JSON:", err);
+    }
+  }
+
+  set evalResults(json: string) {
+    if (!this.pmView) return;
+    try {
+      const results: EvalResult[] = JSON.parse(json);
+      const tr = this.pmView.state.tr;
+      tr.setMeta(evalGhostKey, results);
+      tr.setMeta('fromExternal', true);
+      this.pmView.dispatch(tr);
+    } catch (err) {
+      console.error("[canopy-editor] Failed to parse evalResults JSON:", err);
     }
   }
 

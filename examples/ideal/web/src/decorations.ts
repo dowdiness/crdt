@@ -125,3 +125,67 @@ function createErrorDecos(
   }
   return DecorationSet.create(doc, decos);
 }
+
+// ---------------------------------------------------------------------------
+// Eval ghost decorations (inline reduction results)
+// ---------------------------------------------------------------------------
+
+export interface EvalResult {
+  /** PM document position at the end of the expression. */
+  pos: number;
+  /** Human-readable result string, e.g. "→ 84". */
+  result: string;
+}
+
+export const evalGhostKey = new PluginKey<DecorationSet>("eval-ghosts");
+
+/**
+ * PM plugin that renders inline "ghost" decorations showing evaluation
+ * results next to expressions. Feed results by setting tr.setMeta(evalGhostKey, results).
+ *
+ * Actual evaluation / reduction is out of scope — this is the decoration
+ * infrastructure only. Consumers dispatch a transaction with EvalResult[]
+ * metadata to update the displayed ghosts.
+ */
+export function evalGhostPlugin(): Plugin {
+  return new Plugin({
+    key: evalGhostKey,
+    state: {
+      init(): DecorationSet {
+        return DecorationSet.empty;
+      },
+      apply(tr: Transaction, decos: DecorationSet): DecorationSet {
+        const results: EvalResult[] | undefined = tr.getMeta(evalGhostKey);
+        if (results) {
+          return createEvalDecos(tr.doc, results);
+        }
+        return decos.map(tr.mapping, tr.doc);
+      },
+    },
+    props: {
+      decorations(state) {
+        return evalGhostKey.getState(state);
+      },
+    },
+  });
+}
+
+function createEvalDecos(
+  doc: PmNode,
+  results: EvalResult[],
+): DecorationSet {
+  const decos: Decoration[] = [];
+  for (const res of results) {
+    if (res.pos < 0 || res.pos > doc.content.size) continue;
+
+    const ghost = document.createElement("span");
+    ghost.className = "eval-ghost";
+    ghost.textContent = res.result;
+    ghost.style.opacity = "0.5";
+    ghost.style.marginLeft = "8px";
+    ghost.style.fontStyle = "italic";
+
+    decos.push(Decoration.widget(res.pos, ghost, { side: 1 }));
+  }
+  return DecorationSet.create(doc, decos);
+}

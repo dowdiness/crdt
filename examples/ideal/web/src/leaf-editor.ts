@@ -16,6 +16,7 @@ export class TermLeafView implements NodeView {
   cm: CmView;
   node: PmNode;
   updating = false;
+  private slider: HTMLInputElement | null = null;
 
   constructor(
     node: PmNode,
@@ -36,6 +37,29 @@ export class TermLeafView implements NodeView {
         : undefined,
       isUpdating: () => this.updating,
     });
+
+    // Add inline range slider for integer literals
+    if (node.type.name === "int_literal") {
+      const slider = document.createElement("input");
+      slider.type = "range";
+      slider.min = "0";
+      slider.max = "100";
+      slider.value = String(node.attrs.value);
+      slider.className = "canopy-slider";
+      slider.style.width = "60px";
+      slider.style.height = "4px";
+      slider.style.verticalAlign = "middle";
+      slider.style.marginLeft = "4px";
+      slider.addEventListener("input", (e) => {
+        const newVal = (e.target as HTMLInputElement).value;
+        const oldText = this.cm.state.doc.toString();
+        this.cm.dispatch({
+          changes: { from: 0, to: oldText.length, insert: newVal },
+        });
+      });
+      this.dom.appendChild(slider);
+      this.slider = slider;
+    }
   }
 
   private getTextFromNode(node: PmNode): string {
@@ -56,6 +80,10 @@ export class TermLeafView implements NodeView {
       this.cm.dispatch({
         changes: { from: 0, to: oldText.length, insert: newText },
       });
+    }
+    // Keep slider in sync with the integer value
+    if (this.slider && node.type.name === "int_literal") {
+      this.slider.value = String(node.attrs.value);
     }
     this.node = node;
     this.updating = false;
