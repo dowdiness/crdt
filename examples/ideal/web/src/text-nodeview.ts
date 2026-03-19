@@ -1,7 +1,7 @@
 import { EditorView as PmView, NodeView } from "prosemirror-view";
 import { Node as PmNode } from "prosemirror-model";
 import { EditorView as CmView } from "@codemirror/view";
-import { EditorState as CmState } from "@codemirror/state";
+import { createInlineCm } from "./cm-inline";
 import type { CrdtBridge } from "./bridge";
 
 /**
@@ -36,34 +36,13 @@ export class LambdaView implements NodeView {
     // CM6 for param name
     const paramWrap = document.createElement("span");
     paramWrap.className = "pm-lambda-param";
-    this.paramCm = new CmView({
-      state: CmState.create({
-        doc: node.attrs.param,
-        extensions: [
-          CmView.theme({
-            "&": { display: "inline-block", padding: "0 2px" },
-            ".cm-content": { padding: "0" },
-            ".cm-line": { padding: "0" },
-            "&.cm-focused": { outline: "1px solid #66f" },
-          }),
-          CmState.transactionFilter.of(tr => {
-            if (tr.newDoc.lines > 1) return [];
-            return tr;
-          }),
-          // Forward edits to CRDT bridge
-          CmView.updateListener.of(update => {
-            if (this.updating || !update.docChanged || !this.bridge) return;
-            const changes: { from: number; to: number; insert: string }[] = [];
-            update.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
-              changes.push({ from: fromA, to: toA, insert: inserted.toString() });
-            });
-            if (changes.length > 0) {
-              this.bridge.handleTokenEdit(this.node.attrs.nodeId, "param", changes);
-            }
-          }),
-        ],
-      }),
+    this.paramCm = createInlineCm({
+      doc: node.attrs.param,
       parent: paramWrap,
+      onEdit: this.bridge
+        ? (changes) => this.bridge!.handleTokenEdit(this.node.attrs.nodeId, "param", changes)
+        : undefined,
+      isUpdating: () => this.updating,
     });
     this.dom.appendChild(paramWrap);
 
@@ -135,37 +114,17 @@ export class LetDefView implements NodeView {
     // CM6 for binding name
     const nameWrap = document.createElement("span");
     nameWrap.className = "pm-let-name";
-    this.nameCm = new CmView({
-      state: CmState.create({
-        doc: node.attrs.name,
-        extensions: [
-          CmView.theme({
-            "&": { display: "inline-block", padding: "0 2px" },
-            ".cm-content": { padding: "0" },
-            ".cm-line": { padding: "0" },
-            "&.cm-focused": { outline: "1px solid #66f" },
-          }),
-          CmState.transactionFilter.of(tr => {
-            if (tr.newDoc.lines > 1) return [];
-            return tr;
-          }),
-          // Forward edits to CRDT bridge
-          CmView.updateListener.of(update => {
-            if (this.updating || !update.docChanged || !this.bridge) return;
-            const moduleNodeId = this.getModuleNodeId();
-            if (moduleNodeId == null) return;
-            const changes: { from: number; to: number; insert: string }[] = [];
-            update.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
-              changes.push({ from: fromA, to: toA, insert: inserted.toString() });
-            });
-            if (changes.length > 0) {
-              const defIndex = this.getDefIndex();
-              this.bridge.handleTokenEdit(moduleNodeId, "name:" + defIndex, changes);
-            }
-          }),
-        ],
-      }),
+    this.nameCm = createInlineCm({
+      doc: node.attrs.name,
       parent: nameWrap,
+      onEdit: this.bridge
+        ? (changes) => {
+            const ctx = this.resolveContext();
+            if (!ctx) return;
+            this.bridge!.handleTokenEdit(ctx.moduleNodeId, "name:" + ctx.defIndex, changes);
+          }
+        : undefined,
+      isUpdating: () => this.updating,
     });
     this.dom.appendChild(nameWrap);
 
@@ -181,25 +140,17 @@ export class LetDefView implements NodeView {
     this.dom.appendChild(this.contentDOM);
   }
 
-  /** Get this let_def's index among its sibling let_defs in the parent module */
-  private getDefIndex(): number {
-    const pos = this.getPos();
-    if (pos == null) return 0;
-    const resolved = this.pmView.state.doc.resolve(pos);
-    return resolved.index(resolved.depth);
-  }
-
-  /** Walk up the PM doc to find the parent module node's nodeId */
-  private getModuleNodeId(): number | null {
+  /** Resolve this let_def's position to get the parent module nodeId and def index in a single pass */
+  private resolveContext(): { moduleNodeId: number; defIndex: number } | null {
     const pos = this.getPos();
     if (pos == null) return null;
     const resolved = this.pmView.state.doc.resolve(pos);
-    // The parent of a let_def should be a module node
     const parent = resolved.parent;
-    if (parent && parent.type.name === "module") {
-      return parent.attrs.nodeId;
-    }
-    return null;
+    if (!parent || parent.type.name !== "module") return null;
+    return {
+      moduleNodeId: parent.attrs.nodeId,
+      defIndex: resolved.index(resolved.depth),
+    };
   }
 
   update(node: PmNode): boolean {

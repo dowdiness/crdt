@@ -1,5 +1,6 @@
 import { keymap } from "prosemirror-keymap";
 import { NodeSelection } from "prosemirror-state";
+import { CanopyEvents } from "./events";
 
 /**
  * ProseMirror keymap plugin for structural operations on AST nodes.
@@ -20,7 +21,7 @@ export function structuralKeymap(host: HTMLElement) {
       if (!(state.selection instanceof NodeSelection)) return false;
       const nodeId = state.selection.node.attrs.nodeId;
       if (nodeId == null) return false;
-      host.dispatchEvent(new CustomEvent('structural-edit-request', {
+      host.dispatchEvent(new CustomEvent(CanopyEvents.STRUCTURAL_EDIT_REQUEST, {
         detail: { op: 'Delete', nodeId: String(nodeId) },
         bubbles: true, composed: true,
       }));
@@ -30,20 +31,20 @@ export function structuralKeymap(host: HTMLElement) {
       if (!(state.selection instanceof NodeSelection)) return false;
       const nodeId = state.selection.node.attrs.nodeId;
       if (nodeId == null) return false;
-      host.dispatchEvent(new CustomEvent('structural-edit-request', {
+      host.dispatchEvent(new CustomEvent(CanopyEvents.STRUCTURAL_EDIT_REQUEST, {
         detail: { op: 'WrapInLambda', nodeId: String(nodeId) },
         bubbles: true, composed: true,
       }));
       return true;
     },
     "Mod-z": () => {
-      host.dispatchEvent(new CustomEvent('request-undo', {
+      host.dispatchEvent(new CustomEvent(CanopyEvents.REQUEST_UNDO, {
         bubbles: true, composed: true,
       }));
       return true;
     },
     "Mod-Shift-z": () => {
-      host.dispatchEvent(new CustomEvent('request-redo', {
+      host.dispatchEvent(new CustomEvent(CanopyEvents.REQUEST_REDO, {
         bubbles: true, composed: true,
       }));
       return true;

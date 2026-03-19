@@ -1,7 +1,7 @@
 import { EditorView as PmView, NodeView } from "prosemirror-view";
 import { Node as PmNode } from "prosemirror-model";
 import { EditorView as CmView } from "@codemirror/view";
-import { EditorState as CmState } from "@codemirror/state";
+import { createInlineCm } from "./cm-inline";
 import type { CrdtBridge } from "./bridge";
 
 /**
@@ -28,37 +28,13 @@ export class TermLeafView implements NodeView {
     this.dom.className = `pm-leaf pm-${node.type.name}`;
 
     const text = this.getTextFromNode(node);
-    this.cm = new CmView({
-      state: CmState.create({
-        doc: text,
-        extensions: [
-          // Minimal inline editor: no gutters, no line numbers
-          CmView.theme({
-            "&": { display: "inline-block", padding: "0 2px" },
-            ".cm-content": { padding: "0" },
-            ".cm-line": { padding: "0" },
-            ".cm-editor": { display: "inline" },
-            "&.cm-focused": { outline: "1px solid #66f" },
-          }),
-          // Single-line: prevent Enter from creating newlines
-          CmState.transactionFilter.of(tr => {
-            if (tr.newDoc.lines > 1) return [];
-            return tr;
-          }),
-          // Forward edits to CRDT bridge
-          CmView.updateListener.of(update => {
-            if (this.updating || !update.docChanged || !this.bridge) return;
-            const changes: { from: number; to: number; insert: string }[] = [];
-            update.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
-              changes.push({ from: fromA, to: toA, insert: inserted.toString() });
-            });
-            if (changes.length > 0) {
-              this.bridge.handleLeafEdit(this.node.attrs.nodeId, changes);
-            }
-          }),
-        ],
-      }),
+    this.cm = createInlineCm({
+      doc: text,
       parent: this.dom,
+      onEdit: this.bridge
+        ? (changes) => this.bridge!.handleLeafEdit(this.node.attrs.nodeId, changes)
+        : undefined,
+      isUpdating: () => this.updating,
     });
   }
 

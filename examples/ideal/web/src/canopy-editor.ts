@@ -1,16 +1,29 @@
 import { EditorState, NodeSelection } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
+import { Node as PmNode } from "prosemirror-model";
 import { editorSchema } from "./schema";
 import { TermLeafView } from "./leaf-editor";
 import { LambdaView, LetDefView } from "./text-nodeview";
 import { structuralKeymap } from "./keymap";
+import { CanopyEvents } from "./events";
 import type { CrdtModule } from './types';
+
+/** Extract a human-readable label from a PM node based on its type */
+function getNodeLabel(node: PmNode): string {
+  switch (node.type.name) {
+    case 'int_literal': return String(node.attrs.value);
+    case 'var_ref':
+    case 'unbound_ref': return node.attrs.name ?? '';
+    case 'lambda': return node.attrs.param ?? '';
+    case 'let_def': return node.attrs.name ?? '';
+    default: return node.type.name;
+  }
+}
 
 export class CanopyEditor extends HTMLElement {
   private shadow: ShadowRoot;
   private editorContainer: HTMLDivElement;
   private pmView: EditorView | null = null;
-  private _mode: 'text' | 'structure' = 'text';
   private _crdtHandle: number | null = null;
   private _crdt: CrdtModule | null = null;
 
@@ -57,10 +70,8 @@ export class CanopyEditor extends HTMLElement {
     }
   }
 
-  attributeChangedCallback(name: string, _old: string | null, val: string | null) {
-    if (name === 'mode' && val) {
-      this._mode = val as 'text' | 'structure';
-    }
+  attributeChangedCallback(_name: string, _old: string | null, _val: string | null) {
+    // Mode is always read from the attribute via the getter; no internal state to sync.
   }
 
   // Called by Rabbita's raw_effect(AfterRender)
@@ -98,11 +109,11 @@ export class CanopyEditor extends HTMLElement {
         if (tr.selectionSet) {
           const sel = tr.selection;
           if (sel instanceof NodeSelection) {
-            this.dispatchEvent(new CustomEvent('node-selected', {
+            this.dispatchEvent(new CustomEvent(CanopyEvents.NODE_SELECTED, {
               detail: {
                 nodeId: String(sel.node.attrs.nodeId),
                 kind: sel.node.type.name,
-                label: sel.node.attrs.name || sel.node.attrs.param || String(sel.node.attrs.value) || '',
+                label: getNodeLabel(sel.node),
               },
               bubbles: true, composed: true,
             }));
@@ -135,11 +146,10 @@ export class CanopyEditor extends HTMLElement {
   }
 
   get mode(): 'text' | 'structure' {
-    return this._mode;
+    return (this.getAttribute('mode') as 'text' | 'structure') || 'text';
   }
 
   set mode(m: 'text' | 'structure') {
-    this._mode = m;
     this.setAttribute('mode', m);
     // Task 10: re-render NodeViews in new style
   }
