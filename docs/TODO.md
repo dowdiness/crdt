@@ -56,7 +56,7 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 Tracked by:
 
 - `docs/performance/RABBITA_PROJECTION_EDITOR_ISSUES.md`
-- `docs/plans/2026-03-11-rabbita-projection-editor-performance-plan.md`
+- `docs/archive/2026-03-11-rabbita-projection-editor-performance-plan.md` (Complete)
 
 - [ ] Add baseline timing instrumentation for text edit application, parser update, projection refresh, `TreeEditorState::refresh`, and Rabbita render/update
 - [ ] Add an edit-based `SyncEditor` text API for typing (`apply_text_edit(...)`) and stop using whole-string replacement from Rabbita `TextInput`

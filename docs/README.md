@@ -60,15 +60,34 @@ Detailed documentation for each module:
 
 ## Active Plans
 
-- [Memo-Derived ProjNode Design](plans/2026-03-10-memo-derived-projnode-design.md)
-- [Tree Editor Subtree Reuse Design](plans/2026-03-11-tree-editor-subtree-reuse-design.md)
-- [Rabbita Projection Editor Performance Plan](plans/2026-03-11-rabbita-projection-editor-performance-plan.md)
-- [Rabbita Perf Harness Redesign](plans/2026-03-11-rabbita-perf-harness-redesign.md)
-- [Ephemeral Store v2 — Hub, Namespaces & Sync Protocol](plans/2026-03-19-ephemeral-store-v2-design.md)
-- [BFT Adapter — Byzantine Fault Tolerance](plans/2026-03-19-bft-adapter-design.md) (design only, implement after sync)
+- [Framework Extraction Design](plans/2026-03-18-framework-extraction-design.md) — Generic `ProjNode[T]` + `TreeNode`/`Renderable` traits
+- [Ephemeral Store v2 — Hub, Namespaces & Sync Protocol](plans/2026-03-19-ephemeral-store-v2-design.md) — Namespace-based ephemeral state + multiplexed sync
+- [BFT Adapter — Byzantine Fault Tolerance](plans/2026-03-19-bft-adapter-design.md) — Design only, implement after sync working
+
 ## Archive
 
-Historical documentation and investigations:
+Historical documentation, completed plans, and investigations.
+
+### Completed Plans (2026-03)
+
+- [Memo-Derived ProjNode Design](archive/2026-03-10-memo-derived-projnode-design.md) — CanonicalModel retired, memo-derived projections on SyncEditor
+- [Rabbita Projection Editor Performance Plan](archive/2026-03-11-rabbita-projection-editor-performance-plan.md) — Edit-based APIs, incremental parser, UI/structural split
+- [Tree Editor Subtree Reuse Design](archive/2026-03-11-tree-editor-subtree-reuse-design.md) — InteractiveChildren Loaded/Elided, structural indexes
+- [Rabbita Perf Harness Redesign](archive/2026-03-11-rabbita-perf-harness-redesign.md) — BenchmarkMeasurement, phase timing, timeout-aware results
+- [Projection Incremental Updates (FlatProj)](archive/2026-03-15-projection-incremental-updates.md) — FlatProj replaces nested Let spine
+- [RLE Library Integration](archive/2026-03-15-rle-library-integration.md) — 4-phase RLE compression plan (all phases complete)
+- [RLE Phase 0: Replace Internal RLE](archive/2026-03-17-rle-phase0-replace-internal-rle.md)
+- [RLE Phase 1: OpRun Compression](archive/2026-03-17-rle-phase1-oprun-compression.md)
+- [RLE Phase 2: VisibleRun Compression](archive/2026-03-17-rle-phase2-visiblerun-compression.md)
+- [RLE Phase 3: LvRange Compression](archive/2026-03-17-rle-phase3-lvrange-compression.md)
+- [CRDT Append Performance](archive/2026-03-18-crdt-append-performance.md) — Children index, cursor fast-path, batch invalidation, LCA index
+- [CRDT Append Performance Impl](archive/2026-03-18-crdt-append-performance-impl.md)
+- [LWW Delete/Undelete](archive/2026-03-18-lww-delete-undelete.md) — Convergent delete with Lamport timestamps
+- [Text-Delta Tree Edit](archive/2026-03-18-projectional-edit-text-delta-plan.md) — SpanEdit via source map, old tree edit path removed
+- [ProseMirror + CodeMirror 6 Design](archive/2026-03-18-prosemirror-codemirror-integration-design.md) — PM structural shell + CM6 inline leaf editors
+- [ProseMirror + CodeMirror 6 Impl](archive/2026-03-18-prosemirror-codemirror-integration-impl.md)
+
+### Earlier Archive
 
 - [Investigation Index](archive/INVESTIGATION_INDEX.md)
 - [Branch Variance Investigations](archive/investigations/branch-variance/)

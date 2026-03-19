@@ -124,4 +124,4 @@ As of 2026-03-15, the highest-value debt to pay next is:
 
 Detailed execution plan:
 
-- [Boundary Correction And Cross-Module Deduplication](../plans/2026-03-15-boundary-correction-and-dedup-plan.md)
+- [Boundary Correction And Cross-Module Deduplication](../archive/completed-phases/2026-03-15-boundary-correction-and-dedup-plan.md) (Complete)

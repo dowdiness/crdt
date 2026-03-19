@@ -274,7 +274,7 @@ Practical interpretation:
 
 That harness redesign is tracked separately in:
 
-- `docs/plans/2026-03-11-rabbita-perf-harness-redesign.md`
+- `docs/archive/2026-03-11-rabbita-perf-harness-redesign.md` (Complete)
 
 ## Conclusion
 

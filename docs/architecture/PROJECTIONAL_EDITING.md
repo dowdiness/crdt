@@ -501,7 +501,7 @@ ASTEditToModel(ast_operation, model):
 
 The reverse direction (AST edit → text diff) requires unparsing the modified AST subtree
 and computing a minimal text delta. This is the subject of the active
-[projectional edit text delta design](../plans/2026-03-18-projectional-edit-text-delta-design.md).
+[projectional edit text delta design](../archive/2026-03-18-projectional-edit-text-delta-plan.md) (Complete).
 ```
 ASTEditToModel(ast_operation, model):
   1. Apply operation to model.ast
