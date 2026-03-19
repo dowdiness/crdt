@@ -39,6 +39,7 @@ pub fn encode_message(msg : SyncMessage) -> Bytes {
     CrdtOps(payload) | SyncRequest(payload) | SyncResponse(payload) =>
       buf.write_bytes(payload)
     EphemeralUpdate(ns, payload) => {
+      // Wire: [namespace: u8][payload bytes] — namespace byte immediately after header
       buf.write_byte(namespace_to_byte(ns))
       buf.write_bytes(payload)
     }

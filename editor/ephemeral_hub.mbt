@@ -186,6 +186,9 @@ pub fn EphemeralHub::get_edit_mode(
 }
 
 ///|
+/// Returns all peers currently in edit mode.
+/// Keys are wire peer IDs (numeric strings from to_wire_peer_id),
+/// not original peer IDs. Use get_edit_mode(peer_id) for single-peer lookup.
 pub fn EphemeralHub::get_all_editing(
   self : EphemeralHub,
 ) -> Map[String, EditModeState] {
@@ -282,11 +285,12 @@ pub fn EphemeralHub::apply_all(self : EphemeralHub, data : Bytes) -> Unit {
   let count = safe_uvarint_to_int(read_uvarint(reader)) catch { _ => return }
   for _i = 0; _i < count; _i = _i + 1 {
     let ns_byte = reader.read_byte() catch { _ => break }
+    let ns_data = read_len_bytes(reader) catch { _ => break }
+    // Unknown namespace: skip entry data (reader already advanced past it)
     let ns = match namespace_from_byte(ns_byte) {
       Some(ns) => ns
-      None => break
+      None => continue
     }
-    let ns_data = read_len_bytes(reader) catch { _ => break }
     self.apply(ns, ns_data)
   }
 }

@@ -44,11 +44,15 @@ test "InMemoryTransport: three peers broadcast" {
 test "InMemoryTransport: close unregisters peer" {
   let room = InMemoryRoom::new()
   let t_a = InMemoryTransport::new("alice", room)
-  let _t_b = InMemoryTransport::new("bob", room)
-  let received : Array[Int] = []
-  _t_b.on_receive(fn(data) { received.push(data.length()) })
+  let t_b = InMemoryTransport::new("bob", room)
+  let a_received : Array[Int] = []
+  t_a.on_receive(fn(data) { a_received.push(data.length()) })
   t_a.close()
-  inspect(received.length(), content="0")
+  // Bob sends after alice closed — alice should not receive
+  let buf = @buffer.new()
+  buf.write_string("after-close")
+  t_b.send(buf.to_bytes())
+  inspect(a_received.length(), content="0")
 }
 
 ///|
