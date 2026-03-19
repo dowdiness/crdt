@@ -476,7 +476,15 @@ pub fn relay_on_message(
 
 ///|
 pub fn relay_on_disconnect(room_id : String, peer_id : String) -> Unit {
-  get_or_create_room(room_id).on_disconnect(peer_id)
+  match relay_rooms.get(room_id) {
+    Some(room) => {
+      room.on_disconnect(peer_id)
+      if room.peer_count() == 0 {
+        relay_rooms.remove(room_id)
+      }
+    }
+    None => ()
+  }
 }
 
 // ============================================================

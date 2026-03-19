@@ -32,7 +32,8 @@ fn write_relay_uvarint(buf : @buffer.Buffer, value : Int) -> Unit {
 ///|
 /// Encode a peer control message with the given sub-type and peer ID.
 ///
-/// Wire format: [version][msg_room_control][flags][sub_type][uvarint_len][utf8_peer_id]
+/// Wire format: [version][msg_room_control][flags][sub_type][uvarint_len][peer_id_bytes]
+/// Note: peer_id_bytes uses MoonBit's internal string encoding (not UTF-8).
 fn encode_peer_control(sub_type : Byte, peer_id : String) -> Bytes {
   let buf = @buffer.new()
   buf.write_byte(version)

@@ -237,7 +237,6 @@ pub fn SyncEditor::delete(Self) -> Bool
 pub fn SyncEditor::delete_and_record(Self, Int) -> Bool
 pub fn SyncEditor::delete_at(Self, Int, Int) -> Bool
 pub fn SyncEditor::delete_local_presence(Self) -> Unit
-pub fn SyncEditor::disconnect_ws(Self) -> Unit
 pub fn SyncEditor::encode_ephemeral_all(Self) -> Bytes
 pub fn SyncEditor::export_all(Self) -> @text.SyncMessage raise
 pub fn SyncEditor::export_since(Self, @text.Version) -> @text.SyncMessage raise
@@ -272,7 +271,6 @@ pub fn SyncEditor::set_local_presence(Self, String, String, selection? : (Int, I
 pub fn SyncEditor::set_text(Self, String) -> Unit
 pub fn SyncEditor::set_text_and_record(Self, String, Int) -> Unit
 pub fn SyncEditor::set_tracking(Self, Bool) -> Unit
-pub fn SyncEditor::set_ws(Self, JsWebSocket) -> Unit
 pub fn SyncEditor::subscribe_ephemeral_local(Self, (Bytes) -> Bool) -> EphemeralSubscription
 pub fn SyncEditor::undo(Self) -> Bool
 pub fn SyncEditor::undo_and_export(Self) -> @text.SyncMessage?
