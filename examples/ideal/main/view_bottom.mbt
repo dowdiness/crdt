@@ -44,11 +44,36 @@ fn view_bottom(dispatch : Dispatch[Msg], model : Model) -> Html {
   let content : Html = match model.bottom_tab {
     Problems => view_problems(model)
     OpLog =>
-      @html.div(class="bottom-content", [@html.text("Op Log (coming soon)")])
+      @html.div(class="bottom-content", [
+        @html.span(class="no-problems", [@html.text("No operations recorded")]),
+      ])
     CrdtState =>
-      @html.div(class="bottom-content", [@html.text("CRDT State (coming soon)")])
+      @html.div(class="bottom-content crdt-state", [
+        @html.div(class="state-row", [
+          @html.span(class="state-label", [@html.text("Agent")]),
+          @html.span(class="state-value", [@html.text("local")]),
+        ]),
+        @html.div(class="state-row", [
+          @html.span(class="state-label", [@html.text("Timestamp")]),
+          @html.span(class="state-value", [
+            @html.text(model.next_timestamp.to_string()),
+          ]),
+        ]),
+        @html.div(class="state-row", [
+          @html.span(class="state-label", [@html.text("Text length")]),
+          @html.span(class="state-value", [
+            @html.text(model.editor.get_text().length().to_string()),
+          ]),
+        ]),
+      ])
     Graphviz =>
-      @html.div(class="bottom-content", [@html.text("Graphviz (coming soon)")])
+      @html.div(class="bottom-content", [
+        @html.span(class="no-problems", [
+          @html.text(
+            "Graphviz visualization (requires graphviz submodule integration)",
+          ),
+        ]),
+      ])
   }
   @html.div(class="bottom-panel", [view_bottom_tabs(dispatch, model), content])
 }

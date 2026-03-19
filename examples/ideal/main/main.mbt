@@ -21,8 +21,8 @@ fn init_model() -> Model {
     outline_state,
     mode: Text,
     workspace: {
-      outline_visible: false,
-      inspector_visible: false,
+      outline_visible: true,
+      inspector_visible: true,
       bottom_visible: false,
     },
     cursor: None,
@@ -79,6 +79,34 @@ fn view_toolbar(dispatch : Dispatch[Msg], model : Model) -> Html {
     div(class="toolbar-spacer", [text("")]),
     button(class="toolbar-btn", on_click=dispatch(Undo), [text("Undo")]),
     button(class="toolbar-btn", on_click=dispatch(Redo), [text("Redo")]),
+    div(class="toolbar-spacer", [text("")]),
+    button(
+      class=if model.workspace.outline_visible {
+        "panel-toggle active"
+      } else {
+        "panel-toggle"
+      },
+      on_click=dispatch(TogglePanel(Outline)),
+      [text("Outline")],
+    ),
+    button(
+      class=if model.workspace.inspector_visible {
+        "panel-toggle active"
+      } else {
+        "panel-toggle"
+      },
+      on_click=dispatch(TogglePanel(Inspector)),
+      [text("Inspector")],
+    ),
+    button(
+      class=if model.workspace.bottom_visible {
+        "panel-toggle active"
+      } else {
+        "panel-toggle"
+      },
+      on_click=dispatch(TogglePanel(Bottom)),
+      [text("Panels")],
+    ),
     div(class="toolbar-spacer", [text("")]),
   ]
   example_buttons.each(fn(b) { toolbar_items.push(b) })
