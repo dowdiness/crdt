@@ -4,6 +4,7 @@ import { Node as PmNode } from "prosemirror-model";
 import { editorSchema } from "./schema";
 import { TermLeafView } from "./leaf-editor";
 import { LambdaView, LetDefView } from "./text-nodeview";
+import { StructureCompoundView, StructureLeafView } from "./structure-nodeview";
 import { structuralKeymap } from "./keymap";
 import { CanopyEvents } from "./events";
 import { CrdtBridge } from "./bridge";
@@ -104,17 +105,11 @@ export class CanopyEditor extends HTMLElement {
       ],
     });
 
-    const bridge = this.bridge;
-
     this.pmView = new EditorView(this.editorContainer, {
       state: pmState,
-      nodeViews: {
-        int_literal: (node, view, getPos) => new TermLeafView(node, view, getPos, bridge),
-        var_ref: (node, view, getPos) => new TermLeafView(node, view, getPos, bridge),
-        unbound_ref: (node, view, getPos) => new TermLeafView(node, view, getPos, bridge),
-        lambda: (node, view, getPos) => new LambdaView(node, view, getPos, bridge),
-        let_def: (node, view, getPos) => new LetDefView(node, view, getPos, bridge),
-      },
+      nodeViews: this.mode === 'text'
+        ? this.createTextNodeViews()
+        : this.createStructureNodeViews(),
       dispatchTransaction: (tr) => {
         if (!this.pmView) return;
         this.pmView.updateState(this.pmView.state.apply(tr));
@@ -180,8 +175,61 @@ export class CanopyEditor extends HTMLElement {
   }
 
   set mode(m: 'text' | 'structure') {
+    if (m === this.getAttribute('mode')) return;
     this.setAttribute('mode', m);
-    // Task 10: re-render NodeViews in new style
+    if (this.pmView && this.bridge) {
+      // Force PM to re-create all NodeViews by updating props
+      this.pmView.setProps({
+        nodeViews: m === 'text'
+          ? this.createTextNodeViews()
+          : this.createStructureNodeViews(),
+      });
+    }
+  }
+
+  // --- NodeView factories per mode ---
+
+  private createTextNodeViews() {
+    const bridge = this.bridge;
+    return {
+      int_literal: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new TermLeafView(node, view, getPos, bridge),
+      var_ref: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new TermLeafView(node, view, getPos, bridge),
+      unbound_ref: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new TermLeafView(node, view, getPos, bridge),
+      lambda: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new LambdaView(node, view, getPos, bridge),
+      let_def: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new LetDefView(node, view, getPos, bridge),
+    };
+  }
+
+  private createStructureNodeViews() {
+    return {
+      module: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new StructureCompoundView(node, view, getPos),
+      let_def: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new StructureCompoundView(node, view, getPos),
+      lambda: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new StructureCompoundView(node, view, getPos),
+      application: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new StructureCompoundView(node, view, getPos),
+      binary_op: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new StructureCompoundView(node, view, getPos),
+      if_expr: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new StructureCompoundView(node, view, getPos),
+      int_literal: (node: PmNode) =>
+        new StructureLeafView(node),
+      var_ref: (node: PmNode) =>
+        new StructureLeafView(node),
+      unbound_ref: (node: PmNode) =>
+        new StructureLeafView(node),
+      error_node: (node: PmNode) =>
+        new StructureLeafView(node),
+      unit: (node: PmNode) =>
+        new StructureLeafView(node),
+    };
   }
 
   /** Expose the bridge for external consumers (e.g. Rabbita host for sync) */
