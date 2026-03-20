@@ -259,16 +259,6 @@ fn collect_projection_descendants(
 }
 
 ///|
-/// Count projection descendants without collecting IDs or building indexes.
-fn count_projection_descendants(node : ProjNode) -> Int {
-  let mut count = 1
-  for child in node.children {
-    count += count_projection_descendants(child)
-  }
-  count
-}
-
-///|
 /// Build the shallow reuse stamp for an interactive node.
 fn interactive_node_stamp(node : InteractiveTreeNode) -> InteractiveNodeStamp {
   let child_ids : Array[NodeId] = []
@@ -343,7 +333,11 @@ fn can_skip_subtree(
   if get_node_label(proj_node.kind) != prev_node.label {
     return false
   }
-  // Check children representation matches current collapsed state and recurse
+  // Check children match recursively. Recursive verification is necessary
+  // because reconcile_ast preserves node IDs when kinds match (e.g.,
+  // Int(4) → Int(5) keeps the same ID). A shallow ID-only check would
+  // miss leaf value changes. The recursive cost is O(subtree) but cheaper
+  // than full refresh_node_minimal (no stamp alloc, no new InteractiveTreeNode).
   match prev_node.children {
     Loaded(prev_children) => {
       // If currently collapsed but previously loaded, must rebuild as Elided
@@ -424,7 +418,7 @@ fn refresh_node_minimal(
   if collapsed {
     let mut descendant_count = 0
     for child in node.children {
-      descendant_count += count_projection_descendants(child)
+      descendant_count += collect_projection_descendants(child, None)
     }
     let stamp : InteractiveNodeStamp = {
       id: node_id,
