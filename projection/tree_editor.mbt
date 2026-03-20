@@ -105,6 +105,71 @@ fn empty_tree_structure_indexes() -> TreeStructureIndexes {
 }
 
 ///|
+/// Lazy preorder index, built on demand.
+priv struct LazyPreorder {
+  ids : Array[NodeId]
+  range_by_root : Map[NodeId, (Int, Int)]
+}
+
+///|
+/// Build parent map by walking the InteractiveTreeNode tree.
+fn build_parent_map_from_tree(
+  tree : InteractiveTreeNode?,
+) -> Map[NodeId, NodeId] {
+  let map : Map[NodeId, NodeId] = {}
+  match tree {
+    Some(root) => build_parent_map_walk(root, map)
+    None => ()
+  }
+  map
+}
+
+///|
+fn build_parent_map_walk(
+  node : InteractiveTreeNode,
+  map : Map[NodeId, NodeId],
+) -> Unit {
+  match node.children {
+    Loaded(children) =>
+      for child in children {
+        map[child.id] = node.id
+        build_parent_map_walk(child, map)
+      }
+    Elided(_) => ()
+  }
+}
+
+///|
+/// Build preorder index by walking the InteractiveTreeNode tree.
+fn build_preorder_from_tree(tree : InteractiveTreeNode?) -> LazyPreorder {
+  let ids : Array[NodeId] = []
+  let range_by_root : Map[NodeId, (Int, Int)] = {}
+  match tree {
+    Some(root) => build_preorder_walk(root, ids, range_by_root)
+    None => ()
+  }
+  { ids, range_by_root }
+}
+
+///|
+fn build_preorder_walk(
+  node : InteractiveTreeNode,
+  ids : Array[NodeId],
+  range_by_root : Map[NodeId, (Int, Int)],
+) -> Unit {
+  let start = ids.length()
+  ids.push(node.id)
+  match node.children {
+    Loaded(children) =>
+      for child in children {
+        build_preorder_walk(child, ids, range_by_root)
+      }
+    Elided(_) => ()
+  }
+  range_by_root[node.id] = (start, ids.length() - 1)
+}
+
+///|
 /// Build the non-recursive node shape for stamp comparison.
 fn interactive_node_shape(kind : @ast.Term) -> InteractiveNodeShape {
   match kind {

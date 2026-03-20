@@ -609,6 +609,42 @@ test "refresh builder limits UI-only selection invalidation to selected branch" 
 }
 
 ///|
+test "build_parent_map_from_tree matches eagerly-built parent_by_child" {
+  let (_, _, state) = tree_editor_test_state("(1 + 2) + (3 + 4)")
+  let tree = match state.tree {
+    Some(tree) => tree
+    None => abort("expected tree")
+  }
+  let lazy_map = build_parent_map_from_tree(Some(tree))
+  let root_children = tree_editor_test_loaded_children(tree)
+  let left_id = root_children[0].id
+  let right_id = root_children[1].id
+  let right_children = tree_editor_test_loaded_children(root_children[1])
+  let right_leaf_id = right_children[1].id
+  inspect(lazy_map.get(left_id) == Some(tree.id), content="true")
+  inspect(lazy_map.get(right_leaf_id) == Some(right_id), content="true")
+  inspect(lazy_map.get(tree.id) is None, content="true")
+}
+
+///|
+test "build_preorder_from_tree matches eagerly-built indexes" {
+  let (_, _, state) = tree_editor_test_state("(1 + 2) + (3 + 4)")
+  let tree = match state.tree {
+    Some(tree) => tree
+    None => abort("expected tree")
+  }
+  let lazy_preorder = build_preorder_from_tree(Some(tree))
+  let root_children = tree_editor_test_loaded_children(tree)
+  let right_id = root_children[1].id
+  inspect(lazy_preorder.ids.length(), content="7")
+  inspect(lazy_preorder.ids[0] == tree.id, content="true")
+  inspect(
+    lazy_preorder.range_by_root.get(right_id) == Some((4, 6)),
+    content="true",
+  )
+}
+
+///|
 test "TreeEditorState::refresh preserves unchanged sibling subtree through public API" {
   let (old_root, _) = parse_to_proj_node("(1 + 2) + (3 + 4)")
   let old_source_map = SourceMap::from_ast(old_root)
