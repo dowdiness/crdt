@@ -20,13 +20,6 @@ pub enum PanelId {
 } derive(Eq)
 
 ///|
-pub struct CursorInfo {
-  line : Int
-  col : Int
-  offset : Int
-}
-
-///|
 pub struct WorkspaceLayout {
   outline_visible : Bool
   inspector_visible : Bool
@@ -39,7 +32,6 @@ pub struct Model {
   outline_state : @proj.TreeEditorState
   mode : EditorMode
   workspace : WorkspaceLayout
-  cursor : CursorInfo?
   selected_node : String?
   diagnostics_open : Bool
   next_timestamp : Int

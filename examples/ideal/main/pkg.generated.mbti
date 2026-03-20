@@ -7,6 +7,41 @@ import {
 }
 
 // Values
+pub fn apply_sync_json(Int, String) -> Unit
+
+pub fn apply_tree_edit_json(Int, String, Int) -> String
+
+pub fn create_editor_with_undo(String, Int) -> Int
+
+pub fn delete_at(Int, Int, Int) -> Bool
+
+pub fn export_all_json(Int) -> String
+
+pub fn export_since_json(Int, String) -> String
+
+pub fn get_errors_json(Int) -> String
+
+pub fn get_proj_node_json(Int) -> String
+
+pub fn get_source_map_json(Int) -> String
+
+pub fn get_text(Int) -> String
+
+pub fn get_version_json(Int) -> String
+
+pub fn insert_at(Int, Int, String, Int) -> Unit
+
+pub fn set_text(Int, String) -> Unit
+
+pub fn set_text_and_record(Int, String, Int) -> Unit
+
+pub fn undo_manager_can_redo(Int) -> Bool
+
+pub fn undo_manager_can_undo(Int) -> Bool
+
+pub fn undo_manager_redo(Int) -> Bool
+
+pub fn undo_manager_undo(Int) -> Bool
 
 // Errors
 
@@ -19,12 +54,6 @@ pub enum BottomTab {
 }
 pub impl Eq for BottomTab
 
-pub struct CursorInfo {
-  line : Int
-  col : Int
-  offset : Int
-}
-
 pub enum EditorMode {
   Text
   Structure
@@ -36,7 +65,6 @@ pub struct Model {
   outline_state : @projection.TreeEditorState
   mode : EditorMode
   workspace : WorkspaceLayout
-  cursor : CursorInfo?
   selected_node : String?
   diagnostics_open : Bool
   next_timestamp : Int

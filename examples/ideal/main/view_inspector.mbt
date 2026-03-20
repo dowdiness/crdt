@@ -35,9 +35,7 @@ fn resolve_selected_node(
   match loaded {
     Some(node) => Some(node)
     None => {
-      let node_id_int = @strconv.parse_int(target_id) catch {
-        _ => return None
-      }
+      let node_id_int = @strconv.parse_int(target_id) catch { _ => return None }
       let node_id = @proj.NodeId::from_int(node_id_int)
       match model.editor.get_node(node_id) {
         Some(node) =>
@@ -151,7 +149,10 @@ fn view_inspector_content(dispatch : Dispatch[Msg], model : Model) -> Html {
     }
     None =>
       div(class="empty-state", [
-        p(class="empty-state-text", "Click a node in the outline or editor to inspect it"),
+        p(
+          class="empty-state-text",
+          "Click a node in the outline or editor to inspect it",
+        ),
       ])
   }
   @html.fragment([

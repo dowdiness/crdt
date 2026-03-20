@@ -6,11 +6,8 @@ fn view_editor(
   dispatch : @rabbita.Dispatch[Msg],
   _model : Model,
 ) -> @rabbita.Html {
-  let attrs = @html.Attrs::build()
-    .id("canopy-editor")
-  let main_attrs = @html.Attrs::build()
-    .role("main")
-    .aria_label("Code editor")
+  let attrs = @html.Attrs::build().id("canopy-editor")
+  let main_attrs = @html.Attrs::build().role("main").aria_label("Code editor")
   div(class="editor-wrapper", attrs=main_attrs, [
     node("canopy-editor", attrs, [@html.text("")]),
     // Hidden buttons clicked by JS when the Web Component forwards events

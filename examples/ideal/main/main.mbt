@@ -25,7 +25,6 @@ fn init_model() -> Model {
       inspector_visible: true,
       bottom_visible: false,
     },
-    cursor: None,
     selected_node: None,
     diagnostics_open: false,
     next_timestamp: 1,
@@ -70,7 +69,11 @@ fn view_toolbar(dispatch : Dispatch[Msg], model : Model) -> Html {
       class=if model.mode == Text { "tab active" } else { "tab" },
       on_click=dispatch(SetMode(Text)),
       attrs=@html.Attrs::build().aria_pressed(
-        if model.mode == Text { "true" } else { "false" },
+        if model.mode == Text {
+          "true"
+        } else {
+          "false"
+        },
       ),
       [text("Text")],
     ),
@@ -78,7 +81,11 @@ fn view_toolbar(dispatch : Dispatch[Msg], model : Model) -> Html {
       class=if model.mode == Structure { "tab active" } else { "tab" },
       on_click=dispatch(SetMode(Structure)),
       attrs=@html.Attrs::build().aria_pressed(
-        if model.mode == Structure { "true" } else { "false" },
+        if model.mode == Structure {
+          "true"
+        } else {
+          "false"
+        },
       ),
       [text("Structure")],
     ),
@@ -94,7 +101,11 @@ fn view_toolbar(dispatch : Dispatch[Msg], model : Model) -> Html {
       },
       on_click=dispatch(TogglePanel(Outline)),
       attrs=@html.Attrs::build().aria_pressed(
-        if model.workspace.outline_visible { "true" } else { "false" },
+        if model.workspace.outline_visible {
+          "true"
+        } else {
+          "false"
+        },
       ),
       [text("Outline")],
     ),
@@ -106,7 +117,11 @@ fn view_toolbar(dispatch : Dispatch[Msg], model : Model) -> Html {
       },
       on_click=dispatch(TogglePanel(Inspector)),
       attrs=@html.Attrs::build().aria_pressed(
-        if model.workspace.inspector_visible { "true" } else { "false" },
+        if model.workspace.inspector_visible {
+          "true"
+        } else {
+          "false"
+        },
       ),
       [text("Inspector")],
     ),
@@ -118,7 +133,11 @@ fn view_toolbar(dispatch : Dispatch[Msg], model : Model) -> Html {
       },
       on_click=dispatch(TogglePanel(Bottom)),
       attrs=@html.Attrs::build().aria_pressed(
-        if model.workspace.bottom_visible { "true" } else { "false" },
+        if model.workspace.bottom_visible {
+          "true"
+        } else {
+          "false"
+        },
       ),
       [text("Panels")],
     ),
@@ -214,11 +233,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       }
     }
     StructuralEditRequested(op~, node_id~) => {
-      let resolved_op = if op == "" {
-        js_take_structural_edit_op()
-      } else {
-        op
-      }
+      let resolved_op = if op == "" { js_take_structural_edit_op() } else { op }
       let resolved_node_id = if node_id == "" {
         js_take_structural_edit_node_id()
       } else {
@@ -345,9 +360,7 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
         view_inspector_content(dispatch, model),
       ]),
     ]),
-    div(class=bottom_class, [
-      view_bottom_content(dispatch, model),
-    ]),
+    div(class=bottom_class, [view_bottom_content(dispatch, model)]),
   ])
 }
 

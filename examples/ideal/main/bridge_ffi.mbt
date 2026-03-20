@@ -1,12 +1,4 @@
 ///|
-/// Mount is handled by main.ts via requestAnimationFrame.
-/// This is a no-op kept for API compatibility — called from main after Rabbita mounts.
-extern "js" fn js_mount_editor() -> Unit =
-  #| function() {
-  #|   // Mounting is deferred to main.ts requestAnimationFrame
-  #| }
-
-///|
 /// Sync MoonBit editor text to the JS-side CRDT editor, then reconcile PM.
 /// Called after undo/redo/load-example to keep the two editors in sync.
 extern "js" fn js_reconcile_editor_with_text(new_text : String) -> Unit =
