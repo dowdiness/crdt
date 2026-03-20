@@ -1,11 +1,20 @@
 // Cloudflare Worker + Durable Object relay server.
 // All sync logic lives in MoonBit (relay/ package).
-// This file is only the ~30 lines of irreducible WebSocket event glue.
-
-import * as relay from "@moonbit/canopy";
+// This file is only the irreducible WebSocket event glue.
+//
+// The MoonBit module is lazy-loaded inside the DO constructor because
+// CF Workers disallow async I/O (including Math.random) at global scope.
 
 export interface Env {
   RELAY: DurableObjectNamespace;
+}
+
+// Lazy-loaded MoonBit module (deferred to handler scope)
+let relay: any = null;
+async function loadRelay() {
+  if (relay) return relay;
+  relay = await import("../../../_build/js/release/build/canopy.js");
+  return relay;
 }
 
 export default {
@@ -22,6 +31,10 @@ export class RelayRoom implements DurableObject {
 
   constructor(state: DurableObjectState) {
     this.roomId = state.id.toString();
+    // Lazy-load MoonBit module inside DO constructor (handler scope)
+    state.blockConcurrencyWhile(async () => {
+      await loadRelay();
+    });
   }
 
   async fetch(request: Request): Promise<Response> {

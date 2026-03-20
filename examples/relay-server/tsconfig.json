@@ -6,7 +6,7 @@
     "strict": true,
     "types": ["@cloudflare/workers-types"],
     "paths": {
-      "@moonbit/canopy": ["../../_build/js/release/build/canopy.d.ts"]
+      "../../../_build/js/release/build/canopy.js": ["../../_build/js/release/build/canopy.d.ts"]
     }
   },
   "include": ["src/**/*.ts"]
