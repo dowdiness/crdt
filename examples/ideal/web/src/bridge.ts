@@ -29,7 +29,7 @@ export class CrdtBridge {
   }
 
   /** Register a broadcast callback for sync */
-  setBroadcast(fn: () => void): void {
+  setBroadcast(fn: (() => void) | null): void {
     this.broadcastFn = fn;
   }
 

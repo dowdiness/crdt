@@ -1,33 +1,42 @@
-import { EditorState as PmState, NodeSelection } from "prosemirror-state";
-import { EditorView as PmView } from "prosemirror-view";
-import { Node as PmNode } from "prosemirror-model";
 import { EditorView as CmView, keymap as cmKeymap } from "@codemirror/view";
 import { EditorState as CmState } from "@codemirror/state";
 import { defaultKeymap } from "@codemirror/commands";
-import { editorSchema } from "./schema";
-import { StructureCompoundView, StructureLeafView } from "./structure-nodeview";
-import { structuralKeymap } from "./keymap";
 import { CanopyEvents } from "./events";
-import { CrdtBridge } from "./bridge";
-import { projNodeToDoc } from "./convert";
-import {
-  peerCursorPlugin,
-  errorDecoPlugin,
-  evalGhostPlugin,
-} from "./decorations";
 import type { CrdtModule } from './types';
+
+type StructureModeSession = {
+  applyRemote(syncJson: string): void;
+  destroy(): void;
+  notifyLocalChange(): void;
+  reconcile(): void;
+  setBroadcast(fn: (() => void) | null): void;
+  setReadonly(readonly: boolean): void;
+  setSelectedNode(id: string | null): void;
+};
+
+type StructureModeModule = {
+  createStructureModeSession(
+    parent: HTMLDivElement,
+    host: HTMLElement,
+    crdtHandle: number,
+    crdt: CrdtModule,
+  ): StructureModeSession;
+};
 
 export class CanopyEditor extends HTMLElement {
   private shadow: ShadowRoot;
   private editorContainer: HTMLDivElement;
   // Text Mode: single CM6 editor showing raw source text
   private cmView: CmView | null = null;
-  // Structure Mode: PM editor showing AST as blocks
-  private pmView: PmView | null = null;
-  private bridge: CrdtBridge | null = null;
+  // Structure Mode: lazily loaded PM editor showing AST as blocks
+  private structureSession: StructureModeSession | null = null;
+  private structureRuntimePromise: Promise<StructureModeModule> | null = null;
+  private structureLoadVersion = 0;
   private crdtHandle: number | null = null;
   private crdt: CrdtModule | null = null;
   private mountAbortController: AbortController | null = null;
+  private broadcastFn: (() => void) | null = null;
+  private pendingSelectedNode: string | null = null;
   private updating = false;
 
   static get observedAttributes() {
@@ -56,20 +65,16 @@ export class CanopyEditor extends HTMLElement {
     }
     this.destroyCm();
     this.destroyPm();
-    if (this.bridge) {
-      this.bridge.destroy();
-      this.bridge = null;
-    }
   }
 
   attributeChangedCallback(name: string, _old: string | null, val: string | null) {
     if (name === 'mode' && val && this.crdt) {
-      this.switchMode(val as 'text' | 'structure');
+      void this.switchMode(val as 'text' | 'structure');
     }
     if (name === 'readonly') {
       const ro = val !== null && val !== 'false';
-      if (this.pmView) {
-        this.pmView.setProps({ editable: () => !ro });
+      if (this.structureSession) {
+        this.structureSession.setReadonly(ro);
       }
       if (this.cmView) {
         // Remount CM6 to apply readonly (no hot reconfigure API for editable)
@@ -86,17 +91,18 @@ export class CanopyEditor extends HTMLElement {
 
     this.destroyCm();
     this.destroyPm();
-    if (this.bridge) { this.bridge.destroy(); this.bridge = null; }
 
     this.crdtHandle = crdtHandle;
     this.crdt = crdt;
-    this.bridge = new CrdtBridge(crdtHandle, crdt);
 
     // Wire sync-received
     const { signal } = this.mountAbortController;
     this.addEventListener('sync-received', ((e: CustomEvent) => {
-      if (!this.bridge) return;
-      this.bridge.applyRemote(e.detail.data);
+      if (this.structureSession) {
+        this.structureSession.applyRemote(e.detail.data);
+      } else if (this.crdt && this.crdtHandle !== null) {
+        this.crdt.apply_sync_json(this.crdtHandle, e.detail.data);
+      }
       this.syncCmFromCrdt();
       this.dispatchEvent(new CustomEvent(CanopyEvents.TEXT_CHANGE, {
         bubbles: true, composed: true,
@@ -106,7 +112,7 @@ export class CanopyEditor extends HTMLElement {
     if (this.mode === 'text') {
       this.mountTextMode();
     } else {
-      this.mountStructureMode();
+      void this.mountStructureMode();
     }
   }
 
@@ -193,7 +199,7 @@ export class CanopyEditor extends HTMLElement {
               this.crdt.set_text(this.crdtHandle, newText);
             }
             // Notify Rabbita
-            this.bridge?.notifyLocalChange();
+            this.notifyLocalChange();
             this.dispatchEvent(new CustomEvent(CanopyEvents.TEXT_CHANGE, {
               bubbles: true, composed: true,
             }));
@@ -228,73 +234,70 @@ export class CanopyEditor extends HTMLElement {
 
   // ── Structure Mode: PM with block NodeViews ────────────
 
-  private mountStructureMode(): void {
-    this.destroyCm();
-    if (this.pmView) return;
-
-    let doc: PmNode;
-    const projJsonStr = this.crdt!.get_proj_node_json(this.crdtHandle!);
-    if (projJsonStr && projJsonStr !== "null") {
-      try {
-        doc = projNodeToDoc(JSON.parse(projJsonStr));
-      } catch (e) {
-        console.error("[canopy-editor] Failed to build PM doc:", e);
-        doc = editorSchema.node("doc", null, [
-          editorSchema.node("module", { nodeId: 0 }),
-        ]);
-      }
-    } else {
-      doc = editorSchema.node("doc", null, [
-        editorSchema.node("module", { nodeId: 0 }),
-      ]);
+  private loadStructureRuntime(): Promise<StructureModeModule> {
+    if (!this.structureRuntimePromise) {
+      this.structureRuntimePromise = (
+        import('./structure-runtime') as Promise<StructureModeModule>
+      ).catch((error) => {
+        this.structureRuntimePromise = null;
+        throw error;
+      });
     }
+    return this.structureRuntimePromise;
+  }
 
-    const pmState = PmState.create({
-      doc,
-      plugins: [
-        structuralKeymap(this),
-        peerCursorPlugin(),
-        errorDecoPlugin(),
-        evalGhostPlugin(),
-      ],
-    });
+  private isReadonly(): boolean {
+    const val = this.getAttribute('readonly');
+    return val !== null && val !== 'false';
+  }
 
-    this.pmView = new PmView(this.editorContainer, {
-      state: pmState,
-      nodeViews: this.createStructureNodeViews(),
-      dispatchTransaction: (tr) => {
-        if (!this.pmView) return;
-        this.pmView.updateState(this.pmView.state.apply(tr));
-        if (tr.getMeta('fromExternal')) return;
-        if (tr.selectionSet) {
-          const sel = tr.selection;
-          if (sel instanceof NodeSelection) {
-            this.dispatchEvent(new CustomEvent(CanopyEvents.NODE_SELECTED, {
-              detail: {
-                nodeId: String(sel.node.attrs.nodeId),
-                kind: sel.node.type.name,
-                label: sel.node.attrs.name ?? sel.node.attrs.param ?? String(sel.node.attrs.value ?? ''),
-              },
-              bubbles: true, composed: true,
-            }));
-          }
-        }
-      },
-    });
+  private async mountStructureMode(): Promise<void> {
+    this.destroyCm();
+    if (this.structureSession || !this.crdt || this.crdtHandle === null) return;
 
-    if (this.bridge) this.bridge.setPmView(this.pmView);
+    const loadVersion = ++this.structureLoadVersion;
+    try {
+      const { createStructureModeSession } = await this.loadStructureRuntime();
+      if (
+        loadVersion !== this.structureLoadVersion ||
+        !this.crdt ||
+        this.crdtHandle === null ||
+        this.mode !== 'structure'
+      ) {
+        return;
+      }
+      const session = createStructureModeSession(
+        this.editorContainer,
+        this,
+        this.crdtHandle,
+        this.crdt,
+      );
+      if (loadVersion !== this.structureLoadVersion || this.mode !== 'structure') {
+        session.destroy();
+        return;
+      }
+      this.structureSession = session;
+      session.setReadonly(this.isReadonly());
+      session.setBroadcast(this.broadcastFn);
+      session.setSelectedNode(this.pendingSelectedNode);
+    } catch (error) {
+      if (loadVersion === this.structureLoadVersion) {
+        console.error('[canopy-editor] Failed to load structure mode:', error);
+      }
+    }
   }
 
   private destroyPm(): void {
-    if (this.pmView) {
-      this.pmView.destroy();
-      this.pmView = null;
+    this.structureLoadVersion += 1;
+    if (this.structureSession) {
+      this.structureSession.destroy();
+      this.structureSession = null;
     }
   }
 
   // ── Mode switching ─────────────────────────────────────
 
-  private switchMode(m: 'text' | 'structure'): void {
+  private async switchMode(m: 'text' | 'structure'): Promise<void> {
     if (m === 'text') {
       this.destroyPm();
       this.editorContainer.innerHTML = '';
@@ -302,7 +305,7 @@ export class CanopyEditor extends HTMLElement {
     } else {
       this.destroyCm();
       this.editorContainer.innerHTML = '';
-      this.mountStructureMode();
+      await this.mountStructureMode();
     }
   }
 
@@ -311,8 +314,8 @@ export class CanopyEditor extends HTMLElement {
   set projNode(_json: string) {
     if (this.mode === 'text') {
       this.syncCmFromCrdt();
-    } else if (this.bridge && this.pmView) {
-      this.bridge.reconcile();
+    } else if (this.structureSession) {
+      this.structureSession.reconcile();
     }
   }
 
@@ -323,6 +326,7 @@ export class CanopyEditor extends HTMLElement {
   set evalResults(_json: string) { /* TODO: CM6 eval ghost decorations */ }
 
   set selectedNode(id: string | null) {
+    this.pendingSelectedNode = id;
     if (!id || !this.crdt || this.crdtHandle === null) return;
     if (this.cmView) {
       // Text mode: find node's span in source map and select it in CM6
@@ -339,28 +343,8 @@ export class CanopyEditor extends HTMLElement {
           this.cmView.focus();
         }
       } catch { /* source map parse failure — ignore */ }
-    } else if (this.pmView) {
-      let targetPos: number | null = null;
-      this.pmView.state.doc.descendants((node, pos) => {
-        if (String(node.attrs.nodeId) === id && NodeSelection.isSelectable(node)) {
-          targetPos = pos;
-          return false;
-        }
-        return true;
-      });
-      if (targetPos === null) return;
-      let selectionUnchanged = false;
-      const currentSelection = this.pmView.state.selection;
-      if (currentSelection instanceof NodeSelection) {
-        selectionUnchanged = currentSelection.from === targetPos;
-      }
-      if (selectionUnchanged) return;
-      const tr = this.pmView.state.tr
-        .setSelection(NodeSelection.create(this.pmView.state.doc, targetPos))
-        .scrollIntoView();
-      tr.setMeta('fromExternal', true);
-      this.pmView.dispatch(tr);
-      this.pmView.focus();
+    } else if (this.structureSession) {
+      this.structureSession.setSelectedNode(id);
     }
   }
 
@@ -373,32 +357,17 @@ export class CanopyEditor extends HTMLElement {
     this.setAttribute('mode', m);
   }
 
-  // ── Structure Mode NodeViews ───────────────────────────
-
-  private createStructureNodeViews() {
-    return {
-      module: (node: PmNode, view: PmView, getPos: () => number | undefined) =>
-        new StructureCompoundView(node, view, getPos),
-      let_def: (node: PmNode, view: PmView, getPos: () => number | undefined) =>
-        new StructureCompoundView(node, view, getPos),
-      lambda: (node: PmNode, view: PmView, getPos: () => number | undefined) =>
-        new StructureCompoundView(node, view, getPos),
-      application: (node: PmNode, view: PmView, getPos: () => number | undefined) =>
-        new StructureCompoundView(node, view, getPos),
-      binary_op: (node: PmNode, view: PmView, getPos: () => number | undefined) =>
-        new StructureCompoundView(node, view, getPos),
-      if_expr: (node: PmNode, view: PmView, getPos: () => number | undefined) =>
-        new StructureCompoundView(node, view, getPos),
-      int_literal: (node: PmNode) => new StructureLeafView(node),
-      var_ref: (node: PmNode) => new StructureLeafView(node),
-      unbound_ref: (node: PmNode) => new StructureLeafView(node),
-      error_node: (node: PmNode) => new StructureLeafView(node),
-      unit: (node: PmNode) => new StructureLeafView(node),
-    };
+  setBroadcast(fn: (() => void) | null): void {
+    this.broadcastFn = fn;
+    this.structureSession?.setBroadcast(fn);
   }
 
-  getBridge(): CrdtBridge | null {
-    return this.bridge;
+  notifyLocalChange(): void {
+    if (this.structureSession) {
+      this.structureSession.notifyLocalChange();
+      return;
+    }
+    if (this.broadcastFn) this.broadcastFn();
   }
 }
 

@@ -2,10 +2,7 @@ import './canopy-editor';
 import type { CanopyEditor } from './canopy-editor';
 import { CanopyEvents } from './events';
 import { SyncClient } from './sync';
-
-// Single module: includes Rabbita + CRDT FFI (no separate @moonbit/canopy needed).
-// This runs MoonBit's main() which mounts Rabbita and renders <canopy-editor>.
-import * as crdt from '@moonbit/ideal-editor';
+import type { CrdtModule } from './types';
 
 type NodeSelectedDetail = {
   nodeId?: string;
@@ -17,7 +14,7 @@ type StructuralEditDetail = {
 };
 
 type CanopyGlobal = typeof globalThis & {
-  __canopy_crdt?: typeof crdt;
+  __canopy_crdt?: CrdtModule;
   __canopy_crdt_handle?: number;
   __canopy_pending_node_selection?: string | null;
   __canopy_pending_structural_edit?: StructuralEditDetail | null;
@@ -25,11 +22,17 @@ type CanopyGlobal = typeof globalThis & {
 
 const canopyGlobal = globalThis as CanopyGlobal;
 const AGENT_ID_STORAGE_KEY = 'canopy-ideal-agent-id';
+let crdtPromise: Promise<CrdtModule> | null = null;
 let activeSyncClient: SyncClient | null = null;
 let beforeUnloadRegistered = false;
 
-// Expose CRDT state globally for MoonBit FFI bridge functions.
-canopyGlobal.__canopy_crdt = crdt;
+function loadCrdtModule(): Promise<CrdtModule> {
+  if (!crdtPromise) {
+    // Loading the MoonBit module also runs Rabbita's main(), which renders <canopy-editor>.
+    crdtPromise = import('@moonbit/ideal-editor') as Promise<CrdtModule>;
+  }
+  return crdtPromise;
+}
 
 function createAgentId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -78,18 +81,15 @@ function wireEditorEvents(el: CanopyEditor) {
   });
 }
 
-function startSync(el: CanopyEditor, handle: number) {
+function startSync(el: CanopyEditor, handle: number, crdt: CrdtModule) {
   activeSyncClient?.disconnect();
 
   const syncClient = new SyncClient(el, handle, crdt);
   activeSyncClient = syncClient;
 
-  const bridge = el.getBridge();
-  if (bridge) {
-    bridge.setBroadcast(() => {
-      syncClient.broadcast();
-    });
-  }
+  el.setBroadcast(() => {
+    syncClient.broadcast();
+  });
 
   syncClient.connect();
 
@@ -101,23 +101,23 @@ function startSync(el: CanopyEditor, handle: number) {
   }
 }
 
-function mountWhenReady() {
+function mountWhenReady(crdt: CrdtModule) {
   const el = document.querySelector('canopy-editor') as CanopyEditor | null;
   if (el) {
-    doMount(el);
+    doMount(el, crdt);
     return;
   }
   const observer = new MutationObserver((_mutations, obs) => {
     const found = document.querySelector('canopy-editor') as CanopyEditor | null;
     if (found) {
       obs.disconnect();
-      doMount(found);
+      doMount(found, crdt);
     }
   });
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
-function doMount(el: CanopyEditor) {
+function doMount(el: CanopyEditor, crdt: CrdtModule) {
   const handle = crdt.create_editor_with_undo(getSessionAgentId(), 500);
   const text = 'let id = \\x.x\nlet apply = \\f.\\x.f x\napply id 42';
   canopyGlobal.__canopy_crdt_handle = handle;
@@ -126,7 +126,13 @@ function doMount(el: CanopyEditor) {
   crdt.set_text(handle, text);
   el.mount(handle, crdt);
   wireEditorEvents(el);
-  startSync(el, handle);
+  startSync(el, handle, crdt);
 }
 
-mountWhenReady();
+async function bootstrap() {
+  const crdt = await loadCrdtModule();
+  canopyGlobal.__canopy_crdt = crdt;
+  mountWhenReady(crdt);
+}
+
+void bootstrap();

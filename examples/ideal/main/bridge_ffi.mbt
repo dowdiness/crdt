@@ -21,9 +21,8 @@ extern "js" fn js_reconcile_editor_with_text(new_text : String) -> Unit =
   #|     } else {
   #|       crdt.set_text(handle, new_text);
   #|     }
-  #|     var bridge = el && typeof el.getBridge === 'function' ? el.getBridge() : null;
-  #|     if (bridge && typeof bridge.notifyLocalChange === 'function') {
-  #|       bridge.notifyLocalChange();
+  #|     if (el && typeof el.notifyLocalChange === 'function') {
+  #|       el.notifyLocalChange();
   #|     }
   #|   }
   #|   if (!el) return;
@@ -95,9 +94,8 @@ extern "js" fn js_undo_and_sync() -> Unit =
   #|   if (!crdt.undo_manager_can_undo(handle)) return;
   #|   crdt.undo_manager_undo(handle);
   #|   var el = document.querySelector('canopy-editor');
-  #|   var bridge = el && typeof el.getBridge === 'function' ? el.getBridge() : null;
-  #|   if (bridge && typeof bridge.notifyLocalChange === 'function') {
-  #|     bridge.notifyLocalChange();
+  #|   if (el && typeof el.notifyLocalChange === 'function') {
+  #|     el.notifyLocalChange();
   #|   }
   #|   if (el) el.projNode = '';
   #|   var btn = document.getElementById('canopy-text-sync-trigger');
@@ -114,9 +112,8 @@ extern "js" fn js_redo_and_sync() -> Unit =
   #|   if (!crdt.undo_manager_can_redo(handle)) return;
   #|   crdt.undo_manager_redo(handle);
   #|   var el = document.querySelector('canopy-editor');
-  #|   var bridge = el && typeof el.getBridge === 'function' ? el.getBridge() : null;
-  #|   if (bridge && typeof bridge.notifyLocalChange === 'function') {
-  #|     bridge.notifyLocalChange();
+  #|   if (el && typeof el.notifyLocalChange === 'function') {
+  #|     el.notifyLocalChange();
   #|   }
   #|   if (el) el.projNode = '';
   #|   var btn = document.getElementById('canopy-text-sync-trigger');
