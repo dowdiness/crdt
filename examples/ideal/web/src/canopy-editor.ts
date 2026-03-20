@@ -3,7 +3,7 @@ import { EditorView as PmView } from "prosemirror-view";
 import { Node as PmNode } from "prosemirror-model";
 import { EditorView as CmView, keymap as cmKeymap } from "@codemirror/view";
 import { EditorState as CmState } from "@codemirror/state";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { defaultKeymap } from "@codemirror/commands";
 import { editorSchema } from "./schema";
 import { StructureCompoundView, StructureLeafView } from "./structure-nodeview";
 import { structuralKeymap } from "./keymap";
@@ -158,10 +158,27 @@ export class CanopyEditor extends HTMLElement {
               backgroundColor: "rgba(255,255,255,0.03)",
             },
           }),
-          history(),
           cmKeymap.of([
+            // Keep undo/redo on the CRDT timeline instead of CM local history.
+            {
+              key: "Mod-z",
+              run: () => {
+                this.dispatchEvent(new CustomEvent(CanopyEvents.REQUEST_UNDO, {
+                  bubbles: true, composed: true,
+                }));
+                return true;
+              },
+            },
+            {
+              key: "Mod-Shift-z",
+              run: () => {
+                this.dispatchEvent(new CustomEvent(CanopyEvents.REQUEST_REDO, {
+                  bubbles: true, composed: true,
+                }));
+                return true;
+              },
+            },
             ...defaultKeymap,
-            ...historyKeymap,
           ]),
           CmView.lineWrapping,
           // Forward text changes to CRDT

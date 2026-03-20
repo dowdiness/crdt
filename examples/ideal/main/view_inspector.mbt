@@ -22,6 +22,38 @@ fn find_node_by_id(
 }
 
 ///|
+/// Resolve a selected node from the loaded outline tree, falling back to the
+/// full projection when the matching branch is currently elided.
+fn resolve_selected_node(
+  model : Model,
+  target_id : String,
+) -> @proj.InteractiveTreeNode? {
+  let loaded = match model.outline_state.tree {
+    Some(root) => find_node_by_id(root, target_id)
+    None => None
+  }
+  match loaded {
+    Some(node) => Some(node)
+    None => {
+      let node_id_int = @strconv.parse_int(target_id) catch {
+        _ => return None
+      }
+      let node_id = @proj.NodeId::from_int(node_id_int)
+      match model.editor.get_node(node_id) {
+        Some(node) =>
+          Some(
+            @proj.InteractiveTreeNode::from_term_node(
+              node,
+              model.editor.get_source_map(),
+            ),
+          )
+        None => None
+      }
+    }
+  }
+}
+
+///|
 /// Count children of a tree node.
 fn children_count(node : @proj.InteractiveTreeNode) -> Int {
   match node.children {
@@ -107,10 +139,7 @@ fn view_crdt_info(model : Model) -> Html {
 fn view_inspector_content(dispatch : Dispatch[Msg], model : Model) -> Html {
   let node_section : Html = match model.selected_node {
     Some(sel_id) => {
-      let found = match model.outline_state.tree {
-        Some(root) => find_node_by_id(root, sel_id)
-        None => None
-      }
+      let found = resolve_selected_node(model, sel_id)
       match found {
         Some(node) =>
           @html.fragment([

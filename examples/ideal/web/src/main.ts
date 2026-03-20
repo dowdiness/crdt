@@ -24,11 +24,31 @@ type CanopyGlobal = typeof globalThis & {
 };
 
 const canopyGlobal = globalThis as CanopyGlobal;
+const AGENT_ID_STORAGE_KEY = 'canopy-ideal-agent-id';
 let activeSyncClient: SyncClient | null = null;
 let beforeUnloadRegistered = false;
 
 // Expose CRDT state globally for MoonBit FFI bridge functions.
 canopyGlobal.__canopy_crdt = crdt;
+
+function createAgentId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `ideal-${crypto.randomUUID()}`;
+  }
+  return `ideal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function getSessionAgentId(): string {
+  try {
+    const existing = window.sessionStorage.getItem(AGENT_ID_STORAGE_KEY);
+    if (existing) return existing;
+    const agentId = createAgentId();
+    window.sessionStorage.setItem(AGENT_ID_STORAGE_KEY, agentId);
+    return agentId;
+  } catch {
+    return createAgentId();
+  }
+}
 
 function clickTrigger(id: string) {
   const btn = document.getElementById(id) as HTMLButtonElement | null;
@@ -98,7 +118,7 @@ function mountWhenReady() {
 }
 
 function doMount(el: CanopyEditor) {
-  const handle = crdt.create_editor_with_undo('local', 500);
+  const handle = crdt.create_editor_with_undo(getSessionAgentId(), 500);
   const text = 'let id = \\x.x\nlet apply = \\f.\\x.f x\napply id 42';
   canopyGlobal.__canopy_crdt_handle = handle;
   canopyGlobal.__canopy_pending_node_selection = null;
