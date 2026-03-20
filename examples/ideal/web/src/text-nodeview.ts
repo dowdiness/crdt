@@ -14,6 +14,7 @@ export class LambdaView implements NodeView {
   dom: HTMLElement;
   contentDOM: HTMLElement;
   paramCm: CmView;
+  private paramWrap: HTMLElement;
   node: PmNode;
   updating = false;
 
@@ -35,7 +36,8 @@ export class LambdaView implements NodeView {
     this.dom.appendChild(prefix);
 
     // CM6 for param name
-    const paramWrap = document.createElement("span");
+    this.paramWrap = document.createElement("span");
+    const paramWrap = this.paramWrap;
     paramWrap.className = "pm-lambda-param";
     this.paramCm = createInlineCm({
       doc: node.attrs.param,
@@ -76,8 +78,7 @@ export class LambdaView implements NodeView {
   }
 
   stopEvent(event: Event) {
-    const target = event.target as Node;
-    return this.dom.querySelector('.pm-lambda-param')?.contains(target) ?? false;
+    return this.paramWrap.contains(event.target as Node);
   }
 
   ignoreMutation(mutation: { target: Node }) {
@@ -99,6 +100,7 @@ export class LetDefView implements NodeView {
   dom: HTMLElement;
   contentDOM: HTMLElement;
   nameCm: CmView;
+  private nameWrap: HTMLElement;
   node: PmNode;
   updating = false;
 
@@ -120,7 +122,8 @@ export class LetDefView implements NodeView {
     this.dom.appendChild(keyword);
 
     // CM6 for binding name
-    const nameWrap = document.createElement("span");
+    this.nameWrap = document.createElement("span");
+    const nameWrap = this.nameWrap;
     nameWrap.className = "pm-let-name";
     this.nameCm = createInlineCm({
       doc: node.attrs.name,
@@ -178,8 +181,7 @@ export class LetDefView implements NodeView {
   }
 
   stopEvent(event: Event) {
-    const target = event.target as Node;
-    return this.dom.querySelector('.pm-let-name')?.contains(target) ?? false;
+    return this.nameWrap.contains(event.target as Node);
   }
 
   ignoreMutation(mutation: { target: Node }) {
@@ -232,23 +234,8 @@ export class BinaryOpView implements NodeView {
     this.node = node;
     this.dom = document.createElement("span");
     this.dom.className = "pm-binary-op";
-
-    // Left operand
-    const left = document.createElement("span");
-    left.className = "pm-binop-left";
-
-    // Operator
-    const opEl = document.createElement("span");
-    opEl.className = "pm-binop-operator";
-    opEl.textContent = ` ${OP_DISPLAY[node.attrs.op] || node.attrs.op} `;
-
-    // Right operand
-    const right = document.createElement("span");
-    right.className = "pm-binop-right";
-
-    // PM can only have one contentDOM. Since PM places children
-    // sequentially, use the outer span as contentDOM directly.
-    // The operator is visible via CSS (word-spacing on .pm-binary-op).
+    // PM places children sequentially in contentDOM.
+    // Operator spacing handled via CSS (word-spacing on .pm-binary-op).
     this.contentDOM = this.dom;
   }
 

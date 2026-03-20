@@ -5,7 +5,7 @@ using @html {button, div, p, span, text}
 using @rabbita {type Cmd, type Dispatch, type Html, delay, none}
 
 ///|
-let deferred_refresh_ms = 16
+let deferred_refresh_ms = 150
 
 ///|
 fn init_model() -> Model {
