@@ -117,13 +117,19 @@ export class CanopyEditor extends HTMLElement {
           CmView.theme({
             "&": {
               backgroundColor: "transparent",
-              color: "var(--canopy-fg, #e8e8f0)",
+              color: "var(--canopy-fg, #e4e4f0)",
               fontFamily: "var(--canopy-font-mono, 'Iosevka', monospace)",
               fontSize: "18px",
+              height: "100%",
+            },
+            ".cm-scroller": {
+              overflow: "auto",
+              height: "100%",
             },
             ".cm-content": {
-              caretColor: "var(--canopy-fg, #e8e8f0)",
+              caretColor: "var(--canopy-fg, #e4e4f0)",
               padding: "8px 0",
+              minHeight: "100%",
             },
             "&.cm-focused": {
               outline: "none",
@@ -343,8 +349,10 @@ const SHADOW_STYLES = `
   #editor-root {
     width: 100%;
     height: 100%;
-    overflow: auto;
+    overflow: hidden;
     padding: 16px;
+    display: flex;
+    flex-direction: column;
   }
 
   /* ProseMirror base (structure mode) */
