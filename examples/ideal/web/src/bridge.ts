@@ -169,7 +169,7 @@ export class CrdtBridge {
     this.scheduleReconcile();
   }
 
-  scheduleReconcile(): void {
+  private scheduleReconcile(): void {
     if (this.reconcileRafId !== null) return;
     this.reconcileRafId = requestAnimationFrame(() => {
       this.reconcileRafId = null;

@@ -24,6 +24,7 @@ const canopyGlobal = globalThis as CanopyGlobal;
 const AGENT_ID_STORAGE_KEY = 'canopy-ideal-agent-id';
 let crdtPromise: Promise<CrdtModule> | null = null;
 let activeSyncClient: SyncClient | null = null;
+let editorEventsController: AbortController | null = null;
 let beforeUnloadRegistered = false;
 
 function loadCrdtModule(): Promise<CrdtModule> {
@@ -59,26 +60,31 @@ function clickTrigger(id: string) {
 }
 
 function wireEditorEvents(el: CanopyEditor) {
+  // Abort previous listeners if called again (prevents accumulation)
+  if (editorEventsController) editorEventsController.abort();
+  editorEventsController = new AbortController();
+  const { signal } = editorEventsController;
+
   el.addEventListener(CanopyEvents.TEXT_CHANGE, () => {
     clickTrigger('canopy-text-sync-trigger');
-  });
+  }, { signal });
   el.addEventListener(CanopyEvents.NODE_SELECTED, ((event: Event) => {
     const { nodeId } = (event as CustomEvent<NodeSelectedDetail>).detail ?? {};
     canopyGlobal.__canopy_pending_node_selection = nodeId ?? null;
     clickTrigger('canopy-node-selected-trigger');
-  }) as EventListener);
+  }) as EventListener, { signal });
   el.addEventListener(CanopyEvents.STRUCTURAL_EDIT_REQUEST, ((event: Event) => {
     const { op, nodeId } = (event as CustomEvent<StructuralEditDetail>).detail ?? {};
     canopyGlobal.__canopy_pending_structural_edit =
       op && nodeId ? { op, nodeId } : null;
     clickTrigger('canopy-structural-edit-trigger');
-  }) as EventListener);
+  }) as EventListener, { signal });
   el.addEventListener(CanopyEvents.REQUEST_UNDO, () => {
     clickTrigger('canopy-undo-trigger');
-  });
+  }, { signal });
   el.addEventListener(CanopyEvents.REQUEST_REDO, () => {
     clickTrigger('canopy-redo-trigger');
-  });
+  }, { signal });
 }
 
 function startSync(el: CanopyEditor, handle: number, crdt: CrdtModule) {

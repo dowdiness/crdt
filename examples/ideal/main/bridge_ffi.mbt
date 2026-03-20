@@ -57,20 +57,23 @@ extern "js" fn js_take_selected_node_id() -> String =
   #| }
 
 ///|
-/// Read the pending structural edit operation forwarded from the Web Component.
+/// Consume the pending structural edit op forwarded from the Web Component.
+/// Clears the global to prevent stale reads.
 extern "js" fn js_take_structural_edit_op() -> String =
   #| function() {
   #|   var pending = globalThis.__canopy_pending_structural_edit;
-  #|   return pending && typeof pending.op === 'string' ? pending.op : '';
+  #|   if (!pending) return '';
+  #|   return typeof pending.op === 'string' ? pending.op : '';
   #| }
 
 ///|
-/// Consume the pending structural edit node ID forwarded from the Web Component.
+/// Consume the pending structural edit node ID and clear the global.
 extern "js" fn js_take_structural_edit_node_id() -> String =
   #| function() {
   #|   var pending = globalThis.__canopy_pending_structural_edit;
   #|   globalThis.__canopy_pending_structural_edit = null;
-  #|   return pending && typeof pending.nodeId === 'string' ? pending.nodeId : '';
+  #|   if (!pending) return '';
+  #|   return typeof pending.nodeId === 'string' ? pending.nodeId : '';
   #| }
 
 ///|
