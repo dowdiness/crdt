@@ -1,0 +1,36 @@
+import {
+  "moonbit-community/rabbita",
+  "moonbit-community/rabbita/html",
+  "dowdiness/canopy" @crdt,
+  "dowdiness/canopy/editor" @editor,
+  "dowdiness/canopy/projection" @proj,
+  "moonbitlang/core/strconv",
+}
+
+options(
+  "is-main": true,
+  link: {
+    "js": {
+      "exports": [
+        "create_editor_with_undo",
+        "get_text",
+        "set_text",
+        "set_text_and_record",
+        "get_proj_node_json",
+        "get_source_map_json",
+        "get_errors_json",
+        "get_version_json",
+        "insert_at",
+        "delete_at",
+        "export_all_json",
+        "export_since_json",
+        "apply_sync_json",
+        "apply_tree_edit_json",
+        "undo_manager_undo",
+        "undo_manager_redo",
+        "undo_manager_can_undo",
+        "undo_manager_can_redo",
+      ],
+    },
+  },
+)
