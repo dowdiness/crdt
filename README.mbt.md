@@ -1,47 +1,43 @@
 # Canopy
 
-Incremental projectional editor with CRDT collaboration, built in MoonBit.
+**Edit text. See the tree. Collaborate in real-time.**
 
-- [Repository](https://github.com/dowdiness/canopy)
-- [Web App](https://lambda-editor.koji-ishimoto.workers.dev/)
+Canopy is an incremental projectional editor where text and abstract syntax trees stay perfectly synchronized — powered by CRDTs for real-time collaboration. Built in [MoonBit](https://www.moonbitlang.com/), targeting WebAssembly.
 
-## What is Canopy?
+The naming follows an organic metaphor: **loom** weaves structure, **seam** joins layers, and the **canopy** emerges above the trees as the surface you interact with.
 
-Canopy is a collaborative code editor where **text and tree views stay synchronized**. Edit source code as text, see the AST update in real-time. Edit the tree structure, see the text regenerate. Multiple users can collaborate via CRDTs.
+[Try the demo](https://rabbita.koji-ishimoto.workers.dev/) · [Architecture](docs/architecture/) · [Paper (eg-walker)](https://arxiv.org/abs/2409.14252)
 
-The name follows the organic metaphor of its components: **loom** (parser framework) weaves the structure, **seam** (CST library) joins the layers, and the **canopy** emerges above the trees as the surface users interact with.
+---
 
-**Key technologies:**
-- **Incremental parsing** — loom framework with O(1) subtree reuse via position-independent CstNodes
-- **Projectional editing** — synchronized text and tree views via SyncEditor + ProjNode
-- **CRDT collaboration** — eg-walker algorithm with FugueMax sequence CRDT
-- **MoonBit** — systems language targeting WebAssembly
+## Why Canopy?
 
-## Project Structure
+Most editors treat source code as flat text. Canopy treats it as a living tree.
 
-Monorepo with git submodules. Reusable libraries live in their own repositories.
+**Text and tree are two views of the same truth.** Type in the text editor and watch the AST update instantly. Restructure a node in the tree view and see the source code regenerate. Both directions, always consistent.
+
+**Collaboration through CRDTs, not central servers.** Canopy uses the [eg-walker](https://arxiv.org/abs/2409.14252) algorithm with FugueMax — a sequence CRDT that preserves user intent even under concurrent edits. No operational transform, no conflict resolution hacks.
+
+**Incremental by design.** The parser framework ([loom](loom/)) achieves O(1) subtree reuse through position-independent CST nodes. Edit one character, reparse one subtree — the rest is shared from the previous parse.
+
+**Principled architecture.** The entire pipeline — parsing, projection, rendering — follows an [incremental hylomorphism](docs/architecture/Incremental-Hylomorphism.md) pattern: unfold text into trees, fold trees into views, and do it incrementally.
+
+## Example Language
+
+The demo language is lambda calculus with arithmetic — small enough to understand fully, rich enough to exercise every feature:
 
 ```
-canopy/
-├── event-graph-walker/   # Core CRDT library (submodule)
-├── loom/                 # Incremental parser framework (submodule)
-│   ├── loom/             #   Parser framework (dowdiness/loom)
-│   ├── seam/             #   Language-agnostic CST (dowdiness/seam)
-│   ├── incr/             #   Reactive signals (dowdiness/incr)
-│   └── examples/lambda/  #   Lambda calculus parser (dowdiness/lambda)
-├── svg-dsl/              # SVG DSL (submodule)
-├── graphviz/             # Graphviz DOT renderer (submodule)
-├── valtio/               # Valtio state management (submodule)
-├── editor/               # Editor abstractions
-├── projection/           # Projectional editing (ProjNode, TreeEditorState)
-├── cmd/                  # CLI entry points
-├── examples/web/         # Web frontend (Vite)
-└── examples/demo-react/  # React demo
+λx.x                  -- identity
+(λf.λx.f x) 5         -- application
+1 + 2 - 3             -- arithmetic
+if x then 1 else 0    -- conditionals
+let double = λx.x + x -- definitions
+double 5
 ```
 
-See [Monorepo & Submodule Guide](docs/development/monorepo.md) for the full workflow.
+## Quick Start
 
-## Getting Started
+**Prerequisites:** [MoonBit](https://www.moonbitlang.com/download/) and [Node.js](https://nodejs.org/)
 
 ```sh
 git clone --recursive https://github.com/dowdiness/canopy.git
@@ -49,74 +45,64 @@ cd canopy
 moon test
 ```
 
-If you already cloned without `--recursive`:
-
-```sh
-git submodule update --init --recursive
-```
-
-## Building for Web
+Run the projectional editor locally:
 
 ```sh
 moon build --target js
-cd examples/web
-npm install
-npm run dev
+cd examples/rabbita && npm install && npm run dev
 ```
 
-## Lambda Calculus Grammar
+Opens at `localhost:5173`.
 
-The example language is lambda calculus with arithmetic:
+## Project Overview
 
-```ebnf
-SourceFile   ::= (LetDef Newline)* Expression?
-LetDef       ::= 'let' Identifier '=' Expression
-Expression   ::= BinaryOp
-BinaryOp     ::= Application (('+' | '-') Application)*
-Application  ::= Atom+
-Atom         ::= Integer | Variable | Lambda | IfThenElse | '(' Expression ')'
-Lambda       ::= ('λ' | '\') Identifier '.' Expression
-IfThenElse   ::= 'if' Expression 'then' Expression 'else' Expression
-```
+Monorepo with reusable libraries extracted as git submodules:
 
-```
-λx.x            -- identity function
-(\f.\x.f x) 5   -- application
-1 + 2 - 3       -- arithmetic (left-associative)
-if x then 1 else 0
-let double = λx.x + x
-double 5
-```
+| Module | Description |
+|--------|-------------|
+| [event-graph-walker](event-graph-walker/) | CRDT library — eg-walker algorithm with FugueMax |
+| [loom](loom/) | Incremental parser framework with position-independent CST |
+| [editor](editor/) | Editor abstractions — SyncEditor, text/tree synchronization |
+| [projection](projection/) | Projectional editing — ProjNode, TreeEditorState |
 
-## Testing
+### Examples
 
-```sh
-moon test                                        # canopy module
-cd event-graph-walker && moon test && cd ..       # CRDT library
-cd loom/loom && moon test && cd ../..             # Parser framework
-cd loom/seam && moon test && cd ../..             # CST library
-cd loom/examples/lambda && moon test && cd ../..  # Lambda parser
-```
+| Example | Description |
+|---------|-------------|
+| [rabbita](examples/rabbita/) | Projectional editor with tree-first UI — the main demo |
+| [ideal](examples/ideal/) | Extended rabbita with inspector panel and benchmark suite |
+| [web](examples/web/) | Text-only CRDT editor with real-time syntax highlighting |
+| [demo-react](examples/demo-react/) | React 19 + Valtio demo with undo/redo and collaboration |
+| [prosemirror](examples/prosemirror/) | ProseMirror + CodeMirror integration example |
 
-## Performance
-
-```sh
-moon bench --release
-cd event-graph-walker && moon bench --release && cd ..
-cd loom/examples/lambda && moon bench --release && cd ../..
-```
-
-See [docs/performance/](docs/performance/) for detailed results.
+The [relay-server](examples/relay-server/) provides a Cloudflare Workers relay for peer-to-peer CRDT sync.
 
 ## Documentation
 
-- **[docs/](docs/)** — Full documentation index
-- **[docs/architecture/](docs/architecture/)** — Architecture docs (Incremental Hylomorphism, Anamorphism Discipline, Projectional Editing)
-- **[docs/development/](docs/development/)** — Development workflow and conventions
-- **[event-graph-walker/](event-graph-walker/README.md)** — Core CRDT library
-- **[loom/](loom/README.md)** — Incremental parser framework
+- [Architecture](docs/architecture/) — Incremental Hylomorphism, Anamorphism Discipline, Projectional Editing
+- [Development](docs/development/) — Workflow, conventions, testing
+- [Performance](docs/performance/) — Benchmarks and optimization notes
+
+## Contributing
+
+```sh
+# Run all tests
+moon test
+
+# Format and update interfaces
+moon info && moon fmt
+
+# Benchmarks (always use --release)
+moon bench --release
+```
+
+See [Development Guide](docs/development/) for the full workflow, including submodule management.
 
 ## References
 
-- [Eg-walker paper](https://arxiv.org/abs/2409.14252)
-- [MoonBit documentation](https://docs.moonbitlang.com)
+- [Eg-walker: CRDTs for Truly Concurrent Sequence Editing](https://arxiv.org/abs/2409.14252)
+- [MoonBit Language](https://www.moonbitlang.com/)
+
+## License
+
+[Apache-2.0](LICENSE)
