@@ -135,16 +135,16 @@ export class CanopyEditor extends HTMLElement {
               outline: "none",
             },
             ".cm-cursor": {
-              borderLeftColor: "var(--canopy-fg, #e8e8f0)",
+              borderLeftColor: "var(--canopy-fg, #e4e4f0)",
             },
             ".cm-gutters": {
               backgroundColor: "transparent",
-              color: "var(--canopy-muted, #5a5a7a)",
+              color: "var(--canopy-muted, #8888a8)",
               border: "none",
             },
             ".cm-activeLineGutter": {
               backgroundColor: "transparent",
-              color: "var(--canopy-fg, #e8e8f0)",
+              color: "var(--canopy-fg, #e4e4f0)",
             },
             ".cm-activeLine": {
               backgroundColor: "rgba(255,255,255,0.03)",
@@ -360,7 +360,7 @@ const SHADOW_STYLES = `
     word-wrap: break-word;
     white-space: pre-wrap;
     font-family: var(--canopy-font-mono, 'Iosevka', monospace);
-    font-size: 18px;
+    font-size: var(--text-code, 1.125rem);
     line-height: 1.6;
     outline: none;
     min-height: 200px;
