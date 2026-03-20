@@ -337,8 +337,8 @@ const SHADOW_STYLES = `
     width: 100%;
     height: 100%;
     font-family: var(--canopy-font-mono, 'Iosevka', monospace);
-    background: var(--canopy-bg, #1a1a2e);
-    color: var(--canopy-fg, #e8e8f0);
+    background: var(--canopy-bg, #161625);
+    color: var(--canopy-fg, #e4e4f0);
   }
   #editor-root {
     width: 100%;
@@ -353,7 +353,7 @@ const SHADOW_STYLES = `
     word-wrap: break-word;
     white-space: pre-wrap;
     font-family: var(--canopy-font-mono, 'Iosevka', monospace);
-    font-size: 14px;
+    font-size: 18px;
     line-height: 1.6;
     outline: none;
     min-height: 200px;
@@ -361,7 +361,7 @@ const SHADOW_STYLES = `
 
   /* Structure mode blocks */
   .structure-block {
-    border: 1px solid var(--canopy-border, #2a2a48);
+    border: 1px solid var(--canopy-border, #28283e);
     border-radius: 6px;
     margin: 4px 0;
     padding: 8px 12px;
@@ -378,7 +378,7 @@ const SHADOW_STYLES = `
     font-size: 0.6875rem;
   }
   .structure-badge {
-    font-size: 0.625rem;
+    font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -390,7 +390,7 @@ const SHADOW_STYLES = `
     font-family: var(--canopy-font-mono, monospace);
     font-size: 13px;
     font-weight: 600;
-    color: var(--canopy-fg, #e8e8f0);
+    color: var(--canopy-fg, #e4e4f0);
   }
   .structure-children {
     margin-left: 20px;
@@ -405,6 +405,6 @@ const SHADOW_STYLES = `
   .structure-value {
     font-family: var(--canopy-font-mono, monospace);
     font-size: 13px;
-    color: var(--canopy-fg, #e8e8f0);
+    color: var(--canopy-fg, #e4e4f0);
   }
 `;

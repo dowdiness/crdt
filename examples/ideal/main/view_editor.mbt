@@ -7,7 +7,6 @@ fn view_editor(
   _model : Model,
 ) -> @rabbita.Html {
   let attrs = @html.Attrs::build()
-    .class("editor-container")
     .id("canopy-editor")
   let trigger_attrs = @html.Attrs::build()
     .class("hidden-trigger")
