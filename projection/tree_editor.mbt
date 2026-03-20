@@ -269,34 +269,6 @@ fn count_projection_descendants(node : ProjNode) -> Int {
 }
 
 ///|
-/// Index the currently loaded interactive tree by node ID for reuse during refresh.
-fn build_loaded_node_index(
-  tree : InteractiveTreeNode?,
-) -> Map[NodeId, InteractiveTreeNode] {
-  let index : Map[NodeId, InteractiveTreeNode] = {}
-  match tree {
-    None => ()
-    Some(node) => index_loaded_nodes(index, node)
-  }
-  index
-}
-
-///|
-fn index_loaded_nodes(
-  index : Map[NodeId, InteractiveTreeNode],
-  node : InteractiveTreeNode,
-) -> Unit {
-  index[node.id] = node
-  match node.children {
-    Loaded(children) =>
-      for child in children {
-        index_loaded_nodes(index, child)
-      }
-    Elided(_) => ()
-  }
-}
-
-///|
 /// Build the shallow reuse stamp for an interactive node.
 fn interactive_node_stamp(node : InteractiveTreeNode) -> InteractiveNodeStamp {
   let child_ids : Array[NodeId] = []
@@ -961,9 +933,14 @@ fn apply_selection_edit(
   match state.tree {
     None => { ..state, selection, }
     Some(root) => {
-      let (updated, changed) = apply_selection_to_node(root, selection_set)
+      let (updated, changed, changed_nodes) = apply_selection_to_node(
+        root, selection_set,
+      )
       if changed {
-        let loaded_nodes = build_loaded_node_index(Some(updated))
+        let loaded_nodes = update_loaded_nodes_for_path(
+          state.loaded_nodes,
+          changed_nodes,
+        )
         { ..state, selection, tree: Some(updated), loaded_nodes }
       } else {
         { ..state, selection, }
@@ -976,35 +953,47 @@ fn apply_selection_edit(
 fn apply_selection_to_node(
   node : InteractiveTreeNode,
   selection : @immut/hashset.HashSet[NodeId],
-) -> (InteractiveTreeNode, Bool) {
+) -> (InteractiveTreeNode, Bool, Array[InteractiveTreeNode]) {
   let new_selected = selection.contains(node.id)
   match node.children {
     Loaded(existing_children) => {
       let updated_children : Array[InteractiveTreeNode] = []
+      let child_path : Array[InteractiveTreeNode] = []
       let mut any_child_changed = false
       for child in existing_children {
-        let (updated, changed) = apply_selection_to_node(child, selection)
+        let (updated, changed, changed_nodes) = apply_selection_to_node(
+          child, selection,
+        )
         updated_children.push(updated)
         if changed {
           any_child_changed = true
+          for cn in changed_nodes {
+            child_path.push(cn)
+          }
         }
       }
       if new_selected == node.selected && not(any_child_changed) {
-        (node, false)
+        (node, false, [])
       } else {
         let children = if any_child_changed {
           Loaded(updated_children)
         } else {
           node.children
         }
-        ({ ..node, selected: new_selected, children }, true)
+        let updated = { ..node, selected: new_selected, children }
+        let changed_path : Array[InteractiveTreeNode] = [updated]
+        for cn in child_path {
+          changed_path.push(cn)
+        }
+        (updated, true, changed_path)
       }
     }
     Elided(_) =>
       if new_selected == node.selected {
-        (node, false)
+        (node, false, [])
       } else {
-        ({ ..node, selected: new_selected }, true)
+        let updated = { ..node, selected: new_selected }
+        (updated, true, [updated])
       }
   }
 }
