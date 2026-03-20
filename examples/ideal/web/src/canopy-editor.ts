@@ -128,7 +128,7 @@ export class CanopyEditor extends HTMLElement {
             },
             ".cm-content": {
               caretColor: "var(--canopy-fg, #e4e4f0)",
-              padding: "8px 0",
+              padding: "16px",
               minHeight: "100%",
             },
             "&.cm-focused": {
@@ -350,7 +350,6 @@ const SHADOW_STYLES = `
     width: 100%;
     height: 100%;
     overflow: hidden;
-    padding: 16px;
     display: flex;
     flex-direction: column;
   }
