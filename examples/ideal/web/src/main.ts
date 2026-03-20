@@ -16,6 +16,7 @@ type StructuralEditDetail = {
 type CanopyGlobal = typeof globalThis & {
   __canopy_crdt?: CrdtModule;
   __canopy_crdt_handle?: number;
+  __canopy_agent_id?: string;
   __canopy_pending_node_selection?: string | null;
   __canopy_pending_structural_edit?: StructuralEditDetail | null;
 };
@@ -29,6 +30,9 @@ let beforeUnloadRegistered = false;
 
 function loadCrdtModule(): Promise<CrdtModule> {
   if (!crdtPromise) {
+    // Set agent ID globally BEFORE importing the MoonBit module.
+    // MoonBit's init_model reads this to create the CRDT editor with a unique agent.
+    canopyGlobal.__canopy_agent_id = getSessionAgentId();
     // Loading the MoonBit module also runs Rabbita's main(), which renders <canopy-editor>.
     crdtPromise = import('@moonbit/ideal-editor') as Promise<CrdtModule>;
   }
@@ -124,12 +128,13 @@ function mountWhenReady(crdt: CrdtModule) {
 }
 
 function doMount(el: CanopyEditor, crdt: CrdtModule) {
-  const handle = crdt.create_editor_with_undo(getSessionAgentId(), 500);
-  const text = 'let id = \\x.x\nlet apply = \\f.\\x.f x\napply id 42';
+  // Reuse the editor MoonBit already created in init_model (handle = 1).
+  // Don't call create_editor_with_undo again — that would overwrite the singleton.
+  const handle = 1;
   canopyGlobal.__canopy_crdt_handle = handle;
   canopyGlobal.__canopy_pending_node_selection = null;
   canopyGlobal.__canopy_pending_structural_edit = null;
-  crdt.set_text(handle, text);
+  // Text already set by MoonBit's init_model — don't overwrite.
   el.mount(handle, crdt);
   wireEditorEvents(el);
   startSync(el, handle, crdt);

@@ -9,8 +9,15 @@ let deferred_refresh_ms = 150
 
 ///|
 fn init_model() -> Model {
+  // Read agent ID set by JS (main.ts) before module import.
+  // Falls back to "local" if JS hasn't set it (e.g. test environment).
+  let agent_id = js_get_agent_id()
+  let agent_id = if agent_id == "" { "local" } else { agent_id }
+  // Create the editor through the crdt module so it sets the singleton (editor.val).
+  // JS (main.ts) will reuse handle=1 instead of creating a second editor.
+  let _handle = @crdt.create_editor_with_undo(agent_id, 500)
+  let editor = @crdt.get_sync_editor().unwrap()
   let init_text = "let id = \\x.x\nlet apply = \\f.\\x.f x\napply id 42"
-  let editor = @editor.SyncEditor::new("local")
   editor.set_text(init_text)
   let outline_state = @proj.TreeEditorState::from_projection(
     editor.get_proj_node(),
@@ -267,11 +274,8 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         _ => (none, model)
       }
     RefreshProjection => {
-      // Sync text from JS-side CRDT editor before refreshing
-      let js_text = js_get_editor_text()
-      if js_text != model.editor.get_text() {
-        model.editor.set_text(js_text)
-      }
+      // model.editor IS the crdt singleton — already has latest text.
+      // Just rebuild the outline from the current projection.
       if model.projection_dirty {
         (none, refresh(model))
       } else {
@@ -299,10 +303,12 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       (cmd, { ..model, selected_node: Some(node_id) })
     }
     TextChangedFromEditor => {
-      // Pull text from JS-side CRDT editor into MoonBit's SyncEditor
-      let js_text = js_get_editor_text()
-      if js_text != model.editor.get_text() {
-        model.editor.set_text(js_text)
+      // model.editor IS the crdt singleton — text is already updated by CM6.
+      // Just mark projection dirty and schedule a deferred refresh.
+      if model.projection_dirty && model.refresh_scheduled {
+        // Already scheduled — no-op
+        (none, model)
+      } else {
         let updated = { ..model, projection_dirty: true }
         if model.refresh_scheduled {
           (none, updated)
