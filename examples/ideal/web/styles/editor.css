@@ -66,6 +66,12 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
+
+  /* ── Motion ────────────────────────────────────────────── */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -117,6 +123,12 @@ button:focus-visible, .action-btn:focus-visible,
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  animation: fade-in var(--duration-slow) var(--ease-out-quart);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ── Toolbar ────────────────────────────────────────────── */
@@ -152,7 +164,8 @@ button:focus-visible, .action-btn:focus-visible,
   cursor: pointer;
   background: transparent;
   color: var(--canopy-text-dim);
-  transition: background 0.15s ease-out, color 0.15s ease-out;
+  transition: background var(--duration-fast) var(--ease-out-quart),
+              color var(--duration-fast) var(--ease-out-quart);
   min-height: 32px;
 }
 
@@ -189,6 +202,12 @@ button:focus-visible, .action-btn:focus-visible,
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  animation: slide-in-left var(--duration-normal) var(--ease-out-quart);
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .panel-header {
@@ -232,7 +251,7 @@ button:focus-visible, .action-btn:focus-visible,
   font-size: var(--text-small);
   color: var(--canopy-text-secondary);
   line-height: var(--leading-tight);
-  transition: background 0.1s ease-out;
+  transition: background var(--duration-fast) ease-out;
 }
 
 .tree-row:hover {
@@ -390,6 +409,12 @@ canopy-editor {
   border-left: 1px solid var(--canopy-border);
   overflow-y: auto;
   flex-shrink: 0;
+  animation: slide-in-right var(--duration-normal) var(--ease-out-quart);
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .inspector-section {
@@ -452,7 +477,9 @@ canopy-editor {
   color: var(--canopy-text-secondary);
   cursor: pointer;
   text-align: left;
-  transition: background 0.15s ease-out, border-color 0.15s ease-out, color 0.15s ease-out;
+  transition: background var(--duration-fast) var(--ease-out-quart),
+              border-color var(--duration-fast) var(--ease-out-quart),
+              color var(--duration-fast) var(--ease-out-quart);
 }
 
 .action-btn:hover {
@@ -478,6 +505,12 @@ canopy-editor {
   border-top: 1px solid var(--canopy-border);
   max-height: 200px;
   flex-shrink: 0;
+  animation: slide-in-up var(--duration-normal) var(--ease-out-quart);
+}
+
+@keyframes slide-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .bottom-tabs {
