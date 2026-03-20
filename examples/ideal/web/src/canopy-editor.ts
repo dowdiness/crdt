@@ -1,8 +1,23 @@
 import { EditorView as CmView, keymap as cmKeymap } from "@codemirror/view";
 import { EditorState as CmState } from "@codemirror/state";
 import { defaultKeymap } from "@codemirror/commands";
+import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
+import { tags as t } from "@lezer/highlight";
+import { lambda } from "./lang/lambda-language";
 import { CanopyEvents } from "./events";
 import type { CrdtModule } from './types';
+
+/** Syntax highlighting colors matching the Canopy design tokens */
+const lambdaHighlightStyle = HighlightStyle.define([
+  { tag: t.keyword, color: "#c792ea" },                        // --canopy-keyword
+  { tag: t.definition(t.variableName), color: "#e4e4f0", fontWeight: "600" }, // definition name (bold fg)
+  { tag: t.variableName, color: "#82aaff" },                   // --canopy-identifier
+  { tag: t.number, color: "#f78c6c" },                         // --canopy-number
+  { tag: t.arithmeticOperator, color: "#ff5370" },             // --canopy-operator
+  { tag: t.definitionOperator, color: "#787896" },             // --canopy-text-dim (=)
+  { tag: t.paren, color: "#787896" },                          // --canopy-text-dim
+  { tag: t.punctuation, color: "#787896" },                    // --canopy-text-dim (.)
+]);
 
 type StructureModeSession = {
   applyRemote(syncJson: string): void;
@@ -187,6 +202,8 @@ export class CanopyEditor extends HTMLElement {
             ...defaultKeymap,
           ]),
           CmView.lineWrapping,
+          lambda(),
+          syntaxHighlighting(lambdaHighlightStyle),
           // Forward text changes to CRDT
           CmView.updateListener.of(update => {
             if (this.updating || !update.docChanged || !this.crdt || this.crdtHandle === null) return;
