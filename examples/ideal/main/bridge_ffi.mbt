@@ -1,4 +1,12 @@
 ///|
+/// Read the agent ID set by JS before module import.
+extern "js" fn js_get_agent_id() -> String =
+  #| function() {
+  #|   var id = globalThis.__canopy_agent_id;
+  #|   return typeof id === 'string' ? id : '';
+  #| }
+
+///|
 /// Sync MoonBit editor text to the JS-side CRDT editor, then reconcile PM.
 /// Called after undo/redo/load-example to keep the two editors in sync.
 extern "js" fn js_reconcile_editor_with_text(new_text : String) -> Unit =
@@ -66,17 +74,6 @@ extern "js" fn js_take_structural_edit_node_id() -> String =
   #|   globalThis.__canopy_pending_structural_edit = null;
   #|   if (!pending) return '';
   #|   return typeof pending.nodeId === 'string' ? pending.nodeId : '';
-  #| }
-
-///|
-/// Get the current text from the JS-side CRDT editor.
-/// Used to sync CM6 edits back to MoonBit's SyncEditor.
-extern "js" fn js_get_editor_text() -> String =
-  #| function() {
-  #|   var crdt = globalThis.__canopy_crdt;
-  #|   var handle = globalThis.__canopy_crdt_handle;
-  #|   if (!crdt || handle == null) return '';
-  #|   return crdt.get_text(handle);
   #| }
 
 ///|
