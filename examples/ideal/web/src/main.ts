@@ -17,7 +17,7 @@ function mountWhenReady() {
   const el = document.querySelector('canopy-editor') as CanopyEditor | null;
   if (el) {
     const handle = crdt.create_editor_with_undo('local', 500);
-    const text = 'let id = \\x.x in let apply = \\f.\\x.f x in apply id 42';
+    const text = 'let id = \\x.x\nlet apply = \\f.\\x.f x\napply id 42';
     crdt.set_text(handle, text);
     el.mount(handle, crdt);
     return;
@@ -28,7 +28,7 @@ function mountWhenReady() {
     if (found) {
       obs.disconnect();
       const handle = crdt.create_editor_with_undo('local', 500);
-      const text = 'let id = \\x.x in let apply = \\f.\\x.f x in apply id 42';
+      const text = 'let id = \\x.x\nlet apply = \\f.\\x.f x\napply id 42';
       crdt.set_text(handle, text);
       found.mount(handle, crdt);
     }

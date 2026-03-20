@@ -13,7 +13,7 @@ let _deferred_refresh_ms = 16
 
 ///|
 fn init_model() -> Model {
-  let init_text = "let id = \\x.x in let apply = \\f.\\x.f x in apply id 42"
+  let init_text = "let id = \\x.x\nlet apply = \\f.\\x.f x\napply id 42"
   let editor = @editor.SyncEditor::new("local")
   editor.set_text(init_text)
   let outline_state = @proj.TreeEditorState::from_projection(
@@ -50,11 +50,11 @@ fn refresh(model : Model) -> Model {
 
 ///|
 let examples : Array[(String, String)] = [
-  ("Identity", "let id = \\x.x in id 42"),
-  ("Church 2", "let two = \\f.\\x.f (f x) in two"),
-  ("Add", "let add = \\x.\\y.x + y in add 1 2"),
+  ("Identity", "let id = \\x.x\nid 42"),
+  ("Church 2", "let two = \\f.\\x.f (f x)\ntwo"),
+  ("Add", "let add = \\x.\\y.x + y\nadd 1 2"),
   ("Conditional", "if 1 > 0 then 42 else 0"),
-  ("Apply", "let apply = \\f.\\x.f x in apply (\\x.x + 1) 5"),
+  ("Apply", "let apply = \\f.\\x.f x\napply (\\x.x + 1) 5"),
 ]
 
 ///|
