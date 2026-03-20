@@ -46,3 +46,18 @@ extern "js" fn js_get_editor_text() -> String =
   #|   if (!crdt) return '';
   #|   return crdt.get_text(1);
   #| }
+
+///|
+/// Wire the text-changed event from <canopy-editor> to click a hidden button.
+/// The hidden button has Rabbita's on_click=dispatch(TextChangedFromEditor),
+/// so clicking it triggers the Rabbita update loop properly.
+extern "js" fn js_wire_text_changed_to_button() -> Unit =
+  #| function() {
+  #|   var el = document.querySelector('canopy-editor');
+  #|   if (!el || el.__canopy_events_wired) return;
+  #|   el.__canopy_events_wired = true;
+  #|   el.addEventListener('text-changed', function() {
+  #|     var btn = document.getElementById('canopy-text-sync-trigger');
+  #|     if (btn) btn.click();
+  #|   });
+  #| }

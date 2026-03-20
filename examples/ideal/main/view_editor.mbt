@@ -4,30 +4,23 @@ using @html {node}
 ///|
 fn view_editor(
   dispatch : @rabbita.Dispatch[Msg],
-  model : Model,
+  _model : Model,
 ) -> @rabbita.Html {
-  let mode_str = match model.mode {
-    Text => "text"
-    Structure => "structure"
-  }
+  // Setup: wire the text-changed event to click a hidden button.
+  // This works around Rabbita's handler API not exposing Scheduler.add().
+  js_wire_text_changed_to_button()
   let attrs = @html.Attrs::build()
     .class("editor-container")
     .id("canopy-editor")
-    .data_set("mode", mode_str)
-    .handler("node-selected", fn(event, _scheduler) {
-      match event.to_custom_event() {
-        Some(ce) => {
-          let detail = ce.get_detail()
-          let node_id : String = detail.get_with_string("nodeId")
-          ignore(dispatch(NodeSelected(node_id)))
-        }
-        None => ()
-      }
-    })
-    .handler("request-undo", fn(_event, _scheduler) { ignore(dispatch(Undo)) })
-    .handler("request-redo", fn(_event, _scheduler) { ignore(dispatch(Redo)) })
-    .handler("text-changed", fn(_event, _scheduler) {
-      ignore(dispatch(TextChangedFromEditor))
-    })
-  node("canopy-editor", attrs, [@html.text("")])
+  div(class="editor-wrapper", [
+    node("canopy-editor", attrs, [@html.text("")]),
+    // Hidden button that JS clicks when text-changed fires.
+    // This triggers the Rabbita update loop via on_click.
+    button(
+      id="canopy-text-sync-trigger",
+      class="hidden-trigger",
+      on_click=dispatch(TextChangedFromEditor),
+      [@html.text("")],
+    ),
+  ])
 }
