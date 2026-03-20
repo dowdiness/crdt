@@ -19,6 +19,11 @@ pub fn set_text(handle : Int, text : String) -> Unit {
 }
 
 ///|
+pub fn set_text_and_record(handle : Int, text : String, timestamp_ms : Int) -> Unit {
+  @crdt.set_text_and_record(handle, text, timestamp_ms)
+}
+
+///|
 pub fn get_proj_node_json(handle : Int) -> String {
   @crdt.get_proj_node_json(handle)
 }

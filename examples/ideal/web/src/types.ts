@@ -35,6 +35,7 @@ export interface CrdtModule {
   create_editor_with_undo(agentId: string, timeoutMs: number): number;
   get_text(handle: number): string;
   set_text(handle: number, text: string): void;
+  set_text_and_record?(handle: number, text: string, timestampMs: number): void;
   get_proj_node_json(handle: number): string;
   get_source_map_json(handle: number): string;
   get_errors_json(handle: number): string;

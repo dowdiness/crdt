@@ -16,6 +16,7 @@ options(
         "create_editor_with_undo",
         "get_text",
         "set_text",
+        "set_text_and_record",
         "get_proj_node_json",
         "get_source_map_json",
         "get_errors_json",

@@ -161,7 +161,12 @@ export class CanopyEditor extends HTMLElement {
             if (this.updating || !update.docChanged || !this.crdt || this.crdtHandle === null) return;
             // Get old and new text, compute diff, apply to CRDT
             const newText = update.state.doc.toString();
-            this.crdt.set_text(this.crdtHandle, newText);
+            // Use set_text_and_record so changes go into undo stack
+            if (this.crdt.set_text_and_record) {
+              this.crdt.set_text_and_record(this.crdtHandle, newText, Date.now());
+            } else {
+              this.crdt.set_text(this.crdtHandle, newText);
+            }
             // Notify Rabbita
             this.dispatchEvent(new CustomEvent('text-changed', {
               bubbles: true, composed: true,
