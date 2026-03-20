@@ -3,6 +3,7 @@ import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection } f
 import { EditorState, type ChangeSet } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { bracketMatching } from "@codemirror/language";
+import { connectWebSocket } from "./ws-glue";
 
 // --- CRDT setup ---
 const handle = crdt.create_editor_with_undo("cm-agent", 300);
@@ -10,6 +11,7 @@ crdt.set_text(handle, "let double = λx.x + x\ndouble 5");
 
 // --- Editor state ---
 let updating = false; // guard against feedback loops
+let broadcastEdit: (() => void) | null = null; // set after WebSocket connects
 
 // --- CodeMirror 6 editor ---
 const cmState = EditorState.create({
@@ -61,6 +63,8 @@ function applyCmChangesToCrdt(changes: ChangeSet): void {
   });
 
   updateDebug();
+  // Broadcast to peers after local edits
+  if (broadcastEdit) broadcastEdit();
 }
 
 /**
@@ -98,6 +102,11 @@ function updateDebug(): void {
 
 // Initial debug render
 updateDebug();
+
+// --- WebSocket sync (binary protocol, MoonBit-driven) ---
+const WS_URL = "ws://localhost:8787?room=main&peer_id=" + encodeURIComponent("cm-agent-" + Math.random().toString(36).slice(2, 8));
+const sync = connectWebSocket(handle, crdt as any, WS_URL, syncCrdtToCm);
+broadcastEdit = sync.broadcastEdit;
 
 // --- Undo/Redo via CRDT (not CM6 history) ---
 // Override Ctrl-Z / Ctrl-Shift-Z to use CRDT undo

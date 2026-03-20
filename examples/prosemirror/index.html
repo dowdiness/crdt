@@ -9,6 +9,10 @@
     .subtitle { color: #666; margin-bottom: 16px; font-size: 0.9em; }
     #editor { border: 1px solid #ccc; border-radius: 4px; }
     #editor .cm-editor { min-height: 200px; }
+    .status { padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 8px; }
+    .status.connected { background: #e6ffe6; color: #060; }
+    .status.disconnected { background: #fff3e0; color: #930; }
+    .status.error { background: #ffe6e6; color: #c00; }
     #debug {
       margin-top: 16px; padding: 12px; background: #f8f8f8;
       border: 1px solid #eee; border-radius: 4px;
@@ -20,6 +24,7 @@
 <body>
   <h1>Canopy</h1>
   <p class="subtitle">Lambda calculus editor with CRDT collaboration</p>
+  <div id="status" class="status disconnected">Disconnected</div>
   <div id="editor"></div>
   <div id="debug"></div>
   <script type="module" src="/src/main.ts"></script>

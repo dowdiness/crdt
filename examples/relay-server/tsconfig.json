@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "types": ["@cloudflare/workers-types"],
+    "paths": {
+      "@moonbit/canopy": ["../../_build/js/release/build/canopy.d.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}
