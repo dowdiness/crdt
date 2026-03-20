@@ -82,3 +82,13 @@ pub fn undo_manager_undo(handle : Int) -> Bool {
 pub fn undo_manager_redo(handle : Int) -> Bool {
   @crdt.undo_manager_redo(handle)
 }
+
+///|
+pub fn undo_manager_can_undo(handle : Int) -> Bool {
+  @crdt.undo_manager_can_undo(handle)
+}
+
+///|
+pub fn undo_manager_can_redo(handle : Int) -> Bool {
+  @crdt.undo_manager_can_redo(handle)
+}

@@ -29,6 +29,8 @@ options(
         "apply_tree_edit_json",
         "undo_manager_undo",
         "undo_manager_redo",
+        "undo_manager_can_undo",
+        "undo_manager_can_redo",
       ]
     }
   },

@@ -53,8 +53,8 @@ extern "js" fn js_undo_and_sync() -> Unit =
   #| function() {
   #|   var crdt = globalThis.__canopy_crdt;
   #|   if (!crdt) return;
-  #|   var ok = crdt.undo_manager_undo(1);
-  #|   if (!ok) return;
+  #|   if (!crdt.undo_manager_can_undo(1)) return;
+  #|   crdt.undo_manager_undo(1);
   #|   var el = document.querySelector('canopy-editor');
   #|   if (el) el.projNode = '';
   #|   var btn = document.getElementById('canopy-text-sync-trigger');
@@ -67,8 +67,8 @@ extern "js" fn js_redo_and_sync() -> Unit =
   #| function() {
   #|   var crdt = globalThis.__canopy_crdt;
   #|   if (!crdt) return;
-  #|   var ok = crdt.undo_manager_redo(1);
-  #|   if (!ok) return;
+  #|   if (!crdt.undo_manager_can_redo(1)) return;
+  #|   crdt.undo_manager_redo(1);
   #|   var el = document.querySelector('canopy-editor');
   #|   if (el) el.projNode = '';
   #|   var btn = document.getElementById('canopy-text-sync-trigger');
