@@ -40,7 +40,7 @@ fn view_problems(model : Model) -> Html {
 }
 
 ///|
-fn view_bottom(dispatch : Dispatch[Msg], model : Model) -> Html {
+fn view_bottom_content(dispatch : Dispatch[Msg], model : Model) -> Html {
   let content : Html = match model.bottom_tab {
     Problems => view_problems(model)
     OpLog =>
@@ -75,5 +75,5 @@ fn view_bottom(dispatch : Dispatch[Msg], model : Model) -> Html {
         ]),
       ])
   }
-  @html.div(class="bottom-panel", [view_bottom_tabs(dispatch, model), content])
+  @html.fragment([view_bottom_tabs(dispatch, model), content])
 }

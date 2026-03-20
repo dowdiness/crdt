@@ -103,8 +103,8 @@ fn view_crdt_info(model : Model) -> Html {
 }
 
 ///|
-/// Render the full inspector panel.
-fn view_inspector(dispatch : Dispatch[Msg], model : Model) -> Html {
+/// Render inspector content (without wrapper — wrapper is in view()).
+fn view_inspector_content(dispatch : Dispatch[Msg], model : Model) -> Html {
   let node_section : Html = match model.selected_node {
     Some(sel_id) => {
       let found = match model.outline_state.tree {
@@ -125,16 +125,9 @@ fn view_inspector(dispatch : Dispatch[Msg], model : Model) -> Html {
         p(class="empty-state-text", "Click a node in the outline or editor to inspect it"),
       ])
   }
-  let aside_attrs = @html.Attrs::build()
-    .role("complementary")
-    .aria_label("Node inspector")
-  div(
-    class="inspector-panel",
-    attrs=aside_attrs,
-    [
-      div(class="panel-header", [span(class="panel-label", [text("INSPECTOR")])]),
-      node_section,
-      view_crdt_info(model),
-    ],
-  )
+  @html.fragment([
+    div(class="panel-header", [span(class="panel-label", [text("INSPECTOR")])]),
+    node_section,
+    view_crdt_info(model),
+  ])
 }

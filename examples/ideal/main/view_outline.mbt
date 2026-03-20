@@ -90,28 +90,13 @@ fn view_outline_node(
 }
 
 ///|
-/// Render the full outline panel with tree navigation and peer list.
-fn view_outline(dispatch : Dispatch[Msg], model : Model) -> Html {
-  let tree_body = match model.outline_state.tree {
+/// Render outline tree content (without wrapper — wrapper is in view()).
+fn view_outline_content(dispatch : Dispatch[Msg], model : Model) -> Html {
+  match model.outline_state.tree {
     Some(root) =>
       div(class="tree-rows", [
         view_outline_node(dispatch, root, 0, model.selected_node),
       ])
-    None => p(class="no-tree-note", "No AST available")
+    None => @html.p(class="no-tree-note", "No AST available")
   }
-  let nav_attrs = @html.Attrs::build()
-    .role("navigation")
-    .aria_label("AST outline")
-  div(
-    class="outline-panel",
-    attrs=nav_attrs,
-    [
-      div(class="panel-header", [span(class="panel-label", [text("OUTLINE")])]),
-      tree_body,
-      div(class="panel-section", [
-        span(class="panel-label", [text("PEERS")]),
-        div(class="peer-item", [text("Alice (you)")]),
-      ]),
-    ],
-  )
 }

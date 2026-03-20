@@ -202,12 +202,9 @@ button:focus-visible, .action-btn:focus-visible,
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  animation: slide-in-left var(--duration-normal) var(--ease-out-quart);
-}
-
-@keyframes slide-in-left {
-  from { opacity: 0; transform: translateX(-16px); }
-  to { opacity: 1; transform: translateX(0); }
+  transition: opacity var(--duration-normal) var(--ease-out-quart),
+              transform var(--duration-normal) var(--ease-out-quart),
+              width var(--duration-normal) var(--ease-out-quart);
 }
 
 .panel-header {
@@ -409,12 +406,9 @@ canopy-editor {
   border-left: 1px solid var(--canopy-border);
   overflow-y: auto;
   flex-shrink: 0;
-  animation: slide-in-right var(--duration-normal) var(--ease-out-quart);
-}
-
-@keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(16px); }
-  to { opacity: 1; transform: translateX(0); }
+  transition: opacity var(--duration-normal) var(--ease-out-quart),
+              transform var(--duration-normal) var(--ease-out-quart),
+              width var(--duration-normal) var(--ease-out-quart);
 }
 
 .inspector-section {
@@ -505,12 +499,9 @@ canopy-editor {
   border-top: 1px solid var(--canopy-border);
   max-height: 200px;
   flex-shrink: 0;
-  animation: slide-in-up var(--duration-normal) var(--ease-out-quart);
-}
-
-@keyframes slide-in-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  transition: opacity var(--duration-normal) var(--ease-out-quart),
+              transform var(--duration-normal) var(--ease-out-quart),
+              max-height var(--duration-normal) var(--ease-out-quart);
 }
 
 .bottom-tabs {
@@ -565,6 +556,44 @@ canopy-editor {
   font-family: var(--canopy-font-mono);
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Panel visibility transitions ───────────────────────── */
+
+.panel-visible {
+  opacity: 1;
+  transform: translateX(0) translateY(0);
+  pointer-events: auto;
+}
+
+.outline-panel.panel-hidden {
+  opacity: 0;
+  transform: translateX(-16px);
+  pointer-events: none;
+  width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: none;
+}
+
+.inspector-panel.panel-hidden {
+  opacity: 0;
+  transform: translateX(16px);
+  pointer-events: none;
+  width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: none;
+}
+
+.bottom-panel.panel-hidden {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  max-height: 0;
+  overflow: hidden;
+  padding: 0;
+  border: none;
 }
 
 /* ── Responsive ─────────────────────────────────────────── */

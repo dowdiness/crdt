@@ -277,26 +277,48 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
 
 ///|
 fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
+  // Always render panels — toggle visibility via CSS class
+  // so CSS transitions work for both enter and exit.
+  let outline_class = if model.workspace.outline_visible {
+    "outline-panel panel-visible"
+  } else {
+    "outline-panel panel-hidden"
+  }
+  let inspector_class = if model.workspace.inspector_visible {
+    "inspector-panel panel-visible"
+  } else {
+    "inspector-panel panel-hidden"
+  }
+  let bottom_class = if model.workspace.bottom_visible {
+    "bottom-panel panel-visible"
+  } else {
+    "bottom-panel panel-hidden"
+  }
+  let outline_attrs = @html.Attrs::build()
+    .role("navigation")
+    .aria_label("AST outline")
+  let inspector_attrs = @html.Attrs::build()
+    .role("complementary")
+    .aria_label("Node inspector")
   div(class="app-shell", [
     view_toolbar(dispatch, model),
     div(class="workspace", [
-      if model.workspace.outline_visible {
-        view_outline(dispatch, model)
-      } else {
-        @html.nothing
-      },
+      div(class=outline_class, attrs=outline_attrs, [
+        div(class="panel-header", [span(class="panel-label", [text("OUTLINE")])]),
+        view_outline_content(dispatch, model),
+        div(class="panel-section", [
+          span(class="panel-label", [text("PEERS")]),
+          div(class="peer-item", [text("Alice (you)")]),
+        ]),
+      ]),
       view_editor(dispatch, model),
-      if model.workspace.inspector_visible {
-        view_inspector(dispatch, model)
-      } else {
-        @html.nothing
-      },
+      div(class=inspector_class, attrs=inspector_attrs, [
+        view_inspector_content(dispatch, model),
+      ]),
     ]),
-    if model.workspace.bottom_visible {
-      view_bottom(dispatch, model)
-    } else {
-      @html.nothing
-    },
+    div(class=bottom_class, [
+      view_bottom_content(dispatch, model),
+    ]),
   ])
 }
 
