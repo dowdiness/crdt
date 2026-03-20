@@ -23,8 +23,8 @@ The structural indexes (pass 2) are only consumed by rare tree operations (Delet
 |-------|-----------|-------------|
 | `loaded_nodes` | `get_loaded_node`, `apply_edit`, `hydrate_subtree`, stamp comparison in next refresh | Always |
 | `preorder_ids` + `preorder_range_by_root` | `collect_subtree_ids` (Delete, hydrate), `collect_nodes_in_range` (SelectRange) | Tree operations only |
-| `parent_by_child` | `is_descendant_of` (DragOver, Drop), `hydrate_subtree` | Drag-and-drop only |
-| `valid_ids` | Stale UI pruning | Never needed — stale entries are harmless |
+| `parent_by_child` | `is_descendant_of` (DragOver, Drop), `hydrate_subtree` (Expand) | Tree operations (drag-and-drop + expand) |
+| `valid_ids` | Stale UI pruning of `selection`, `editing_node`, `dragging`, `drop_target` | Refresh only — can be derived from `loaded_nodes.keys()` instead of separate array |
 
 ---
 
@@ -35,7 +35,7 @@ The structural indexes (pass 2) are only consumed by rare tree operations (Delet
 1. **Don't compute what you don't need.** Structural indexes are irrelevant during typing.
 2. **Maintain, don't rebuild.** `loaded_nodes` should be carried across refreshes, not thrown away and rebuilt.
 3. **Use the tree as the index.** The `InteractiveTreeNode` tree encodes parent-child relationships. Don't duplicate them eagerly.
-4. **Stale is harmless, let it leak.** A stale `NodeId` in `collapsed_nodes` or `selection` costs a few bytes and never causes incorrect behavior — all access goes through `loaded_nodes.get(id)` which returns `None`.
+4. **Prune selectively.** Stale entries in `collapsed_nodes` (immutable HashSet, used only for `contains` checks) are harmless. But `selection` (Array, iterable/countable), `editing_node`, `dragging`, and `drop_target` (all `NodeId?`) must be pruned to avoid inflated counts or stranded UI state. Derive valid IDs from `loaded_nodes.keys()` instead of building a separate `valid_ids` array.
 
 ### Architecture
 
@@ -45,8 +45,10 @@ Split indexes into two categories:
 - `loaded_nodes: Map[NodeId, InteractiveTreeNode]` — carried across refreshes, never rebuilt from scratch.
 
 **Lazy (built on first access, invalidated on tree change):**
-- `lazy_parent_map: Ref[Map[NodeId, NodeId]?]` — built when `is_descendant_of` is first called.
-- `lazy_preorder: Ref[LazyPreorder?]` — built when `collect_subtree_ids` or `collect_nodes_in_range` is first called.
+- `cached_parent_map: Map[NodeId, NodeId]?` — built when `is_descendant_of` is first called.
+- `cached_preorder: LazyPreorder?` — built when `collect_subtree_ids` or `collect_nodes_in_range` is first called.
+
+These are plain `Option` fields, **not `Ref`**. `TreeEditorState` is used as an immutable value type — every operation returns a new struct via `{ ..self, ... }`. Using `Ref` would cause old and new state snapshots to share the same mutable cache, silently corrupting cached values when old states are accessed (e.g., for undo, comparison, or React concurrent mode). With plain `Option`, each state snapshot owns its own cache independently.
 
 ```
 TreeEditorState {
@@ -56,9 +58,9 @@ TreeEditorState {
   // UI state (unchanged)
   selection, collapsed_nodes, editing_node, ...
 
-  // Lazy structural indexes
-  priv lazy_parent_map: Ref[Map[NodeId, NodeId]?]
-  priv lazy_preorder: Ref[LazyPreorder?]
+  // Lazy structural indexes (plain Option, not Ref)
+  priv cached_parent_map: Map[NodeId, NodeId]?
+  priv cached_preorder: LazyPreorder?
 }
 
 struct LazyPreorder {
@@ -67,9 +69,11 @@ struct LazyPreorder {
 }
 ```
 
-**Invalidation rule:** Any operation that changes `tree` sets both lazy refs to `None`. Operations that only change UI state on existing nodes (Select, Collapse, Expand) don't invalidate — the structural shape hasn't changed.
+**Invalidation rule:** Any operation that changes `tree` sets both cached fields to `None` in the returned struct. Operations that only change UI state on existing nodes (Select, Collapse, Expand) carry over the cached values — the structural shape hasn't changed.
 
-**Stale UI pruning:** Eliminated entirely. Stale entries in `collapsed_nodes` or `selection` reference node IDs that don't exist in `loaded_nodes`, so they're silently ignored on access.
+**Stale UI pruning:** Eliminated for `collapsed_nodes` (immutable HashSet, stale entries are harmless). Retained for `selection`, `editing_node`, `dragging`, `drop_target`, and `drop_position` — these are observable (iterable/countable) and stale entries would cause inflated counts or stranded UI state. The pruning uses `loaded_nodes.get(id)` checks instead of building a separate `valid_ids` HashSet, avoiding the O(n) array-to-HashSet conversion.
+
+**Lazy getter pattern:** Since `TreeEditorState` is an immutable value type, getters that populate lazy caches must return a new state alongside the result. Callers that need structural indexes call the getter and use the returned (potentially updated) state going forward. Alternatively, the lazy computation can be done eagerly at the call site (e.g., `build_parent_map_from_tree` called inline in `is_descendant_of`) if the result doesn't need to be cached across calls — for one-off operations like a single drag validation, this is simpler.
 
 ---
 
@@ -83,10 +87,10 @@ struct LazyPreorder {
 3. `valid_ids` → HashSet — O(n)
 4. Stale UI pruning — O(n)
 
-**New (1 O(n) pass):**
-1. Walk new ProjNode tree, stamp-compare against `self.loaded_nodes` directly, build new `InteractiveTreeNode` tree + new `loaded_nodes`. No structural indexes, no `valid_ids`.
-2. Set `lazy_parent_map = None`, `lazy_preorder = None`.
-3. Return new state.
+**New (1 O(n) pass + lightweight pruning):**
+1. Walk new ProjNode tree, stamp-compare against `self.loaded_nodes` directly, build new `InteractiveTreeNode` tree + new `loaded_nodes`. No structural indexes, no `valid_ids` array.
+2. Prune `selection`, `editing_node`, `dragging`, `drop_target`, `drop_position` using `new_loaded_nodes.get(id)` checks — O(selection_size + constant), not O(n).
+3. Return new state with `cached_parent_map = None`, `cached_preorder = None`.
 
 ### Simplified `refresh_node_with_reuse_impl`
 
@@ -106,41 +110,39 @@ For collapsed subtrees, `record_projection_subtree` simplifies to just counting 
 
 ### Lazy Index Access
 
+Since `TreeEditorState` is an immutable value type, lazy caches cannot be mutated in place. Two strategies, used depending on context:
+
+**Strategy A: Compute inline (for one-off operations).** Call `build_parent_map_from_tree(self.tree)` or `build_preorder_from_tree(self.tree)` directly at the call site. Simple, no caching overhead. Best for operations that happen once per user interaction (e.g., a single drag validation).
+
+**Strategy B: Cache and return updated state (for repeated access).** Return `(result, updated_state)` from the getter. The caller uses the updated state going forward. Best when multiple operations in the same handler need the same index.
+
 ```moonbit
-fn TreeEditorState::get_parent_map(self) -> Map[NodeId, NodeId] {
-  match self.lazy_parent_map.val {
-    Some(map) => map
+fn TreeEditorState::ensure_parent_map(self) -> (Map[NodeId, NodeId], TreeEditorState) {
+  match self.cached_parent_map {
+    Some(map) => (map, self)
     None => {
       let map = build_parent_map_from_tree(self.tree)
-      self.lazy_parent_map.val = Some(map)
-      map
-    }
-  }
-}
-
-fn TreeEditorState::get_preorder(self) -> LazyPreorder {
-  match self.lazy_preorder.val {
-    Some(idx) => idx
-    None => {
-      let idx = build_preorder_from_tree(self.tree)
-      self.lazy_preorder.val = Some(idx)
-      idx
+      (map, { ..self, cached_parent_map: Some(map) })
     }
   }
 }
 ```
 
-Consumers change from direct field access to getter calls:
-- `collect_subtree_ids` → uses `self.get_preorder()`
-- `is_descendant_of` → uses `self.get_parent_map()`
-- `collect_nodes_in_range` → uses `self.get_preorder()`
-- `hydrate_subtree` → uses `self.get_parent_map()`
+In practice, most consumers are internal functions called once per user action, so Strategy A (inline computation) is simpler and sufficient. Strategy B is available for hot paths if profiling shows repeated index construction.
+
+Consumers change from direct field access to function calls:
+- `collect_subtree_ids` → calls `build_preorder_from_tree` or `self.ensure_preorder()`
+- `is_descendant_of` → calls `build_parent_map_from_tree` or `self.ensure_parent_map()`
+- `collect_nodes_in_range` → calls `build_preorder_from_tree` or `self.ensure_preorder()`
+- `hydrate_subtree` → calls `build_parent_map_from_tree` for parent lookup
 
 ### `apply_selection_edit` Fix
 
 Current: `build_loaded_node_index(Some(updated))` — full O(n) rebuild after selection change.
 
-New: Patch only the changed nodes. `apply_selection_to_node` already returns a changed flag. Walk only the changed path and update those entries in `loaded_nodes`.
+New: Patch only the changed nodes. `apply_selection_to_node` currently returns `(InteractiveTreeNode, Bool)` — it needs to be extended to also return a changed-path array (like `update_node_collapsed` already does). Then use `update_loaded_nodes_for_path` (which already exists) instead of `build_loaded_node_index`.
+
+This requires modifying `apply_selection_to_node` to return `(InteractiveTreeNode, Bool, Array[InteractiveTreeNode])` — matching the pattern already used by `update_node_collapsed` and `replace_loaded_subtree_node`.
 
 ---
 
@@ -170,7 +172,9 @@ If all checks pass: reuse the previous `InteractiveTreeNode`, carry over all its
 
 ### Performance Impact
 
-An 80-def program where the user edits one def: FlatProj's LCS tells us 79 defs are unchanged. Phase 2 skips all 79, visiting only the 1 changed def's subtree. Refresh goes from O(total_nodes) to O(changed_def_depth).
+An 80-def program where the user edits one def: FlatProj's LCS tells us 79 defs are unchanged. Phase 2 skips stamp comparison and node construction for all 79, visiting only the 1 changed def's subtree for full processing. The reused subtrees still incur O(subtree_size) `loaded_nodes` map insertions for carry-over, but this is a simple map copy with no stamp comparison, no UI state lookup, and no allocation of new `InteractiveTreeNode` structs.
+
+Net cost: O(total_nodes) map insertions (carry-over) + O(changed_def_depth) full processing. The constant factor for carry-over is much lower than full refresh processing.
 
 ### Loaded Nodes Carry-Over
 
@@ -182,7 +186,7 @@ When reusing a subtree, walk the reused `InteractiveTreeNode` to copy its entrie
 
 | Scenario | Current | Phase 1 | Phase 2 |
 |----------|---------|---------|---------|
-| Type 1 char in 80-def program | 4 x O(n) | 1 x O(n) lightweight | O(1 def's subtree) |
+| Type 1 char in 80-def program | 4 x O(n) | 1 x O(n) lightweight | O(n) map carry-over + O(changed_def) full processing |
 | SelectRange | O(n) eager | O(n) lazy, one-time | O(n) lazy, one-time |
 | Delete node | O(n) eager | O(subtree) lazy preorder | O(subtree) |
 | Drag validation | O(n) eager | O(depth) lazy parent walk | O(depth) |
