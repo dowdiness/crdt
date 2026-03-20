@@ -118,7 +118,7 @@ export class CanopyEditor extends HTMLElement {
             "&": {
               backgroundColor: "transparent",
               color: "var(--canopy-fg, #e8e8f0)",
-              fontFamily: "var(--canopy-font-mono, 'JetBrains Mono', monospace)",
+              fontFamily: "var(--canopy-font-mono, 'Iosevka', monospace)",
               fontSize: "14px",
             },
             ".cm-content": {
@@ -336,7 +336,7 @@ const SHADOW_STYLES = `
     display: block;
     width: 100%;
     height: 100%;
-    font-family: var(--canopy-font-mono, 'JetBrains Mono', monospace);
+    font-family: var(--canopy-font-mono, 'Iosevka', monospace);
     background: var(--canopy-bg, #1a1a2e);
     color: var(--canopy-fg, #e8e8f0);
   }
@@ -352,7 +352,7 @@ const SHADOW_STYLES = `
     position: relative;
     word-wrap: break-word;
     white-space: pre-wrap;
-    font-family: var(--canopy-font-mono, 'JetBrains Mono', monospace);
+    font-family: var(--canopy-font-mono, 'Iosevka', monospace);
     font-size: 14px;
     line-height: 1.6;
     outline: none;
