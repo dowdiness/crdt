@@ -143,9 +143,14 @@ fn can_hydrate_tree_node(model : Model, node_id : @proj.NodeId) -> Bool {
 ///|
 fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
   match msg {
-    SetMode(mode) =>
-      // TODO: send mode to Web Component via raw_effect
-      (none, { ..model, mode, })
+    SetMode(mode) => {
+      let mode_str : String = match mode {
+        Text => "text"
+        Structure => "structure"
+      }
+      let cmd = @rabbita.effect(fn() { js_set_editor_mode(mode_str) })
+      (cmd, { ..model, mode, })
+    }
     TogglePanel(panel) => {
       let ws = model.workspace
       let workspace = match panel {
@@ -169,8 +174,13 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       }
       match model.editor.apply_tree_edit(tree_op, model.next_timestamp) {
         Ok(_) => {
-          let cmd = @rabbita.effect(fn() { js_reconcile_editor() })
-          (cmd, refresh({ ..model, next_timestamp: model.next_timestamp + 1 }))
+          let new_model = refresh({
+            ..model,
+            next_timestamp: model.next_timestamp + 1,
+          })
+          let text = new_model.editor.get_text()
+          let cmd = @rabbita.effect(fn() { js_reconcile_editor_with_text(text) })
+          (cmd, new_model)
         }
         Err(_) => (none, model)
       }
@@ -196,30 +206,53 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         }
         _ => (none, model)
       }
-    RefreshProjection =>
+    RefreshProjection => {
+      // Sync text from JS-side CRDT editor before refreshing
+      let js_text = js_get_editor_text()
+      if js_text != "" && js_text != model.editor.get_text() {
+        model.editor.set_text(js_text)
+      }
       if model.projection_dirty {
         (none, refresh(model))
       } else {
         (none, { ..model, refresh_scheduled: false })
       }
+    }
     Undo => {
       ignore(model.editor.undo())
-      let cmd = @rabbita.effect(fn() { js_reconcile_editor() })
-      (cmd, refresh(model))
+      let new_model = refresh(model)
+      let text = new_model.editor.get_text()
+      let cmd = @rabbita.effect(fn() { js_reconcile_editor_with_text(text) })
+      (cmd, new_model)
     }
     Redo => {
       ignore(model.editor.redo())
-      let cmd = @rabbita.effect(fn() { js_reconcile_editor() })
-      (cmd, refresh(model))
+      let new_model = refresh(model)
+      let text = new_model.editor.get_text()
+      let cmd = @rabbita.effect(fn() { js_reconcile_editor_with_text(text) })
+      (cmd, new_model)
     }
     LoadExample(example_text) => {
       model.editor.set_text(example_text)
-      let cmd = @rabbita.effect(fn() { js_reconcile_editor() })
-      (cmd, refresh(model))
+      let new_model = refresh(model)
+      let text = new_model.editor.get_text()
+      let cmd = @rabbita.effect(fn() { js_reconcile_editor_with_text(text) })
+      (cmd, new_model)
     }
-    OutlineNodeClicked(node_id) =>
-      // TODO: send selectedNode to Web Component
-      (none, { ..model, selected_node: Some(node_id) })
+    OutlineNodeClicked(node_id) => {
+      let cmd = @rabbita.effect(fn() { js_set_editor_selected_node(node_id) })
+      (cmd, { ..model, selected_node: Some(node_id) })
+    }
+    TextChangedFromEditor => {
+      // Pull text from JS-side CRDT editor into MoonBit's SyncEditor
+      let js_text = js_get_editor_text()
+      if js_text != "" && js_text != model.editor.get_text() {
+        model.editor.set_text(js_text)
+        (none, refresh(model))
+      } else {
+        (none, model)
+      }
+    }
   }
 }
 

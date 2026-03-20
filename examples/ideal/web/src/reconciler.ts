@@ -63,8 +63,10 @@ export function reconcile(
     return tr;
   }
 
-  // Position 1 = right after the doc's open tag (position 0 is before the doc content)
-  diffNode(tr, rootPm, newProj, 1);
+  // Position 0 = the root node's position in the doc.
+  // In PM, the doc node is transparent — its content starts at position 0,
+  // which is where doc.firstChild sits.
+  diffNode(tr, rootPm, newProj, 0);
 
   if (!tr.docChanged) return null;
   tr.setMeta("fromExternal", true);

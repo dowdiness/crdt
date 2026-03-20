@@ -37,6 +37,7 @@ export class CanopyEditor extends HTMLElement {
   private editorContainer: HTMLDivElement;
   private pmView: EditorView | null = null;
   private bridge: CrdtBridge | null = null;
+  private mountAbortController: AbortController | null = null;
 
   static get observedAttributes() {
     return ['mode', 'readonly'];
@@ -75,6 +76,10 @@ export class CanopyEditor extends HTMLElement {
   }
 
   disconnectedCallback() {
+    if (this.mountAbortController) {
+      this.mountAbortController.abort();
+      this.mountAbortController = null;
+    }
     if (this.bridge) {
       this.bridge.destroy();
       this.bridge = null;
@@ -105,8 +110,15 @@ export class CanopyEditor extends HTMLElement {
     }
   }
 
-  // Called by Rabbita's raw_effect(AfterRender)
+  // Called by main.ts after Rabbita renders the element
   mount(crdtHandle: number, crdt: CrdtModule): void {
+    // Clean up existing event listeners from previous mount
+    if (this.mountAbortController) {
+      this.mountAbortController.abort();
+    }
+    this.mountAbortController = new AbortController();
+    const { signal } = this.mountAbortController;
+
     // Clean up existing instances if mount() is called again
     if (this.bridge) {
       this.bridge.destroy();
@@ -153,6 +165,12 @@ export class CanopyEditor extends HTMLElement {
         this.pmView.updateState(this.pmView.state.apply(tr));
         // Loop prevention: suppress events for external reconciliation
         if (tr.getMeta('fromExternal')) return;
+        // Notify Rabbita that text changed so outline can sync
+        if (tr.docChanged) {
+          this.dispatchEvent(new CustomEvent('text-changed', {
+            bubbles: true, composed: true,
+          }));
+        }
         // Node selection events
         if (tr.selectionSet) {
           const sel = tr.selection;
@@ -172,21 +190,21 @@ export class CanopyEditor extends HTMLElement {
 
     this.bridge.setPmView(this.pmView);
 
-    // Wire keymap: structural-edit-request → bridge
+    // Wire keymap: structural-edit-request -> bridge (with abort signal for cleanup)
     this.addEventListener(CanopyEvents.STRUCTURAL_EDIT_REQUEST, ((e: CustomEvent) => {
       if (!this.bridge) return;
-      e.stopPropagation(); // Don't bubble to Rabbita — bridge handles this
+      e.stopPropagation(); // Don't bubble to Rabbita -- bridge handles this
       const { op, nodeId } = e.detail;
       this.bridge.handleStructuralEdit(op, Number(nodeId));
-    }) as EventListener);
+    }) as EventListener, { signal });
     // Note: request-undo / request-redo already bubble with composed:true
     // so Rabbita (which owns undo via SyncEditor) can listen for them.
 
-    // Wire sync-received: apply remote CRDT ops through the bridge
+    // Wire sync-received: apply remote CRDT ops through the bridge (with abort signal)
     this.addEventListener('sync-received', ((e: CustomEvent) => {
       if (!this.bridge) return;
       this.bridge.applyRemote(e.detail.data);
-    }) as EventListener);
+    }) as EventListener, { signal });
   }
 
   // --- Properties (Rabbita -> PM) ---

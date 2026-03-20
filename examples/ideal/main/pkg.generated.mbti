@@ -57,6 +57,7 @@ pub enum Msg {
   TreeEdited(@projection.TreeEditOp)
   LoadExample(String)
   OutlineNodeClicked(String)
+  TextChangedFromEditor
 }
 
 pub enum PanelId {

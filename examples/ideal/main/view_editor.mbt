@@ -26,5 +26,8 @@ fn view_editor(
     })
     .handler("request-undo", fn(_event, _scheduler) { ignore(dispatch(Undo)) })
     .handler("request-redo", fn(_event, _scheduler) { ignore(dispatch(Redo)) })
+    .handler("text-changed", fn(_event, _scheduler) {
+      ignore(dispatch(TextChangedFromEditor))
+    })
   node("canopy-editor", attrs, [@html.text("")])
 }
