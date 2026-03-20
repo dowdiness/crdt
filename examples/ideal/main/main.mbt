@@ -2,10 +2,8 @@
 using @html {button, div, p, span, text}
 
 ///|
-using @rabbita {type Cmd, type Dispatch, type Html, delay, none}
-
-///|
-let deferred_refresh_ms = 150
+using @rabbita {type Cmd, type Dispatch, type Html, none}
+// delay removed — outline refreshes immediately on TextChangedFromEditor
 
 ///|
 fn init_model() -> Model {
@@ -35,8 +33,6 @@ fn init_model() -> Model {
     selected_node: None,
     diagnostics_open: false,
     next_timestamp: 1,
-    projection_dirty: false,
-    refresh_scheduled: false,
     bottom_tab: Problems,
   }
 }
@@ -47,7 +43,7 @@ fn refresh(model : Model) -> Model {
     model.editor.get_proj_node(),
     model.editor.get_source_map(),
   )
-  { ..model, outline_state, projection_dirty: false, refresh_scheduled: false }
+  { ..model, outline_state, }
 }
 
 ///|
@@ -172,8 +168,9 @@ fn tree_node_is_elided(
 
 ///|
 /// Check if expanding a node should hydrate its elided subtree.
+/// Hydration is always allowed since the projection is refreshed
+/// immediately on every text change (no stale state possible).
 fn can_hydrate_tree_node(model : Model, node_id : @proj.NodeId) -> Bool {
-  not(model.projection_dirty) &&
   tree_node_is_elided(model.outline_state, node_id)
 }
 
@@ -207,7 +204,7 @@ fn apply_structural_edit_request(
 }
 
 ///|
-fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
+fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
   match msg {
     SetMode(mode) => {
       let mode_str : String = match mode {
@@ -273,14 +270,6 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         }
         _ => (none, model)
       }
-    RefreshProjection =>
-      // model.editor IS the crdt singleton — already has latest text.
-      // Just rebuild the outline from the current projection.
-      if model.projection_dirty {
-        (none, refresh(model))
-      } else {
-        (none, { ..model, refresh_scheduled: false })
-      }
     Undo => {
       // Undo on JS-side CRDT, sync CM6, then trigger text sync back
       let cmd = @rabbita.effect(fn() { js_undo_and_sync() })
@@ -301,19 +290,11 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       let cmd = @rabbita.effect(fn() { js_set_editor_selected_node(node_id) })
       (cmd, { ..model, selected_node: Some(node_id) })
     }
-    TextChangedFromEditor => {
+    TextChangedFromEditor =>
       // model.editor IS the crdt singleton — text is already updated by CM6.
-      // Just mark projection dirty and schedule a deferred refresh.
-      let updated = { ..model, projection_dirty: true }
-      if model.refresh_scheduled {
-        (none, updated)
-      } else {
-        (
-          delay(dispatch(RefreshProjection), deferred_refresh_ms),
-          { ..updated, refresh_scheduled: true },
-        )
-      }
-    }
+      // Refresh the outline immediately. The projection memo system handles
+      // incremental recomputation efficiently, so debouncing is unnecessary.
+      (none, refresh(model))
   }
 }
 

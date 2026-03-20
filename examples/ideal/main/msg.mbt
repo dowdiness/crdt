@@ -7,8 +7,6 @@ pub enum Msg {
   // From Web Component events
   NodeSelected(String)
   StructuralEditRequested(op~ : String, node_id~ : String)
-  // Projection
-  RefreshProjection
   // Undo/redo
   Undo
   Redo

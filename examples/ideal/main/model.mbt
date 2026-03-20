@@ -35,7 +35,5 @@ pub struct Model {
   selected_node : String?
   diagnostics_open : Bool
   next_timestamp : Int
-  projection_dirty : Bool
-  refresh_scheduled : Bool
   bottom_tab : BottomTab
 }
