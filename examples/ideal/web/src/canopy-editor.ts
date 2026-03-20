@@ -98,6 +98,9 @@ export class CanopyEditor extends HTMLElement {
       if (!this.bridge) return;
       this.bridge.applyRemote(e.detail.data);
       this.syncCmFromCrdt();
+      this.dispatchEvent(new CustomEvent(CanopyEvents.TEXT_CHANGE, {
+        bubbles: true, composed: true,
+      }));
     }) as EventListener, { signal });
 
     if (this.mode === 'text') {
@@ -173,7 +176,8 @@ export class CanopyEditor extends HTMLElement {
               this.crdt.set_text(this.crdtHandle, newText);
             }
             // Notify Rabbita
-            this.dispatchEvent(new CustomEvent('text-changed', {
+            this.bridge?.notifyLocalChange();
+            this.dispatchEvent(new CustomEvent(CanopyEvents.TEXT_CHANGE, {
               bubbles: true, composed: true,
             }));
           }),
@@ -318,6 +322,28 @@ export class CanopyEditor extends HTMLElement {
           this.cmView.focus();
         }
       } catch { /* source map parse failure — ignore */ }
+    } else if (this.pmView) {
+      let targetPos: number | null = null;
+      this.pmView.state.doc.descendants((node, pos) => {
+        if (String(node.attrs.nodeId) === id && NodeSelection.isSelectable(node)) {
+          targetPos = pos;
+          return false;
+        }
+        return true;
+      });
+      if (targetPos === null) return;
+      let selectionUnchanged = false;
+      const currentSelection = this.pmView.state.selection;
+      if (currentSelection instanceof NodeSelection) {
+        selectionUnchanged = currentSelection.from === targetPos;
+      }
+      if (selectionUnchanged) return;
+      const tr = this.pmView.state.tr
+        .setSelection(NodeSelection.create(this.pmView.state.doc, targetPos))
+        .scrollIntoView();
+      tr.setMeta('fromExternal', true);
+      this.pmView.dispatch(tr);
+      this.pmView.focus();
     }
   }
 

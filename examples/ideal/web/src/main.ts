@@ -1,18 +1,84 @@
 import './canopy-editor';
 import type { CanopyEditor } from './canopy-editor';
+import { CanopyEvents } from './events';
+import { SyncClient } from './sync';
 
 // Single module: includes Rabbita + CRDT FFI (no separate @moonbit/canopy needed).
 // This runs MoonBit's main() which mounts Rabbita and renders <canopy-editor>.
 import * as crdt from '@moonbit/ideal-editor';
 
-// Expose CRDT module globally for MoonBit FFI bridge functions
-(globalThis as any).__canopy_crdt = crdt;
+type NodeSelectedDetail = {
+  nodeId?: string;
+};
 
-function wireTextSync(el: CanopyEditor) {
-  el.addEventListener('text-changed', () => {
-    const btn = document.getElementById('canopy-text-sync-trigger');
-    if (btn) btn.click();
+type StructuralEditDetail = {
+  op?: string;
+  nodeId?: string;
+};
+
+type CanopyGlobal = typeof globalThis & {
+  __canopy_crdt?: typeof crdt;
+  __canopy_crdt_handle?: number;
+  __canopy_pending_node_selection?: string | null;
+  __canopy_pending_structural_edit?: StructuralEditDetail | null;
+};
+
+const canopyGlobal = globalThis as CanopyGlobal;
+let activeSyncClient: SyncClient | null = null;
+let beforeUnloadRegistered = false;
+
+// Expose CRDT state globally for MoonBit FFI bridge functions.
+canopyGlobal.__canopy_crdt = crdt;
+
+function clickTrigger(id: string) {
+  const btn = document.getElementById(id) as HTMLButtonElement | null;
+  if (btn) btn.click();
+}
+
+function wireEditorEvents(el: CanopyEditor) {
+  el.addEventListener(CanopyEvents.TEXT_CHANGE, () => {
+    clickTrigger('canopy-text-sync-trigger');
   });
+  el.addEventListener(CanopyEvents.NODE_SELECTED, ((event: Event) => {
+    const { nodeId } = (event as CustomEvent<NodeSelectedDetail>).detail ?? {};
+    canopyGlobal.__canopy_pending_node_selection = nodeId ?? null;
+    clickTrigger('canopy-node-selected-trigger');
+  }) as EventListener);
+  el.addEventListener(CanopyEvents.STRUCTURAL_EDIT_REQUEST, ((event: Event) => {
+    const { op, nodeId } = (event as CustomEvent<StructuralEditDetail>).detail ?? {};
+    canopyGlobal.__canopy_pending_structural_edit =
+      op && nodeId ? { op, nodeId } : null;
+    clickTrigger('canopy-structural-edit-trigger');
+  }) as EventListener);
+  el.addEventListener(CanopyEvents.REQUEST_UNDO, () => {
+    clickTrigger('canopy-undo-trigger');
+  });
+  el.addEventListener(CanopyEvents.REQUEST_REDO, () => {
+    clickTrigger('canopy-redo-trigger');
+  });
+}
+
+function startSync(el: CanopyEditor, handle: number) {
+  activeSyncClient?.disconnect();
+
+  const syncClient = new SyncClient(el, handle, crdt);
+  activeSyncClient = syncClient;
+
+  const bridge = el.getBridge();
+  if (bridge) {
+    bridge.setBroadcast(() => {
+      syncClient.broadcast();
+    });
+  }
+
+  syncClient.connect();
+
+  if (!beforeUnloadRegistered) {
+    beforeUnloadRegistered = true;
+    window.addEventListener('beforeunload', () => {
+      activeSyncClient?.disconnect();
+    });
+  }
 }
 
 function mountWhenReady() {
@@ -34,9 +100,13 @@ function mountWhenReady() {
 function doMount(el: CanopyEditor) {
   const handle = crdt.create_editor_with_undo('local', 500);
   const text = 'let id = \\x.x\nlet apply = \\f.\\x.f x\napply id 42';
+  canopyGlobal.__canopy_crdt_handle = handle;
+  canopyGlobal.__canopy_pending_node_selection = null;
+  canopyGlobal.__canopy_pending_structural_edit = null;
   crdt.set_text(handle, text);
   el.mount(handle, crdt);
-  wireTextSync(el);
+  wireEditorEvents(el);
+  startSync(el, handle);
 }
 
 mountWhenReady();

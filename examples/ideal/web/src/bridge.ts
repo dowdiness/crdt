@@ -33,6 +33,11 @@ export class CrdtBridge {
     this.broadcastFn = fn;
   }
 
+  /** Notify the bridge that the CRDT changed outside the PM edit path. */
+  notifyLocalChange(): void {
+    this.afterLocalEdit();
+  }
+
   /** Must be called after PM EditorView is created */
   setPmView(pmView: PmView): void {
     this.pmView = pmView;

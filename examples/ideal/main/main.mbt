@@ -152,6 +152,35 @@ fn can_hydrate_tree_node(model : Model, node_id : @proj.NodeId) -> Bool {
 }
 
 ///|
+fn apply_structural_edit_request(
+  model : Model,
+  op : String,
+  node_id : String,
+) -> (Cmd, Model) {
+  let node_id_int = @strconv.parse_int(node_id) catch {
+    _ => return (none, model)
+  }
+  let nid = @proj.NodeId::from_int(node_id_int)
+  let tree_op : @proj.TreeEditOp = match op {
+    "WrapInLambda" => @proj.WrapInLambda(node_id=nid, var_name="x")
+    "Delete" => @proj.Delete(node_id=nid)
+    _ => return (none, model)
+  }
+  match model.editor.apply_tree_edit(tree_op, model.next_timestamp) {
+    Ok(_) => {
+      let new_model = refresh({
+        ..model,
+        next_timestamp: model.next_timestamp + 1,
+      })
+      let text = new_model.editor.get_text()
+      let cmd = @rabbita.effect(fn() { js_reconcile_editor_with_text(text) })
+      (cmd, new_model)
+    }
+    Err(_) => (none, model)
+  }
+}
+
+///|
 fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
   match msg {
     SetMode(mode) => {
@@ -172,28 +201,33 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       (none, { ..model, workspace, })
     }
     SelectBottomTab(tab) => (none, { ..model, bottom_tab: tab })
-    NodeSelected(node_id) => (none, { ..model, selected_node: Some(node_id) })
+    NodeSelected(node_id) => {
+      let resolved_node_id = if node_id == "" {
+        js_take_selected_node_id()
+      } else {
+        node_id
+      }
+      if resolved_node_id == "" {
+        (none, model)
+      } else {
+        (none, { ..model, selected_node: Some(resolved_node_id) })
+      }
+    }
     StructuralEditRequested(op~, node_id~) => {
-      let node_id_int = @strconv.parse_int(node_id) catch {
-        _ => return (none, model)
+      let resolved_op = if op == "" {
+        js_take_structural_edit_op()
+      } else {
+        op
       }
-      let nid = @proj.NodeId::from_int(node_id_int)
-      let tree_op : @proj.TreeEditOp = match op {
-        "WrapInLambda" => @proj.WrapInLambda(node_id=nid, var_name="x")
-        "Delete" => @proj.Delete(node_id=nid)
-        _ => return (none, model)
+      let resolved_node_id = if node_id == "" {
+        js_take_structural_edit_node_id()
+      } else {
+        node_id
       }
-      match model.editor.apply_tree_edit(tree_op, model.next_timestamp) {
-        Ok(_) => {
-          let new_model = refresh({
-            ..model,
-            next_timestamp: model.next_timestamp + 1,
-          })
-          let text = new_model.editor.get_text()
-          let cmd = @rabbita.effect(fn() { js_reconcile_editor_with_text(text) })
-          (cmd, new_model)
-        }
-        Err(_) => (none, model)
+      if resolved_op == "" || resolved_node_id == "" {
+        (none, model)
+      } else {
+        apply_structural_edit_request(model, resolved_op, resolved_node_id)
       }
     }
     TreeEdited(op) =>
