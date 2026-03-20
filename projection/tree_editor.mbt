@@ -417,54 +417,22 @@ fn refresh_node_minimal(
     for child in node.children {
       descendant_count += count_projection_descendants(child)
     }
-    let stamp : InteractiveNodeStamp = {
+    // No stamp comparison needed: can_skip_subtree (called above) already
+    // validated all stamp fields for the collapsed case. If we reach here,
+    // either the subtree changed or there is no previous node to reuse.
+    let refreshed : InteractiveTreeNode = {
       id: node_id,
-      shape: interactive_node_shape(node.kind),
+      kind: node.kind,
       label,
-      child_ids: [],
-      elided_descendant_count: Some(descendant_count),
+      children: Elided(descendant_count),
       selected,
       editing,
       collapsed,
       drop_target,
       text_range,
     }
-    match previous_node {
-      Some(previous) =>
-        if interactive_node_stamp(previous) == stamp {
-          new_loaded_nodes[node_id] = previous
-          { node: previous, reused_previous: true }
-        } else {
-          let refreshed : InteractiveTreeNode = {
-            id: node_id,
-            kind: node.kind,
-            label,
-            children: Elided(descendant_count),
-            selected,
-            editing,
-            collapsed,
-            drop_target,
-            text_range,
-          }
-          new_loaded_nodes[node_id] = refreshed
-          { node: refreshed, reused_previous: false }
-        }
-      None => {
-        let refreshed : InteractiveTreeNode = {
-          id: node_id,
-          kind: node.kind,
-          label,
-          children: Elided(descendant_count),
-          selected,
-          editing,
-          collapsed,
-          drop_target,
-          text_range,
-        }
-        new_loaded_nodes[node_id] = refreshed
-        { node: refreshed, reused_previous: false }
-      }
-    }
+    new_loaded_nodes[node_id] = refreshed
+    { node: refreshed, reused_previous: false }
   } else {
     let children : Array[InteractiveTreeNode] = []
     let child_ids : Array[NodeId] = []
