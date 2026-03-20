@@ -3,7 +3,7 @@ import { EditorView } from "prosemirror-view";
 import { Node as PmNode } from "prosemirror-model";
 import { editorSchema } from "./schema";
 import { TermLeafView } from "./leaf-editor";
-import { LambdaView, LetDefView } from "./text-nodeview";
+import { LambdaView, LetDefView, ApplicationView, BinaryOpView, IfExprView, ModuleView } from "./text-nodeview";
 import { StructureCompoundView, StructureLeafView } from "./structure-nodeview";
 import { structuralKeymap } from "./keymap";
 import { CanopyEvents } from "./events";
@@ -124,8 +124,35 @@ export class CanopyEditor extends HTMLElement {
       .pm-unbound-ref .cm-editor {
         color: var(--canopy-error, #cf222e);
       }
-      .pm-binary-op, .pm-application, .pm-if-expr {
+      /* Application: inline with word-spacing for child separation */
+      .pm-application {
         display: inline;
+        word-spacing: 0.3em;
+      }
+
+      /* Binary op: inline with spacing */
+      .pm-binary-op {
+        display: inline;
+        word-spacing: 0.3em;
+      }
+      .pm-binop-operator {
+        color: var(--canopy-operator, #ff5370);
+        font-weight: bold;
+      }
+
+      /* If-then-else */
+      .pm-if-expr {
+        display: inline;
+        word-spacing: 0.3em;
+      }
+
+      /* Module: each child (let_def) on its own line */
+      .pm-module {
+        display: block;
+      }
+      .pm-module > .pm-let-def {
+        display: block;
+        padding: 2px 0;
       }
       .pm-error-node {
         color: var(--canopy-error, #cf222e);
@@ -489,16 +516,24 @@ export class CanopyEditor extends HTMLElement {
     const bridge = this.bridge;
     const sr = this.shadow;
     return {
+      module: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new ModuleView(node, view, getPos),
+      let_def: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new LetDefView(node, view, getPos, bridge, sr),
+      lambda: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new LambdaView(node, view, getPos, bridge, sr),
+      application: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new ApplicationView(node, view, getPos),
+      binary_op: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new BinaryOpView(node, view, getPos),
+      if_expr: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
+        new IfExprView(node, view, getPos),
       int_literal: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
         new TermLeafView(node, view, getPos, bridge, sr),
       var_ref: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
         new TermLeafView(node, view, getPos, bridge, sr),
       unbound_ref: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
         new TermLeafView(node, view, getPos, bridge, sr),
-      lambda: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
-        new LambdaView(node, view, getPos, bridge, sr),
-      let_def: (node: PmNode, view: EditorView, getPos: () => number | undefined) =>
-        new LetDefView(node, view, getPos, bridge, sr),
     };
   }
 

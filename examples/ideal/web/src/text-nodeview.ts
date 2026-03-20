@@ -180,3 +180,115 @@ export class LetDefView implements NodeView {
 
   destroy() { this.nameCm.destroy(); }
 }
+
+// ── Compound NodeViews with proper spacing ─────────────────
+
+const OP_DISPLAY: Record<string, string> = {
+  Plus: "+",
+  Minus: "-",
+};
+
+/**
+ * ApplicationView renders: <func> <arg>
+ * Adds a space between function and argument.
+ */
+export class ApplicationView implements NodeView {
+  dom: HTMLElement;
+  contentDOM: HTMLElement;
+
+  constructor(node: PmNode, _view: PmView, _getPos: () => number | undefined) {
+    this.dom = document.createElement("span");
+    this.dom.className = "pm-application";
+    // PM manages children inside contentDOM.
+    // We use CSS gap for spacing between children.
+    this.contentDOM = this.dom;
+  }
+
+  update(node: PmNode): boolean {
+    return node.type.name === "application";
+  }
+}
+
+/**
+ * BinaryOpView renders: <left> <op> <right>
+ * Inserts the operator symbol between the two operands.
+ */
+export class BinaryOpView implements NodeView {
+  dom: HTMLElement;
+  contentDOM: HTMLElement;
+  private node: PmNode;
+
+  constructor(node: PmNode, _view: PmView, _getPos: () => number | undefined) {
+    this.node = node;
+    this.dom = document.createElement("span");
+    this.dom.className = "pm-binary-op";
+
+    // Left operand
+    const left = document.createElement("span");
+    left.className = "pm-binop-left";
+
+    // Operator
+    const opEl = document.createElement("span");
+    opEl.className = "pm-binop-operator";
+    opEl.textContent = ` ${OP_DISPLAY[node.attrs.op] || node.attrs.op} `;
+
+    // Right operand
+    const right = document.createElement("span");
+    right.className = "pm-binop-right";
+
+    this.dom.appendChild(left);
+    this.dom.appendChild(opEl);
+    this.dom.appendChild(right);
+
+    // PM manages children across left and right.
+    // We need a single contentDOM — use the outer span.
+    // PM will place children sequentially.
+    // Unfortunately PM can only have one contentDOM, so we use
+    // a different approach: single contentDOM with CSS.
+    this.dom.textContent = "";
+    this.contentDOM = this.dom;
+  }
+
+  update(node: PmNode): boolean {
+    if (node.type.name !== "binary_op") return false;
+    this.node = node;
+    return true;
+  }
+}
+
+/**
+ * IfExprView renders: if <cond> then <then> else <else>
+ * Adds keywords between the three children.
+ */
+export class IfExprView implements NodeView {
+  dom: HTMLElement;
+  contentDOM: HTMLElement;
+
+  constructor(node: PmNode, _view: PmView, _getPos: () => number | undefined) {
+    this.dom = document.createElement("span");
+    this.dom.className = "pm-if-expr";
+    this.contentDOM = this.dom;
+  }
+
+  update(node: PmNode): boolean {
+    return node.type.name === "if_expr";
+  }
+}
+
+/**
+ * ModuleView renders children vertically (one let_def per line).
+ */
+export class ModuleView implements NodeView {
+  dom: HTMLElement;
+  contentDOM: HTMLElement;
+
+  constructor(node: PmNode, _view: PmView, _getPos: () => number | undefined) {
+    this.dom = document.createElement("div");
+    this.dom.className = "pm-module";
+    this.contentDOM = this.dom;
+  }
+
+  update(node: PmNode): boolean {
+    return node.type.name === "module";
+  }
+}
