@@ -68,9 +68,14 @@ export class CanopyEditor extends HTMLElement {
     }
     if (name === 'readonly') {
       const ro = val !== null && val !== 'false';
-      // CM6 readonly is handled by remounting (simple approach for MVP)
       if (this.pmView) {
         this.pmView.setProps({ editable: () => !ro });
+      }
+      if (this.cmView) {
+        // Remount CM6 to apply readonly (no hot reconfigure API for editable)
+        this.destroyCm();
+        this.editorContainer.innerHTML = '';
+        this.mountTextMode();
       }
     }
   }
@@ -296,8 +301,24 @@ export class CanopyEditor extends HTMLElement {
   set errors(_json: string) { /* TODO: CM6 lint decorations */ }
   set evalResults(_json: string) { /* TODO: CM6 eval ghost decorations */ }
 
-  set selectedNode(_id: string | null) {
-    // TODO: scroll to position in CM6 text mode
+  set selectedNode(id: string | null) {
+    if (!id || !this.crdt || this.crdtHandle === null) return;
+    if (this.cmView) {
+      // Text mode: find node's span in source map and select it in CM6
+      try {
+        const smJson = JSON.parse(this.crdt.get_source_map_json(this.crdtHandle));
+        const entry = smJson.find((r: any) => String(r.node_id) === id);
+        if (entry) {
+          const from = entry.start;
+          const to = entry.end;
+          this.cmView.dispatch({
+            selection: { anchor: from, head: to },
+            scrollIntoView: true,
+          });
+          this.cmView.focus();
+        }
+      } catch { /* source map parse failure — ignore */ }
+    }
   }
 
   get mode(): 'text' | 'structure' {

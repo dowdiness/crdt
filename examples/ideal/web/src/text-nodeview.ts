@@ -75,6 +75,11 @@ export class LambdaView implements NodeView {
     return true;
   }
 
+  stopEvent(event: Event) {
+    const target = event.target as Node;
+    return this.dom.querySelector('.pm-lambda-param')?.contains(target) ?? false;
+  }
+
   ignoreMutation(mutation: { target: Node }) {
     // Let PM observe mutations inside contentDOM (lambda body)
     // but ignore mutations in the param editor and outer structure
@@ -172,6 +177,11 @@ export class LetDefView implements NodeView {
     return true;
   }
 
+  stopEvent(event: Event) {
+    const target = event.target as Node;
+    return this.dom.querySelector('.pm-let-name')?.contains(target) ?? false;
+  }
+
   ignoreMutation(mutation: { target: Node }) {
     // Let PM observe mutations inside contentDOM (init expression)
     // but ignore mutations in the name editor and outer structure
@@ -236,16 +246,9 @@ export class BinaryOpView implements NodeView {
     const right = document.createElement("span");
     right.className = "pm-binop-right";
 
-    this.dom.appendChild(left);
-    this.dom.appendChild(opEl);
-    this.dom.appendChild(right);
-
-    // PM manages children across left and right.
-    // We need a single contentDOM — use the outer span.
-    // PM will place children sequentially.
-    // Unfortunately PM can only have one contentDOM, so we use
-    // a different approach: single contentDOM with CSS.
-    this.dom.textContent = "";
+    // PM can only have one contentDOM. Since PM places children
+    // sequentially, use the outer span as contentDOM directly.
+    // The operator is visible via CSS (word-spacing on .pm-binary-op).
     this.contentDOM = this.dom;
   }
 

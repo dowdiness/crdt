@@ -220,7 +220,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     RefreshProjection => {
       // Sync text from JS-side CRDT editor before refreshing
       let js_text = js_get_editor_text()
-      if js_text != "" && js_text != model.editor.get_text() {
+      if js_text != model.editor.get_text() {
         model.editor.set_text(js_text)
       }
       if model.projection_dirty {
@@ -252,7 +252,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     TextChangedFromEditor => {
       // Pull text from JS-side CRDT editor into MoonBit's SyncEditor
       let js_text = js_get_editor_text()
-      if js_text != "" && js_text != model.editor.get_text() {
+      if js_text != model.editor.get_text() {
         model.editor.set_text(js_text)
         let updated = { ..model, projection_dirty: true }
         if model.refresh_scheduled {

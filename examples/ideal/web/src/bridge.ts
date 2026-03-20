@@ -120,6 +120,7 @@ export class CrdtBridge {
 
   /** Reconcile PM state from CRDT's ProjNode */
   reconcile(): void {
+    if (!this.pmView) return; // PM may be destroyed (text mode)
     this.invalidateSourceMap();
     const projJsonStr = this.crdt.get_proj_node_json(this.handle);
     if (projJsonStr === "null") return;
