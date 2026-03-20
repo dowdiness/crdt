@@ -6,11 +6,8 @@ export default defineConfig({
     moonbitPlugin({
       modules: [
         {
-          name: '@moonbit/canopy',
-          path: '../../..',
-          output: '_build/js/release/build/canopy.js'
-        },
-        {
+          // Single module: includes Rabbita app + CRDT FFI exports.
+          // No separate @moonbit/canopy needed (saves 7.6MB load).
           name: '@moonbit/ideal-editor',
           path: '..',
           output: '_build/js/release/build/main/main.js'
@@ -27,6 +24,6 @@ export default defineConfig({
     target: 'esnext'
   },
   optimizeDeps: {
-    exclude: ['@moonbit/canopy', '@moonbit/ideal-editor']
+    exclude: ['@moonbit/ideal-editor']
   }
 });
