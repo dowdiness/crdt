@@ -88,7 +88,7 @@ body {
 
 #app {
   width: 100vw;
-  height: 100vh;
+  height: 100dvh; /* dvh respects mobile browser chrome */
   display: flex;
   flex-direction: column;
 }
@@ -121,7 +121,7 @@ button:focus-visible, .action-btn:focus-visible,
 .app-shell {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   animation: fade-in var(--duration-slow) var(--ease-out-quart);
 }
@@ -638,62 +638,196 @@ canopy-editor {
 
 /* ── Responsive ─────────────────────────────────────────── */
 
-/* Tablet: narrow panels, hide one if both are on */
+/* Tablet: compact panels */
 @media (max-width: 1024px) {
   .outline-panel { width: 180px; }
   .inspector-panel { width: 200px; }
 }
 
-/* Mobile: hide panels by default, editor fills screen */
+/* Mobile: drawer panels, touch-friendly toolbar */
 @media (max-width: 768px) {
+  /* Safe area support for notched devices */
+  .app-shell {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .toolbar {
+    padding-left: max(var(--space-sm), env(safe-area-inset-left));
+    padding-right: max(var(--space-sm), env(safe-area-inset-right));
+  }
+
+  /* ── Toolbar: compact, scrollable ──────────────────────── */
+
+  .toolbar {
+    gap: var(--space-xs);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* hide scrollbar on Firefox */
+  }
+
+  .toolbar::-webkit-scrollbar { display: none; }
+
+  .toolbar-title { font-size: var(--text-small); }
+
+  /* Hide example buttons — use the examples via menu on mobile */
+  .example-btn { display: none; }
+
+  /* Larger touch targets for toolbar buttons */
+  .toolbar-btn, .tab, .panel-toggle {
+    min-height: 36px;
+    min-width: 36px;
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  /* Hide spacers on mobile — let flex-gap handle spacing */
+  .toolbar-spacer { flex: 0 0 var(--space-xs); }
+
+  /* ── Panel drawers: slide from edges ───────────────────── */
+
   .outline-panel,
   .inspector-panel {
     position: fixed;
     top: 48px;
     bottom: 0;
-    z-index: 10;
-    width: 260px;
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+    z-index: 20;
+    width: min(280px, 80vw);
+    overflow-y: auto;
+    /* Reset desktop transitions/hidden state */
+    opacity: 1;
+    pointer-events: auto;
   }
 
+  /* Outline slides from left */
   .outline-panel {
     left: 0;
-    transform: translateX(-100%);
-    transition: transform 0.2s ease-out;
+    border-right: 1px solid var(--canopy-border);
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.5);
+    transform: translateX(0);
+    transition: transform var(--duration-normal) var(--ease-out-quart);
   }
 
+  .outline-panel.panel-hidden {
+    transform: translateX(-100%);
+    box-shadow: none;
+    pointer-events: none;
+    /* Override desktop hidden: width must stay for transform to work */
+    width: min(280px, 80vw);
+    overflow: hidden;
+    border: none;
+    padding: 0;
+    opacity: 1; /* slide, don't fade */
+  }
+
+  /* Inspector slides from right */
   .inspector-panel {
     right: 0;
+    border-left: 1px solid var(--canopy-border);
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+    transform: translateX(0);
+    transition: transform var(--duration-normal) var(--ease-out-quart);
+  }
+
+  .inspector-panel.panel-hidden {
     transform: translateX(100%);
-    transition: transform 0.2s ease-out;
+    box-shadow: none;
+    pointer-events: none;
+    width: min(280px, 80vw);
+    overflow: hidden;
+    border: none;
+    padding: 0;
+    opacity: 1;
   }
 
-  /* When visible (toggled on), slide in */
-  .outline-panel:not([hidden]) {
-    transform: translateX(0);
+  /* ── Bottom panel: taller on mobile for touch ──────────── */
+
+  .bottom-panel {
+    max-height: 45vh;
   }
 
-  .inspector-panel:not([hidden]) {
-    transform: translateX(0);
+  .bottom-content {
+    max-height: 40vh;
   }
 
-  .toolbar {
-    gap: var(--space-xs);
-    padding: 0 var(--space-sm);
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  /* ── Tree: reduce indentation for narrow screens ───────── */
+
+  .tree-row.depth-1 { padding-left: 20px; }
+  .tree-row.depth-2 { padding-left: 32px; }
+  .tree-row.depth-3 { padding-left: 44px; }
+  .tree-row.depth-4 { padding-left: 56px; }
+  .tree-row.depth-5 { padding-left: 68px; }
+  .tree-row.depth-6 { padding-left: 80px; }
+  .tree-row.depth-7 { padding-left: 92px; }
+
+  /* Larger touch target for tree rows */
+  .tree-row {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    min-height: 36px;
   }
 
-  /* Hide example buttons on narrow screens */
-  .example-btn { display: none; }
-
-  .toolbar-title {
+  .tree-toggle {
+    width: 24px;
+    min-height: 24px;
     font-size: var(--text-small);
   }
 
-  .bottom-panel {
-    max-height: 160px;
+  /* ── Peer section at bottom of outline ──────────────────── */
+
+  .panel-section {
+    padding: var(--space-md) var(--space-lg);
   }
+}
+
+/* Small phones: further compact */
+@media (max-width: 480px) {
+  .toolbar-title { display: none; }
+
+  .outline-panel,
+  .inspector-panel {
+    width: 100vw;
+  }
+
+  .outline-panel.panel-hidden {
+    width: 100vw;
+  }
+
+  .inspector-panel.panel-hidden {
+    width: 100vw;
+  }
+}
+
+/* Touch device: suppress hover flicker */
+@media (hover: none) {
+  .tree-row:hover { background: transparent; }
+  .toolbar-btn:hover, .tab:hover,
+  .panel-toggle:hover, .example-btn:hover {
+    background: transparent;
+    color: var(--canopy-text-dim);
+  }
+  .tab.active:hover { background: var(--canopy-accent); color: #fff; }
+  .panel-toggle.active:hover {
+    background: var(--canopy-surface);
+    color: var(--canopy-fg);
+  }
+}
+
+/* Landscape mobile: reduce toolbar + bottom panel height */
+@media (max-width: 768px) and (orientation: landscape) {
+  .toolbar { height: 40px; }
+
+  .outline-panel,
+  .inspector-panel {
+    top: 40px;
+  }
+
+  .outline-panel.panel-hidden,
+  .inspector-panel.panel-hidden {
+    top: 40px;
+  }
+
+  .bottom-panel { max-height: 30vh; }
+  .bottom-content { max-height: 25vh; }
 }
 
 /* ── Scrollbar ──────────────────────────────────────────── */
