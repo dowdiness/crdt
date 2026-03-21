@@ -337,6 +337,30 @@ pub fn compute_text_edit(
           }
         _ => Err("Node not found: " + node_id.to_string())
       }
+    // WrapInIf: wrap a node in an if-then-else with placeholder condition
+    WrapInIf(node_id~) =>
+      match (source_map.get_range(node_id), registry.get(node_id)) {
+        (Some(range), Some(node)) => {
+          let wrapped = @ast.print_term(If(Int(0), node.kind, Int(0)))
+          // "if 0 then ..." — condition placeholder "0" starts at offset 3
+          let condition_pos = range.start + 3
+          Ok(
+            Some(
+              (
+                [
+                  {
+                    start: range.start,
+                    delete_len: range.end - range.start,
+                    inserted: wrapped,
+                  },
+                ],
+                MoveCursor(position=condition_pos),
+              ),
+            ),
+          )
+        }
+        _ => Err("Node not found: " + node_id.to_string())
+      }
     // SwapChildren: swap left/right children of Bop, or then/else of If
     SwapChildren(node_id~) =>
       match (source_map.get_range(node_id), registry.get(node_id)) {

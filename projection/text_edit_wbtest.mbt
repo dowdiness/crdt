@@ -410,6 +410,31 @@ test "compute_text_edit: Unwrap Bop keeps right" {
 }
 
 ///|
+test "compute_text_edit: WrapInIf wraps node in if-then-else" {
+  let text = "42"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let root_id = proj.id()
+  let result = compute_text_edit(
+    WrapInIf(node_id=root_id),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some((edits, hint))) => {
+      inspect(apply_edits(text, edits), content="if 0 then 42 else 0")
+      // MoveCursor should point to condition placeholder at offset 3
+      inspect(hint, content="MoveCursor(position=3)")
+    }
+    _ => fail("expected Some edits")
+  }
+}
+
+///|
 test "compute_text_edit: SwapChildren swaps Bop operands" {
   let text = "1 + 2"
   let (proj, _) = parse_to_proj_node(text)
