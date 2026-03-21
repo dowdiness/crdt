@@ -12,6 +12,8 @@ import {
 // Values
 pub fn compute_text_edit(TreeEditOp, String, SourceMap, Map[NodeId, ProjNode], FlatProj) -> Result[(Array[SpanEdit], FocusHint)?, String]
 
+pub fn free_vars(@ast.Term, @hashset.HashSet[String]) -> @hashset.HashSet[String]
+
 pub fn is_leaf_node(@ast.Term) -> Bool
 
 pub fn is_valid_drop(@ast.Term, @ast.Term, DropPosition) -> Bool
