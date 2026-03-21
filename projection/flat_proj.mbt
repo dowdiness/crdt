@@ -1,21 +1,25 @@
 ///|
+pub(all) enum FlatProjItem {
+  Def(String, ProjNode, Int, NodeId)
+  Expr(ProjNode)
+} derive(Show, Eq)
+
+///|
 pub struct FlatProj {
-  defs : Array[(String, ProjNode, Int, NodeId)] // (name, init, start, id)
-  final_expr : ProjNode?
+  items : Array[FlatProjItem]
 } derive(Show, Eq)
 
 ///|
 pub fn FlatProj::empty() -> FlatProj {
-  { defs: [], final_expr: None }
+  { items: [] }
 }
 
 ///|
 /// Build a FlatProj from a SourceFile SyntaxNode.
-/// Iterates LetDef children and collects them as flat array entries.
+/// Iterates LetDef and expression children and collects them as flat array entries.
 /// Each init subtree is built via syntax_to_proj_node (unchanged).
 pub fn to_flat_proj(root : @seam.SyntaxNode, counter : Ref[Int]) -> FlatProj {
-  let defs : Array[(String, ProjNode, Int, NodeId)] = []
-  let mut final_proj : ProjNode? = None
+  let items : Array[FlatProjItem] = []
   for child in root.children() {
     if @parser.LetDefView::cast(child) is Some(v) {
       let init = match v.init() {
@@ -24,12 +28,12 @@ pub fn to_flat_proj(root : @seam.SyntaxNode, counter : Ref[Int]) -> FlatProj {
           error_node_for_syntax("missing let binding value", child, counter)
       }
       let id = NodeId(next_proj_node_id(counter))
-      defs.push((v.name(), init, child.start(), id))
-    } else if final_proj is None {
-      final_proj = Some(syntax_to_proj_node(child, counter))
+      items.push(Def(v.name(), init, child.start(), id))
+    } else {
+      items.push(Expr(syntax_to_proj_node(child, counter)))
     }
   }
-  { defs, final_expr: final_proj }
+  { items, }
 }
 
 ///|
@@ -47,38 +51,23 @@ pub fn to_flat_proj_incremental(
   old_fp : FlatProj,
   counter : Ref[Int],
 ) -> FlatProj {
-  // Extract LetDef children from old and new roots
+  // Extract children from old root, categorized
+  let old_children : Array[@seam.SyntaxNode] = old_root.children()
   let new_children = new_root.children()
-  let old_let_children : Array[@seam.SyntaxNode] = []
-  let mut old_final_child : @seam.SyntaxNode? = None
-  for child in old_root.children() {
-    if @parser.LetDefView::cast(child) is Some(_) {
-      old_let_children.push(child)
-    } else if old_final_child is None {
-      old_final_child = Some(child)
-    }
-  }
-  // Parallel scan: compare new LetDefs against old LetDefs by index.
+  // Parallel scan: compare new children against old children by index.
   // physical_equal checks pointer identity (same interned CstNode object).
-  // When content and position are both unchanged, the parser returns
-  // the exact same object, making physical_equal true.
-  let defs : Array[(String, ProjNode, Int, NodeId)] = []
-  let mut final_proj : ProjNode? = None
-  let mut old_def_idx = 0
+  let items : Array[FlatProjItem] = []
   let mut any_changed = false
-  for new_child in new_children {
+  for idx, new_child in new_children {
     if @parser.LetDefView::cast(new_child) is Some(v) {
       let mut reused = false
-      if old_def_idx < old_let_children.length() &&
-        old_def_idx < old_fp.defs.length() {
-        let old_child = old_let_children[old_def_idx]
+      if idx < old_children.length() && idx < old_fp.items.length() {
+        let old_child = old_children[idx]
         if physical_equal(new_child.cst_node(), old_child.cst_node()) {
           // Same pointer — safe to reuse old entry with same positions
-          let old_entry = old_fp.defs[old_def_idx]
-          defs.push((old_entry.0, old_entry.1, old_entry.2, old_entry.3))
+          items.push(old_fp.items[idx])
           reused = true
         }
-        old_def_idx = old_def_idx + 1
       }
       if not(reused) {
         any_changed = true
@@ -90,24 +79,29 @@ pub fn to_flat_proj_incremental(
             )
         }
         let id = NodeId(next_proj_node_id(counter))
-        defs.push((v.name(), init, new_child.start(), id))
+        items.push(Def(v.name(), init, new_child.start(), id))
       }
-    } else if final_proj is None {
-      match old_final_child {
-        Some(old_fc) if physical_equal(new_child.cst_node(), old_fc.cst_node()) =>
-          final_proj = old_fp.final_expr
-        _ => {
-          any_changed = true
-          final_proj = Some(syntax_to_proj_node(new_child, counter))
+    } else {
+      // Expression child
+      let mut reused = false
+      if idx < old_children.length() && idx < old_fp.items.length() {
+        let old_child = old_children[idx]
+        if physical_equal(new_child.cst_node(), old_child.cst_node()) {
+          items.push(old_fp.items[idx])
+          reused = true
         }
+      }
+      if not(reused) {
+        any_changed = true
+        items.push(Expr(syntax_to_proj_node(new_child, counter)))
       }
     }
   }
-  // If number of defs changed, that's also a change
-  if old_fp.defs.length() != defs.length() {
+  // If number of items changed, that's also a change
+  if old_fp.items.length() != items.length() {
     any_changed = true
   }
-  let new_fp : FlatProj = { defs, final_expr: final_proj }
+  let new_fp : FlatProj = { items, }
   if any_changed {
     reconcile_flat_proj(old_fp, new_fp, counter)
   } else {
@@ -154,46 +148,65 @@ fn[K : Eq + Hash] key_match(
 }
 
 ///|
+/// Generate a key for matching FlatProjItems.
+/// Defs use their name; Exprs use a sentinel key.
+fn item_key(item : FlatProjItem) -> String {
+  match item {
+    Def(name, _, _, _) => "def:" + name
+    Expr(_) => "expr:"
+  }
+}
+
+///|
 /// Reconcile two FlatProjs, preserving node IDs where entries match.
-/// O(n) hash-based matching on def names; reconciles init subtrees individually.
+/// O(n) hash-based matching on item keys; reconciles subtrees individually.
 pub fn reconcile_flat_proj(
   old_fp : FlatProj,
   new_fp : FlatProj,
   counter : Ref[Int],
 ) -> FlatProj {
-  let old_defs = old_fp.defs
-  let new_defs = new_fp.defs
-  let old_names = old_defs.map(fn(d) { d.0 })
-  let new_names = new_defs.map(fn(d) { d.0 })
-  let new_matched = key_match(old_names, new_names)
+  let old_items = old_fp.items
+  let new_items = new_fp.items
+  let old_keys = old_items.map(item_key)
+  let new_keys = new_items.map(item_key)
+  let new_matched = key_match(old_keys, new_keys)
 
-  // Build reconciled defs
-  let result_defs : Array[(String, ProjNode, Int, NodeId)] = []
-  for j = 0; j < new_defs.length(); j = j + 1 {
-    let new_entry = new_defs[j]
-    let name = new_entry.0
-    let new_init = new_entry.1
-    let start = new_entry.2
+  // Build reconciled items
+  let result_items : Array[FlatProjItem] = []
+  for j = 0; j < new_items.length(); j = j + 1 {
     if new_matched[j] >= 0 {
-      let old_entry = old_defs[new_matched[j]]
-      let reconciled_init = reconcile_ast(old_entry.1, new_init, counter)
-      result_defs.push((name, reconciled_init, start, old_entry.3))
+      let old_item = old_items[new_matched[j]]
+      match (old_item, new_items[j]) {
+        (Def(_, old_init, _, old_id), Def(name, new_init, start, _)) => {
+          let reconciled_init = reconcile_ast(old_init, new_init, counter)
+          result_items.push(Def(name, reconciled_init, start, old_id))
+        }
+        (Expr(old_expr), Expr(new_expr)) => {
+          let reconciled = reconcile_ast(old_expr, new_expr, counter)
+          result_items.push(Expr(reconciled))
+        }
+        // Mismatched types shouldn't happen since keys would differ, but handle gracefully
+        (_, new_item) => result_items.push(assign_fresh_item(new_item, counter))
+      }
     } else {
-      let fresh_init = assign_fresh_ids(new_init, counter)
-      let fresh_id = NodeId(next_proj_node_id(counter))
-      result_defs.push((name, fresh_init, start, fresh_id))
+      result_items.push(assign_fresh_item(new_items[j], counter))
     }
   }
 
-  // Reconcile final_expr
-  let final_expr = match (old_fp.final_expr, new_fp.final_expr) {
-    (Some(old_fe), Some(new_fe)) => Some(reconcile_ast(old_fe, new_fe, counter))
-    (None, Some(new_fe)) => Some(assign_fresh_ids(new_fe, counter))
-    (Some(_), None) => None
-    (None, None) => None
-  }
+  { items: result_items }
+}
 
-  { defs: result_defs, final_expr }
+///|
+/// Assign fresh IDs to a FlatProjItem.
+fn assign_fresh_item(item : FlatProjItem, counter : Ref[Int]) -> FlatProjItem {
+  match item {
+    Def(name, init, start, _) => {
+      let fresh_init = assign_fresh_ids(init, counter)
+      let fresh_id = NodeId(next_proj_node_id(counter))
+      Def(name, fresh_init, start, fresh_id)
+    }
+    Expr(expr) => Expr(assign_fresh_ids(expr, counter))
+  }
 }
 
 ///|
@@ -216,70 +229,68 @@ pub fn FlatProj::to_proj_node_with_prev_module_id(
   counter : Ref[Int],
   prev_module_id : Int?,
 ) -> ProjNode {
-  let body = match self.final_expr {
-    Some(expr) => expr
-    None => {
-      // Use last def's end position so the synthetic Unit node doesn't
-      // interfere with SourceMap position queries at offset 0.
-      let end_pos = if self.defs.length() > 0 {
-        self.defs[self.defs.length() - 1].1.end
-      } else {
-        0
-      }
-      ProjNode::new(Unit, end_pos, end_pos, next_proj_node_id(counter), [])
+  if self.items.is_empty() {
+    return ProjNode::new(Unit, 0, 0, next_proj_node_id(counter), [])
+  }
+  // Check if there's only one Expr item with no Defs — return it directly
+  if self.items.length() == 1 {
+    match self.items[0] {
+      Expr(expr) => return expr
+      _ => ()
     }
   }
-  if self.defs.is_empty() {
-    return body
+  let children : Array[ProjNode] = []
+  let term_items : Array[@ast.ModuleItem] = []
+  let mut start = 0
+  let mut end = 0
+  for i, item in self.items {
+    match item {
+      Def(name, init, def_start, _) => {
+        children.push(init)
+        term_items.push(@ast.ModuleItem::Def(name, init.kind))
+        if i == 0 {
+          start = def_start
+        }
+        end = init.end
+      }
+      Expr(expr) => {
+        children.push(expr)
+        term_items.push(@ast.ModuleItem::Expr(expr.kind))
+        if i == 0 {
+          start = expr.start
+        }
+        end = expr.end
+      }
+    }
   }
-  let children : Array[ProjNode] = self.defs.map(fn(d) { d.1 })
-  children.push(body)
-  let term_defs : Array[(@ast.VarName, @ast.Term)] = self.defs.map(fn(d) {
-    (d.0, d.1.kind)
-  })
-  let start = self.defs[0].2
   let module_id = match prev_module_id {
     Some(id) => id
     None => next_proj_node_id(counter)
   }
-  ProjNode::new(
-    Module(term_defs, body.kind),
-    start,
-    body.end,
-    module_id,
-    children,
-  )
+  ProjNode::new(Module(term_items), start, end, module_id, children)
 }
 
 ///|
 /// Extract a FlatProj from a Module ProjNode.
-/// Reads def entries from Module children and extracts the body.
+/// Reads items from Module children and extracts the structure.
 pub fn FlatProj::from_proj_node(root : ProjNode) -> FlatProj {
   match root.kind {
-    Module(term_defs, _) => {
-      let defs : Array[(String, ProjNode, Int, NodeId)] = []
-      for i = 0; i < term_defs.length(); i = i + 1 {
-        if i < root.children.length() - 1 {
-          let init_child = root.children[i]
-          defs.push(
-            (
-              term_defs[i].0,
-              init_child,
-              init_child.start,
-              NodeId(init_child.node_id),
-            ),
-          )
+    Module(term_items) => {
+      let items : Array[FlatProjItem] = []
+      for i, item in term_items {
+        if i < root.children.length() {
+          let child = root.children[i]
+          match item {
+            @ast.ModuleItem::Def(name, _) =>
+              items.push(Def(name, child, child.start, NodeId(child.node_id)))
+            @ast.ModuleItem::Expr(_) => items.push(Expr(child))
+          }
         }
       }
-      let body_child = root.children[root.children.length() - 1]
-      let final_expr = match body_child.kind {
-        Unit => None
-        _ => Some(body_child)
-      }
-      { defs, final_expr }
+      { items, }
     }
-    Unit => { defs: [], final_expr: None }
-    _ => { defs: [], final_expr: Some(root) }
+    Unit => { items: [] }
+    _ => { items: [Expr(root)] }
   }
 }
 
@@ -287,13 +298,16 @@ pub fn FlatProj::from_proj_node(root : ProjNode) -> FlatProj {
 /// Print a FlatProj to text. Equivalent to @ast.print_term on the nested spine.
 pub fn print_flat_proj(fp : FlatProj) -> String {
   let parts : Array[String] = []
-  for def in fp.defs {
-    let (name, init, _, _) = def
-    parts.push("let " + name + " = " + @ast.print_term(init.kind))
+  for item in fp.items {
+    match item {
+      Def(name, init, _, _) =>
+        parts.push("let " + name + " = " + @ast.print_term(init.kind))
+      Expr(expr) => parts.push(@ast.print_term(expr.kind))
+    }
   }
-  match fp.final_expr {
-    Some(expr) => parts.push(@ast.print_term(expr.kind))
-    None => parts.push("()")
+  if parts.is_empty() {
+    "()"
+  } else {
+    parts.join("\n")
   }
-  parts.join("\n")
 }

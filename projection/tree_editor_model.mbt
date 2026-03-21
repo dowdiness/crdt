@@ -101,7 +101,7 @@ fn interactive_node_shape(kind : @ast.Term) -> InteractiveNodeShape {
     App(_, _) => App
     Bop(op, _, _) => Bop(op)
     If(_, _, _) => If
-    Module(_, _) => Module
+    Module(_) => Module
     Unit => Unit
     Unbound(name) => Var(name) // Unbound rendered same as Var in editor
     Error(msg) => Error(msg)
@@ -221,8 +221,14 @@ fn get_node_label(kind : @ast.Term) -> String {
     App(_, _) => "App"
     Bop(op, _, _) => op.to_string()
     If(_, _, _) => "if"
-    Module(defs, _) => {
-      let names = defs.map(fn(d) { d.0 })
+    Module(items) => {
+      let names : Array[String] = []
+      for item in items {
+        match item {
+          @ast.ModuleItem::Def(name, _) => names.push(name)
+          @ast.ModuleItem::Expr(_) => names.push("_")
+        }
+      }
       "module [" + names.join(", ") + "]"
     }
     Unit => "()"

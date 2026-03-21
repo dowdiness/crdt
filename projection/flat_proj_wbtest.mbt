@@ -5,12 +5,51 @@ fn parse_syntax(text : String) -> @seam.SyntaxNode {
 }
 
 ///|
+fn count_defs(fp : FlatProj) -> Int {
+  let mut count = 0
+  for item in fp.items {
+    if item is Def(_, _, _, _) {
+      count = count + 1
+    }
+  }
+  count
+}
+
+///|
+fn get_def(fp : FlatProj, idx : Int) -> (String, ProjNode, Int, NodeId) {
+  let mut def_idx = 0
+  for item in fp.items {
+    match item {
+      Def(name, init, start, id) => {
+        if def_idx == idx {
+          return (name, init, start, id)
+        }
+        def_idx = def_idx + 1
+      }
+      Expr(_) => ()
+    }
+  }
+  abort("def index out of bounds")
+}
+
+///|
+fn get_first_expr(fp : FlatProj) -> ProjNode? {
+  for item in fp.items {
+    match item {
+      Expr(proj) => return Some(proj)
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
 test "to_flat_proj: single expression" {
   let syntax = parse_syntax("42")
   let fp = to_flat_proj(syntax, Ref::new(0))
-  inspect(fp.defs.length(), content="0")
+  inspect(count_defs(fp), content="0")
   inspect(
-    fp.final_expr.map(fn(n) { n.kind.to_string() }),
+    get_first_expr(fp).map(fn(n) { n.kind.to_string() }),
     content="Some(\"Int(42)\")",
   )
 }
@@ -19,11 +58,12 @@ test "to_flat_proj: single expression" {
 test "to_flat_proj: single let def + expression" {
   let syntax = parse_syntax("let x = 1\nx")
   let fp = to_flat_proj(syntax, Ref::new(0))
-  inspect(fp.defs.length(), content="1")
-  inspect(fp.defs[0].0, content="x")
-  inspect(fp.defs[0].1.kind, content="Int(1)")
+  inspect(count_defs(fp), content="1")
+  let (name, init, _, _) = get_def(fp, 0)
+  inspect(name, content="x")
+  inspect(init.kind, content="Int(1)")
   inspect(
-    fp.final_expr.map(fn(n) { n.kind.to_string() }),
+    get_first_expr(fp).map(fn(n) { n.kind.to_string() }),
     content="Some(\"Var(\\\"x\\\")\")",
   )
 }
@@ -32,25 +72,24 @@ test "to_flat_proj: single let def + expression" {
 test "to_flat_proj: multiple let defs" {
   let syntax = parse_syntax("let x = 1\nlet y = 2\nx + y")
   let fp = to_flat_proj(syntax, Ref::new(0))
-  inspect(fp.defs.length(), content="2")
-  inspect(fp.defs[0].0, content="x")
-  inspect(fp.defs[1].0, content="y")
+  inspect(count_defs(fp), content="2")
+  inspect(get_def(fp, 0).0, content="x")
+  inspect(get_def(fp, 1).0, content="y")
 }
 
 ///|
-test "to_flat_proj: no final expression defaults to None" {
+test "to_flat_proj: no final expression defaults to empty items" {
   let syntax = parse_syntax("let x = 1\n")
   let fp = to_flat_proj(syntax, Ref::new(0))
-  inspect(fp.defs.length(), content="1")
-  inspect(fp.final_expr, content="None")
+  inspect(count_defs(fp), content="1")
+  inspect(get_first_expr(fp), content="None")
 }
 
 ///|
 test "to_flat_proj: empty document" {
   let syntax = parse_syntax("")
   let fp = to_flat_proj(syntax, Ref::new(0))
-  inspect(fp.defs.length(), content="0")
-  inspect(fp.final_expr, content="None")
+  inspect(fp.items.length(), content="0")
 }
 
 ///|
@@ -58,64 +97,67 @@ test "reconcile_flat_proj: unchanged defs preserve IDs" {
   let syntax = parse_syntax("let x = 1\nlet y = 2\nx")
   let counter = Ref::new(0)
   let old = to_flat_proj(syntax, counter)
-  let old_ids = old.defs.map(fn(d) { d.3 })
+  let old_id_0 = get_def(old, 0).3
+  let old_id_1 = get_def(old, 1).3
 
   // Simulate reparse (same text, fresh IDs)
   let syntax2 = parse_syntax("let x = 1\nlet y = 2\nx")
   let new_fp = to_flat_proj(syntax2, counter)
 
   let reconciled = reconcile_flat_proj(old, new_fp, counter)
-  let new_ids = reconciled.defs.map(fn(d) { d.3 })
-  inspect(new_ids == old_ids, content="true")
+  let new_id_0 = get_def(reconciled, 0).3
+  let new_id_1 = get_def(reconciled, 1).3
+  inspect(new_id_0 == old_id_0, content="true")
+  inspect(new_id_1 == old_id_1, content="true")
 }
 
 ///|
 test "reconcile_flat_proj: changed init gets reconciled children" {
   let counter = Ref::new(0)
   let old = to_flat_proj(parse_syntax("let x = 1\nx"), counter)
-  let old_id = old.defs[0].3
+  let old_id = get_def(old, 0).3
 
   let new_fp = to_flat_proj(parse_syntax("let x = 2\nx"), counter)
 
   let reconciled = reconcile_flat_proj(old, new_fp, counter)
   // Def NodeId preserved (same name, same position)
-  inspect(reconciled.defs[0].3 == old_id, content="true")
+  inspect(get_def(reconciled, 0).3 == old_id, content="true")
   // Init value changed
-  inspect(reconciled.defs[0].1.kind, content="Int(2)")
+  inspect(get_def(reconciled, 0).1.kind, content="Int(2)")
 }
 
 ///|
 test "reconcile_flat_proj: insertion gets fresh ID" {
   let counter = Ref::new(0)
   let old = to_flat_proj(parse_syntax("let x = 1\nx"), counter)
-  let old_x_id = old.defs[0].3
+  let old_x_id = get_def(old, 0).3
 
   let new_fp = to_flat_proj(parse_syntax("let x = 1\nlet y = 2\nx"), counter)
   let reconciled = reconcile_flat_proj(old, new_fp, counter)
 
-  inspect(reconciled.defs.length(), content="2")
+  inspect(count_defs(reconciled), content="2")
   // x preserved
-  inspect(reconciled.defs[0].3 == old_x_id, content="true")
+  inspect(get_def(reconciled, 0).3 == old_x_id, content="true")
   // y is new — different ID from old x
-  inspect(reconciled.defs[1].3 != old_x_id, content="true")
+  inspect(get_def(reconciled, 1).3 != old_x_id, content="true")
 }
 
 ///|
 test "reconcile_flat_proj: final_expr reconciled" {
   let counter = Ref::new(0)
   let old = to_flat_proj(parse_syntax("42"), counter)
-  let old_final_id = old.final_expr.unwrap().node_id
+  let old_final_id = get_first_expr(old).unwrap().node_id
 
   let new_fp = to_flat_proj(parse_syntax("99"), counter)
 
   let reconciled = reconcile_flat_proj(old, new_fp, counter)
   // Same kind (Int) → old ID preserved
   inspect(
-    reconciled.final_expr.unwrap().node_id == old_final_id,
+    get_first_expr(reconciled).unwrap().node_id == old_final_id,
     content="true",
   )
   // Value changed
-  inspect(reconciled.final_expr.unwrap().kind, content="Int(99)")
+  inspect(get_first_expr(reconciled).unwrap().kind, content="Int(99)")
 }
 
 ///|
@@ -142,7 +184,7 @@ test "print_flat_proj: multiple lets" {
 ///|
 test "print_flat_proj: defs only (no final expression)" {
   let fp = to_flat_proj(parse_syntax("let x = 1\n"), Ref::new(0))
-  inspect(print_flat_proj(fp), content="let x = 1\n()")
+  inspect(print_flat_proj(fp), content="let x = 1")
 }
 
 ///|
@@ -173,7 +215,7 @@ test "FlatProj::to_proj_node: let defs reconstruct Module" {
   inspect(
     proj.kind,
     content=(
-      #|Module([("x", Int(1)), ("y", Int(2))], Bop(Plus, Var("x"), Var("y")))
+      #|Module([Def("x", Int(1)), Def("y", Int(2)), Expr(Bop(Plus, Var("x"), Var("y")))])
     ),
   )
 }
@@ -181,26 +223,26 @@ test "FlatProj::to_proj_node: let defs reconstruct Module" {
 ///|
 test "FlatProj::to_proj_node: Module node gets fresh ID (not def ID)" {
   let fp = to_flat_proj(parse_syntax("let x = 1\nx"), Ref::new(0))
-  let def_id = fp.defs[0].3
+  let def_id = get_def(fp, 0).3
   let proj = fp.to_proj_node(Ref::new(100))
   // Module node gets a fresh counter ID, not the first def's stored ID
   inspect(proj.node_id == def_id.0, content="false")
 }
 
 ///|
-test "FlatProj::from_proj_node: extracts Module defs" {
+test "FlatProj::from_proj_node: extracts Module items" {
   let (proj, _) = parse_to_proj_node("let x = 1\nlet y = 2\nx + y")
   let fp = FlatProj::from_proj_node(proj)
-  inspect(fp.defs.length(), content="2")
-  inspect(fp.defs[0].0, content="x")
-  inspect(fp.defs[1].0, content="y")
+  inspect(count_defs(fp), content="2")
+  inspect(get_def(fp, 0).0, content="x")
+  inspect(get_def(fp, 1).0, content="y")
 }
 
 ///|
 test "FlatProj::from_proj_node: single expression (no Module)" {
   let (proj, _) = parse_to_proj_node("42")
   let fp = FlatProj::from_proj_node(proj)
-  inspect(fp.defs.length(), content="0")
+  inspect(count_defs(fp), content="0")
 }
 
 ///|
@@ -237,15 +279,15 @@ test "reconcile_flat_proj: duplicate/shadowed names preserve correct IDs" {
   // old: let x = 1, let x = 2, x  →  new: let x = 1, let x = 2, x
   let counter = Ref::new(0)
   let old = to_flat_proj(parse_syntax("let x = 1\nlet x = 2\nx"), counter)
-  let old_id_0 = old.defs[0].3 // first x
-  let old_id_1 = old.defs[1].3 // second x
+  let old_id_0 = get_def(old, 0).3 // first x
+  let old_id_1 = get_def(old, 1).3 // second x
 
   let new_fp = to_flat_proj(parse_syntax("let x = 1\nlet x = 2\nx"), counter)
   let reconciled = reconcile_flat_proj(old, new_fp, counter)
 
   // Both IDs preserved in correct positions
-  inspect(reconciled.defs[0].3 == old_id_0, content="true")
-  inspect(reconciled.defs[1].3 == old_id_1, content="true")
+  inspect(get_def(reconciled, 0).3 == old_id_0, content="true")
+  inspect(get_def(reconciled, 1).3 == old_id_1, content="true")
 }
 
 ///|
@@ -253,16 +295,16 @@ test "reconcile_flat_proj: shadow with insertion preserves first x ID" {
   // old: [x=1], x  →  new: [x=1, x=2], x
   let counter = Ref::new(0)
   let old = to_flat_proj(parse_syntax("let x = 1\nx"), counter)
-  let old_x_id = old.defs[0].3
+  let old_x_id = get_def(old, 0).3
 
   let new_fp = to_flat_proj(parse_syntax("let x = 1\nlet x = 2\nx"), counter)
   let reconciled = reconcile_flat_proj(old, new_fp, counter)
 
-  inspect(reconciled.defs.length(), content="2")
+  inspect(count_defs(reconciled), content="2")
   // First x preserves old ID
-  inspect(reconciled.defs[0].3 == old_x_id, content="true")
+  inspect(get_def(reconciled, 0).3 == old_x_id, content="true")
   // Second x gets a fresh ID (different from first)
-  inspect(reconciled.defs[1].3 != old_x_id, content="true")
+  inspect(get_def(reconciled, 1).3 != old_x_id, content="true")
 }
 
 ///|
@@ -273,8 +315,8 @@ test "reconcile_flat_proj: empty old defs" {
   let new_fp = to_flat_proj(parse_syntax("let x = 1\n42"), counter)
   let reconciled = reconcile_flat_proj(old, new_fp, counter)
 
-  inspect(reconciled.defs.length(), content="1")
-  inspect(reconciled.defs[0].0, content="x")
+  inspect(count_defs(reconciled), content="1")
+  inspect(get_def(reconciled, 0).0, content="x")
 }
 
 ///|
@@ -285,7 +327,7 @@ test "reconcile_flat_proj: empty new defs" {
   let new_fp = to_flat_proj(parse_syntax("42"), counter)
   let reconciled = reconcile_flat_proj(old, new_fp, counter)
 
-  inspect(reconciled.defs.length(), content="0")
+  inspect(count_defs(reconciled), content="0")
 }
 
 ///|
@@ -323,4 +365,22 @@ test "FlatProj::to_proj_node: Module node_id seeded None still allocates fresh" 
   let proj = fp.to_proj_node_with_prev_module_id(counter, None)
   // Without seed: fresh ID allocated from counter (>=0, valid)
   inspect(proj.node_id >= 0, content="true")
+}
+
+///|
+test "to_flat_proj: interleaved let and expression" {
+  let syntax = parse_syntax("let x = 1\nx\nlet y = 2\ny")
+  let fp = to_flat_proj(syntax, Ref::new(0))
+  inspect(
+    fp.items.length(),
+    content=(
+      #|3
+    ),
+  )
+  inspect(
+    count_defs(fp),
+    content=(
+      #|1
+    ),
+  )
 }

@@ -210,14 +210,11 @@ pub fn syntax_to_proj_node(
 }
 
 ///|
-/// Convert a SourceFile SyntaxNode (LetDef* Expression?) to a ProjNode tree.
-/// Collects LetDef children into a flat Module(defs, body) ProjNode,
+/// Convert a SourceFile SyntaxNode to a ProjNode tree.
+/// Collects LetDef and expression children into a Module(items) ProjNode,
 /// mirroring `syntax_node_to_term` but preserving spans and IDs.
-///
-/// LetDef children are collected into a single Module node with flat children.
 pub fn to_proj_node(root : @seam.SyntaxNode, counter : Ref[Int]) -> ProjNode {
-  let defs : Array[(String, ProjNode, Int)] = []
-  let mut final_proj : ProjNode? = None
+  let items : Array[(@ast.ModuleItem, ProjNode, Int)] = []
   for child in root.children() {
     if @parser.LetDefView::cast(child) is Some(v) {
       let init = match v.init() {
@@ -225,31 +222,40 @@ pub fn to_proj_node(root : @seam.SyntaxNode, counter : Ref[Int]) -> ProjNode {
         None =>
           error_node_for_syntax("missing let binding value", child, counter)
       }
-      defs.push((v.name(), init, child.start()))
-    } else if final_proj is None {
-      final_proj = Some(syntax_to_proj_node(child, counter))
+      items.push(
+        (@ast.ModuleItem::Def(v.name(), init.kind), init, child.start()),
+      )
+    } else {
+      let proj = syntax_to_proj_node(child, counter)
+      items.push((@ast.ModuleItem::Expr(proj.kind), proj, child.start()))
     }
   }
-  let mut result = match final_proj {
-    Some(p) => p
-    None =>
-      ProjNode::new(Unit, root.end(), root.end(), next_proj_node_id(counter), [])
-  }
-  if defs.length() > 0 {
-    let children : Array[ProjNode] = defs.map(fn(d) { d.1 })
-    children.push(result)
-    let term_defs : Array[(@ast.VarName, @ast.Term)] = defs.map(fn(d) {
-      (d.0, d.1.kind)
-    })
-    result = ProjNode::new(
-      Module(term_defs, result.kind),
-      defs[0].2,
-      result.end,
+  if items.length() == 0 {
+    return ProjNode::new(
+      Unit,
+      root.end(),
+      root.end(),
       next_proj_node_id(counter),
-      children,
+      [],
     )
   }
-  result
+  if items.length() == 1 {
+    match items[0].0 {
+      @ast.ModuleItem::Expr(_) => return items[0].1
+      _ => ()
+    }
+  }
+  let children : Array[ProjNode] = items.map(fn(item) { item.1 })
+  let term_items : Array[@ast.ModuleItem] = items.map(fn(item) { item.0 })
+  let start = items[0].2
+  let end = items[items.length() - 1].1.end
+  ProjNode::new(
+    Module(term_items),
+    start,
+    end,
+    next_proj_node_id(counter),
+    children,
+  )
 }
 
 ///|
@@ -271,17 +277,22 @@ fn rebuild_kind(shape : @ast.Term, children : Array[ProjNode]) -> @ast.Term {
     App(_, _) => App(child_kind(0), child_kind(1))
     Bop(op, _, _) => Bop(op, child_kind(0), child_kind(1))
     If(_, _, _) => If(child_kind(0), child_kind(1), child_kind(2))
-    Module(old_defs, _) =>
-      if children.length() >= 1 {
-        let new_defs : Array[(@ast.VarName, @ast.Term)] = []
-        for i = 0; i < children.length() - 1; i = i + 1 {
-          let name = if i < old_defs.length() { old_defs[i].0 } else { "_" }
-          new_defs.push((name, children[i].kind))
+    Module(old_items) => {
+      let new_items : Array[@ast.ModuleItem] = []
+      for i = 0; i < children.length(); i = i + 1 {
+        if i < old_items.length() {
+          match old_items[i] {
+            @ast.ModuleItem::Def(name, _) =>
+              new_items.push(@ast.ModuleItem::Def(name, children[i].kind))
+            @ast.ModuleItem::Expr(_) =>
+              new_items.push(@ast.ModuleItem::Expr(children[i].kind))
+          }
+        } else {
+          new_items.push(@ast.ModuleItem::Expr(children[i].kind))
         }
-        Module(new_defs, children[children.length() - 1].kind)
-      } else {
-        Module([], child_kind(0))
       }
+      Module(new_items)
+    }
     _ => shape
   }
 }
@@ -297,7 +308,7 @@ fn same_kind_tag(a : @ast.Term, b : @ast.Term) -> Bool {
     (App(_, _), App(_, _)) => true
     (Bop(_, _, _), Bop(_, _, _)) => true
     (If(_, _, _), If(_, _, _)) => true
-    (Module(_, _), Module(_, _)) => true
+    (Module(_), Module(_)) => true
     (Unit, Unit) => true
     (Error(_), Error(_)) => true
     (Unbound(_), Unbound(_)) => true

@@ -252,57 +252,50 @@ fn SourceMap::collect_token_spans_source_file(
   syntax_root : @seam.SyntaxNode,
   proj_root : ProjNode,
 ) -> Unit {
-  // For a Module ProjNode, children are: [init_0, init_1, ..., body]
-  // The syntax_root has LetDef children and optionally a final expression child.
+  // For a Module ProjNode, children are interleaved: [item_0, item_1, ...]
+  // The syntax_root has LetDef and expression children interleaved.
   match proj_root.kind {
-    Module(defs, _) => {
+    Module(items) => {
       let syntax_children = syntax_root.children()
-      let mut def_idx = 0
-      let mut expr_seen = false
+      let mut child_idx = 0
+      let mut def_count = 0
       for syn_child in syntax_children {
-        if @parser.LetDefView::cast(syn_child) is Some(v) {
-          if def_idx < defs.length() && def_idx < proj_root.children.length() {
-            // The ProjNode child at def_idx is the init expression, but
-            // the LetDef's name token belongs to the LetDef itself.
-            // We need a NodeId for the LetDef. In the current FlatProj model,
-            // LetDef nodes don't have their own ProjNode — the Module node
-            // owns the defs array. So we store the name span on the Module
-            // node with a role like "name:0", "name:1", etc.
-            let ident_token = syn_child.find_token(@syntax.IdentToken.to_raw())
-            match ident_token {
-              Some(tok) => {
-                // Use index-based key for stability across renames
-                let role = "name:" + def_idx.to_string()
-                self.set_token_span(
-                  proj_root.id(),
-                  role,
-                  Range::new(tok.start(), tok.end()),
-                )
-              }
-              None => ()
-            }
-            // Recurse into the init expression
-            match v.init() {
-              Some(init_syn) =>
-                self.collect_token_spans_expr(
-                  init_syn,
-                  proj_root.children[def_idx],
-                )
-              None => ()
-            }
-          }
-          def_idx = def_idx + 1
-        } else if not(expr_seen) {
-          expr_seen = true
-          // This is the final expression — last child of Module ProjNode
-          let body_idx = proj_root.children.length() - 1
-          if body_idx >= 0 {
-            self.collect_token_spans_expr(
-              syn_child,
-              proj_root.children[body_idx],
-            )
-          }
+        if child_idx >= items.length() ||
+          child_idx >= proj_root.children.length() {
+          break
         }
+        if @parser.LetDefView::cast(syn_child) is Some(v) {
+          // LetDef — store name span on Module node with indexed role
+          let ident_token = syn_child.find_token(@syntax.IdentToken.to_raw())
+          match ident_token {
+            Some(tok) => {
+              let role = "name:" + def_count.to_string()
+              self.set_token_span(
+                proj_root.id(),
+                role,
+                Range::new(tok.start(), tok.end()),
+              )
+            }
+            None => ()
+          }
+          def_count = def_count + 1
+          // Recurse into the init expression
+          match v.init() {
+            Some(init_syn) =>
+              self.collect_token_spans_expr(
+                init_syn,
+                proj_root.children[child_idx],
+              )
+            None => ()
+          }
+        } else {
+          // Expression child
+          self.collect_token_spans_expr(
+            syn_child,
+            proj_root.children[child_idx],
+          )
+        }
+        child_idx = child_idx + 1
       }
     }
     _ => {

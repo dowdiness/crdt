@@ -44,8 +44,7 @@ pub impl Eq for DropPosition
 pub impl Show for DropPosition
 
 pub struct FlatProj {
-  defs : Array[(String, ProjNode, Int, NodeId)]
-  final_expr : ProjNode?
+  items : Array[FlatProjItem]
 }
 pub fn FlatProj::empty() -> Self
 pub fn FlatProj::from_proj_node(ProjNode) -> Self
@@ -53,6 +52,13 @@ pub fn FlatProj::to_proj_node(Self, @ref.Ref[Int]) -> ProjNode
 pub fn FlatProj::to_proj_node_with_prev_module_id(Self, @ref.Ref[Int], Int?) -> ProjNode
 pub impl Eq for FlatProj
 pub impl Show for FlatProj
+
+pub(all) enum FlatProjItem {
+  Def(String, ProjNode, Int, NodeId)
+  Expr(ProjNode)
+}
+pub impl Eq for FlatProjItem
+pub impl Show for FlatProjItem
 
 pub enum InteractiveChildren {
   Loaded(Array[InteractiveTreeNode])

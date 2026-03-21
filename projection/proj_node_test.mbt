@@ -18,7 +18,7 @@ test "to_proj_node: single let def + expression" {
   inspect(
     proj.kind,
     content=(
-      #|Module([("x", Int(1))], Var("x"))
+      #|Module([Def("x", Int(1)), Expr(Var("x"))])
     ),
   )
   inspect(proj.children.length(), content="2")
@@ -31,7 +31,7 @@ test "to_proj_node: multiple let defs" {
   inspect(
     proj.kind,
     content=(
-      #|Module([("x", Int(1)), ("y", Int(2))], Bop(Plus, Var("x"), Var("y")))
+      #|Module([Def("x", Int(1)), Def("y", Int(2)), Expr(Bop(Plus, Var("x"), Var("y")))])
     ),
   )
   // Module has 3 children: 2 init ProjNodes + 1 body ProjNode
@@ -45,7 +45,7 @@ test "to_proj_node: no final expression defaults to Unit" {
   inspect(
     proj.kind,
     content=(
-      #|Module([("x", Int(1))], Unit)
+      #|Module([Def("x", Int(1))])
     ),
   )
 }
@@ -64,7 +64,7 @@ test "to_proj_node: single let def with expression" {
   inspect(
     proj.kind,
     content=(
-      #|Module([("x", Int(1))], Var("x"))
+      #|Module([Def("x", Int(1)), Expr(Var("x"))])
     ),
   )
 }

@@ -210,7 +210,7 @@ pub fn compute_text_edit(
             None => Err("Parent not in source map")
             Some(parent_range) =>
               match parent_node.kind {
-                @ast.Term::Module(_, _) => {
+                @ast.Term::Module(_) => {
                   // Insert a def between existing defs, with trailing newline separator
                   let insert_text = "let x = " + placeholder + "\n"
                   let insert_pos = if index >= parent_node.children.length() {
