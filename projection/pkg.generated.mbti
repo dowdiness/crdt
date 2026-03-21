@@ -10,9 +10,15 @@ import {
 }
 
 // Values
+pub fn collect_lam_env(NodeId, Map[NodeId, ProjNode]) -> @hashset.HashSet[String]
+
 pub fn compute_text_edit(TreeEditOp, String, SourceMap, Map[NodeId, ProjNode], FlatProj) -> Result[(Array[SpanEdit], FocusHint)?, String]
 
+pub fn find_usages(String, Int, FlatProj, Map[NodeId, ProjNode]) -> Array[NodeId]
+
 pub fn free_vars(@ast.Term, @hashset.HashSet[String]) -> @hashset.HashSet[String]
+
+pub fn get_actions_for_node(@ast.Term, NodeContext) -> Array[Action]
 
 pub fn is_leaf_node(@ast.Term) -> Bool
 
@@ -26,6 +32,8 @@ pub fn reconcile_ast(ProjNode, ProjNode, @ref.Ref[Int]) -> ProjNode
 
 pub fn reconcile_flat_proj(FlatProj, FlatProj, @ref.Ref[Int]) -> FlatProj
 
+pub fn resolve_binder(NodeId, String, FlatProj, Map[NodeId, ProjNode], SourceMap) -> BindingSite?
+
 pub fn syntax_to_proj_node(@seam.SyntaxNode, @ref.Ref[Int]) -> ProjNode
 
 pub fn to_flat_proj(@seam.SyntaxNode, @ref.Ref[Int]) -> FlatProj
@@ -37,6 +45,32 @@ pub fn to_proj_node(@seam.SyntaxNode, @ref.Ref[Int]) -> ProjNode
 // Errors
 
 // Types and methods
+pub(all) struct Action {
+  id : String
+  label : String
+  mnemonic : String
+  group : ActionGroup
+  needs_input : Bool
+}
+pub impl Eq for Action
+pub impl Show for Action
+
+pub(all) enum ActionGroup {
+  Core
+  Wrap
+  Binding
+  Module
+}
+pub impl Eq for ActionGroup
+pub impl Show for ActionGroup
+
+pub(all) enum BindingSite {
+  LamBinder(lam_id~ : NodeId)
+  ModuleBinder(binding_node_id~ : NodeId, def_index~ : Int)
+}
+pub impl Eq for BindingSite
+pub impl Show for BindingSite
+
 pub enum DropPosition {
   Before
   After
@@ -82,6 +116,17 @@ pub struct InteractiveTreeNode {
 }
 pub fn InteractiveTreeNode::from_term_node(ProjNode, SourceMap) -> Self
 pub impl Show for InteractiveTreeNode
+
+pub(all) struct NodeContext {
+  is_let_binding : Bool
+  binding_node_id : NodeId?
+  binding_def_index : Int?
+  module_node_id : NodeId?
+}
+pub fn NodeContext::new() -> Self
+pub fn NodeContext::new_binding(binding_node_id~ : NodeId, binding_def_index~ : Int, module_node_id~ : NodeId) -> Self
+pub impl Eq for NodeContext
+pub impl Show for NodeContext
 
 pub struct NodeId(Int)
 pub fn NodeId::from_int(Int) -> Self

@@ -46,7 +46,9 @@ pub fn resolve_binder(
   }
   for i = search_end - 1; i >= 0; i = i - 1 {
     if flat_proj.defs[i].0 == var_name {
-      return Some(ModuleBinder(binding_node_id=flat_proj.defs[i].3, def_index=i))
+      return Some(
+        ModuleBinder(binding_node_id=flat_proj.defs[i].3, def_index=i),
+      )
     }
   }
   None
@@ -115,10 +117,7 @@ fn collect_var_usages(
   results : Array[NodeId],
 ) -> Unit {
   match node.kind {
-    @ast.Term::Var(x) =>
-      if x == name {
-        results.push(node.id())
-      }
+    @ast.Term::Var(x) => if x == name { results.push(node.id()) }
     @ast.Term::Lam(param, _) =>
       if param != name {
         for child in node.children {
