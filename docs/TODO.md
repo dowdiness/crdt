@@ -51,6 +51,8 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 - [x] Wire `apply_sync` to suppress undo tracking — `SyncEditor::apply_sync` now disables tracking before applying remote ops
 - [x] Sync undo/redo ops to peers — `SyncEditor::undo_and_export()`/`redo_and_export()` capture inverse ops via `export_since()` for peer broadcast; JS bindings `undo_and_export_json`/`redo_and_export_json` added
 - [ ] Add remote cursor/selection tracking
+- [ ] Cursor-preserving remote sync — `syncCmFromCrdt()` replaces full CM6 document, losing cursor position and selection on remote edits. Needs diff-based `TransactionSpec` patching.
+- [x] Show sync connection status in PEERS panel — `SyncStatus` enum (Offline/Connecting/Connected/Error) with colored dot indicator
 
 ---
 
@@ -157,6 +159,22 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
 - [x] Add pre-commit hook running `moon check && moon fmt --check`
 - [x] Script the web build workflow
 - [x] Refresh stale integration docs and examples that still refer to `crdt.js`, `target/js`, or old JS loading patterns after the canopy rename and JS build flow
+
+---
+
+## 10. Ideal Editor
+
+**Impact:** High | **Effort:** Medium
+
+- [x] Outline refresh on text change — replaced broken deferred dispatch with immediate `refresh(model)`
+- [x] Graphviz SVG rendering — DOT→SVG via MoonBit graphviz submodule, dark theme, after_render effect
+- [x] Sync connection status — SyncStatus in PEERS panel with colored dot
+- [x] Mobile layout — drawer panels, 44px touch targets, safe areas, scrim, landscape mode
+- [x] CSS design system audit — zero raw values outside `:root`, 45 custom properties
+- [ ] Inspector panel — wire up node details (type, source range, children) on outline click
+- [ ] Structure mode — test and polish PM block editor, verify lazy-loading works
+- [ ] Graphviz SVG theming — SVG uses hardcoded `Arial` from submodule; needs `pub(all) struct SvgConfig` to customize
+- [ ] Grammar: interleaved let/expr — `Module` AST supports `ModuleItem` in parser already, but `FlatProj` storage change caused 2x regression from MoonBit enum boxing. Alternative: add helper methods on existing `FlatProj` for interleaved views.
 
 ---
 
