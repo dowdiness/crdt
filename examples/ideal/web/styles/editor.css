@@ -13,7 +13,7 @@
   --canopy-fg: #e4e4f0;
   --canopy-text-secondary: #b8b8d0;
   --canopy-muted: #8888a8;
-  --canopy-text-dim: #787896;        /* 4.5:1 on panel-bg */
+  --canopy-text-dim: #8a8aaa;        /* ~4.6:1 on panel-bg */
 
   /* ── Accent ────────────────────────────────────────────── */
   --canopy-accent: #8250df;
@@ -215,8 +215,10 @@ button:focus-visible, .action-btn:focus-visible,
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  /* Fade/slide first, then width collapses after delay */
   transition: opacity var(--duration-normal) var(--ease-out-quart),
-              transform var(--duration-normal) var(--ease-out-quart);
+              transform var(--duration-normal) var(--ease-out-quart),
+              width 0ms var(--duration-normal);
 }
 
 .panel-header {
@@ -334,7 +336,7 @@ button:focus-visible, .action-btn:focus-visible,
   color: var(--canopy-text-dim);
   margin-left: auto;
   background: var(--canopy-surface);
-  padding: 2px 7px;
+  padding: 2px var(--space-sm);
   border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
@@ -444,7 +446,8 @@ canopy-editor {
   overflow-y: auto;
   flex-shrink: 0;
   transition: opacity var(--duration-normal) var(--ease-out-quart),
-              transform var(--duration-normal) var(--ease-out-quart);
+              transform var(--duration-normal) var(--ease-out-quart),
+              width 0ms var(--duration-normal);
 }
 
 .inspector-section {
@@ -623,6 +626,10 @@ canopy-editor {
   opacity: 1;
   transform: translateX(0) translateY(0);
   pointer-events: auto;
+  /* Override hide-delay: width restores instantly on show */
+  transition: opacity var(--duration-normal) var(--ease-out-quart),
+              transform var(--duration-normal) var(--ease-out-quart),
+              width 0ms 0ms;
 }
 
 .outline-panel.panel-hidden {
@@ -631,9 +638,14 @@ canopy-editor {
   pointer-events: none;
   width: 0;
   overflow: hidden;
-  border: none;
-  /* padding set to 0 so flex doesn't allocate space */
+  border-color: transparent;
   padding: 0;
+  /* Fade/slide first (250ms), then collapse width/padding/border after */
+  transition: opacity var(--duration-normal) var(--ease-out-quart),
+              transform var(--duration-normal) var(--ease-out-quart),
+              width 0ms var(--duration-normal),
+              padding 0ms var(--duration-normal),
+              border-color 0ms var(--duration-normal);
 }
 
 .inspector-panel.panel-hidden {
@@ -642,8 +654,13 @@ canopy-editor {
   pointer-events: none;
   width: 0;
   overflow: hidden;
-  border: none;
+  border-color: transparent;
   padding: 0;
+  transition: opacity var(--duration-normal) var(--ease-out-quart),
+              transform var(--duration-normal) var(--ease-out-quart),
+              width 0ms var(--duration-normal),
+              padding 0ms var(--duration-normal),
+              border-color 0ms var(--duration-normal);
 }
 
 .bottom-panel.panel-hidden {
