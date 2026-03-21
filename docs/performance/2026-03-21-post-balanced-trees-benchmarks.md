@@ -1,8 +1,9 @@
 # Post Balanced Trees Benchmark Results
 
-**Date:** 2026-03-21
+**Date:** 2026-03-21 (final, post code-review fixes)
 **Branch:** `feature/size-threshold-reuse-skip` (loom PR #42 merged)
 **Runner:** `moon bench --release` on WSL2 Linux 6.6.87.2
+**Modules:** canopy (editor + projection), event-graph-walker, lambda parser
 **Changes:** Size-threshold reuse skip + balanced RepeatGroup trees
 
 ---
@@ -84,6 +85,39 @@ Incremental parsing is now **faster than batch** for realistic typing sessions (
 | 320 defs 50-edit session | 1.3x slower than batch | **1.25x faster** | Inverted |
 | Imperative incremental (80 defs) | 236 µs | **109 µs** | 2.2x faster |
 | Full pipeline keystroke (80 defs) | 2.32 ms | **2.01 ms** | 13% of budget |
+
+---
+
+## CRDT — TextDoc Operations (unchanged, no modifications to event-graph-walker)
+
+| Benchmark | Now |
+|-----------|-----|
+| Insert append (100 chars) | 100.50 µs |
+| Insert append (1000 chars) | 1.61 ms |
+| Delete (100 from 100-char doc) | 2.66 ms |
+| text() (100-char doc) | 16.00 µs |
+| text() (1000-char doc) | 257.38 µs |
+| Sequential typing (100k chars) | 332.65 ms |
+
+## CRDT — Sync Operations (unchanged)
+
+| Benchmark | Now |
+|-----------|-----|
+| export_all (100 ops) | 0.13 µs |
+| export_all (1000 ops) | 0.13 µs |
+| export_since (50-op delta) | 601 µs |
+| apply (50 remote ops) | 119 µs |
+| Bidirectional sync (2 peers, 50 ops) | 238 µs |
+
+## CRDT — Walker (unchanged)
+
+| Benchmark | Now |
+|-----------|-----|
+| Linear history (1000 ops) | 1.47 ms |
+| Linear history (10k ops) | 39.52 ms |
+| Linear history (100k ops) | 849.53 ms |
+| Concurrent branches (2x50) | 84.18 µs |
+| Concurrent branches (100k, 5 agents) | 951.49 ms |
 
 ---
 
