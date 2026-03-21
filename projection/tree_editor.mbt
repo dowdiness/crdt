@@ -33,6 +33,15 @@ pub fn TreeEditorState::get_loaded_node(
 }
 
 ///|
+/// Check if a node ID is valid in the current tree state.
+pub fn TreeEditorState::has_node(
+  self : TreeEditorState,
+  node_id : NodeId,
+) -> Bool {
+  self.loaded_nodes.get(node_id) is Some(_)
+}
+
+///|
 /// Create a new tree editor state
 pub fn TreeEditorState::new() -> TreeEditorState {
   {
