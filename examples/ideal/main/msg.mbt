@@ -19,4 +19,13 @@ pub enum Msg {
   // Sync
   TextChangedFromEditor
   SyncStatusChanged(String)
+  // Action overlay
+  OpenActionOverlay
+  CloseActionOverlay
+  ActionKeyPressed(String)
+  ActionTapped(String)
+  NamePromptInput(String)
+  NamePromptSubmit
+  NamePromptCancel
+  LongPressTriggered
 }

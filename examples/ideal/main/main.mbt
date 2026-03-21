@@ -35,6 +35,17 @@ fn init_model() -> Model {
     next_timestamp: 1,
     bottom_tab: Problems,
     sync_status: Connecting,
+    overlay: {
+      visible: false,
+      actions: [],
+      node_context: None,
+      submenu: None,
+      name_prompt: false,
+      name_value: "",
+      name_error: "",
+      anchor_top: 0,
+      anchor_left: 0,
+    },
   }
 }
 
@@ -320,6 +331,10 @@ fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       let new_model = refresh(model)
       (graphviz_render_cmd(new_model), new_model)
     }
+    OpenActionOverlay | CloseActionOverlay | LongPressTriggered =>
+      (none, model)
+    ActionKeyPressed(_) | ActionTapped(_) => (none, model)
+    NamePromptInput(_) | NamePromptSubmit | NamePromptCancel => (none, model)
   }
 }
 

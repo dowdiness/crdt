@@ -35,6 +35,29 @@ pub enum SyncStatus {
 } derive(Eq)
 
 ///|
+pub struct OverlayState {
+  visible : Bool
+  actions : Array[@proj.Action]
+  node_context : NodeActionContext?
+  submenu : @proj.Action?
+  name_prompt : Bool
+  name_value : String
+  name_error : String
+  anchor_top : Int
+  anchor_left : Int
+}
+
+///|
+pub struct NodeActionContext {
+  node_id : @proj.NodeId
+  kind : String
+  is_let_binding : Bool
+  binding_node_id : @proj.NodeId?
+  binding_def_index : Int?
+  module_node_id : @proj.NodeId?
+}
+
+///|
 pub struct Model {
   editor : @editor.SyncEditor
   outline_state : @proj.TreeEditorState
@@ -45,4 +68,5 @@ pub struct Model {
   next_timestamp : Int
   bottom_tab : BottomTab
   sync_status : SyncStatus
+  overlay : OverlayState
 }
