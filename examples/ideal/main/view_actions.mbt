@@ -21,14 +21,10 @@ fn view_action_item(
   } else {
     "action-overlay-item"
   }
-  @html.div(
-    class=item_class,
-    on_click=dispatch(ActionTapped(action.id)),
-    [
-      @html.span(class="action-mnemonic", [@html.text(action.mnemonic)]),
-      @html.span(class="action-label-text", [@html.text(action.label)]),
-    ],
-  )
+  @html.div(class=item_class, on_click=dispatch(ActionTapped(action.id)), [
+    @html.span(class="action-mnemonic", [@html.text(action.mnemonic)]),
+    @html.span(class="action-label-text", [@html.text(action.label)]),
+  ])
 }
 
 ///|
@@ -87,21 +83,17 @@ fn view_name_prompt(
   }
   @html.div(class="name-prompt-container", [
     @html.div(class="name-prompt-label", [@html.text(prompt_label)]),
-    @html.div(
-      class="name-prompt-input-row",
-      on_keydown=on_keydown_handler,
-      [
-        @html.input(
-          input_type=@html.InputType::Text,
-          class="name-prompt-input",
-          placeholder="name\u{2026}",
-          value=model.overlay.name_value,
-          autofocus=true,
-          on_input=fn(value) { dispatch(NamePromptInput(value)) },
-          [@html.text("")],
-        ),
-      ],
-    ),
+    @html.div(class="name-prompt-input-row", on_keydown=on_keydown_handler, [
+      @html.input(
+        input_type=@html.InputType::Text,
+        class="name-prompt-input",
+        placeholder="name\u{2026}",
+        value=model.overlay.name_value,
+        autofocus=true,
+        on_input=fn(value) { dispatch(NamePromptInput(value)) },
+        [@html.text("")],
+      ),
+    ]),
     error_el,
   ])
 }
@@ -121,7 +113,7 @@ fn view_action_overlay(
   let left = model.overlay.anchor_left
   let position_style = "top: \{top}px; left: \{left}px;"
   // Determine content: name prompt, submenu, or main action list
-  let content : @rabbita.Html = if model.overlay.name_prompt {
+  let content : @rabbita.Html = if not(model.overlay.pending_action is None) {
     view_name_prompt(dispatch, model)
   } else {
     view_action_list(dispatch, model.overlay.actions)

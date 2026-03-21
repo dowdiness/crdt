@@ -267,7 +267,7 @@ let add_binding : Action = {
 let binding_rename : Action = {
   id: "binding_rename",
   label: "Rename binding",
-  mnemonic: "r",
+  mnemonic: "R",
   group: Binding,
   needs_input: true,
 }
@@ -276,7 +276,7 @@ let binding_rename : Action = {
 let binding_duplicate : Action = {
   id: "binding_duplicate",
   label: "Duplicate binding",
-  mnemonic: "d",
+  mnemonic: "D",
   group: Binding,
   needs_input: false,
 }
@@ -303,7 +303,7 @@ let binding_move_down : Action = {
 let binding_inline_all : Action = {
   id: "binding_inline_all",
   label: "Inline all usages",
-  mnemonic: "i",
+  mnemonic: "I",
   group: Binding,
   needs_input: false,
 }

@@ -41,7 +41,6 @@ pub struct OverlayState {
   node_context : NodeActionContext?
   submenu : @proj.Action?
   pending_action : @proj.Action?
-  name_prompt : Bool
   name_value : String
   name_error : String
   anchor_top : Int
@@ -51,7 +50,7 @@ pub struct OverlayState {
 ///|
 pub struct NodeActionContext {
   node_id : @proj.NodeId
-  kind : String
+  kind : @ast.Term
   is_let_binding : Bool
   binding_node_id : @proj.NodeId?
   binding_def_index : Int?

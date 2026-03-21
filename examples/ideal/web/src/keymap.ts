@@ -66,6 +66,8 @@ export function actionKeyForwardPlugin(host: HTMLElement) {
   return new Plugin({
     props: {
       handleKeyDown(_view, event) {
+        // Don't forward modifier/function keys (except Escape)
+        if (event.key.length > 1 && event.key !== 'Escape') return false;
         const g = globalThis as any;
         if (!g.__canopy_overlay_open) return false;
         g.__canopy_pending_action_key = event.key;

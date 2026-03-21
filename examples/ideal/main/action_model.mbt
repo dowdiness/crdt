@@ -21,10 +21,8 @@ fn detect_action_context(
     None => return None
   }
   // Check if this node is a let-binding init expression
-  let (is_let_binding, binding_node_id, binding_def_index) = match @proj.find_binding_for_init(
-    nid,
-    flat_proj,
-  ) {
+  let (is_let_binding, binding_node_id, binding_def_index) = match
+    @proj.find_binding_for_init(nid, flat_proj) {
     Some((bid, idx)) => (true, Some(bid), Some(idx))
     None => (false, None, None)
   }
@@ -37,39 +35,26 @@ fn detect_action_context(
       }
     None => None
   }
-  Some(
-    {
-      node_id: nid,
-      kind: kind_name_for_term(node.kind),
-      is_let_binding,
-      binding_node_id,
-      binding_def_index,
-      module_node_id,
-    },
-  )
-}
-
-///|
-/// Map a Term kind to the node type name string used in the projection layer.
-fn kind_name_for_term(kind : @ast.Term) -> String {
-  match kind {
-    @ast.Term::Int(_) => "Int"
-    @ast.Term::Var(_) => "Var"
-    @ast.Term::Lam(_, _) => "Lam"
-    @ast.Term::App(_, _) => "App"
-    @ast.Term::Bop(_, _, _) => "Bop"
-    @ast.Term::If(_, _, _) => "If"
-    @ast.Term::Module(_, _) => "Module"
-    @ast.Term::Unit => "Unit"
-    @ast.Term::Unbound(_) => "Unbound"
-    @ast.Term::Error(_) => "Error"
-  }
+  Some({
+    node_id: nid,
+    kind: node.kind,
+    is_let_binding,
+    binding_node_id,
+    binding_def_index,
+    module_node_id,
+  })
 }
 
 ///|
 /// Convert a NodeActionContext to a @proj.NodeContext for action filtering.
 fn to_proj_context(ctx : NodeActionContext) -> @proj.NodeContext {
-  match (ctx.is_let_binding, ctx.binding_node_id, ctx.binding_def_index, ctx.module_node_id) {
+  match
+    (
+      ctx.is_let_binding,
+      ctx.binding_node_id,
+      ctx.binding_def_index,
+      ctx.module_node_id,
+    ) {
     (true, Some(bid), Some(idx), Some(mid)) =>
       @proj.NodeContext::new_binding(
         binding_node_id=bid,
@@ -77,25 +62,6 @@ fn to_proj_context(ctx : NodeActionContext) -> @proj.NodeContext {
         module_node_id=mid,
       )
     _ => @proj.NodeContext::new()
-  }
-}
-
-///|
-/// Map a Term kind to the @ast.Term variant for use with get_actions_for_node.
-/// Returns None if the kind name is not recognized.
-fn term_from_kind_name(kind : String) -> @ast.Term? {
-  match kind {
-    "Int" => Some(@ast.Term::Int(0))
-    "Var" => Some(@ast.Term::Var(""))
-    "Lam" => Some(@ast.Term::Lam("", @ast.Term::Unit))
-    "App" => Some(@ast.Term::App(@ast.Term::Unit, @ast.Term::Unit))
-    "Bop" => Some(@ast.Term::Bop(@ast.Bop::Plus, @ast.Term::Unit, @ast.Term::Unit))
-    "If" => Some(@ast.Term::If(@ast.Term::Unit, @ast.Term::Unit, @ast.Term::Unit))
-    "Module" => Some(@ast.Term::Module([], @ast.Term::Unit))
-    "Unit" => Some(@ast.Term::Unit)
-    "Unbound" => Some(@ast.Term::Unbound(""))
-    "Error" => Some(@ast.Term::Error(""))
-    _ => None
   }
 }
 
@@ -182,8 +148,7 @@ fn build_tree_edit_op(
       }
     "binding_move_up" =>
       match ctx.binding_node_id {
-        Some(binding_node_id) =>
-          Ok(Some(@proj.MoveBindingUp(binding_node_id~)))
+        Some(binding_node_id) => Ok(Some(@proj.MoveBindingUp(binding_node_id~)))
         None => Err("No binding node ID for binding_move_up")
       }
     "binding_move_down" =>
@@ -200,14 +165,12 @@ fn build_tree_edit_op(
       }
     "binding_delete" =>
       match ctx.binding_node_id {
-        Some(binding_node_id) =>
-          Ok(Some(@proj.DeleteBinding(binding_node_id~)))
+        Some(binding_node_id) => Ok(Some(@proj.DeleteBinding(binding_node_id~)))
         None => Err("No binding node ID for binding_delete")
       }
     "add_binding" =>
       match ctx.module_node_id {
-        Some(module_node_id) =>
-          Ok(Some(@proj.AddBinding(module_node_id~)))
+        Some(module_node_id) => Ok(Some(@proj.AddBinding(module_node_id~)))
         None => Err("No module node ID for add_binding")
       }
     _ => Err("Unknown action: " + action_id)

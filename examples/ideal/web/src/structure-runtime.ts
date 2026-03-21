@@ -127,6 +127,7 @@ export function createStructureModeSession(
 
   // Long-press detection for touch devices
   let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  const gestureController = new AbortController();
 
   parent.addEventListener('pointerdown', (e) => {
     if (e.pointerType !== 'touch') return;
@@ -145,13 +146,14 @@ export function createStructureModeSession(
     parent.addEventListener('pointermove', (me) => {
       if (Math.abs(me.clientX - startX) > 10 || Math.abs(me.clientY - startY) > 10) cancel();
     }, { once: true });
-  }, { passive: true });
+  }, { passive: true, signal: gestureController.signal });
 
   return {
     applyRemote(syncJson: string): void {
       bridge.applyRemote(syncJson);
     },
     destroy(): void {
+      gestureController.abort();
       bridge.destroy();
       pmView.destroy();
     },

@@ -35,18 +35,7 @@ fn init_model() -> Model {
     next_timestamp: 1,
     bottom_tab: Problems,
     sync_status: Connecting,
-    overlay: {
-      visible: false,
-      actions: [],
-      node_context: None,
-      submenu: None,
-      pending_action: None,
-      name_prompt: false,
-      name_value: "",
-      name_error: "",
-      anchor_top: 0,
-      anchor_left: 0,
-    },
+    overlay: closed_overlay(),
   }
 }
 
@@ -224,7 +213,6 @@ fn closed_overlay() -> OverlayState {
     node_context: None,
     submenu: None,
     pending_action: None,
-    name_prompt: false,
     name_value: "",
     name_error: "",
     anchor_top: 0,
@@ -235,11 +223,7 @@ fn closed_overlay() -> OverlayState {
 ///|
 /// Parse the bounding rect JSON from js_get_selected_node_rect into (top, left).
 fn parse_anchor_rect(json_str : String) -> (Int, Int) {
-  let json = try {
-    @json.parse(json_str)
-  } catch {
-    _ => return (0, 0)
-  }
+  let json = @json.parse(json_str) catch { _ => return (0, 0) }
   match json {
     Json::Object(m) => {
       let top = match m.get("bottom") {
@@ -266,12 +250,8 @@ fn open_action_overlay(model : Model, node_id_str : String) -> Model {
     Some(c) => c
     None => return model
   }
-  let term = match term_from_kind_name(ctx.kind) {
-    Some(t) => t
-    None => return model
-  }
   let proj_ctx = to_proj_context(ctx)
-  let actions = @proj.get_actions_for_node(term, proj_ctx)
+  let actions = @proj.get_actions_for_node(ctx.kind, proj_ctx)
   if actions.is_empty() {
     return model
   }
@@ -286,7 +266,6 @@ fn open_action_overlay(model : Model, node_id_str : String) -> Model {
       node_context: Some(ctx),
       submenu: None,
       pending_action: None,
-      name_prompt: false,
       name_value: "",
       name_error: "",
       anchor_top,
@@ -331,7 +310,6 @@ fn execute_action(
       let overlay = {
         ..model.overlay,
         pending_action: Some(action),
-        name_prompt: true,
         name_value: "",
         name_error: "",
       }
@@ -341,6 +319,22 @@ fn execute_action(
       let overlay = { ..model.overlay, name_error: msg }
       (none, { ..model, overlay, })
     }
+  }
+}
+
+///|
+/// Dispatch an action immediately if it needs no input, or open the name prompt.
+fn dispatch_or_prompt(model : Model, action : @proj.Action) -> (Cmd, Model) {
+  if action.needs_input {
+    let overlay = {
+      ..model.overlay,
+      pending_action: Some(action),
+      name_value: "",
+      name_error: "",
+    }
+    (none, { ..model, overlay, })
+  } else {
+    execute_action(model, action, "", "")
   }
 }
 
@@ -480,57 +474,31 @@ fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       }
       // If in submenu mode, match numeric keys to choices
       match model.overlay.submenu {
-        Some(sub_action) => {
+        Some(sub_action) =>
           // Submenu choices: keys "1", "2", "3" etc.
           execute_action(model, sub_action, key, "")
-        }
         None =>
           // If in name prompt mode, let the view handle input
-          if model.overlay.name_prompt {
+          if not(model.overlay.pending_action is None) {
             (none, model)
           } else {
             // Match mnemonic: find the action whose mnemonic matches the key
-            let matched = model.overlay.actions.iter().find_first(fn(a) {
-              a.mnemonic == key
-            })
+            let matched = model.overlay.actions
+              .iter()
+              .find_first(fn(a) { a.mnemonic == key })
             match matched {
-              Some(action) =>
-                if action.needs_input {
-                  // Show name prompt
-                  let overlay = {
-                    ..model.overlay,
-                    pending_action: Some(action),
-                    name_prompt: true,
-                    name_value: "",
-                    name_error: "",
-                  }
-                  (none, { ..model, overlay, })
-                } else {
-                  execute_action(model, action, "", "")
-                }
+              Some(action) => dispatch_or_prompt(model, action)
               None => (none, model)
             }
           }
       }
     }
     ActionTapped(action_id) => {
-      let matched = model.overlay.actions.iter().find_first(fn(a) {
-        a.id == action_id
-      })
+      let matched = model.overlay.actions
+        .iter()
+        .find_first(fn(a) { a.id == action_id })
       match matched {
-        Some(action) =>
-          if action.needs_input {
-            let overlay = {
-              ..model.overlay,
-              pending_action: Some(action),
-              name_prompt: true,
-              name_value: "",
-              name_error: "",
-            }
-            (none, { ..model, overlay, })
-          } else {
-            execute_action(model, action, "", "")
-          }
+        Some(action) => dispatch_or_prompt(model, action)
         None => (none, model)
       }
     }
@@ -541,10 +509,7 @@ fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     NamePromptSubmit => {
       let name = model.overlay.name_value
       if name == "" {
-        let overlay = {
-          ..model.overlay,
-          name_error: "Name cannot be empty",
-        }
+        let overlay = { ..model.overlay, name_error: "Name cannot be empty" }
         return (none, { ..model, overlay, })
       }
       match model.overlay.pending_action {
