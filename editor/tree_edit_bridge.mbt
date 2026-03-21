@@ -20,7 +20,7 @@ pub fn SyncEditor::apply_tree_edit(
     None => return Err("No FlatProj available")
   }
   match @proj.compute_text_edit(op, old_text, source_map, registry, flat_proj) {
-    Ok(Some(edits)) => {
+    Ok(Some((edits, focus_hint))) => {
       if edits.is_empty() {
         return Ok(()) // no-op
       }
@@ -40,7 +40,12 @@ pub fn SyncEditor::apply_tree_edit(
           false, // move_cursor_to_edit_end
         )
       }
-      self.move_cursor(old_cursor)
+      match focus_hint {
+        @proj.FocusHint::RestoreCursor => self.move_cursor(old_cursor)
+        @proj.FocusHint::MoveCursor(position~) =>
+          // MoveCursor position is in post-edit coordinates — use directly.
+          self.move_cursor(position)
+      }
       Ok(())
     }
     Ok(None) => Err("Unhandled tree edit op: " + op.to_string())

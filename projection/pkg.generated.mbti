@@ -10,7 +10,17 @@ import {
 }
 
 // Values
-pub fn compute_text_edit(TreeEditOp, String, SourceMap, Map[NodeId, ProjNode], FlatProj) -> Result[Array[SpanEdit]?, String]
+pub fn collect_lam_env(NodeId, Map[NodeId, ProjNode]) -> @hashset.HashSet[String]
+
+pub fn compute_text_edit(TreeEditOp, String, SourceMap, Map[NodeId, ProjNode], FlatProj) -> Result[(Array[SpanEdit], FocusHint)?, String]
+
+pub fn find_binding_for_init(NodeId, FlatProj) -> (NodeId, Int)?
+
+pub fn find_usages(String, Int, FlatProj, Map[NodeId, ProjNode]) -> Array[NodeId]
+
+pub fn free_vars(@ast.Term, @hashset.HashSet[String]) -> @hashset.HashSet[String]
+
+pub fn get_actions_for_node(@ast.Term, NodeContext) -> Array[Action]
 
 pub fn is_leaf_node(@ast.Term) -> Bool
 
@@ -24,6 +34,8 @@ pub fn reconcile_ast(ProjNode, ProjNode, @ref.Ref[Int]) -> ProjNode
 
 pub fn reconcile_flat_proj(FlatProj, FlatProj, @ref.Ref[Int]) -> FlatProj
 
+pub fn resolve_binder(NodeId, String, FlatProj, Map[NodeId, ProjNode], SourceMap) -> BindingSite?
+
 pub fn syntax_to_proj_node(@seam.SyntaxNode, @ref.Ref[Int]) -> ProjNode
 
 pub fn to_flat_proj(@seam.SyntaxNode, @ref.Ref[Int]) -> FlatProj
@@ -35,6 +47,32 @@ pub fn to_proj_node(@seam.SyntaxNode, @ref.Ref[Int]) -> ProjNode
 // Errors
 
 // Types and methods
+pub(all) struct Action {
+  id : String
+  label : String
+  mnemonic : String
+  group : ActionGroup
+  needs_input : Bool
+}
+pub impl Eq for Action
+pub impl Show for Action
+
+pub(all) enum ActionGroup {
+  Core
+  Wrap
+  Binding
+  Module
+}
+pub impl Eq for ActionGroup
+pub impl Show for ActionGroup
+
+pub(all) enum BindingSite {
+  LamBinder(lam_id~ : NodeId)
+  ModuleBinder(binding_node_id~ : NodeId, def_index~ : Int)
+}
+pub impl Eq for BindingSite
+pub impl Show for BindingSite
+
 pub enum DropPosition {
   Before
   After
@@ -53,6 +91,13 @@ pub fn FlatProj::to_proj_node(Self, @ref.Ref[Int]) -> ProjNode
 pub fn FlatProj::to_proj_node_with_prev_module_id(Self, @ref.Ref[Int], Int?) -> ProjNode
 pub impl Eq for FlatProj
 pub impl Show for FlatProj
+
+pub(all) enum FocusHint {
+  RestoreCursor
+  MoveCursor(position~ : Int)
+}
+pub impl Eq for FocusHint
+pub impl Show for FocusHint
 
 pub enum InteractiveChildren {
   Loaded(Array[InteractiveTreeNode])
@@ -73,6 +118,17 @@ pub struct InteractiveTreeNode {
 }
 pub fn InteractiveTreeNode::from_term_node(ProjNode, SourceMap) -> Self
 pub impl Show for InteractiveTreeNode
+
+pub(all) struct NodeContext {
+  is_let_binding : Bool
+  binding_node_id : NodeId?
+  binding_def_index : Int?
+  module_node_id : NodeId?
+}
+pub fn NodeContext::new() -> Self
+pub fn NodeContext::new_binding(binding_node_id~ : NodeId, binding_def_index~ : Int, module_node_id~ : NodeId) -> Self
+pub impl Eq for NodeContext
+pub impl Show for NodeContext
 
 pub struct NodeId(Int)
 pub fn NodeId::from_int(Int) -> Self
@@ -140,6 +196,20 @@ pub(all) enum TreeEditOp {
   Drop(source~ : NodeId, target~ : NodeId, position~ : DropPosition)
   Collapse(node_id~ : NodeId)
   Expand(node_id~ : NodeId)
+  Unwrap(node_id~ : NodeId, keep_child_index~ : Int)
+  SwapChildren(node_id~ : NodeId)
+  WrapInIf(node_id~ : NodeId)
+  WrapInBop(node_id~ : NodeId, op~ : @ast.Bop)
+  ChangeOperator(node_id~ : NodeId, new_op~ : @ast.Bop)
+  DeleteBinding(binding_node_id~ : NodeId)
+  DuplicateBinding(binding_node_id~ : NodeId)
+  MoveBindingUp(binding_node_id~ : NodeId)
+  MoveBindingDown(binding_node_id~ : NodeId)
+  AddBinding(module_node_id~ : NodeId)
+  ExtractToLet(node_id~ : NodeId, var_name~ : String)
+  InlineDefinition(node_id~ : NodeId)
+  InlineAllUsages(binding_node_id~ : NodeId)
+  Rename(node_id~ : NodeId, new_name~ : String)
 }
 pub impl Show for TreeEditOp
 

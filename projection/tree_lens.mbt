@@ -26,6 +26,30 @@ pub(all) enum TreeEditOp {
   // Navigation
   Collapse(node_id~ : NodeId)
   Expand(node_id~ : NodeId)
+
+  // New structural actions
+  Unwrap(node_id~ : NodeId, keep_child_index~ : Int)
+  SwapChildren(node_id~ : NodeId)
+  WrapInIf(node_id~ : NodeId)
+  WrapInBop(node_id~ : NodeId, op~ : @ast.Bop)
+  ChangeOperator(node_id~ : NodeId, new_op~ : @ast.Bop)
+
+  // Module-level binding actions
+  DeleteBinding(binding_node_id~ : NodeId)
+  DuplicateBinding(binding_node_id~ : NodeId)
+  MoveBindingUp(binding_node_id~ : NodeId)
+  MoveBindingDown(binding_node_id~ : NodeId)
+  AddBinding(module_node_id~ : NodeId)
+
+  // Extract to let
+  ExtractToLet(node_id~ : NodeId, var_name~ : String)
+
+  // Inline
+  InlineDefinition(node_id~ : NodeId)
+  InlineAllUsages(binding_node_id~ : NodeId)
+
+  // Rename
+  Rename(node_id~ : NodeId, new_name~ : String)
 } derive(Show)
 
 ///|

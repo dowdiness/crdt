@@ -24,6 +24,273 @@ fn placeholder_term_for_kind(kind : @ast.Term) -> @ast.Term {
 }
 
 ///|
+/// Find the start position of the "let " keyword by scanning backwards
+/// from a known position in the source text.
+fn find_let_start(source_text : String, from : Int) -> Int {
+  let mut pos = from
+  while pos > 0 {
+    pos = pos - 1
+    if pos + 3 < source_text.length() &&
+      source_text[pos] == 'l' &&
+      source_text[pos + 1] == 'e' &&
+      source_text[pos + 2] == 't' &&
+      source_text[pos + 3] == ' ' {
+      return pos
+    }
+  }
+  pos
+}
+
+///|
+/// Get the text range of a binding line: from "let " to end of init expression.
+/// Returns (let_start, init_end).
+fn get_binding_text_range(
+  source_text : String,
+  source_map : SourceMap,
+  def : (String, ProjNode, Int, NodeId),
+) -> Result[(Int, Int), String] {
+  let init_node = def.1
+  let init_range = match source_map.get_range(init_node.id()) {
+    Some(r) => r
+    None => return Err("Init node not in source map")
+  }
+  let let_start = find_let_start(source_text, init_range.start)
+  Ok((let_start, init_range.end))
+}
+
+///|
+/// Rename a Lam's parameter and all bound Var occurrences in its body.
+fn rename_lam_param(
+  lam_id : NodeId,
+  lam_node : ProjNode,
+  old_name : String,
+  new_name : String,
+  source_map : SourceMap,
+  registry : Map[NodeId, ProjNode],
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
+  let _ = registry
+  // Guard: check if new_name is free in the lambda body — renaming would capture it
+  match lam_node.kind {
+    @ast.Term::Lam(_, body) => {
+      let bound : @immut/hashset.HashSet[String] = @immut/hashset.new().add(
+        old_name,
+      )
+      let body_fv = free_vars(body, bound)
+      if body_fv.contains(new_name) {
+        return Err(
+          "Cannot rename: would capture free variable '" + new_name + "'",
+        )
+      }
+    }
+    _ => ()
+  }
+  let edits : Array[SpanEdit] = []
+  // Get param token span
+  match source_map.get_token_span(lam_id, "param") {
+    Some(param_range) =>
+      edits.push({
+        start: param_range.start,
+        delete_len: param_range.end - param_range.start,
+        inserted: new_name,
+      })
+    None =>
+      // Fallback: if no token span, re-render the whole Lam
+      match (lam_node.kind, source_map.get_range(lam_id)) {
+        (@ast.Term::Lam(_, body), Some(range)) => {
+          let new_kind = @ast.Term::Lam(new_name, body)
+          let new_text = @ast.print_term(new_kind)
+          return Ok(
+            Some(
+              (
+                [
+                  {
+                    start: range.start,
+                    delete_len: range.end - range.start,
+                    inserted: new_text,
+                  },
+                ],
+                RestoreCursor,
+              ),
+            ),
+          )
+        }
+        _ => return Err("Cannot rename: lambda not in source map")
+      }
+  }
+  // Find all bound Var occurrences in the body
+  let var_ids : Array[NodeId] = []
+  for child in lam_node.children {
+    collect_var_usages(child, old_name, var_ids)
+  }
+  // Add edits for each var, collecting ranges first
+  let var_ranges : Array[(Int, Int)] = []
+  for vid in var_ids {
+    match source_map.get_range(vid) {
+      Some(r) => var_ranges.push((r.start, r.end))
+      None => ()
+    }
+  }
+  // Sort descending by position for reverse-order application
+  var_ranges.sort_by(fn(a, b) { b.0.compare(a.0) })
+  for vr in var_ranges {
+    edits.push({ start: vr.0, delete_len: vr.1 - vr.0, inserted: new_name })
+  }
+  // Sort all edits by start position descending (param edit might be first)
+  edits.sort_by(fn(a, b) { b.start.compare(a.start) })
+  Ok(Some((edits, RestoreCursor)))
+}
+
+///|
+/// Rename a variable by resolving its binder and renaming at the definition site + all usages.
+fn rename_from_var(
+  var_node_id : NodeId,
+  old_name : String,
+  new_name : String,
+  flat_proj : FlatProj,
+  registry : Map[NodeId, ProjNode],
+  source_map : SourceMap,
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
+  let binder = match
+    resolve_binder(var_node_id, old_name, flat_proj, registry, source_map) {
+    Some(b) => b
+    None => return Err("No binding found for variable: " + old_name)
+  }
+  match binder {
+    LamBinder(lam_id~) =>
+      match registry.get(lam_id) {
+        Some(lam_node) =>
+          rename_lam_param(
+            lam_id, lam_node, old_name, new_name, source_map, registry,
+          )
+        None => Err("Lambda node not found in registry")
+      }
+    ModuleBinder(binding_node_id~, def_index~) => {
+      let _ = binding_node_id
+      // Find the Module node in the registry
+      let mut module_id : NodeId? = None
+      for pid, pnode in registry {
+        if pnode.kind is @ast.Term::Module(_, _) {
+          module_id = Some(pid)
+          break
+        }
+      }
+      match module_id {
+        Some(mid) =>
+          rename_module_binding(
+            mid, def_index, old_name, new_name, flat_proj, registry, source_map,
+          )
+        None => Err("Module node not found in registry")
+      }
+    }
+  }
+}
+
+///|
+/// Rename a module binding by its binding_node_id.
+fn rename_binding_by_id(
+  binding_node_id : NodeId,
+  new_name : String,
+  flat_proj : FlatProj,
+  registry : Map[NodeId, ProjNode],
+  source_map : SourceMap,
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
+  let mut def_index = -1
+  for i, def in flat_proj.defs {
+    if def.3 == binding_node_id {
+      def_index = i
+    }
+  }
+  if def_index < 0 {
+    return Err(
+      "Node not found and not a binding: " + binding_node_id.to_string(),
+    )
+  }
+  let old_name = flat_proj.defs[def_index].0
+  // Find Module node
+  let mut module_id : NodeId? = None
+  for pid, pnode in registry {
+    if pnode.kind is @ast.Term::Module(_, _) {
+      module_id = Some(pid)
+      break
+    }
+  }
+  match module_id {
+    Some(mid) =>
+      rename_module_binding(
+        mid, def_index, old_name, new_name, flat_proj, registry, source_map,
+      )
+    None => Err("Module node not found in registry")
+  }
+}
+
+///|
+/// Core rename logic for a module-level binding: renames the binding name token + all usages.
+fn rename_module_binding(
+  module_id : NodeId,
+  def_index : Int,
+  old_name : String,
+  new_name : String,
+  flat_proj : FlatProj,
+  registry : Map[NodeId, ProjNode],
+  source_map : SourceMap,
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
+  // Guard: check if another binding already uses new_name
+  for i, def in flat_proj.defs {
+    if i != def_index && def.0 == new_name {
+      return Err(
+        "Cannot rename: binding '" +
+        new_name +
+        "' already exists at index " +
+        i.to_string(),
+      )
+    }
+  }
+  // Find all usages
+  let usage_ids = find_usages(old_name, def_index + 1, flat_proj, registry)
+  // Guard: check if new_name would be captured by an enclosing lambda at any usage site
+  for usage_id in usage_ids {
+    let usage_lam_env = collect_lam_env(usage_id, registry)
+    if usage_lam_env.contains(new_name) {
+      return Err(
+        "Cannot rename: '" +
+        new_name +
+        "' is bound by an enclosing lambda at a usage site",
+      )
+    }
+  }
+  let edits : Array[SpanEdit] = []
+  // Get the name token span
+  let role = "name:" + def_index.to_string()
+  match source_map.get_token_span(module_id, role) {
+    Some(name_range) =>
+      edits.push({
+        start: name_range.start,
+        delete_len: name_range.end - name_range.start,
+        inserted: new_name,
+      })
+    None =>
+      return Err(
+        "No token span for binding name at def index " + def_index.to_string(),
+      )
+  }
+  let usage_ranges : Array[(Int, Int)] = []
+  for uid in usage_ids {
+    match source_map.get_range(uid) {
+      Some(r) => usage_ranges.push((r.start, r.end))
+      None => ()
+    }
+  }
+  // Sort descending by position
+  usage_ranges.sort_by(fn(a, b) { b.0.compare(a.0) })
+  for ur in usage_ranges {
+    edits.push({ start: ur.0, delete_len: ur.1 - ur.0, inserted: new_name })
+  }
+  // Sort all edits descending
+  edits.sort_by(fn(a, b) { b.start.compare(a.start) })
+  Ok(Some((edits, RestoreCursor)))
+}
+
+///|
 /// Translate a TreeEditOp into text span edits using the source map.
 /// All TreeEditOp variants are handled — no fallback to the old path.
 /// Returns Some([]) for no-op ops (Select, Collapse, etc.).
@@ -33,8 +300,7 @@ pub fn compute_text_edit(
   source_map : SourceMap,
   registry : Map[NodeId, ProjNode],
   flat_proj : FlatProj,
-) -> Result[Array[SpanEdit]?, String] {
-  let _ = flat_proj
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
   match op {
     // No-op operations — these don't modify source text
     Select(..)
@@ -44,20 +310,25 @@ pub fn compute_text_edit(
     | StartDrag(..)
     | DragOver(..)
     | Collapse(..)
-    | Expand(..) => Ok(Some([]))
+    | Expand(..) => Ok(Some(([], RestoreCursor)))
     // CommitEdit: replace node span with new user-provided text
     CommitEdit(node_id~, new_value~) =>
       match source_map.get_range(node_id) {
         None => Err("Node not found: " + node_id.to_string())
         Some(range) =>
           Ok(
-            Some([
-              {
-                start: range.start,
-                delete_len: range.end - range.start,
-                inserted: new_value,
-              },
-            ]),
+            Some(
+              (
+                [
+                  {
+                    start: range.start,
+                    delete_len: range.end - range.start,
+                    inserted: new_value,
+                  },
+                ],
+                RestoreCursor,
+              ),
+            ),
           )
       }
     // Delete: replace node with placeholder, re-rendering parent for normalization.
@@ -81,13 +352,18 @@ pub fn compute_text_edit(
                 @ast.Term::Error(_) =>
                   // Error parent: remove child entirely
                   Ok(
-                    Some([
-                      {
-                        start: range.start,
-                        delete_len: range.end - range.start,
-                        inserted: "",
-                      },
-                    ]),
+                    Some(
+                      (
+                        [
+                          {
+                            start: range.start,
+                            delete_len: range.end - range.start,
+                            inserted: "",
+                          },
+                        ],
+                        RestoreCursor,
+                      ),
+                    ),
                   )
                 _ => {
                   // Replace child with placeholder in parent, then re-render parent
@@ -117,24 +393,35 @@ pub fn compute_text_edit(
                         None => "a"
                       }
                       Ok(
-                        Some([
-                          {
-                            start: range.start,
-                            delete_len: range.end - range.start,
-                            inserted: placeholder,
-                          },
-                        ]),
+                        Some(
+                          (
+                            [
+                              {
+                                start: range.start,
+                                delete_len: range.end - range.start,
+                                inserted: placeholder,
+                              },
+                            ],
+                            RestoreCursor,
+                          ),
+                        ),
                       )
                     }
                     Some(parent_range) =>
                       Ok(
-                        Some([
-                          {
-                            start: parent_range.start,
-                            delete_len: parent_range.end - parent_range.start,
-                            inserted: new_text,
-                          },
-                        ]),
+                        Some(
+                          (
+                            [
+                              {
+                                start: parent_range.start,
+                                delete_len: parent_range.end -
+                                parent_range.start,
+                                inserted: new_text,
+                              },
+                            ],
+                            RestoreCursor,
+                          ),
+                        ),
                       )
                   }
                 }
@@ -146,13 +433,18 @@ pub fn compute_text_edit(
                 None => "a"
               }
               Ok(
-                Some([
-                  {
-                    start: range.start,
-                    delete_len: range.end - range.start,
-                    inserted: placeholder,
-                  },
-                ]),
+                Some(
+                  (
+                    [
+                      {
+                        start: range.start,
+                        delete_len: range.end - range.start,
+                        inserted: placeholder,
+                      },
+                    ],
+                    RestoreCursor,
+                  ),
+                ),
               )
             }
           }
@@ -169,13 +461,18 @@ pub fn compute_text_edit(
           }
           let wrapped = "(λ" + var_name + ". " + existing + ")"
           Ok(
-            Some([
-              {
-                start: range.start,
-                delete_len: range.end - range.start,
-                inserted: wrapped,
-              },
-            ]),
+            Some(
+              (
+                [
+                  {
+                    start: range.start,
+                    delete_len: range.end - range.start,
+                    inserted: wrapped,
+                  },
+                ],
+                RestoreCursor,
+              ),
+            ),
           )
         }
       }
@@ -190,13 +487,18 @@ pub fn compute_text_edit(
           }
           let wrapped = @ast.print_term(App(existing_kind, Var("a")))
           Ok(
-            Some([
-              {
-                start: range.start,
-                delete_len: range.end - range.start,
-                inserted: wrapped,
-              },
-            ]),
+            Some(
+              (
+                [
+                  {
+                    start: range.start,
+                    delete_len: range.end - range.start,
+                    inserted: wrapped,
+                  },
+                ],
+                RestoreCursor,
+              ),
+            ),
           )
         }
       }
@@ -231,13 +533,18 @@ pub fn compute_text_edit(
                     }
                   }
                   Ok(
-                    Some([
-                      {
-                        start: insert_pos,
-                        delete_len: 0,
-                        inserted: insert_text,
-                      },
-                    ]),
+                    Some(
+                      (
+                        [
+                          {
+                            start: insert_pos,
+                            delete_len: 0,
+                            inserted: insert_text,
+                          },
+                        ],
+                        RestoreCursor,
+                      ),
+                    ),
                   )
                 }
                 _ => {
@@ -248,19 +555,432 @@ pub fn compute_text_edit(
                   )
                   let new_text = @ast.print_term(new_parent.kind)
                   Ok(
-                    Some([
-                      {
-                        start: parent_range.start,
-                        delete_len: parent_range.end - parent_range.start,
-                        inserted: new_text,
-                      },
-                    ]),
+                    Some(
+                      (
+                        [
+                          {
+                            start: parent_range.start,
+                            delete_len: parent_range.end - parent_range.start,
+                            inserted: new_text,
+                          },
+                        ],
+                        RestoreCursor,
+                      ),
+                    ),
                   )
                 }
               }
           }
       }
     }
+    // Unwrap: replace a node with one of its children
+    Unwrap(node_id~, keep_child_index~) =>
+      match (source_map.get_range(node_id), registry.get(node_id)) {
+        (Some(range), Some(node)) =>
+          if keep_child_index >= node.children.length() {
+            Err("Child index out of range")
+          } else {
+            let kept = node.children[keep_child_index]
+            let kept_text = @ast.print_term(kept.kind)
+            let kept_start = match source_map.get_range(kept.id()) {
+              Some(r) => r.start
+              None => range.start
+            }
+            Ok(
+              Some(
+                (
+                  [
+                    {
+                      start: range.start,
+                      delete_len: range.end - range.start,
+                      inserted: kept_text,
+                    },
+                  ],
+                  MoveCursor(position=kept_start),
+                ),
+              ),
+            )
+          }
+        _ => Err("Node not found: " + node_id.to_string())
+      }
+    // WrapInIf: wrap a node in an if-then-else with placeholder condition
+    WrapInIf(node_id~) =>
+      match (source_map.get_range(node_id), registry.get(node_id)) {
+        (Some(range), Some(node)) => {
+          let wrapped = @ast.print_term(If(Int(0), node.kind, Int(0)))
+          // "if 0 then ..." — condition placeholder "0" starts at offset 3
+          let condition_pos = range.start + 3
+          Ok(
+            Some(
+              (
+                [
+                  {
+                    start: range.start,
+                    delete_len: range.end - range.start,
+                    inserted: wrapped,
+                  },
+                ],
+                MoveCursor(position=condition_pos),
+              ),
+            ),
+          )
+        }
+        _ => Err("Node not found: " + node_id.to_string())
+      }
+    // WrapInBop: wrap a node in a binary operation with placeholder right operand
+    WrapInBop(node_id~, op~) =>
+      match (source_map.get_range(node_id), registry.get(node_id)) {
+        (Some(range), Some(node)) => {
+          let wrapped = @ast.print_term(Bop(op, node.kind, Int(0)))
+          // "(expr + 0)" — placeholder "0" is at wrapped.length() - 2 from start
+          let placeholder_pos = range.start + wrapped.length() - 2
+          Ok(
+            Some(
+              (
+                [
+                  {
+                    start: range.start,
+                    delete_len: range.end - range.start,
+                    inserted: wrapped,
+                  },
+                ],
+                MoveCursor(position=placeholder_pos),
+              ),
+            ),
+          )
+        }
+        _ => Err("Node not found: " + node_id.to_string())
+      }
+    // ChangeOperator: change the operator of a Bop node
+    ChangeOperator(node_id~, new_op~) =>
+      match (source_map.get_range(node_id), registry.get(node_id)) {
+        (Some(range), Some(node)) =>
+          match node.kind {
+            @ast.Term::Bop(_, l, r) => {
+              let new_text = @ast.print_term(Bop(new_op, l, r))
+              Ok(
+                Some(
+                  (
+                    [
+                      {
+                        start: range.start,
+                        delete_len: range.end - range.start,
+                        inserted: new_text,
+                      },
+                    ],
+                    RestoreCursor,
+                  ),
+                ),
+              )
+            }
+            _ => Err("ChangeOperator requires Bop node")
+          }
+        _ => Err("Node not found: " + node_id.to_string())
+      }
+    // SwapChildren: swap left/right children of Bop, or then/else of If
+    SwapChildren(node_id~) =>
+      match (source_map.get_range(node_id), registry.get(node_id)) {
+        (Some(range), Some(node)) =>
+          match node.kind {
+            @ast.Term::Bop(op, l, r) => {
+              let swapped = @ast.print_term(Bop(op, r, l))
+              Ok(
+                Some(
+                  (
+                    [
+                      {
+                        start: range.start,
+                        delete_len: range.end - range.start,
+                        inserted: swapped,
+                      },
+                    ],
+                    RestoreCursor,
+                  ),
+                ),
+              )
+            }
+            @ast.Term::If(c, t, e) => {
+              let swapped = @ast.print_term(If(c, e, t))
+              Ok(
+                Some(
+                  (
+                    [
+                      {
+                        start: range.start,
+                        delete_len: range.end - range.start,
+                        inserted: swapped,
+                      },
+                    ],
+                    RestoreCursor,
+                  ),
+                ),
+              )
+            }
+            _ => Err("SwapChildren requires Bop or If node")
+          }
+        _ => Err("Node not found: " + node_id.to_string())
+      }
+    // DeleteBinding: remove a let binding line from a Module
+    DeleteBinding(binding_node_id~) => {
+      let mut def_index = -1
+      for i, def in flat_proj.defs {
+        if def.3 == binding_node_id {
+          def_index = i
+        }
+      }
+      if def_index < 0 {
+        return Err("Binding not found: " + binding_node_id.to_string())
+      }
+      let (let_start, binding_end) = match
+        get_binding_text_range(
+          source_text,
+          source_map,
+          flat_proj.defs[def_index],
+        ) {
+        Ok(r) => r
+        Err(e) => return Err(e)
+      }
+      // Include the trailing newline in deletion
+      let delete_end = if binding_end < source_text.length() &&
+        source_text[binding_end] == '\n' {
+        binding_end + 1
+      } else if let_start > 0 && source_text[let_start - 1] == '\n' {
+        // No trailing newline — consume the preceding newline instead
+        return Ok(
+          Some(
+            (
+              [
+                {
+                  start: let_start - 1,
+                  delete_len: binding_end - let_start + 1,
+                  inserted: "",
+                },
+              ],
+              RestoreCursor,
+            ),
+          ),
+        )
+      } else {
+        binding_end
+      }
+      Ok(
+        Some(
+          (
+            [
+              {
+                start: let_start,
+                delete_len: delete_end - let_start,
+                inserted: "",
+              },
+            ],
+            RestoreCursor,
+          ),
+        ),
+      )
+    }
+    // DuplicateBinding: copy a binding below with _copy suffix on name
+    DuplicateBinding(binding_node_id~) => {
+      let mut def_index = -1
+      for i, def in flat_proj.defs {
+        if def.3 == binding_node_id {
+          def_index = i
+        }
+      }
+      if def_index < 0 {
+        return Err("Binding not found: " + binding_node_id.to_string())
+      }
+      let def = flat_proj.defs[def_index]
+      let (let_start, binding_end) = match
+        get_binding_text_range(source_text, source_map, def) {
+        Ok(r) => r
+        Err(e) => return Err(e)
+      }
+      // Extract binding text and create copy with _copy suffix on name
+      let binding_text = source_text[let_start:binding_end].to_string()
+      let new_name = def.0 + "_copy"
+      let init_text = @ast.print_term(def.1.kind)
+      let new_binding = "let " + new_name + " = " + init_text
+      // Insert after the current binding (after newline)
+      let insert_pos = if binding_end < source_text.length() &&
+        source_text[binding_end] == '\n' {
+        binding_end + 1
+      } else {
+        binding_end
+      }
+      let _ = binding_text
+      let insert_text = if insert_pos == binding_end {
+        // No trailing newline — add one before the new binding
+        "\n" + new_binding
+      } else {
+        new_binding + "\n"
+      }
+      Ok(
+        Some(
+          (
+            [{ start: insert_pos, delete_len: 0, inserted: insert_text }],
+            RestoreCursor,
+          ),
+        ),
+      )
+    }
+    // MoveBindingUp: swap a binding with its predecessor
+    MoveBindingUp(binding_node_id~) => {
+      let mut def_index = -1
+      for i, def in flat_proj.defs {
+        if def.3 == binding_node_id {
+          def_index = i
+        }
+      }
+      if def_index < 0 {
+        return Err("Binding not found: " + binding_node_id.to_string())
+      }
+      if def_index == 0 {
+        return Err("Cannot move first binding up")
+      }
+      // Scoping guard: check if either name is free in the other's init
+      let cur_def = flat_proj.defs[def_index]
+      let prev_def = flat_proj.defs[def_index - 1]
+      let empty_env : @immut/hashset.HashSet[String] = @immut/hashset.new()
+      let cur_fv = free_vars(cur_def.1.kind, empty_env)
+      let prev_fv = free_vars(prev_def.1.kind, empty_env)
+      if cur_fv.contains(prev_def.0) {
+        return Err(
+          "Cannot move up: " +
+          cur_def.0 +
+          " uses " +
+          prev_def.0 +
+          " in its init",
+        )
+      }
+      if prev_fv.contains(cur_def.0) {
+        return Err(
+          "Cannot move up: " +
+          prev_def.0 +
+          " uses " +
+          cur_def.0 +
+          " in its init",
+        )
+      }
+      if cur_def.0 == prev_def.0 {
+        return Err("Cannot swap bindings with the same name")
+      }
+      // Get text ranges for both bindings
+      let (cur_start, cur_end) = match
+        get_binding_text_range(source_text, source_map, cur_def) {
+        Ok(r) => r
+        Err(e) => return Err(e)
+      }
+      let (prev_start, prev_end) = match
+        get_binding_text_range(source_text, source_map, prev_def) {
+        Ok(r) => r
+        Err(e) => return Err(e)
+      }
+      // Swap the two binding lines by replacing the combined range
+      let prev_text = source_text[prev_start:prev_end].to_string()
+      let cur_text = source_text[cur_start:cur_end].to_string()
+      // The separator between bindings (typically "\n")
+      let separator = source_text[prev_end:cur_start].to_string()
+      let swapped = cur_text + separator + prev_text
+      Ok(
+        Some(
+          (
+            [
+              {
+                start: prev_start,
+                delete_len: cur_end - prev_start,
+                inserted: swapped,
+              },
+            ],
+            RestoreCursor,
+          ),
+        ),
+      )
+    }
+    // MoveBindingDown: swap a binding with its successor
+    MoveBindingDown(binding_node_id~) => {
+      let mut def_index = -1
+      for i, def in flat_proj.defs {
+        if def.3 == binding_node_id {
+          def_index = i
+        }
+      }
+      if def_index < 0 {
+        return Err("Binding not found: " + binding_node_id.to_string())
+      }
+      if def_index >= flat_proj.defs.length() - 1 {
+        return Err("Cannot move last binding down")
+      }
+      // Scoping guard: check if either name is free in the other's init
+      let cur_def = flat_proj.defs[def_index]
+      let next_def = flat_proj.defs[def_index + 1]
+      let empty_env : @immut/hashset.HashSet[String] = @immut/hashset.new()
+      let cur_fv = free_vars(cur_def.1.kind, empty_env)
+      let next_fv = free_vars(next_def.1.kind, empty_env)
+      if next_fv.contains(cur_def.0) {
+        return Err(
+          "Cannot move down: " +
+          next_def.0 +
+          " uses " +
+          cur_def.0 +
+          " in its init",
+        )
+      }
+      if cur_fv.contains(next_def.0) {
+        return Err(
+          "Cannot move down: " +
+          cur_def.0 +
+          " uses " +
+          next_def.0 +
+          " in its init",
+        )
+      }
+      if cur_def.0 == next_def.0 {
+        return Err("Cannot swap bindings with the same name")
+      }
+      // Get text ranges for both bindings
+      let (cur_start, cur_end) = match
+        get_binding_text_range(source_text, source_map, cur_def) {
+        Ok(r) => r
+        Err(e) => return Err(e)
+      }
+      let (next_start, next_end) = match
+        get_binding_text_range(source_text, source_map, next_def) {
+        Ok(r) => r
+        Err(e) => return Err(e)
+      }
+      // Swap the two binding lines by replacing the combined range
+      let cur_text = source_text[cur_start:cur_end].to_string()
+      let next_text = source_text[next_start:next_end].to_string()
+      let separator = source_text[cur_end:next_start].to_string()
+      let swapped = next_text + separator + cur_text
+      Ok(
+        Some(
+          (
+            [
+              {
+                start: cur_start,
+                delete_len: next_end - cur_start,
+                inserted: swapped,
+              },
+            ],
+            RestoreCursor,
+          ),
+        ),
+      )
+    }
+    // AddBinding: delegate to InsertChild for Module nodes
+    AddBinding(module_node_id~) =>
+      compute_text_edit(
+        InsertChild(
+          parent=module_node_id,
+          index=flat_proj.defs.length(),
+          kind=@ast.Term::Int(0),
+        ),
+        source_text,
+        source_map,
+        registry,
+        flat_proj,
+      )
     // Drop: move a node from source to target position
     Drop(source~, target~, position~) => {
       let source_range = match source_map.get_range(source) {
@@ -278,15 +998,351 @@ pub fn compute_text_edit(
         Inside => target_range.start
       }
       Ok(
-        Some([
-          {
-            start: source_range.start,
-            delete_len: source_range.end - source_range.start,
-            inserted: "",
-          },
-          { start: insert_pos, delete_len: 0, inserted: source_slice },
-        ]),
+        Some(
+          (
+            [
+              {
+                start: source_range.start,
+                delete_len: source_range.end - source_range.start,
+                inserted: "",
+              },
+              { start: insert_pos, delete_len: 0, inserted: source_slice },
+            ],
+            RestoreCursor,
+          ),
+        ),
       )
+    }
+    // ExtractToLet: extract a sub-expression into a new let binding
+    ExtractToLet(node_id~, var_name~) => {
+      let node = match registry.get(node_id) {
+        Some(n) => n
+        None => return Err("Node not found")
+      }
+      let range = match source_map.get_range(node_id) {
+        Some(r) => r
+        None => return Err("Range not found")
+      }
+      // Free-var validation: check for lambda-captured variables
+      let mut module_env : @immut/hashset.HashSet[String] = @immut/hashset.new()
+      // Find which def contains this node (or if it's in the body)
+      let mut in_def_index : Int = flat_proj.defs.length() // body sentinel
+      for i, def in flat_proj.defs {
+        match source_map.get_range(def.1.id()) {
+          Some(r) =>
+            if range.start >= r.start && range.end <= r.end {
+              in_def_index = i
+              break
+            }
+          None => ()
+        }
+      }
+      // Add def names in scope at the extraction site
+      let scope_limit = if in_def_index < flat_proj.defs.length() {
+        in_def_index
+      } else {
+        flat_proj.defs.length()
+      }
+      for i = 0; i < scope_limit; i = i + 1 {
+        module_env = module_env.add(flat_proj.defs[i].0)
+      }
+      // Check for lambda-captured vars
+      let lam_env = collect_lam_env(node_id, registry)
+      let fv = free_vars(node.kind, module_env)
+      let mut captured_var : String? = None
+      fv.each(fn(v) { if lam_env.contains(v) { captured_var = Some(v) } })
+      if captured_var is Some(_) {
+        return Err("Cannot extract: expression captures lambda-bound variables")
+      }
+      // Build edits
+      let expr_text = @ast.print_term(node.kind)
+      let let_text = "let " + var_name + " = " + expr_text + "\n"
+      if flat_proj.defs.is_empty() && flat_proj.final_expr is Some(_) {
+        // No module — wrap: replace expression with "let name = expr\nname"
+        let new_text = let_text + var_name
+        Ok(
+          Some(
+            (
+              [
+                {
+                  start: range.start,
+                  delete_len: range.end - range.start,
+                  inserted: new_text,
+                },
+              ],
+              MoveCursor(position=range.start + let_text.length()),
+            ),
+          ),
+        )
+      } else {
+        // Has Module — insert let before body, replace expr with var_name
+        let body_start = match flat_proj.final_expr {
+          Some(body) =>
+            match source_map.get_range(body.id()) {
+              Some(r) => r.start
+              None => source_text.length()
+            }
+          None => source_text.length()
+        }
+        // Check if node is within the body (range starts at or after body start).
+        // If so, we need a single combined edit to avoid overlapping edits.
+        if range.start >= body_start {
+          // Node is in the body — produce a single edit:
+          // Replace body text from body_start to end with:
+          //   "let var = expr\n" + (prefix before node) + var_name + (suffix after node)
+          let body_end = match flat_proj.final_expr {
+            Some(body) =>
+              match source_map.get_range(body.id()) {
+                Some(r) => r.end
+                None => source_text.length()
+              }
+            None => source_text.length()
+          }
+          let prefix = source_text[body_start:range.start].to_string()
+          let suffix = source_text[range.end:body_end].to_string()
+          let new_body_text = let_text + prefix + var_name + suffix
+          Ok(
+            Some(
+              (
+                [
+                  {
+                    start: body_start,
+                    delete_len: body_end - body_start,
+                    inserted: new_body_text,
+                  },
+                ],
+                MoveCursor(
+                  position=body_start + let_text.length() + prefix.length(),
+                ),
+              ),
+            ),
+          )
+        } else {
+          // Node is in a def — two independent edits at non-overlapping positions
+          Ok(
+            Some(
+              (
+                [
+                  { start: body_start, delete_len: 0, inserted: let_text },
+                  {
+                    start: range.start,
+                    delete_len: range.end - range.start,
+                    inserted: var_name,
+                  },
+                ],
+                MoveCursor(position=range.start),
+              ),
+            ),
+          )
+        }
+      }
+    }
+    // InlineDefinition: inline a single Var usage of a module binding
+    InlineDefinition(node_id~) => {
+      let node = match registry.get(node_id) {
+        Some(n) => n
+        None => return Err("Node not found: " + node_id.to_string())
+      }
+      let var_name = match node.kind {
+        @ast.Term::Var(name) => name
+        _ => return Err("InlineDefinition requires a Var node")
+      }
+      let range = match source_map.get_range(node_id) {
+        Some(r) => r
+        None => return Err("Var not in source map")
+      }
+      // Resolve the binding
+      let binder = match
+        resolve_binder(node_id, var_name, flat_proj, registry, source_map) {
+        Some(b) => b
+        None => return Err("No binding found for variable: " + var_name)
+      }
+      match binder {
+        LamBinder(..) =>
+          return Err("Cannot inline lambda-bound variable: " + var_name)
+        ModuleBinder(def_index~, ..) => {
+          let def = flat_proj.defs[def_index]
+          let init_text = @ast.print_term(def.1.kind)
+          // Check for capture: would any free var in init be captured by a lambda at the usage site?
+          let init_fv = free_vars(def.1.kind, @immut/hashset.new())
+          let usage_lam_env = collect_lam_env(node_id, registry)
+          let mut would_capture = false
+          init_fv.each(fn(v) {
+            if usage_lam_env.contains(v) {
+              would_capture = true
+            }
+          })
+          if would_capture {
+            return Err(
+              "Cannot inline: would capture variables bound by enclosing lambda",
+            )
+          }
+          // Check if this is the sole usage
+          let usages = find_usages(var_name, def_index + 1, flat_proj, registry)
+          if usages.length() <= 1 {
+            // Sole usage — inline and delete the binding
+            let (let_start, binding_end) = match
+              get_binding_text_range(source_text, source_map, def) {
+              Ok(r) => r
+              Err(e) => return Err(e)
+            }
+            // Determine delete range for the binding line (including newline)
+            let (del_start, del_len) = if binding_end < source_text.length() &&
+              source_text[binding_end] == '\n' {
+              (let_start, binding_end + 1 - let_start)
+            } else if let_start > 0 && source_text[let_start - 1] == '\n' {
+              (let_start - 1, binding_end - let_start + 1)
+            } else {
+              (let_start, binding_end - let_start)
+            }
+            // If the var range is after the binding, we need to adjust
+            // for the deletion. Produce edits in reverse document order.
+            if range.start >= binding_end {
+              // Var is after binding — two non-overlapping edits
+              Ok(
+                Some(
+                  (
+                    [
+                      {
+                        start: range.start,
+                        delete_len: range.end - range.start,
+                        inserted: init_text,
+                      },
+                      { start: del_start, delete_len: del_len, inserted: "" },
+                    ],
+                    MoveCursor(position=range.start),
+                  ),
+                ),
+              )
+            } else {
+              // Var is within the binding init — just replace the var
+              Ok(
+                Some(
+                  (
+                    [
+                      {
+                        start: range.start,
+                        delete_len: range.end - range.start,
+                        inserted: init_text,
+                      },
+                    ],
+                    MoveCursor(position=range.start),
+                  ),
+                ),
+              )
+            }
+          } else {
+            // Multiple usages — just replace this single var
+            Ok(
+              Some(
+                (
+                  [
+                    {
+                      start: range.start,
+                      delete_len: range.end - range.start,
+                      inserted: init_text,
+                    },
+                  ],
+                  MoveCursor(position=range.start),
+                ),
+              ),
+            )
+          }
+        }
+      }
+    }
+    // InlineAllUsages: replace all usages of a binding and remove the binding
+    InlineAllUsages(binding_node_id~) => {
+      // Find the binding
+      let mut def_index = -1
+      for i, def in flat_proj.defs {
+        if def.3 == binding_node_id {
+          def_index = i
+        }
+      }
+      if def_index < 0 {
+        return Err("Binding not found: " + binding_node_id.to_string())
+      }
+      let def = flat_proj.defs[def_index]
+      let var_name = def.0
+      let init_text = @ast.print_term(def.1.kind)
+      // Find all usages
+      let usage_ids = find_usages(var_name, def_index + 1, flat_proj, registry)
+      // Check for capture: would any free var in init be captured by a lambda at any usage site?
+      let init_fv = free_vars(def.1.kind, @immut/hashset.new())
+      for uid in usage_ids {
+        let usage_lam_env = collect_lam_env(uid, registry)
+        let mut would_capture = false
+        init_fv.each(fn(v) {
+          if usage_lam_env.contains(v) {
+            would_capture = true
+          }
+        })
+        if would_capture {
+          return Err(
+            "Cannot inline: would capture variables bound by enclosing lambda",
+          )
+        }
+      }
+      // Build replacement edits for all usages (reverse document order)
+      let edits : Array[SpanEdit] = []
+      // Collect usage ranges, sorted by position (descending)
+      let usage_ranges : Array[(Int, Int)] = []
+      for uid in usage_ids {
+        match source_map.get_range(uid) {
+          Some(r) => usage_ranges.push((r.start, r.end))
+          None => ()
+        }
+      }
+      usage_ranges.sort_by(fn(a, b) { b.0.compare(a.0) })
+      for ur in usage_ranges {
+        edits.push({ start: ur.0, delete_len: ur.1 - ur.0, inserted: init_text })
+      }
+      // Delete the binding
+      let (let_start, binding_end) = match
+        get_binding_text_range(source_text, source_map, def) {
+        Ok(r) => r
+        Err(e) => return Err(e)
+      }
+      let (del_start, del_len) = if binding_end < source_text.length() &&
+        source_text[binding_end] == '\n' {
+        (let_start, binding_end + 1 - let_start)
+      } else if let_start > 0 && source_text[let_start - 1] == '\n' {
+        (let_start - 1, binding_end - let_start + 1)
+      } else {
+        (let_start, binding_end - let_start)
+      }
+      edits.push({ start: del_start, delete_len: del_len, inserted: "" })
+      Ok(Some((edits, RestoreCursor)))
+    }
+    // Rename: scope-aware renaming of variables and bindings
+    Rename(node_id~, new_name~) => {
+      let node = registry.get(node_id)
+      match node {
+        Some(n) =>
+          match n.kind {
+            @ast.Term::Var(old_name) =>
+              // Var: resolve to binder and rename binder + all usages
+              rename_from_var(
+                node_id, old_name, new_name, flat_proj, registry, source_map,
+              )
+            @ast.Term::Lam(old_name, _) =>
+              // Lam: rename param + all bound Var occurrences in body
+              rename_lam_param(
+                node_id, n, old_name, new_name, source_map, registry,
+              )
+            _ =>
+              // Check if this node_id is a binding_node_id in flat_proj
+              rename_binding_by_id(
+                node_id, new_name, flat_proj, registry, source_map,
+              )
+          }
+        None =>
+          // Node not in registry — check if it's a binding_node_id
+          rename_binding_by_id(
+            node_id, new_name, flat_proj, registry, source_map,
+          )
+      }
     }
   }
 }
