@@ -5,7 +5,10 @@
     "dev": "vite",
     "build": "vite build",
     "server": "tsx server/ws-server.ts",
-    "prebuild:moonbit": "cd ../.. && moon build --target js"
+    "prebuild:moonbit": "cd ../.. && moon build --target js",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed"
   },
   "dependencies": {
     "@codemirror/commands": "^6.5.0",
@@ -25,6 +28,7 @@
   },
   "devDependencies": {
     "@lezer/generator": "^1.8.0",
+    "@playwright/test": "^1.58.2",
     "@types/ws": "^8.5.0",
     "tsx": "^4.7.0",
     "typescript": "^5.4.0",
