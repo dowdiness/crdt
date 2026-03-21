@@ -73,14 +73,12 @@ fn rename_lam_param(
   // Get param token span
   match source_map.get_token_span(lam_id, "param") {
     Some(param_range) =>
-      edits.push(
-        {
-          start: param_range.start,
-          delete_len: param_range.end - param_range.start,
-          inserted: new_name,
-        },
-      )
-    None => {
+      edits.push({
+        start: param_range.start,
+        delete_len: param_range.end - param_range.start,
+        inserted: new_name,
+      })
+    None =>
       // Fallback: if no token span, re-render the whole Lam
       match (lam_node.kind, source_map.get_range(lam_id)) {
         (@ast.Term::Lam(_, body), Some(range)) => {
@@ -103,7 +101,6 @@ fn rename_lam_param(
         }
         _ => return Err("Cannot rename: lambda not in source map")
       }
-    }
   }
   // Find all bound Var occurrences in the body
   let var_ids : Array[NodeId] = []
@@ -121,9 +118,7 @@ fn rename_lam_param(
   // Sort descending by position for reverse-order application
   var_ranges.sort_by(fn(a, b) { b.0.compare(a.0) })
   for vr in var_ranges {
-    edits.push(
-      { start: vr.0, delete_len: vr.1 - vr.0, inserted: new_name },
-    )
+    edits.push({ start: vr.0, delete_len: vr.1 - vr.0, inserted: new_name })
   }
   // Sort all edits by start position descending (param edit might be first)
   edits.sort_by(fn(a, b) { b.start.compare(a.start) })
@@ -140,9 +135,8 @@ fn rename_from_var(
   registry : Map[NodeId, ProjNode],
   source_map : SourceMap,
 ) -> Result[(Array[SpanEdit], FocusHint)?, String] {
-  let binder = match resolve_binder(
-    var_node_id, old_name, flat_proj, registry, source_map,
-  ) {
+  let binder = match
+    resolve_binder(var_node_id, old_name, flat_proj, registry, source_map) {
     Some(b) => b
     None => return Err("No binding found for variable: " + old_name)
   }
@@ -150,7 +144,9 @@ fn rename_from_var(
     LamBinder(lam_id~) =>
       match registry.get(lam_id) {
         Some(lam_node) =>
-          rename_lam_param(lam_id, lam_node, old_name, new_name, source_map, registry)
+          rename_lam_param(
+            lam_id, lam_node, old_name, new_name, source_map, registry,
+          )
         None => Err("Lambda node not found in registry")
       }
     ModuleBinder(binding_node_id~, def_index~) => {
@@ -166,8 +162,7 @@ fn rename_from_var(
       match module_id {
         Some(mid) =>
           rename_module_binding(
-            mid, def_index, old_name, new_name, flat_proj, registry,
-            source_map,
+            mid, def_index, old_name, new_name, flat_proj, registry, source_map,
           )
         None => Err("Module node not found in registry")
       }
@@ -191,7 +186,9 @@ fn rename_binding_by_id(
     }
   }
   if def_index < 0 {
-    return Err("Node not found and not a binding: " + binding_node_id.to_string())
+    return Err(
+      "Node not found and not a binding: " + binding_node_id.to_string(),
+    )
   }
   let old_name = flat_proj.defs[def_index].0
   // Find Module node
@@ -227,14 +224,15 @@ fn rename_module_binding(
   let role = "name:" + def_index.to_string()
   match source_map.get_token_span(module_id, role) {
     Some(name_range) =>
-      edits.push(
-        {
-          start: name_range.start,
-          delete_len: name_range.end - name_range.start,
-          inserted: new_name,
-        },
+      edits.push({
+        start: name_range.start,
+        delete_len: name_range.end - name_range.start,
+        inserted: new_name,
+      })
+    None =>
+      return Err(
+        "No token span for binding name at def index " + def_index.to_string(),
       )
-    None => return Err("No token span for binding name at def index " + def_index.to_string())
   }
   // Find all usages
   let usage_ids = find_usages(old_name, def_index + 1, flat_proj, registry)
@@ -248,9 +246,7 @@ fn rename_module_binding(
   // Sort descending by position
   usage_ranges.sort_by(fn(a, b) { b.0.compare(a.0) })
   for ur in usage_ranges {
-    edits.push(
-      { start: ur.0, delete_len: ur.1 - ur.0, inserted: new_name },
-    )
+    edits.push({ start: ur.0, delete_len: ur.1 - ur.0, inserted: new_name })
   }
   // Sort all edits descending
   edits.sort_by(fn(a, b) { b.start.compare(a.start) })
@@ -1119,9 +1115,8 @@ pub fn compute_text_edit(
         None => return Err("Var not in source map")
       }
       // Resolve the binding
-      let binder = match resolve_binder(
-        node_id, var_name, flat_proj, registry, source_map,
-      ) {
+      let binder = match
+        resolve_binder(node_id, var_name, flat_proj, registry, source_map) {
         Some(b) => b
         None => return Err("No binding found for variable: " + var_name)
       }
@@ -1132,9 +1127,7 @@ pub fn compute_text_edit(
           let def = flat_proj.defs[def_index]
           let init_text = @ast.print_term(def.1.kind)
           // Check if this is the sole usage
-          let usages = find_usages(
-            var_name, def_index + 1, flat_proj, registry,
-          )
+          let usages = find_usages(var_name, def_index + 1, flat_proj, registry)
           if usages.length() <= 1 {
             // Sole usage — inline and delete the binding
             let (let_start, binding_end) = match
@@ -1164,11 +1157,7 @@ pub fn compute_text_edit(
                         delete_len: range.end - range.start,
                         inserted: init_text,
                       },
-                      {
-                        start: del_start,
-                        delete_len: del_len,
-                        inserted: "",
-                      },
+                      { start: del_start, delete_len: del_len, inserted: "" },
                     ],
                     MoveCursor(position=range.start),
                   ),
@@ -1240,9 +1229,7 @@ pub fn compute_text_edit(
       }
       usage_ranges.sort_by(fn(a, b) { b.0.compare(a.0) })
       for ur in usage_ranges {
-        edits.push(
-          { start: ur.0, delete_len: ur.1 - ur.0, inserted: init_text },
-        )
+        edits.push({ start: ur.0, delete_len: ur.1 - ur.0, inserted: init_text })
       }
       // Delete the binding
       let (let_start, binding_end) = match

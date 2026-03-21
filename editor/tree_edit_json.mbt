@@ -25,10 +25,7 @@ fn parse_bop_string(s : String) -> Result[@ast.Bop, String] {
 
 ///|
 /// Extract a required Bop from a JSON map at the given key.
-fn require_bop(
-  m : Map[String, Json],
-  key : String,
-) -> Result[@ast.Bop, String] {
+fn require_bop(m : Map[String, Json], key : String) -> Result[@ast.Bop, String] {
   match m.get(key) {
     Some(Json::String(s)) => parse_bop_string(s)
     _ => Err("missing " + key + " field")

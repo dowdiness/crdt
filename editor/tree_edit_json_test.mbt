@@ -119,10 +119,7 @@ test "parse_tree_edit_op: ExtractToLet" {
     "{\"type\": \"ExtractToLet\", \"node_id\": 7, \"var_name\": \"foo\"}",
   )
   guard parse_tree_edit_op(json) is Ok(op)
-  inspect(
-    op,
-    content="ExtractToLet(node_id=NodeId(7), var_name=\"foo\")",
-  )
+  inspect(op, content="ExtractToLet(node_id=NodeId(7), var_name=\"foo\")")
 }
 
 ///|
@@ -188,9 +185,7 @@ test "parse_tree_edit_op: MoveBindingDown" {
 
 ///|
 test "parse_tree_edit_op: AddBinding" {
-  let json = @json.parse(
-    "{\"type\": \"AddBinding\", \"module_node_id\": 14}",
-  )
+  let json = @json.parse("{\"type\": \"AddBinding\", \"module_node_id\": 14}")
   guard parse_tree_edit_op(json) is Ok(op)
   inspect(op, content="AddBinding(module_node_id=NodeId(14))")
 }
