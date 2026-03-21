@@ -69,7 +69,6 @@ pub fn compute_text_edit(
   registry : Map[NodeId, ProjNode],
   flat_proj : FlatProj,
 ) -> Result[(Array[SpanEdit], FocusHint)?, String] {
-  let _ = flat_proj
   match op {
     // No-op operations — these don't modify source text
     Select(..)
@@ -498,15 +497,14 @@ pub fn compute_text_edit(
         }
       }
       if def_index < 0 {
-        return Err(
-          "Binding not found: " + binding_node_id.to_string(),
-        )
+        return Err("Binding not found: " + binding_node_id.to_string())
       }
-      let (let_start, binding_end) = match get_binding_text_range(
-        source_text,
-        source_map,
-        flat_proj.defs[def_index],
-      ) {
+      let (let_start, binding_end) = match
+        get_binding_text_range(
+          source_text,
+          source_map,
+          flat_proj.defs[def_index],
+        ) {
         Ok(r) => r
         Err(e) => return Err(e)
       }
@@ -557,16 +555,11 @@ pub fn compute_text_edit(
         }
       }
       if def_index < 0 {
-        return Err(
-          "Binding not found: " + binding_node_id.to_string(),
-        )
+        return Err("Binding not found: " + binding_node_id.to_string())
       }
       let def = flat_proj.defs[def_index]
-      let (let_start, binding_end) = match get_binding_text_range(
-        source_text,
-        source_map,
-        def,
-      ) {
+      let (let_start, binding_end) = match
+        get_binding_text_range(source_text, source_map, def) {
         Ok(r) => r
         Err(e) => return Err(e)
       }
@@ -607,9 +600,7 @@ pub fn compute_text_edit(
         }
       }
       if def_index < 0 {
-        return Err(
-          "Binding not found: " + binding_node_id.to_string(),
-        )
+        return Err("Binding not found: " + binding_node_id.to_string())
       }
       if def_index == 0 {
         return Err("Cannot move first binding up")
@@ -642,19 +633,13 @@ pub fn compute_text_edit(
         return Err("Cannot swap bindings with the same name")
       }
       // Get text ranges for both bindings
-      let (cur_start, cur_end) = match get_binding_text_range(
-        source_text,
-        source_map,
-        cur_def,
-      ) {
+      let (cur_start, cur_end) = match
+        get_binding_text_range(source_text, source_map, cur_def) {
         Ok(r) => r
         Err(e) => return Err(e)
       }
-      let (prev_start, prev_end) = match get_binding_text_range(
-        source_text,
-        source_map,
-        prev_def,
-      ) {
+      let (prev_start, prev_end) = match
+        get_binding_text_range(source_text, source_map, prev_def) {
         Ok(r) => r
         Err(e) => return Err(e)
       }
@@ -688,9 +673,7 @@ pub fn compute_text_edit(
         }
       }
       if def_index < 0 {
-        return Err(
-          "Binding not found: " + binding_node_id.to_string(),
-        )
+        return Err("Binding not found: " + binding_node_id.to_string())
       }
       if def_index >= flat_proj.defs.length() - 1 {
         return Err("Cannot move last binding down")
@@ -723,19 +706,13 @@ pub fn compute_text_edit(
         return Err("Cannot swap bindings with the same name")
       }
       // Get text ranges for both bindings
-      let (cur_start, cur_end) = match get_binding_text_range(
-        source_text,
-        source_map,
-        cur_def,
-      ) {
+      let (cur_start, cur_end) = match
+        get_binding_text_range(source_text, source_map, cur_def) {
         Ok(r) => r
         Err(e) => return Err(e)
       }
-      let (next_start, next_end) = match get_binding_text_range(
-        source_text,
-        source_map,
-        next_def,
-      ) {
+      let (next_start, next_end) = match
+        get_binding_text_range(source_text, source_map, next_def) {
         Ok(r) => r
         Err(e) => return Err(e)
       }
@@ -803,6 +780,130 @@ pub fn compute_text_edit(
           ),
         ),
       )
+    }
+    // ExtractToLet: extract a sub-expression into a new let binding
+    ExtractToLet(node_id~, var_name~) => {
+      let node = match registry.get(node_id) {
+        Some(n) => n
+        None => return Err("Node not found")
+      }
+      let range = match source_map.get_range(node_id) {
+        Some(r) => r
+        None => return Err("Range not found")
+      }
+      // Free-var validation: check for lambda-captured variables
+      let mut module_env : @immut/hashset.HashSet[String] = @immut/hashset.new()
+      // Find which def contains this node (or if it's in the body)
+      let mut in_def_index : Int = flat_proj.defs.length() // body sentinel
+      for i, def in flat_proj.defs {
+        match source_map.get_range(def.1.id()) {
+          Some(r) =>
+            if range.start >= r.start && range.end <= r.end {
+              in_def_index = i
+              break
+            }
+          None => ()
+        }
+      }
+      // Add def names in scope at the extraction site
+      let scope_limit = if in_def_index < flat_proj.defs.length() {
+        in_def_index
+      } else {
+        flat_proj.defs.length()
+      }
+      for i = 0; i < scope_limit; i = i + 1 {
+        module_env = module_env.add(flat_proj.defs[i].0)
+      }
+      // Check for lambda-captured vars
+      let lam_env = collect_lam_env(node_id, registry)
+      let fv = free_vars(node.kind, module_env)
+      let mut captured_var : String? = None
+      fv.each(fn(v) { if lam_env.contains(v) { captured_var = Some(v) } })
+      if captured_var is Some(_) {
+        return Err("Cannot extract: expression captures lambda-bound variables")
+      }
+      // Build edits
+      let expr_text = @ast.print_term(node.kind)
+      let let_text = "let " + var_name + " = " + expr_text + "\n"
+      if flat_proj.defs.is_empty() && flat_proj.final_expr is Some(_) {
+        // No module — wrap: replace expression with "let name = expr\nname"
+        let new_text = let_text + var_name
+        Ok(
+          Some(
+            (
+              [
+                {
+                  start: range.start,
+                  delete_len: range.end - range.start,
+                  inserted: new_text,
+                },
+              ],
+              MoveCursor(position=range.start + let_text.length()),
+            ),
+          ),
+        )
+      } else {
+        // Has Module — insert let before body, replace expr with var_name
+        let body_start = match flat_proj.final_expr {
+          Some(body) =>
+            match source_map.get_range(body.id()) {
+              Some(r) => r.start
+              None => source_text.length()
+            }
+          None => source_text.length()
+        }
+        // Check if node is within the body (range starts at or after body start).
+        // If so, we need a single combined edit to avoid overlapping edits.
+        if range.start >= body_start {
+          // Node is in the body — produce a single edit:
+          // Replace body text from body_start to end with:
+          //   "let var = expr\n" + (prefix before node) + var_name + (suffix after node)
+          let body_end = match flat_proj.final_expr {
+            Some(body) =>
+              match source_map.get_range(body.id()) {
+                Some(r) => r.end
+                None => source_text.length()
+              }
+            None => source_text.length()
+          }
+          let prefix = source_text[body_start:range.start].to_string()
+          let suffix = source_text[range.end:body_end].to_string()
+          let new_body_text = let_text + prefix + var_name + suffix
+          Ok(
+            Some(
+              (
+                [
+                  {
+                    start: body_start,
+                    delete_len: body_end - body_start,
+                    inserted: new_body_text,
+                  },
+                ],
+                MoveCursor(
+                  position=body_start + let_text.length() + prefix.length(),
+                ),
+              ),
+            ),
+          )
+        } else {
+          // Node is in a def — two independent edits at non-overlapping positions
+          Ok(
+            Some(
+              (
+                [
+                  { start: body_start, delete_len: 0, inserted: let_text },
+                  {
+                    start: range.start,
+                    delete_len: range.end - range.start,
+                    inserted: var_name,
+                  },
+                ],
+                MoveCursor(position=range.start),
+              ),
+            ),
+          )
+        }
+      }
     }
   }
 }

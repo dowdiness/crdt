@@ -195,6 +195,16 @@ pub(all) enum TreeEditOp {
   Collapse(node_id~ : NodeId)
   Expand(node_id~ : NodeId)
   Unwrap(node_id~ : NodeId, keep_child_index~ : Int)
+  SwapChildren(node_id~ : NodeId)
+  WrapInIf(node_id~ : NodeId)
+  WrapInBop(node_id~ : NodeId, op~ : @ast.Bop)
+  ChangeOperator(node_id~ : NodeId, new_op~ : @ast.Bop)
+  DeleteBinding(binding_node_id~ : NodeId)
+  DuplicateBinding(binding_node_id~ : NodeId)
+  MoveBindingUp(binding_node_id~ : NodeId)
+  MoveBindingDown(binding_node_id~ : NodeId)
+  AddBinding(module_node_id~ : NodeId)
+  ExtractToLet(node_id~ : NodeId, var_name~ : String)
 }
 pub impl Show for TreeEditOp
 

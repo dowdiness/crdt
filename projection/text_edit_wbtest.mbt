@@ -755,3 +755,97 @@ test "compute_text_edit: AddBinding adds new let line" {
     _ => fail("expected Some edits")
   }
 }
+
+///|
+test "compute_text_edit: ExtractToLet from body" {
+  let text = "let x = 0\nx + 1"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  // Body is Bop(+, Var(x), Int(1)). Extract the whole body expression.
+  let body = proj.children[proj.children.length() - 1]
+  let result = compute_text_edit(
+    ExtractToLet(node_id=body.id(), var_name="y"),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      let new_text = apply_edits(text, edits)
+      inspect(new_text, content="let x = 0\nlet y = (x + 1)\ny")
+    }
+    _ => fail("expected Some edits")
+  }
+}
+
+///|
+test "compute_text_edit: ExtractToLet sub-expression from body" {
+  let text = "let x = 0\nx + 1"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  // Extract Var("x") from the body (left operand of +)
+  let body = proj.children[proj.children.length() - 1]
+  let var_x = body.children[0]
+  let result = compute_text_edit(
+    ExtractToLet(node_id=var_x.id(), var_name="z"),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      let new_text = apply_edits(text, edits)
+      inspect(new_text, content="let x = 0\nlet z = x\nz + 1")
+    }
+    _ => fail("expected Some edits")
+  }
+}
+
+///|
+test "compute_text_edit: ExtractToLet rejects lambda-captured var" {
+  // Inside λx. (x + 1), trying to extract the body which captures x
+  let text = "λx. x + 1"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  // The body of lambda is Bop(+, Var(x), Int(1)) — child[0] of Lam
+  let body = proj.children[0]
+  let result = compute_text_edit(
+    ExtractToLet(node_id=body.id(), var_name="y"),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  inspect(result is Err(_), content="true")
+}
+
+///|
+test "compute_text_edit: ExtractToLet bare expression" {
+  let text = "42"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let result = compute_text_edit(
+    ExtractToLet(node_id=proj.id(), var_name="x"),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      let new_text = apply_edits(text, edits)
+      inspect(new_text, content="let x = 42\nx")
+    }
+    _ => fail("expected Some edits")
+  }
+}

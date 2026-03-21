@@ -40,6 +40,9 @@ pub(all) enum TreeEditOp {
   MoveBindingUp(binding_node_id~ : NodeId)
   MoveBindingDown(binding_node_id~ : NodeId)
   AddBinding(module_node_id~ : NodeId)
+
+  // Extract to let
+  ExtractToLet(node_id~ : NodeId, var_name~ : String)
 } derive(Show)
 
 ///|
