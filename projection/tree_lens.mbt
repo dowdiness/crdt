@@ -36,6 +36,10 @@ pub(all) enum TreeEditOp {
 
   // Module-level binding actions
   DeleteBinding(binding_node_id~ : NodeId)
+  DuplicateBinding(binding_node_id~ : NodeId)
+  MoveBindingUp(binding_node_id~ : NodeId)
+  MoveBindingDown(binding_node_id~ : NodeId)
+  AddBinding(module_node_id~ : NodeId)
 } derive(Show)
 
 ///|

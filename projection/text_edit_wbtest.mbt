@@ -598,3 +598,160 @@ test "compute_text_edit: DeleteBinding with unknown id returns error" {
   )
   inspect(result is Err(_), content="true")
 }
+
+///|
+test "compute_text_edit: DuplicateBinding copies binding with _copy suffix" {
+  let text = "let x = 42\nlet y = 1\nx + y"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let binding_id = fp.defs[0].3
+  let result = compute_text_edit(
+    DuplicateBinding(binding_node_id=binding_id),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      let new_text = apply_edits(text, edits)
+      inspect(new_text, content="let x = 42\nlet x_copy = 42\nlet y = 1\nx + y")
+    }
+    _ => fail("expected Some edits")
+  }
+}
+
+///|
+test "compute_text_edit: DuplicateBinding on last binding" {
+  let text = "let x = 0\nx"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let binding_id = fp.defs[0].3
+  let result = compute_text_edit(
+    DuplicateBinding(binding_node_id=binding_id),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      let new_text = apply_edits(text, edits)
+      inspect(new_text, content="let x = 0\nlet x_copy = 0\nx")
+    }
+    _ => fail("expected Some edits")
+  }
+}
+
+///|
+test "compute_text_edit: MoveBindingDown swaps two bindings" {
+  let text = "let x = 0\nlet y = 1\nx + y"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let binding_id = fp.defs[0].3
+  let result = compute_text_edit(
+    MoveBindingDown(binding_node_id=binding_id),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      let new_text = apply_edits(text, edits)
+      inspect(new_text, content="let y = 1\nlet x = 0\nx + y")
+    }
+    _ => fail("expected Some edits")
+  }
+}
+
+///|
+test "compute_text_edit: MoveBindingDown rejects when scoping violated" {
+  // y uses x, so moving x down past y would break scoping
+  let text = "let x = 0\nlet y = x\ny"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let binding_id = fp.defs[0].3
+  let result = compute_text_edit(
+    MoveBindingDown(binding_node_id=binding_id),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  inspect(result is Err(_), content="true")
+}
+
+///|
+test "compute_text_edit: MoveBindingDown rejects last binding" {
+  let text = "let x = 0\nlet y = 1\nx + y"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let binding_id = fp.defs[1].3
+  let result = compute_text_edit(
+    MoveBindingDown(binding_node_id=binding_id),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  inspect(result is Err(_), content="true")
+}
+
+///|
+test "compute_text_edit: MoveBindingUp swaps two bindings" {
+  let text = "let x = 0\nlet y = 1\nx + y"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let binding_id = fp.defs[1].3
+  let result = compute_text_edit(
+    MoveBindingUp(binding_node_id=binding_id),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      let new_text = apply_edits(text, edits)
+      inspect(new_text, content="let y = 1\nlet x = 0\nx + y")
+    }
+    _ => fail("expected Some edits")
+  }
+}
+
+///|
+test "compute_text_edit: AddBinding adds new let line" {
+  let text = "let x = 0\nx"
+  let (proj, _) = parse_to_proj_node(text)
+  let source_map = SourceMap::from_ast(proj)
+  let registry = text_edit_test_registry(proj)
+  let fp = FlatProj::from_proj_node(proj)
+  let module_id = proj.id()
+  let result = compute_text_edit(
+    AddBinding(module_node_id=module_id),
+    text,
+    source_map,
+    registry,
+    fp,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      let new_text = apply_edits(text, edits)
+      inspect(new_text, content="let x = 0\nlet x = 0\nx")
+    }
+    _ => fail("expected Some edits")
+  }
+}
