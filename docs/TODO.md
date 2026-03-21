@@ -51,7 +51,7 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 - [x] Wire `apply_sync` to suppress undo tracking — `SyncEditor::apply_sync` now disables tracking before applying remote ops
 - [x] Sync undo/redo ops to peers — `SyncEditor::undo_and_export()`/`redo_and_export()` capture inverse ops via `export_since()` for peer broadcast; JS bindings `undo_and_export_json`/`redo_and_export_json` added
 - [ ] Add remote cursor/selection tracking
-- [ ] Cursor-preserving remote sync — `syncCmFromCrdt()` replaces full CM6 document, losing cursor position and selection on remote edits. Needs diff-based `TransactionSpec` patching.
+- [x] Cursor-preserving remote sync — replaced full-document replacement with minimal prefix/suffix diff in `syncCmFromCrdt()`
 - [x] Show sync connection status in PEERS panel — `SyncStatus` enum (Offline/Connecting/Connected/Error) with colored dot indicator
 
 ---
