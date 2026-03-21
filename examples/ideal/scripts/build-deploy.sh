@@ -31,6 +31,6 @@ echo "=== Build complete: $WEB_ROOT/dist/ ==="
 # 4. Deploy (if --deploy flag passed)
 if [[ "${1:-}" == "--deploy" ]]; then
   echo "→ Deploying to Cloudflare Pages..."
-  npx wrangler pages deploy dist --project-name canopy-editor
+  npx wrangler pages deploy dist --project-name canopy
   echo "=== Deployed ==="
 fi
