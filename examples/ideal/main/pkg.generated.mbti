@@ -4,6 +4,7 @@ package "dowdiness/ideal-editor/main"
 import {
   "dowdiness/canopy/editor",
   "dowdiness/canopy/projection",
+  "dowdiness/lambda/ast",
 }
 
 // Values
@@ -70,6 +71,7 @@ pub struct Model {
   next_timestamp : Int
   bottom_tab : BottomTab
   sync_status : SyncStatus
+  overlay : OverlayState
 }
 
 pub enum Msg {
@@ -86,6 +88,35 @@ pub enum Msg {
   OutlineNodeClicked(String)
   TextChangedFromEditor
   SyncStatusChanged(String)
+  OpenActionOverlay
+  CloseActionOverlay
+  ActionKeyPressed(String)
+  ActionTapped(String)
+  NamePromptInput(String)
+  NamePromptSubmit
+  NamePromptCancel
+  LongPressTriggered
+}
+
+pub struct NodeActionContext {
+  node_id : @projection.NodeId
+  kind : @ast.Term
+  is_let_binding : Bool
+  binding_node_id : @projection.NodeId?
+  binding_def_index : Int?
+  module_node_id : @projection.NodeId?
+}
+
+pub struct OverlayState {
+  visible : Bool
+  actions : Array[@projection.Action]
+  node_context : NodeActionContext?
+  submenu : @projection.Action?
+  pending_action : @projection.Action?
+  name_value : String
+  name_error : String
+  anchor_top : Int
+  anchor_left : Int
 }
 
 pub enum PanelId {

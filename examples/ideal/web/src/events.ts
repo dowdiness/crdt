@@ -5,4 +5,7 @@ export const CanopyEvents = {
   CURSOR_MOVE: 'cursor-move',
   REQUEST_UNDO: 'request-undo',
   REQUEST_REDO: 'request-redo',
+  ACTION_OVERLAY_OPEN: 'action-overlay-open',
+  ACTION_KEY: 'action-key',
+  LONG_PRESS: 'long-press',
 } as const;
