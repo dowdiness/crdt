@@ -27,6 +27,7 @@ pub enum DropPosition {
 
 ///|
 /// Hint for where to place the cursor after a structural edit.
+/// MoveCursor(position~) uses post-edit coordinates — the bridge applies them directly.
 pub(all) enum FocusHint {
   RestoreCursor
   MoveCursor(position~ : Int)

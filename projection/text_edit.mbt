@@ -245,6 +245,19 @@ fn rename_module_binding(
       )
     }
   }
+  // Find all usages
+  let usage_ids = find_usages(old_name, def_index + 1, flat_proj, registry)
+  // Guard: check if new_name would be captured by an enclosing lambda at any usage site
+  for usage_id in usage_ids {
+    let usage_lam_env = collect_lam_env(usage_id, registry)
+    if usage_lam_env.contains(new_name) {
+      return Err(
+        "Cannot rename: '" +
+        new_name +
+        "' is bound by an enclosing lambda at a usage site",
+      )
+    }
+  }
   let edits : Array[SpanEdit] = []
   // Get the name token span
   let role = "name:" + def_index.to_string()
@@ -260,8 +273,6 @@ fn rename_module_binding(
         "No token span for binding name at def index " + def_index.to_string(),
       )
   }
-  // Find all usages
-  let usage_ids = find_usages(old_name, def_index + 1, flat_proj, registry)
   let usage_ranges : Array[(Int, Int)] = []
   for uid in usage_ids {
     match source_map.get_range(uid) {
@@ -1152,6 +1163,20 @@ pub fn compute_text_edit(
         ModuleBinder(def_index~, ..) => {
           let def = flat_proj.defs[def_index]
           let init_text = @ast.print_term(def.1.kind)
+          // Check for capture: would any free var in init be captured by a lambda at the usage site?
+          let init_fv = free_vars(def.1.kind, @immut/hashset.new())
+          let usage_lam_env = collect_lam_env(node_id, registry)
+          let mut would_capture = false
+          init_fv.each(fn(v) {
+            if usage_lam_env.contains(v) {
+              would_capture = true
+            }
+          })
+          if would_capture {
+            return Err(
+              "Cannot inline: would capture variables bound by enclosing lambda",
+            )
+          }
           // Check if this is the sole usage
           let usages = find_usages(var_name, def_index + 1, flat_proj, registry)
           if usages.length() <= 1 {
@@ -1243,6 +1268,22 @@ pub fn compute_text_edit(
       let init_text = @ast.print_term(def.1.kind)
       // Find all usages
       let usage_ids = find_usages(var_name, def_index + 1, flat_proj, registry)
+      // Check for capture: would any free var in init be captured by a lambda at any usage site?
+      let init_fv = free_vars(def.1.kind, @immut/hashset.new())
+      for uid in usage_ids {
+        let usage_lam_env = collect_lam_env(uid, registry)
+        let mut would_capture = false
+        init_fv.each(fn(v) {
+          if usage_lam_env.contains(v) {
+            would_capture = true
+          }
+        })
+        if would_capture {
+          return Err(
+            "Cannot inline: would capture variables bound by enclosing lambda",
+          )
+        }
+      }
       // Build replacement edits for all usages (reverse document order)
       let edits : Array[SpanEdit] = []
       // Collect usage ranges, sorted by position (descending)

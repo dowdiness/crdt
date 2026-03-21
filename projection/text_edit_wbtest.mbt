@@ -1202,3 +1202,58 @@ test "compute_text_edit: Rename rejects duplicate module binding name" {
   )
   inspect(result is Err(_), content="true")
 }
+
+///|
+test "compute_text_edit: Rename module binding rejects inner lambda capture" {
+  // let x = 0\nλy. x — renaming x→y would capture at the inner λy
+  let text = "let x = 0\n\u{03BB}y. x"
+  let (proj, sm, registry, fp) = parse_with_token_spans(text)
+  let _ = proj
+  let binding_id = fp.defs[0].3
+  let result = compute_text_edit(
+    Rename(node_id=binding_id, new_name="y"),
+    text,
+    sm,
+    registry,
+    fp,
+  )
+  inspect(result is Err(_), content="true")
+}
+
+///|
+test "compute_text_edit: InlineDefinition rejects capture" {
+  // let y = 1\nlet x = y\nλy. x — inlining x would produce λy. y (capture)
+  let text = "let y = 1\nlet x = y\n\u{03BB}y. x"
+  let (proj, sm, registry, fp) = parse_with_token_spans(text)
+  let _ = sm
+  // Body is λy. x — the Lam node
+  let body = proj.children[proj.children.length() - 1]
+  // body is Lam("y", Var("x")), child[0] is Var("x")
+  let var_x = body.children[0]
+  let result = compute_text_edit(
+    InlineDefinition(node_id=var_x.id()),
+    text,
+    sm,
+    registry,
+    fp,
+  )
+  inspect(result is Err(_), content="true")
+}
+
+///|
+test "compute_text_edit: InlineAllUsages rejects capture" {
+  let text = "let y = 1\nlet x = y\n\u{03BB}y. x"
+  let (proj, sm, registry, fp) = parse_with_token_spans(text)
+  let _ = proj
+  let _ = sm
+  // Binding "x" is at def index 1
+  let binding_id = fp.defs[1].3
+  let result = compute_text_edit(
+    InlineAllUsages(binding_node_id=binding_id),
+    text,
+    sm,
+    registry,
+    fp,
+  )
+  inspect(result is Err(_), content="true")
+}
