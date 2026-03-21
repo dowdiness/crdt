@@ -10,7 +10,7 @@ import {
 }
 
 // Values
-pub fn compute_text_edit(TreeEditOp, String, SourceMap, Map[NodeId, ProjNode], FlatProj) -> Result[Array[SpanEdit]?, String]
+pub fn compute_text_edit(TreeEditOp, String, SourceMap, Map[NodeId, ProjNode], FlatProj) -> Result[(Array[SpanEdit], FocusHint)?, String]
 
 pub fn is_leaf_node(@ast.Term) -> Bool
 
@@ -53,6 +53,13 @@ pub fn FlatProj::to_proj_node(Self, @ref.Ref[Int]) -> ProjNode
 pub fn FlatProj::to_proj_node_with_prev_module_id(Self, @ref.Ref[Int], Int?) -> ProjNode
 pub impl Eq for FlatProj
 pub impl Show for FlatProj
+
+pub(all) enum FocusHint {
+  RestoreCursor
+  MoveCursor(position~ : Int)
+}
+pub impl Eq for FocusHint
+pub impl Show for FocusHint
 
 pub enum InteractiveChildren {
   Loaded(Array[InteractiveTreeNode])

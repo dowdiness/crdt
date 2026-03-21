@@ -33,7 +33,7 @@ pub fn compute_text_edit(
   source_map : SourceMap,
   registry : Map[NodeId, ProjNode],
   flat_proj : FlatProj,
-) -> Result[Array[SpanEdit]?, String] {
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
   let _ = flat_proj
   match op {
     // No-op operations — these don't modify source text
@@ -44,20 +44,25 @@ pub fn compute_text_edit(
     | StartDrag(..)
     | DragOver(..)
     | Collapse(..)
-    | Expand(..) => Ok(Some([]))
+    | Expand(..) => Ok(Some(([], RestoreCursor)))
     // CommitEdit: replace node span with new user-provided text
     CommitEdit(node_id~, new_value~) =>
       match source_map.get_range(node_id) {
         None => Err("Node not found: " + node_id.to_string())
         Some(range) =>
           Ok(
-            Some([
-              {
-                start: range.start,
-                delete_len: range.end - range.start,
-                inserted: new_value,
-              },
-            ]),
+            Some(
+              (
+                [
+                  {
+                    start: range.start,
+                    delete_len: range.end - range.start,
+                    inserted: new_value,
+                  },
+                ],
+                RestoreCursor,
+              ),
+            ),
           )
       }
     // Delete: replace node with placeholder, re-rendering parent for normalization.
@@ -81,13 +86,18 @@ pub fn compute_text_edit(
                 @ast.Term::Error(_) =>
                   // Error parent: remove child entirely
                   Ok(
-                    Some([
-                      {
-                        start: range.start,
-                        delete_len: range.end - range.start,
-                        inserted: "",
-                      },
-                    ]),
+                    Some(
+                      (
+                        [
+                          {
+                            start: range.start,
+                            delete_len: range.end - range.start,
+                            inserted: "",
+                          },
+                        ],
+                        RestoreCursor,
+                      ),
+                    ),
                   )
                 _ => {
                   // Replace child with placeholder in parent, then re-render parent
@@ -117,24 +127,35 @@ pub fn compute_text_edit(
                         None => "a"
                       }
                       Ok(
-                        Some([
-                          {
-                            start: range.start,
-                            delete_len: range.end - range.start,
-                            inserted: placeholder,
-                          },
-                        ]),
+                        Some(
+                          (
+                            [
+                              {
+                                start: range.start,
+                                delete_len: range.end - range.start,
+                                inserted: placeholder,
+                              },
+                            ],
+                            RestoreCursor,
+                          ),
+                        ),
                       )
                     }
                     Some(parent_range) =>
                       Ok(
-                        Some([
-                          {
-                            start: parent_range.start,
-                            delete_len: parent_range.end - parent_range.start,
-                            inserted: new_text,
-                          },
-                        ]),
+                        Some(
+                          (
+                            [
+                              {
+                                start: parent_range.start,
+                                delete_len: parent_range.end -
+                                parent_range.start,
+                                inserted: new_text,
+                              },
+                            ],
+                            RestoreCursor,
+                          ),
+                        ),
                       )
                   }
                 }
@@ -146,13 +167,18 @@ pub fn compute_text_edit(
                 None => "a"
               }
               Ok(
-                Some([
-                  {
-                    start: range.start,
-                    delete_len: range.end - range.start,
-                    inserted: placeholder,
-                  },
-                ]),
+                Some(
+                  (
+                    [
+                      {
+                        start: range.start,
+                        delete_len: range.end - range.start,
+                        inserted: placeholder,
+                      },
+                    ],
+                    RestoreCursor,
+                  ),
+                ),
               )
             }
           }
@@ -169,13 +195,18 @@ pub fn compute_text_edit(
           }
           let wrapped = "(λ" + var_name + ". " + existing + ")"
           Ok(
-            Some([
-              {
-                start: range.start,
-                delete_len: range.end - range.start,
-                inserted: wrapped,
-              },
-            ]),
+            Some(
+              (
+                [
+                  {
+                    start: range.start,
+                    delete_len: range.end - range.start,
+                    inserted: wrapped,
+                  },
+                ],
+                RestoreCursor,
+              ),
+            ),
           )
         }
       }
@@ -190,13 +221,18 @@ pub fn compute_text_edit(
           }
           let wrapped = @ast.print_term(App(existing_kind, Var("a")))
           Ok(
-            Some([
-              {
-                start: range.start,
-                delete_len: range.end - range.start,
-                inserted: wrapped,
-              },
-            ]),
+            Some(
+              (
+                [
+                  {
+                    start: range.start,
+                    delete_len: range.end - range.start,
+                    inserted: wrapped,
+                  },
+                ],
+                RestoreCursor,
+              ),
+            ),
           )
         }
       }
@@ -231,13 +267,18 @@ pub fn compute_text_edit(
                     }
                   }
                   Ok(
-                    Some([
-                      {
-                        start: insert_pos,
-                        delete_len: 0,
-                        inserted: insert_text,
-                      },
-                    ]),
+                    Some(
+                      (
+                        [
+                          {
+                            start: insert_pos,
+                            delete_len: 0,
+                            inserted: insert_text,
+                          },
+                        ],
+                        RestoreCursor,
+                      ),
+                    ),
                   )
                 }
                 _ => {
@@ -248,13 +289,18 @@ pub fn compute_text_edit(
                   )
                   let new_text = @ast.print_term(new_parent.kind)
                   Ok(
-                    Some([
-                      {
-                        start: parent_range.start,
-                        delete_len: parent_range.end - parent_range.start,
-                        inserted: new_text,
-                      },
-                    ]),
+                    Some(
+                      (
+                        [
+                          {
+                            start: parent_range.start,
+                            delete_len: parent_range.end - parent_range.start,
+                            inserted: new_text,
+                          },
+                        ],
+                        RestoreCursor,
+                      ),
+                    ),
                   )
                 }
               }
@@ -278,14 +324,19 @@ pub fn compute_text_edit(
         Inside => target_range.start
       }
       Ok(
-        Some([
-          {
-            start: source_range.start,
-            delete_len: source_range.end - source_range.start,
-            inserted: "",
-          },
-          { start: insert_pos, delete_len: 0, inserted: source_slice },
-        ]),
+        Some(
+          (
+            [
+              {
+                start: source_range.start,
+                delete_len: source_range.end - source_range.start,
+                inserted: "",
+              },
+              { start: insert_pos, delete_len: 0, inserted: source_slice },
+            ],
+            RestoreCursor,
+          ),
+        ),
       )
     }
   }

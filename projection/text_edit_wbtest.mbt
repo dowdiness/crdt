@@ -44,7 +44,7 @@ test "compute_text_edit: CommitEdit replaces single expression" {
     fp,
   )
   match result {
-    Ok(Some(edits)) => {
+    Ok(Some((edits, _))) => {
       inspect(edits.length(), content="1")
       inspect(edits[0].start, content="0")
       inspect(edits[0].delete_len, content="2")
@@ -71,7 +71,7 @@ test "compute_text_edit: CommitEdit replaces left operand in binary expr" {
     fp,
   )
   match result {
-    Ok(Some(edits)) => {
+    Ok(Some((edits, _))) => {
       inspect(edits.length(), content="1")
       inspect(edits[0].start, content="0")
       inspect(edits[0].delete_len, content="1")
@@ -95,7 +95,7 @@ test "compute_text_edit: no-op ops return empty array" {
     registry,
     fp,
   )
-  inspect(result, content="Ok(Some([]))")
+  inspect(result, content="Ok(Some(([], RestoreCursor)))")
 }
 
 ///|
@@ -114,7 +114,7 @@ test "compute_text_edit: Delete replaces node with placeholder" {
     fp,
   )
   match result {
-    Ok(Some(edits)) => {
+    Ok(Some((edits, _))) => {
       inspect(edits.length(), content="1")
       // Int node → placeholder "0"
       inspect(apply_edits(text, edits), content="0")
@@ -140,7 +140,7 @@ test "compute_text_edit: Delete replaces Var with placeholder" {
     fp,
   )
   match result {
-    Ok(Some(edits)) => {
+    Ok(Some((edits, _))) => {
       inspect(edits.length(), content="1")
       // Var → placeholder "a", parent re-rendered with print_term
       inspect(apply_edits(text, edits), content="(a + 1)")
@@ -165,7 +165,7 @@ test "compute_text_edit: WrapInLambda wraps node in lambda abstraction" {
     fp,
   )
   match result {
-    Ok(Some(edits)) => {
+    Ok(Some((edits, _))) => {
       inspect(edits.length(), content="1")
       inspect(apply_edits(text, edits), content="(λx. 42)")
     }
@@ -189,7 +189,7 @@ test "compute_text_edit: WrapInApp wraps node in application" {
     fp,
   )
   match result {
-    Ok(Some(edits)) => {
+    Ok(Some((edits, _))) => {
       inspect(edits.length(), content="1")
       inspect(apply_edits(text, edits), content="(42 a)")
     }
@@ -214,7 +214,7 @@ test "compute_text_edit: InsertChild into Module inserts def text" {
     fp,
   )
   match result {
-    Ok(Some(edits)) => {
+    Ok(Some((edits, _))) => {
       inspect(edits.length(), content="1")
       // Should insert "let x = 0\n" at the body position
       let new_text = apply_edits(text, edits)
@@ -241,7 +241,7 @@ test "compute_text_edit: InsertChild into non-Module re-renders parent" {
     fp,
   )
   match result {
-    Ok(Some(edits)) => {
+    Ok(Some((edits, _))) => {
       inspect(edits.length(), content="1")
       // Bop re-rendered via rebuild_kind + print_term with new child inserted
       let new_text = apply_edits(text, edits)
@@ -275,7 +275,7 @@ test "compute_text_edit: Drop produces two edits" {
     fp,
   )
   match result {
-    Ok(Some(edits)) => {
+    Ok(Some((edits, _))) => {
       // Drop should produce 2 edits: delete at source + insert at target
       inspect(edits.length(), content="2")
       let new_text = apply_edits(text, edits)

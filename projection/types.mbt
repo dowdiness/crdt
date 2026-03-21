@@ -24,3 +24,10 @@ pub enum DropPosition {
   /// Insert as a child of the target
   Inside
 } derive(Show, Eq)
+
+///|
+/// Hint for where to place the cursor after a structural edit.
+pub(all) enum FocusHint {
+  RestoreCursor
+  MoveCursor(position~ : Int)
+} derive(Show, Eq)
