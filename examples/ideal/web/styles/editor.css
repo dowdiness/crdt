@@ -153,6 +153,7 @@ button:focus-visible, .action-btn:focus-visible,
   height: 48px;
   background: var(--canopy-header-bg);
   border-bottom: 1px solid var(--canopy-border);
+  box-shadow: 0 1px 0 var(--canopy-glow);
   gap: var(--space-sm);
   flex-shrink: 0;
 }
@@ -552,6 +553,19 @@ canopy-editor {
   height: 36px;
   align-items: center;
   border-bottom: 1px solid var(--canopy-border);
+}
+
+/* Bottom tabs use underline accent, not fill — lighter than toolbar tabs */
+.bottom-tabs .tab {
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  padding-bottom: calc(var(--space-sm) - 2px);
+}
+
+.bottom-tabs .tab.active {
+  background: transparent;
+  color: var(--canopy-accent-text);
+  border-bottom-color: var(--canopy-accent);
 }
 
 .bottom-content {
