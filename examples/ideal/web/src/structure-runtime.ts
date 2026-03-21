@@ -3,7 +3,7 @@ import { EditorView as PmView } from "prosemirror-view";
 import { Node as PmNode } from "prosemirror-model";
 import { editorSchema } from "./schema";
 import { StructureCompoundView, StructureLeafView } from "./structure-nodeview";
-import { structuralKeymap } from "./keymap";
+import { structuralKeymap, actionKeyForwardPlugin } from "./keymap";
 import { CanopyEvents } from "./events";
 import { CrdtBridge } from "./bridge";
 import { projNodeToDoc } from "./convert";
@@ -97,6 +97,7 @@ export function createStructureModeSession(
       doc: buildDoc(crdtHandle, crdt),
       plugins: [
         structuralKeymap(host),
+        actionKeyForwardPlugin(host),
         peerCursorPlugin(),
         errorDecoPlugin(),
         evalGhostPlugin(),
@@ -123,6 +124,28 @@ export function createStructureModeSession(
   });
 
   bridge.setPmView(pmView);
+
+  // Long-press detection for touch devices
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+
+  parent.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch') return;
+    const startX = e.clientX, startY = e.clientY;
+    longPressTimer = setTimeout(() => {
+      const sel = pmView.state.selection;
+      if (sel instanceof NodeSelection) {
+        host.dispatchEvent(new CustomEvent(CanopyEvents.LONG_PRESS, {
+          detail: { nodeId: String(sel.node.attrs.nodeId) },
+          bubbles: true, composed: true,
+        }));
+      }
+    }, 500);
+    const cancel = () => { if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; } };
+    parent.addEventListener('pointerup', cancel, { once: true });
+    parent.addEventListener('pointermove', (me) => {
+      if (Math.abs(me.clientX - startX) > 10 || Math.abs(me.clientY - startY) > 10) cancel();
+    }, { once: true });
+  }, { passive: true });
 
   return {
     applyRemote(syncJson: string): void {
