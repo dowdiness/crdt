@@ -724,11 +724,22 @@ const SHADOW_STYLES = `
       max-width: none;
       width: 100%;
       border-radius: 12px 12px 0 0;
+      padding-top: 12px;
       padding-bottom: env(safe-area-inset-bottom, 8px);
       max-height: 60vh;
       transform: translateY(0);
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
+    }
+    /* Drag handle — visual affordance for bottom sheet */
+    .action-overlay-panel::before {
+      content: '';
+      display: block;
+      width: 32px;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--canopy-scrollbar, rgba(255, 255, 255, 0.08));
+      margin: 0 auto 8px;
     }
     .action-overlay-item {
       padding: 12px 16px;
