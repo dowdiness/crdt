@@ -1,6 +1,6 @@
 ///|
 /// Wire protocol version byte.
-let version : Byte = b'\x01'
+let version : Byte = b'\x02'
 
 ///|
 /// Message type byte for room control messages.

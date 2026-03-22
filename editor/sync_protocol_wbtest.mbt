@@ -71,15 +71,15 @@ test "decode rejects wrong version" {
 ///|
 test "decode rejects too short" {
   let buf = @buffer.new()
-  buf.write_byte(b'\x01')
+  buf.write_byte(b'\x02')
   buf.write_byte(b'\x01')
   inspect(decode_message(buf.to_bytes()), content="None")
 }
 
 ///|
-test "wire format: version byte is 0x01" {
+test "wire format: version byte is 0x02" {
   let encoded = encode_message(CrdtOps(b""))
-  inspect(encoded[0], content="b'\\x01'")
+  inspect(encoded[0], content="b'\\x02'")
 }
 
 ///|
@@ -105,5 +105,32 @@ test "EphemeralUpdate all namespaces" {
         }
       _ => fail("expected EphemeralUpdate")
     }
+  }
+}
+
+///|
+test "v2: encode/decode RelayedCrdtOps roundtrip" {
+  let payload = str_to_bytes("test payload")
+  let encoded = encode_relayed_crdt_ops("alice", payload)
+  let decoded = decode_message(encoded)
+  match decoded {
+    Some(RelayedCrdtOps(sender~, payload~)) => {
+      inspect(sender, content="alice")
+      inspect(payload.to_unchecked_string(), content="test payload")
+    }
+    _ => fail("expected RelayedCrdtOps")
+  }
+}
+
+///|
+test "v2: RelayedCrdtOps with empty payload" {
+  let encoded = encode_relayed_crdt_ops("bob", Bytes::new(0))
+  let decoded = decode_message(encoded)
+  match decoded {
+    Some(RelayedCrdtOps(sender~, payload~)) => {
+      inspect(sender, content="bob")
+      inspect(payload.length(), content="0")
+    }
+    _ => fail("expected RelayedCrdtOps")
   }
 }

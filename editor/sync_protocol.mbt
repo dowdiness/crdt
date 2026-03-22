@@ -13,10 +13,11 @@ pub(all) enum SyncMessage {
   SyncResponse(Bytes)
   PeerJoined(String)
   PeerLeft(String)
+  RelayedCrdtOps(sender~ : String, payload~ : Bytes)
 } derive(Show, Eq)
 
 ///|
-let protocol_version : Byte = b'\x01'
+let protocol_version : Byte = b'\x02'
 
 ///|
 fn message_type_byte(msg : SyncMessage) -> Byte {
@@ -26,6 +27,7 @@ fn message_type_byte(msg : SyncMessage) -> Byte {
     SyncRequest(_) => b'\x03'
     SyncResponse(_) => b'\x04'
     PeerJoined(_) | PeerLeft(_) => b'\x05'
+    RelayedCrdtOps(sender=_, ..) => b'\x06'
   }
 }
 
@@ -51,7 +53,22 @@ pub fn encode_message(msg : SyncMessage) -> Bytes {
       buf.write_byte(b'\x02') // sub_type: Leave
       write_string(buf, peer_id)
     }
+    RelayedCrdtOps(sender~, payload~) => {
+      write_string(buf, sender)
+      buf.write_bytes(payload)
+    }
   }
+  buf.to_bytes()
+}
+
+///|
+pub fn encode_relayed_crdt_ops(sender : String, payload : Bytes) -> Bytes {
+  let buf = @buffer.new()
+  buf.write_byte(protocol_version)
+  buf.write_byte(b'\x06')
+  buf.write_byte(b'\x00')
+  write_string(buf, sender)
+  buf.write_bytes(payload)
   buf.to_bytes()
 }
 
@@ -128,6 +145,17 @@ pub fn decode_message(data : Bytes) -> SyncMessage? {
         b'\x02' => Some(PeerLeft(peer_id))
         _ => None
       }
+    }
+    b'\x06' => {
+      let reader = Reader::new(
+        data.view(start=payload_start, end=data.length()).to_bytes(),
+      )
+      let sender = read_string(reader) catch { _ => return None }
+      let remaining_pos = reader.pos
+      let remaining_data = data
+        .view(start=payload_start + remaining_pos, end=data.length())
+        .to_bytes()
+      Some(RelayedCrdtOps(sender~, payload=remaining_data))
     }
     _ => None
   }
