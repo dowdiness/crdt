@@ -27,7 +27,9 @@ type CanopyGlobal = typeof globalThis & {
 
 const canopyGlobal = globalThis as CanopyGlobal;
 const AGENT_ID_STORAGE_KEY = 'canopy-ideal-agent-id';
+const STORAGE_KEY_PREFIX = 'canopy-doc-';
 let crdtPromise: Promise<CrdtModule> | null = null;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let activeSyncClient: SyncClient | null = null;
 let editorEventsController: AbortController | null = null;
 let beforeUnloadRegistered = false;
@@ -63,6 +65,41 @@ function getSessionAgentId(): string {
   }
 }
 
+function getRoomId(): string {
+  const hash = location.hash.slice(1);
+  if (hash) return hash;
+  const id = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+    ? crypto.randomUUID().slice(0, 8)
+    : Math.random().toString(36).slice(2, 10);
+  history.replaceState(null, '', '#' + id);
+  return id;
+}
+
+function saveToLocalStorage(handle: number, roomId: string, crdt: CrdtModule) {
+  if (saveTimer !== null) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      const state = crdt.export_all_json(handle);
+      localStorage.setItem(STORAGE_KEY_PREFIX + roomId, state);
+    } catch (e) {
+      console.warn('Failed to save to localStorage:', e);
+    }
+  }, 1000);
+}
+
+function saveNow(handle: number, roomId: string, crdt: CrdtModule) {
+  if (saveTimer !== null) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  try {
+    const state = crdt.export_all_json(handle);
+    localStorage.setItem(STORAGE_KEY_PREFIX + roomId, state);
+  } catch (e) {
+    console.warn('Failed to save to localStorage:', e);
+  }
+}
+
 /** Generate a deterministic color from agent ID (hash -> HSL with fixed S/L). */
 function agentColor(agentId: string): string {
   let hash = 0;
@@ -93,6 +130,17 @@ function wireEditorEvents(el: CanopyEditor) {
 
   el.addEventListener(CanopyEvents.TEXT_CHANGE, () => {
     clickTrigger('canopy-text-sync-trigger');
+    // Debounced save to localStorage
+    if (canopyGlobal.__canopy_crdt && canopyGlobal.__canopy_crdt_handle != null) {
+      const roomId = location.hash.slice(1);
+      if (roomId) {
+        saveToLocalStorage(
+          canopyGlobal.__canopy_crdt_handle,
+          roomId,
+          canopyGlobal.__canopy_crdt,
+        );
+      }
+    }
   }, { signal });
   el.addEventListener(CanopyEvents.NODE_SELECTED, ((event: Event) => {
     const { nodeId } = (event as CustomEvent<NodeSelectedDetail>).detail ?? {};
@@ -142,7 +190,7 @@ function wireEditorEvents(el: CanopyEditor) {
   }, { signal });
 }
 
-function startSync(el: CanopyEditor, handle: number, crdt: CrdtModule) {
+function startSync(el: CanopyEditor, handle: number, crdt: CrdtModule, roomId: string) {
   activeSyncClient?.disconnect();
 
   const syncClient = new SyncClient(el, handle, crdt);
@@ -152,11 +200,18 @@ function startSync(el: CanopyEditor, handle: number, crdt: CrdtModule) {
     syncClient.broadcast();
   });
 
-  syncClient.connect();
+  syncClient.connect(undefined, roomId);
 
   if (!beforeUnloadRegistered) {
     beforeUnloadRegistered = true;
     window.addEventListener('beforeunload', () => {
+      // Save document state immediately
+      if (canopyGlobal.__canopy_crdt && canopyGlobal.__canopy_crdt_handle != null) {
+        const currentRoomId = location.hash.slice(1);
+        if (currentRoomId) {
+          saveNow(canopyGlobal.__canopy_crdt_handle, currentRoomId, canopyGlobal.__canopy_crdt);
+        }
+      }
       // Delete local presence before disconnecting
       if (canopyGlobal.__canopy_crdt && canopyGlobal.__canopy_crdt_handle != null) {
         canopyGlobal.__canopy_crdt.ephemeral_delete_presence(canopyGlobal.__canopy_crdt_handle);
@@ -192,9 +247,25 @@ function doMount(el: CanopyEditor, crdt: CrdtModule) {
   // Reuse the editor MoonBit already created in init_model (handle = 1).
   // Don't call create_editor_with_undo again — that would overwrite the singleton.
   const handle = 1;
+  const roomId = getRoomId();
   canopyGlobal.__canopy_crdt_handle = handle;
   canopyGlobal.__canopy_pending_node_selection = null;
   canopyGlobal.__canopy_pending_structural_edit = null;
+
+  // Restore from localStorage if available
+  try {
+    const savedState = localStorage.getItem(STORAGE_KEY_PREFIX + roomId);
+    if (savedState) {
+      try {
+        crdt.apply_sync_json(handle, savedState);
+      } catch (e) {
+        console.warn('Failed to restore from localStorage, removing corrupted entry:', e);
+        try { localStorage.removeItem(STORAGE_KEY_PREFIX + roomId); } catch { /* storage unavailable */ }
+      }
+    }
+  } catch (e) {
+    console.warn('localStorage unavailable, skipping restore:', e);
+  }
 
   // Set up agent identity for cursor broadcasting
   const agentId = getSessionAgentId();
@@ -208,7 +279,7 @@ function doMount(el: CanopyEditor, crdt: CrdtModule) {
   // Text already set by MoonBit's init_model — don't overwrite.
   el.mount(handle, crdt);
   wireEditorEvents(el);
-  startSync(el, handle, crdt);
+  startSync(el, handle, crdt, roomId);
 
   // Periodically remove outdated ephemeral entries (every 10s)
   if (ephemeralCleanupTimer !== null) {

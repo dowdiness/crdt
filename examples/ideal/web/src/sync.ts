@@ -35,6 +35,8 @@ export class SyncClient {
   private reconnectDelay = RECONNECT_DELAY_MS;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private lastSentVersion: string;
+  private url: string = DEFAULT_WS_URL;
+  private room: string = DEFAULT_ROOM;
 
   constructor(host: HTMLElement, handle: number, crdt: CrdtModule) {
     this.host = host;
@@ -53,6 +55,8 @@ export class SyncClient {
     url: string = DEFAULT_WS_URL,
     room: string = DEFAULT_ROOM,
   ): void {
+    this.url = url;
+    this.room = room;
     if (this.disposed) return;
     // Guard against duplicate connections
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
@@ -181,7 +185,7 @@ export class SyncClient {
             composed: true,
           }),
         );
-        this.scheduleReconnect(url, room);
+        this.scheduleReconnect();
       }
     });
 
@@ -255,7 +259,7 @@ export class SyncClient {
     }
   }
 
-  private scheduleReconnect(url: string, room: string): void {
+  private scheduleReconnect(): void {
     if (this.disposed || this.reconnectTimer !== null) return;
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
@@ -263,7 +267,7 @@ export class SyncClient {
         this.reconnectDelay * 1.5,
         MAX_RECONNECT_DELAY_MS,
       );
-      this.connect(url, room);
+      this.connect(this.url, this.room);
     }, this.reconnectDelay);
   }
 }

@@ -2,8 +2,8 @@
  * Cloudflare Worker — CRDT Operation Relay Server
  *
  * Room-based WebSocket relay that broadcasts CRDT operations between peers.
- * Each room is a Durable Object instance with in-memory operation history
- * for late-joiner replay.
+ * Each room is a Durable Object instance with SQLite-backed persistent
+ * operation storage for late-joiner replay.
  *
  * Protocol (matches sync.ts SyncClient):
  *   Client → Server: { type: "join", room: string }
@@ -13,8 +13,6 @@
  *   Server → Client: { type: "error", message: string }
  */
 
-const MAX_OPS = 10_000;
-
 /**
  * Durable Object that manages a single relay room.
  */
@@ -23,7 +21,13 @@ export class RelayRoom {
     this.state = state;
     this.env = env;
     this.clients = new Set();
-    this.ops = [];
+    // Initialize SQLite schema for persistent operation storage
+    this.state.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS operations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        data TEXT NOT NULL
+      )
+    `);
   }
 
   async fetch(request) {
@@ -53,9 +57,16 @@ export class RelayRoom {
             joined = true;
             this.clients.add(ws);
 
-            // Replay stored ops to the newly joined client
-            if (this.ops.length > 0) {
-              ws.send(JSON.stringify({ type: "sync", ops: this.ops }));
+            // Replay stored ops from SQLite
+            const cursor = this.state.storage.sql.exec(
+              "SELECT data FROM operations ORDER BY id"
+            );
+            const ops = [];
+            for (const row of cursor) {
+              ops.push(row.data);
+            }
+            if (ops.length > 0) {
+              ws.send(JSON.stringify({ type: "sync", ops }));
             }
             break;
           }
@@ -68,10 +79,22 @@ export class RelayRoom {
 
             const op = msg.op;
 
-            // Store for late-joiner replay
-            this.ops.push(op);
-            if (this.ops.length > MAX_OPS) {
-              this.ops.shift();
+            // Persist to SQLite
+            this.state.storage.sql.exec(
+              "INSERT INTO operations (data) VALUES (?)", op
+            );
+
+            // Evict oldest ops if table exceeds soft limit
+            const MAX_OPS = 10_000;
+            const countCursor = this.state.storage.sql.exec(
+              "SELECT COUNT(*) as cnt FROM operations"
+            );
+            for (const row of countCursor) {
+              if (row.cnt > MAX_OPS) {
+                this.state.storage.sql.exec(
+                  "DELETE FROM operations WHERE id <= (SELECT id FROM operations ORDER BY id LIMIT 1)"
+                );
+              }
             }
 
             // Broadcast to all other clients
@@ -108,7 +131,11 @@ export class RelayRoom {
           }
 
           case "reset": {
-            this.ops = [];
+            if (!joined) {
+              ws.send(JSON.stringify({ type: "error", message: "Not joined" }));
+              break;
+            }
+            this.state.storage.sql.exec("DELETE FROM operations");
             break;
           }
 
