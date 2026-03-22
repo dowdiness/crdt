@@ -44,7 +44,18 @@ pub fn SyncEditor::ws_on_message(self : SyncEditor, data : Bytes) -> Unit {
       buf.write_string(json_str)
       self.ws_send(encode_message(CrdtOps(buf.to_bytes())))
     }
-    PeerLeft(peer_id) => self.hub.on_peer_leave(peer_id)
+    PeerLeft(peer_id) => {
+      self.hub.on_peer_leave(peer_id)
+      // Abort recovery if the leaving peer is the one we're recovering from
+      match self.recovery {
+        Some(ctx) =>
+          if ctx.peer_id == peer_id {
+            self.recovery = None
+            // TODO: set SyncStatus::Error
+          }
+        None => ()
+      }
+    }
     SyncRequest(payload) => {
       let reader = Reader::new(payload)
       let sender = read_string(reader) catch { _ => return }
@@ -88,7 +99,50 @@ pub fn SyncEditor::ws_on_message(self : SyncEditor, data : Bytes) -> Unit {
       let wire = encode_sync_response(target=sender, request_id~, sync_json~)
       self.ws_send(wire)
     }
-    SyncResponse(_) => ()
+    SyncResponse(payload) => {
+      let reader = Reader::new(payload)
+      let _sender = read_string(reader) catch { _ => return }
+      let request_id = read_string(reader) catch { _ => return }
+      let sync_json = read_string(reader) catch { _ => return }
+      let ctx = match self.recovery {
+        Some(ctx) => ctx
+        None => return // Not recovering, ignore
+      }
+      // Stale response check
+      if not(ctx.matches_request_id(request_id)) {
+        return
+      }
+      // Empty response = responder can't help
+      if sync_json == "" {
+        self.handle_recovery_retry()
+        return
+      }
+      // Apply the delta
+      let delta = @text.SyncMessage::from_json_string(sync_json) catch {
+        _ => {
+          self.handle_recovery_retry()
+          return
+        }
+      }
+      self.apply_sync(delta) catch {
+        _ => ()
+      }
+      // Retry the original pending message
+      self.apply_sync(ctx.pending_msg) catch {
+        _ => {
+          self.handle_recovery_retry()
+          return
+        }
+      }
+      // Success! Drain deferred messages
+      let deferred = ctx.deferred
+      self.recovery = None
+      for msg in deferred {
+        self.apply_sync(msg) catch {
+          _ => ()
+        }
+      }
+    }
     RelayedCrdtOps(sender~, payload~) => {
       let json_str = payload.to_unchecked_string()
       let crdt_msg = @text.SyncMessage::from_json_string(json_str) catch {
@@ -120,6 +174,7 @@ pub fn SyncEditor::ws_on_message(self : SyncEditor, data : Bytes) -> Unit {
 ///|
 pub fn SyncEditor::ws_on_close(self : SyncEditor) -> Unit {
   self.ws = None
+  self.recovery = None
 }
 
 ///|
@@ -178,4 +233,22 @@ fn SyncEditor::send_sync_request(
     version_json~,
   )
   self.ws_send(wire)
+}
+
+///|
+/// Handle a failed recovery retry: increment retries or give up.
+fn SyncEditor::handle_recovery_retry(self : SyncEditor) -> Unit {
+  let ctx = match self.recovery {
+    Some(ctx) => ctx
+    None => return
+  }
+  self.recovery_epoch += 1
+  ctx.advance_retry(self.recovery_epoch)
+  if ctx.is_exhausted() {
+    // Give up — clear recovery, TODO: set SyncStatus::Error
+    self.recovery = None
+    return
+  }
+  // Send another SyncRequest
+  self.send_sync_request(ctx.peer_id, ctx.request_id)
 }
