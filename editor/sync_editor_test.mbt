@@ -403,3 +403,72 @@ test "SyncEditor: get_resolution returns bound/free info" {
   inspect(res.vars.get(2), content="Some(Bound(depth=1))")
   inspect(res.vars.get(3), content="Some(Free)")
 }
+
+///|
+fn count_nodes(node : @proj.ProjNode) -> Int {
+  let mut count = 1
+  for child in node.children {
+    count = count + count_nodes(child)
+  }
+  count
+}
+
+///|
+test "incremental patch: registry node count stable after tail edit" {
+  let editor = SyncEditor::new("test")
+  editor.set_text("let x = 1\nlet y = 2\nlet z = 0\nz")
+  ignore(editor.get_proj_node())
+  ignore(editor.get_source_map())
+  let node_count_before = match editor.get_proj_node() {
+    Some(r) => count_nodes(r)
+    None => 0
+  }
+  // Edit tail def value: 0 → 9
+  let text = editor.get_text()
+  let pos = text.length() - 3 // position of '0' in "z = 0"
+  editor.move_cursor(pos)
+  ignore(editor.backspace())
+  try! editor.insert("9")
+  let node_count_after = match editor.get_proj_node() {
+    Some(r) => count_nodes(r)
+    None => 0
+  }
+  inspect(node_count_before == node_count_after, content="true")
+}
+
+///|
+test "incremental patch: source_map position queries work after edit" {
+  let editor = SyncEditor::new("test")
+  editor.set_text("let x = 1\nlet y = 2\ny")
+  ignore(editor.get_source_map()) // warm up
+  // Edit: y=2 → y=3
+  let text = editor.get_text()
+  let pos = text.length() - 3 // position of '2'
+  editor.move_cursor(pos)
+  ignore(editor.backspace())
+  try! editor.insert("3")
+  let sm = editor.get_source_map()
+  // Position query should still find nodes
+  inspect(sm.innermost_node_at(0) is Some(_), content="true")
+  inspect(sm.innermost_node_at(pos) is Some(_), content="true")
+}
+
+///|
+test "incremental patch: get_node returns correct node after edit" {
+  let editor = SyncEditor::new("test")
+  editor.set_text("let x = 1\nlet y = 2\ny")
+  let proj = editor.get_proj_node().unwrap()
+  // Get node ID of x's init (Int(1)) — first child of Module
+  let x_init_id = proj.children[0].id()
+  // Edit y's init: 2 → 3
+  let text = editor.get_text()
+  let pos = text.length() - 3
+  editor.move_cursor(pos)
+  ignore(editor.backspace())
+  try! editor.insert("3")
+  // x's init should still be retrievable with same ID
+  match editor.get_node(x_init_id) {
+    Some(node) => inspect(node.kind, content="Int(1)")
+    None => fail("x init node not found after y edit")
+  }
+}
