@@ -519,7 +519,7 @@ test "incremental patch: no-final-expr module keeps body node registered" {
   let _body1_id = proj1.children[proj1.children.length() - 1].id()
   ignore(editor.get_source_map())
   // Edit def x: 0 → 9
-  editor.move_cursor(10) // position of '0' in x = 0
+  editor.move_cursor(9) // position after '0' in "let x = 0" (index 8 is '0', cursor at 9)
   ignore(editor.backspace())
   try! editor.insert("9")
   let proj2 = editor.get_proj_node().unwrap()

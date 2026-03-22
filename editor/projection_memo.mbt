@@ -19,6 +19,11 @@ fn build_projection_memos(
   // None = full rebuild needed (first parse, def count change, no prev root).
   // Some([]) = nothing changed. Some([2, 5]) = defs 2 and 5 changed. -1 = final_expr.
   let changed_def_indices_ref : Ref[Array[Int]?] = Ref::new(None)
+  // Revision counter: bumped each time proj_memo recomputes. Downstream memos
+  // track the last revision they processed. If they skipped revisions (lazy
+  // access pattern), the delta in changed_def_indices_ref doesn't match their
+  // prev state, so they must fall back to full rebuild.
+  let proj_revision_ref : Ref[Int] = Ref::new(0)
 
   let proj_memo : @incr.Memo[@proj.FlatProj?] = @incr.Memo::new(
     rt,
@@ -92,6 +97,7 @@ fn build_projection_memos(
       next_id_ref.val = counter.val
       prev_flat_proj_ref.val = Some(result)
       prev_syntax_root_ref.val = Some(syntax_root)
+      proj_revision_ref.val = proj_revision_ref.val + 1
       Some(result)
     },
     label="proj_node",
@@ -131,12 +137,18 @@ fn build_projection_memos(
     None,
   )
   let registry_prev_children_ref : Ref[Array[@proj.ProjNode]?] = Ref::new(None)
+  let registry_last_revision_ref : Ref[Int] = Ref::new(0)
 
   let registry_memo : @incr.Memo[Map[@proj.NodeId, @proj.ProjNode]] = @incr.Memo::new(
     rt,
     fn() -> Map[@proj.NodeId, @proj.ProjNode] {
       match cached_proj_node.get() {
         Some(root) => {
+          // Detect revision skew: if this memo skipped revisions (wasn't
+          // accessed on intermediate edits), the delta in changed_def_indices_ref
+          // doesn't match our prev state. Fall back to full rebuild.
+          let current_rev = proj_revision_ref.val
+          let skipped = current_rev != registry_last_revision_ref.val + 1
           let registry = match
             (
               changed_def_indices_ref.val,
@@ -144,7 +156,8 @@ fn build_projection_memos(
               registry_prev_children_ref.val,
             ) {
             (Some(indices), Some(prev_reg), Some(prev_children)) if indices.length() >
-              0 => {
+              0 &&
+              not(skipped) => {
               // Patch path: only update changed subtrees
               for idx in indices {
                 if idx == -1 {
@@ -166,7 +179,8 @@ fn build_projection_memos(
               prev_reg[root.id()] = root
               prev_reg
             }
-            (Some(indices), Some(prev_reg), _) if indices.length() == 0 =>
+            (Some(indices), Some(prev_reg), _) if indices.length() == 0 &&
+              not(skipped) =>
               // Nothing changed — reuse previous registry
               prev_reg
             _ => {
@@ -178,11 +192,13 @@ fn build_projection_memos(
           }
           prev_registry_ref.val = Some(registry)
           registry_prev_children_ref.val = Some(root.children.copy())
+          registry_last_revision_ref.val = current_rev
           registry
         }
         None => {
           prev_registry_ref.val = None
           registry_prev_children_ref.val = None
+          registry_last_revision_ref.val = proj_revision_ref.val
           {}
         }
       }
@@ -194,12 +210,15 @@ fn build_projection_memos(
   let source_map_prev_children_ref : Ref[Array[@proj.ProjNode]?] = Ref::new(
     None,
   )
+  let source_map_last_revision_ref : Ref[Int] = Ref::new(0)
 
   let source_map_memo : @incr.Memo[@proj.SourceMap] = @incr.Memo::new(
     rt,
     fn() -> @proj.SourceMap {
       match cached_proj_node.get() {
         Some(root) => {
+          let current_rev = proj_revision_ref.val
+          let skipped = current_rev != source_map_last_revision_ref.val + 1
           let sm = match
             (
               changed_def_indices_ref.val,
@@ -207,7 +226,8 @@ fn build_projection_memos(
               source_map_prev_children_ref.val,
             ) {
             (Some(indices), Some(prev_sm), Some(prev_children)) if indices.length() >
-              0 => {
+              0 &&
+              not(skipped) => {
               // Patch path: remove old subtrees, add new subtrees
               for idx in indices {
                 if idx == -1 {
@@ -243,7 +263,8 @@ fn build_projection_memos(
               }
               prev_sm
             }
-            (Some(indices), Some(prev_sm), _) if indices.length() == 0 => {
+            (Some(indices), Some(prev_sm), _) if indices.length() == 0 &&
+              not(skipped) => {
               // No structural changes, but offsets may have shifted (e.g.,
               // whitespace edits). Refresh token spans from the SyntaxNode
               // tree which always has correct positions.
@@ -268,11 +289,13 @@ fn build_projection_memos(
           }
           prev_source_map_ref.val = Some(sm)
           source_map_prev_children_ref.val = Some(root.children.copy())
+          source_map_last_revision_ref.val = current_rev
           sm
         }
         None => {
           prev_source_map_ref.val = None
           source_map_prev_children_ref.val = None
+          source_map_last_revision_ref.val = proj_revision_ref.val
           @proj.SourceMap::new()
         }
       }
