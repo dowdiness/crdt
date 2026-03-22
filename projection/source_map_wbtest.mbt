@@ -111,26 +111,6 @@ test "apply_edit multiple nodes" {
 }
 
 ///|
-test "populate_token_spans_for_indices: only processes specified indices" {
-  let text = "let x = 1\nlet y = 2\nx"
-  let (cst, _) = @parser.parse_cst(text) catch { _ => abort("parse failed") }
-  let syntax_root = @seam.SyntaxNode::from_cst(cst)
-  let counter = Ref::new(0)
-  let proj_root = to_proj_node(syntax_root, counter)
-  let sm = SourceMap::from_ast(proj_root)
-  // Clear token spans
-  sm.token_spans.clear()
-  // Only populate for index 1 (the y def)
-  sm.populate_token_spans_for_indices(syntax_root, proj_root, [1])
-  // Should have name:1 but not name:0
-  inspect(
-    sm.get_token_span(proj_root.id(), "name:1") is Some(_),
-    content="true",
-  )
-  inspect(sm.get_token_span(proj_root.id(), "name:0"), content="None")
-}
-
-///|
 test "apply_edit with zero-length deletion does nothing" {
   let source_map = SourceMap::new()
   let node_id = NodeId(1)

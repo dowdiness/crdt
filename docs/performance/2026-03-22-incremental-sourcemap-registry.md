@@ -48,7 +48,7 @@ Same pattern as registry:
 - `remove_subtree(old_child)` removes old ranges and token_spans
 - `patch_subtree(new_child)` adds new ranges
 - `rebuild_ranges()` re-sorts the position index (still O(n log n))
-- `populate_token_spans_for_indices` scopes the CST walk to changed defs only
+- `populate_token_spans` refreshes all token spans from the SyntaxNode tree (O(n) — required because CstNode interning is position-independent, so reused defs may have shifted offsets)
 
 ### Execution-order independence
 

@@ -268,7 +268,6 @@ fn build_projection_memos(
               // No structural changes, but offsets may have shifted (e.g.,
               // whitespace edits). Refresh token spans from the SyntaxNode
               // tree which always has correct positions.
-              prev_sm.token_spans.clear()
               match syntax_tree.get() {
                 Some(syntax_root) =>
                   prev_sm.populate_token_spans(syntax_root, root)
