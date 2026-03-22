@@ -73,6 +73,42 @@ pub fn encode_relayed_crdt_ops(sender : String, payload : Bytes) -> Bytes {
 }
 
 ///|
+/// Encode a peer-addressed SyncRequest.
+/// Wire: [header][target_id (write_string)][request_id (write_string)][version_json (write_string)]
+pub fn encode_sync_request(
+  target~ : String,
+  request_id~ : String,
+  version_json~ : String,
+) -> Bytes {
+  let buf = @buffer.new()
+  buf.write_byte(protocol_version)
+  buf.write_byte(b'\x03')
+  buf.write_byte(b'\x00')
+  write_string(buf, target)
+  write_string(buf, request_id)
+  write_string(buf, version_json)
+  buf.to_bytes()
+}
+
+///|
+/// Encode a peer-addressed SyncResponse.
+/// Wire: [header][target_id (write_string)][request_id (write_string)][sync_message_json (write_string)]
+pub fn encode_sync_response(
+  target~ : String,
+  request_id~ : String,
+  sync_json~ : String,
+) -> Bytes {
+  let buf = @buffer.new()
+  buf.write_byte(protocol_version)
+  buf.write_byte(b'\x04')
+  buf.write_byte(b'\x00')
+  write_string(buf, target)
+  write_string(buf, request_id)
+  write_string(buf, sync_json)
+  buf.to_bytes()
+}
+
+///|
 pub fn decode_message(data : Bytes) -> SyncMessage? {
   if data.length() < 3 {
     return None

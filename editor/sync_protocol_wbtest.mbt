@@ -134,3 +134,110 @@ test "v2: RelayedCrdtOps with empty payload" {
     _ => fail("expected RelayedCrdtOps")
   }
 }
+
+///|
+test "v2: encode/decode SyncRequest with target and request_id" {
+  let encoded = encode_sync_request(
+    target="bob",
+    request_id="42",
+    version_json="{}",
+  )
+  let decoded = decode_message(encoded)
+  match decoded {
+    Some(SyncRequest(payload)) => {
+      let reader = Reader::new(payload)
+      let target = read_string(reader) catch {
+        _ => {
+          fail("read target")
+          return
+        }
+      }
+      let req_id = read_string(reader) catch {
+        _ => {
+          fail("read req_id")
+          return
+        }
+      }
+      let ver = read_string(reader) catch {
+        _ => {
+          fail("read ver")
+          return
+        }
+      }
+      inspect(target, content="bob")
+      inspect(req_id, content="42")
+      inspect(ver, content="{}")
+    }
+    _ => fail("expected SyncRequest")
+  }
+}
+
+///|
+test "v2: encode/decode SyncResponse with target and request_id" {
+  let encoded = encode_sync_response(
+    target="alice",
+    request_id="7",
+    sync_json="{\"runs\":[]}",
+  )
+  let decoded = decode_message(encoded)
+  match decoded {
+    Some(SyncResponse(payload)) => {
+      let reader = Reader::new(payload)
+      let target = read_string(reader) catch {
+        _ => {
+          fail("read target")
+          return
+        }
+      }
+      let req_id = read_string(reader) catch {
+        _ => {
+          fail("read req_id")
+          return
+        }
+      }
+      let json = read_string(reader) catch {
+        _ => {
+          fail("read json")
+          return
+        }
+      }
+      inspect(target, content="alice")
+      inspect(req_id, content="7")
+      inspect(json, content="{\"runs\":[]}")
+    }
+    _ => fail("expected SyncResponse")
+  }
+}
+
+///|
+test "v2: SyncRequest with empty version_json" {
+  let encoded = encode_sync_request(target="x", request_id="1", version_json="")
+  let decoded = decode_message(encoded)
+  match decoded {
+    Some(SyncRequest(payload)) => {
+      let reader = Reader::new(payload)
+      let target = read_string(reader) catch {
+        _ => {
+          fail("read")
+          return
+        }
+      }
+      let req_id = read_string(reader) catch {
+        _ => {
+          fail("read")
+          return
+        }
+      }
+      let ver = read_string(reader) catch {
+        _ => {
+          fail("read")
+          return
+        }
+      }
+      inspect(target, content="x")
+      inspect(req_id, content="1")
+      inspect(ver, content="")
+    }
+    _ => fail("expected SyncRequest")
+  }
+}

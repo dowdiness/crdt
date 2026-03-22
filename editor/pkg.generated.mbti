@@ -20,6 +20,10 @@ pub fn encode_message(SyncMessage) -> Bytes
 
 pub fn encode_relayed_crdt_ops(String, Bytes) -> Bytes
 
+pub fn encode_sync_request(target~ : String, request_id~ : String, version_json~ : String) -> Bytes
+
+pub fn encode_sync_response(target~ : String, request_id~ : String, sync_json~ : String) -> Bytes
+
 pub fn merge_to_edits(String, String) -> Array[@core.Edit]
 
 pub fn parse_tree_edit_op(Json) -> Result[@projection.TreeEditOp, String]
