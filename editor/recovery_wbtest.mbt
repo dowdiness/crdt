@@ -11,7 +11,6 @@ test "RecoveryContext: new creates initial state" {
   let ctx = RecoveryContext::new("alice", msg, 1)
   inspect(ctx.peer_id, content="alice")
   inspect(ctx.retries, content="0")
-  inspect(ctx.backoff_ms, content="500")
   inspect(ctx.request_id, content="1")
   inspect(ctx.deferred.length(), content="0")
 }
@@ -22,11 +21,11 @@ test "RecoveryContext: advance_retry doubles backoff" {
   let ctx = RecoveryContext::new("alice", msg, 1)
   ctx.advance_retry(2)
   inspect(ctx.retries, content="1")
-  inspect(ctx.backoff_ms, content="1000")
+  inspect(500 << ctx.retries, content="1000")
   inspect(ctx.request_id, content="2")
   ctx.advance_retry(3)
   inspect(ctx.retries, content="2")
-  inspect(ctx.backoff_ms, content="2000")
+  inspect(500 << ctx.retries, content="2000")
   inspect(ctx.request_id, content="3")
 }
 

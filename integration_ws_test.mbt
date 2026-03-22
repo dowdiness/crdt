@@ -99,9 +99,9 @@ test "v2 relay: CrdtOps wrapped as RelayedCrdtOps with sender" {
 
 ///|
 test "v2 relay: SyncRequest routed to target peer only" {
-  let editor_a = @editor.SyncEditor::new("alice")
+  let _editor_a = @editor.SyncEditor::new("alice")
   let editor_b = @editor.SyncEditor::new("bob")
-  let editor_c = @editor.SyncEditor::new("charlie")
+  let _editor_c = @editor.SyncEditor::new("charlie")
   let msgs_a : Array[Bytes] = []
   let msgs_c : Array[Bytes] = []
   let room = @relay.RelayRoom::new()
@@ -123,7 +123,6 @@ test "v2 relay: SyncRequest routed to target peer only" {
   // Only alice should receive it
   inspect(msgs_a.length(), content="1")
   inspect(msgs_c.length(), content="0")
-  let _ = editor_c
 }
 
 ///|
