@@ -578,4 +578,98 @@ const SHADOW_STYLES = `
     background-color: var(--color);
     opacity: 0.2;
   }
+
+  /* Action overlay (which-key / action sheet) */
+  .action-overlay-scrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 100;
+  }
+  .action-overlay-panel {
+    position: fixed;
+    z-index: 101;
+    min-width: 200px;
+    max-width: 320px;
+    background: var(--canopy-bg, #161625);
+    border: 1px solid var(--canopy-border, #28283e);
+    border-radius: 8px;
+    padding: 6px 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    font-family: var(--canopy-font-mono, 'Iosevka', monospace);
+    font-size: 0.875rem;
+  }
+  .action-overlay-list {
+    display: flex;
+    flex-direction: column;
+  }
+  .action-overlay-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    cursor: pointer;
+    color: var(--canopy-fg, #e4e4f0);
+    transition: background 0.1s;
+  }
+  .action-overlay-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .action-mnemonic {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 4px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #c792ea;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .action-label-text {
+    color: var(--canopy-fg, #e4e4f0);
+  }
+  .action-group-label {
+    padding: 4px 12px 2px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--canopy-muted, #8888a8);
+  }
+
+  /* Name prompt */
+  .name-prompt-container {
+    padding: 8px 12px;
+  }
+  .name-prompt-label {
+    font-size: 0.75rem;
+    color: var(--canopy-muted, #8888a8);
+    margin-bottom: 4px;
+  }
+  .name-prompt-input-row {
+    display: flex;
+    gap: 6px;
+  }
+  .name-prompt-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--canopy-border, #28283e);
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: var(--canopy-fg, #e4e4f0);
+    font-family: var(--canopy-font-mono, 'Iosevka', monospace);
+    font-size: 0.875rem;
+    outline: none;
+  }
+  .name-prompt-input:focus {
+    border-color: #8250df;
+  }
+  .name-prompt-error {
+    font-size: 0.75rem;
+    color: #ff5370;
+    margin-top: 4px;
+  }
 `;
