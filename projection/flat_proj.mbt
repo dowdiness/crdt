@@ -46,6 +46,7 @@ pub fn to_flat_proj_incremental(
   old_root : @seam.SyntaxNode,
   old_fp : FlatProj,
   counter : Ref[Int],
+  changed_indices? : Ref[Array[Int]] = Ref::new([]),
 ) -> FlatProj {
   // Extract LetDef children from old and new roots
   let new_children = new_root.children()
@@ -82,6 +83,7 @@ pub fn to_flat_proj_incremental(
       }
       if not(reused) {
         any_changed = true
+        changed_indices.val.push(defs.length())
         let init = match v.init() {
           Some(n) => syntax_to_proj_node(n, counter)
           None =>
@@ -98,6 +100,7 @@ pub fn to_flat_proj_incremental(
           final_proj = old_fp.final_expr
         _ => {
           any_changed = true
+          changed_indices.val.push(-1)
           final_proj = Some(syntax_to_proj_node(new_child, counter))
         }
       }

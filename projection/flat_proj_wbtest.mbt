@@ -324,3 +324,64 @@ test "FlatProj::to_proj_node: Module node_id seeded None still allocates fresh" 
   // Without seed: fresh ID allocated from counter (>=0, valid)
   inspect(proj.node_id >= 0, content="true")
 }
+
+///|
+test "to_flat_proj_incremental: changed_indices records non-reused defs" {
+  // NodeInterner deduplicates by structure: unchanged def x=1 gets the same
+  // interned CstNode even across independent parses, so physical_equal = true.
+  // Only the changed def (y=3 vs y=2) fails physical_equal → index 1 recorded.
+  let counter = Ref::new(0)
+  let old_root = parse_syntax("let x = 1\nlet y = 2\nx")
+  let old_fp = to_flat_proj(old_root, counter)
+  let new_root = parse_syntax("let x = 1\nlet y = 3\nx")
+  let changed = Ref::new(([] : Array[Int]))
+  let result = to_flat_proj_incremental(
+    new_root,
+    old_root,
+    old_fp,
+    counter,
+    changed_indices=changed,
+  )
+  ignore(result)
+  // x=1 is structurally identical → reused (not recorded)
+  // y=3 differs from y=2 → not reused → index 1 recorded
+  inspect(changed.val, content="[1]")
+}
+
+///|
+test "to_flat_proj_incremental: same root means zero changed" {
+  let counter = Ref::new(0)
+  let root = parse_syntax("let x = 1\nlet y = 2\nx")
+  let fp = to_flat_proj(root, counter)
+  // Same SyntaxNode — physical_equal succeeds for all children
+  let changed = Ref::new(([] : Array[Int]))
+  let result = to_flat_proj_incremental(
+    root,
+    root,
+    fp,
+    counter,
+    changed_indices=changed,
+  )
+  ignore(result)
+  inspect(changed.val.length(), content="0")
+}
+
+///|
+test "to_flat_proj_incremental: final_expr change recorded as -1" {
+  let counter = Ref::new(0)
+  let old_root = parse_syntax("let x = 1\n42")
+  let old_fp = to_flat_proj(old_root, counter)
+  let new_root = parse_syntax("let x = 1\n99")
+  let changed = Ref::new(([] : Array[Int]))
+  let result = to_flat_proj_incremental(
+    new_root,
+    old_root,
+    old_fp,
+    counter,
+    changed_indices=changed,
+  )
+  ignore(result)
+  // x=1 is structurally identical → reused (not recorded)
+  // final_expr 99 differs from 42 → recorded as -1
+  inspect(changed.val, content="[-1]")
+}

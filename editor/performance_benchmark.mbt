@@ -7,6 +7,7 @@ fn run_projection_incremental_bench(b : @bench.T, let_count : Int) -> Unit {
   let editor = SyncEditor::new("bench")
   editor.set_text(source)
   ignore(editor.get_proj_node()) // warm up — initial parse + project
+  ignore(editor.get_source_map())
   let edit_pos = source.length() - 2
   editor.move_cursor(edit_pos)
   let mut inserted = false
@@ -19,6 +20,7 @@ fn run_projection_incremental_bench(b : @bench.T, let_count : Int) -> Unit {
       }
     }
     b.keep(editor.get_proj_node())
+    b.keep(editor.get_source_map())
     inserted = not(inserted)
   })
 }
@@ -31,6 +33,21 @@ test "projection pipeline - incremental keystroke (20 defs)" (b : @bench.T) {
 ///|
 test "projection pipeline - incremental keystroke (80 defs)" (b : @bench.T) {
   run_projection_incremental_bench(b, 80)
+}
+
+///|
+test "projection pipeline - incremental keystroke (320 defs)" (b : @bench.T) {
+  run_projection_incremental_bench(b, 320)
+}
+
+///|
+test "projection pipeline - incremental keystroke (500 defs)" (b : @bench.T) {
+  run_projection_incremental_bench(b, 500)
+}
+
+///|
+test "projection pipeline - incremental keystroke (1000 defs)" (b : @bench.T) {
+  run_projection_incremental_bench(b, 1000)
 }
 
 // Parser-only benchmarks — measures parse layer without projection
