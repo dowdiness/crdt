@@ -174,4 +174,22 @@ extern "js" fn js_reconcile_after_tree_edit() -> Unit =
   #|   if (el && el._bridge) el._bridge.afterLocalEdit();
   #| }
 
+///|
+/// Focus the action overlay panel element.
+/// Called after render when the overlay becomes visible.
+extern "js" fn js_focus_overlay_panel() -> Unit =
+  #| function() {
+  #|   var el = document.querySelector('canopy-editor');
+  #|   if (!el || !el.shadowRoot) return;
+  #|   var panel = el.shadowRoot.querySelector('.action-overlay-panel');
+  #|   if (panel) panel.focus();
+  #| }
+
+///|
+/// Get viewport dimensions as JSON for overlay position clamping.
+extern "js" fn js_get_viewport_size() -> String =
+  #| function() {
+  #|   return JSON.stringify({ width: window.innerWidth, height: window.innerHeight });
+  #| }
+
 // Note: editor event wiring is done in main.ts wireEditorEvents() — not here.

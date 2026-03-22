@@ -2,10 +2,10 @@
 /// Group label for each ActionGroup.
 fn group_label(group : @proj.ActionGroup) -> String {
   match group {
-    Core => "CORE"
-    Wrap => "WRAP"
-    Binding => "BINDING"
-    Module => "MODULE"
+    Core => "Core"
+    Wrap => "Wrap"
+    Binding => "Binding"
+    Module => "Module"
   }
 }
 
@@ -21,10 +21,15 @@ fn view_action_item(
   } else {
     "action-overlay-item"
   }
-  @html.div(class=item_class, on_click=dispatch(ActionTapped(action.id)), [
-    @html.span(class="action-mnemonic", [@html.text(action.mnemonic)]),
-    @html.span(class="action-label-text", [@html.text(action.label)]),
-  ])
+  @html.div(
+    class=item_class,
+    on_click=dispatch(ActionTapped(action.id)),
+    attrs=@html.Attrs::build().role("menuitem").tabindex(0),
+    [
+      @html.span(class="action-mnemonic", [@html.text(action.mnemonic)]),
+      @html.span(class="action-label-text", [@html.text(action.label)]),
+    ],
+  )
 }
 
 ///|
@@ -45,9 +50,11 @@ fn view_action_list(
       // Don't show header for Core (it's the default first group)
       if action.group != Core {
         items.push(
-          @html.div(class="action-group-label", [
-            @html.text(group_label(action.group)),
-          ]),
+          @html.div(
+            class="action-group-label",
+            attrs=@html.Attrs::build().role("separator"),
+            [@html.text(group_label(action.group))],
+          ),
         )
       }
     }
@@ -67,7 +74,11 @@ fn view_name_prompt(
     None => "Enter name"
   }
   let error_el : @rabbita.Html = if model.overlay.name_error != "" {
-    @html.div(class="name-prompt-error", [@html.text(model.overlay.name_error)])
+    @html.div(
+      class="name-prompt-error",
+      attrs=@html.Attrs::build().role("alert").aria_live("polite"),
+      [@html.text(model.overlay.name_error)],
+    )
   } else {
     @html.text("")
   }
@@ -91,6 +102,7 @@ fn view_name_prompt(
         value=model.overlay.name_value,
         autofocus=true,
         on_input=fn(value) { dispatch(NamePromptInput(value)) },
+        attrs=@html.Attrs::build().aria_label(prompt_label),
         [@html.text("")],
       ),
     ]),
@@ -108,7 +120,11 @@ fn view_submenu_choices(
   let choices = get_submenu_choices(action.id, kind)
   let items : Array[@rabbita.Html] = []
   items.push(
-    @html.div(class="action-group-label", [@html.text(action.label)]),
+    @html.div(
+      class="action-group-label",
+      attrs=@html.Attrs::build().role("separator"),
+      [@html.text(action.label)],
+    ),
   )
   for i, choice in choices {
     let (label, value) = choice
@@ -116,6 +132,7 @@ fn view_submenu_choices(
       @html.div(
         class="action-overlay-item",
         on_click=dispatch(ActionTapped(action.id + ":" + value)),
+        attrs=@html.Attrs::build().role("menuitem").tabindex(0),
         [
           @html.span(class="action-mnemonic", [
             @html.text((i + 1).to_string()),
@@ -155,19 +172,27 @@ fn view_action_overlay(
     view_action_list(dispatch, model.overlay.actions)
   }
   @html.fragment([
-    // Scrim: transparent click-catching backdrop
+    // Scrim: click-catching backdrop, also handles Escape via keydown
     @html.div(
       class="action-overlay-scrim",
       on_click=dispatch(CloseActionOverlay),
-      attrs=@html.Attrs::build().aria_hidden("true"),
+      on_keydown=fn(kb : @html.Keyboard) {
+        if kb.key() == "Escape" {
+          dispatch(CloseActionOverlay)
+        } else {
+          @rabbita.none
+        }
+      },
+      attrs=@html.Attrs::build().aria_hidden("true").tabindex(-1),
       [@html.text("")],
     ),
-    // Overlay panel
+    // Overlay panel — receives focus on open via after_render in main.mbt
     @html.div(
       class="action-overlay-panel",
       attrs=@html.Attrs::build()
         .role("menu")
         .aria_label("Structural editing actions")
+        .tabindex(-1)
         .style_attr(position_style),
       [content],
     ),

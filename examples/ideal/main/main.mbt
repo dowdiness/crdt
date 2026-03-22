@@ -224,7 +224,7 @@ fn closed_overlay() -> OverlayState {
 /// Parse the bounding rect JSON from js_get_selected_node_rect into (top, left).
 fn parse_anchor_rect(json_str : String) -> (Int, Int) {
   let json = @json.parse(json_str) catch { _ => return (0, 0) }
-  match json {
+  let (raw_top, raw_left) = match json {
     Json::Object(m) => {
       let top = match m.get("bottom") {
         Some(Json::Number(n, ..)) => n.to_int()
@@ -237,6 +237,36 @@ fn parse_anchor_rect(json_str : String) -> (Int, Int) {
       (top, left)
     }
     _ => (0, 0)
+  }
+  // Clamp to viewport so the overlay doesn't extend offscreen.
+  // Estimated panel size: 320px wide, 300px tall (conservative).
+  let viewport_json = js_get_viewport_size()
+  let vp = @json.parse(viewport_json) catch { _ => return (raw_top, raw_left) }
+  match vp {
+    Json::Object(m) => {
+      let vw = match m.get("width") {
+        Some(Json::Number(n, ..)) => n.to_int()
+        _ => 1024
+      }
+      let vh = match m.get("height") {
+        Some(Json::Number(n, ..)) => n.to_int()
+        _ => 768
+      }
+      let panel_w = 320
+      let panel_h = 300
+      let clamped_left = if raw_left + panel_w > vw {
+        @int.maximum(8, vw - panel_w - 8)
+      } else {
+        raw_left
+      }
+      let clamped_top = if raw_top + panel_h > vh {
+        @int.maximum(8, vh - panel_h - 8)
+      } else {
+        raw_top
+      }
+      (clamped_top, clamped_left)
+    }
+    _ => (raw_top, raw_left)
   }
 }
 
@@ -468,7 +498,17 @@ fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     }
     OpenActionOverlay | LongPressTriggered => {
       let node_id_str = js_take_action_overlay_node()
-      (none, open_action_overlay(model, node_id_str))
+      let new_model = open_action_overlay(model, node_id_str)
+      if new_model.overlay.visible {
+        // Focus the overlay panel after Rabbita renders it
+        let focus_cmd = @rabbita_cmd.raw_effect(
+          fn(_) { js_focus_overlay_panel() },
+          kind=@rabbita_cmd.after_render,
+        )
+        (focus_cmd, new_model)
+      } else {
+        (none, new_model)
+      }
     }
     CloseActionOverlay => {
       js_set_overlay_open(false)
