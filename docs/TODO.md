@@ -90,8 +90,13 @@ Tracked by:
 **Impact:** Medium | **Effort:** High
 
 - [x] Apply RLE memory optimization across CRDT pipeline — ✅ Done. Phases 0-3 merged: OpLog compressed to `Rle[OpRun]`, Document position cache to `Rle[VisibleRun]`, walker output to `Rle[LvRange]`, sync wire format compressed. See `event-graph-walker/docs/benchmarks/2026-03-18-rle-all-phases-complete.md`
-- [ ] **Fix FugueTree stack overflow at ~500 nodes** — `traverse_tree` is recursive and blows the JS call stack. Convert to iterative traversal with explicit stack. Hard blocker for 500+ def documents. (`event-graph-walker/internal/fugue/tree.mbt`)
-- [ ] **Profile CRDT at 500+ def scale** — FugueMax operations dominate keystroke latency (~5ms of 9ms at 320 defs). Once stack overflow is fixed, benchmark at 500/1000 defs and identify whether `traverse_tree`, `Branch::advance`, or position lookups are the bottleneck.
+- [x] **Fix FugueTree stack overflow at ~500 nodes** — ✅ Done. Converted `traverse_tree` from recursive to iterative (explicit stack, 3-phase state machine). 500 defs: 12.84ms (60fps). 1000 defs: 36.83ms (30fps). (`event-graph-walker/internal/fugue/tree.mbt`)
+- [x] **Profile CRDT at 500+ def scale** — ✅ Done. Profiling at 1000 defs (36ms/keystroke) reveals:
+  - **Position cache rebuild: ~20-25ms** — `traverse_tree` O(n log n) forced on every keystroke because cache is invalidated after each mutation
+  - **LCA index rebuild: ~5-8ms** — Invalidated per tree insert, forces Euler tour + sparse table rebuild
+  - **SourceMap token spans: ~3-5ms** — Full syntax walk per keystroke
+  - **Incremental cache update is NOT viable** — FugueMax CRDT resolves inserts to positions determined by tree structure (parent/side/timestamp), not the caller's requested position. Only `traverse_tree` knows actual document order. Attempted Rle::insert at caller position but CRDT ordering semantics made it incorrect.
+- [ ] **Reduce per-keystroke traverse_tree cost** — The position cache must be rebuilt via `traverse_tree` because FugueMax determines document order. Options to explore: (a) cache traversal order and update incrementally using tree parent/side relationships, (b) augmented tree with maintained visible positions, (c) skip-list overlay for O(log n) position queries, (d) profile traverse_tree internals — O(n log n) from sibling sorting may be avoidable if most nodes have ≤1 child
 - [ ] **Memo Eq backdating cost** — `registry_memo` and `source_map_memo` use `derive(Eq)` for backdating, causing O(all_nodes) deep structural comparison per keystroke. Add versioned wrapper type or `physical_equal` fast-path in the Memo system. (`loom/incr/cells/memo.mbt`, `editor/projection_memo.mbt`)
 - [ ] Implement lazy loading for 100k+ operation documents (load causal graph skeleton, hydrate on demand)
 - [ ] Add B-tree indexing for FugueTree (O(n) → O(log n) random-access character lookup)
