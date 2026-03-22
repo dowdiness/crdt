@@ -40,7 +40,7 @@ test "ivarint roundtrip: signed boundaries" {
 test "reader: empty buffer raises" {
   let reader = Reader::new(Bytes::new(0))
   let result = try? reader.read_byte()
-  inspect(result.is_err(), content="true")
+  inspect(result is Err(_), content="true")
 }
 
 ///|
