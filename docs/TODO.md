@@ -60,7 +60,7 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 
 **Impact:** Medium | **Effort:** Medium
 
-- [ ] Implement selective cache invalidation by range instead of full reparse fallback (loom incremental engine)
+- [x] Implement selective cache invalidation by range instead of full reparse fallback (loom incremental engine) — ✅ Done. Size-threshold skip (Phase 1), balanced RepeatGroups (Phase 2), block reparse (Phase 3) all implemented. Phase 0 (SyntaxNode boundary enforcement in test/benchmark code) remains as cleanup
 - [x] Implement LCS matching for AST child reconciliation instead of positional matching (`projection/text_lens.mbt:219`)
 
 ---

@@ -66,7 +66,7 @@ Detailed documentation for each module:
 - [Rabbita Web Component Interop Design](plans/2026-03-20-rabbita-web-component-interop-design.md) — Export Rabbita cells as custom elements
 - [Rabbita Web Component Interop Impl](plans/2026-03-20-rabbita-web-component-interop-impl.md) — Step-by-step implementation
 - [Framework Extraction Phase 1](plans/2026-03-21-framework-extraction-phase1.md) — Parameterize ProjNode[T] (deferred)
-- [Incremental Parser Optimization Design](plans/2026-03-21-incremental-parser-optimization-design.md) — Phase 1 done, Phases 0/2/3 remain
+- [Incremental Parser Optimization Design](plans/2026-03-21-incremental-parser-optimization-design.md) — Phases 1–3 done, Phase 0 (test/benchmark cleanup) remains
 - [Incremental Parser Optimization Impl](plans/2026-03-21-incremental-parser-optimization-impl.md)
 - [Structural Editing Actions Design](plans/2026-03-21-structural-editing-actions-design.md) — Backend complete, UI partial
 - [Structural Editing Actions Impl](plans/2026-03-21-structural-editing-actions-impl.md)

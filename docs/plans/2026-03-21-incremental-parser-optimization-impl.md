@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** Phases 1–3 complete; Phase 0 remains
+
 **Goal:** Make loom's incremental parser faster than batch for flat let-chains by skipping reuse overhead on small nodes.
 
 **Architecture:** Phase 0 migrates external CstNode.children access to SyntaxNode methods (prerequisite for future balanced trees). Phase 1 adds a size-threshold check to `ReuseCursor::try_reuse()` that skips the reuse protocol for nodes below a configurable byte threshold.
