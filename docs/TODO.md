@@ -103,7 +103,7 @@ Tracked by:
 - [x] Add sync-order-independence property test — verifies convergence regardless of sync direction
 - [x] Add undo-under-concurrency property test — agent undoes while another edits concurrently
 - [x] Fix Delete/Undelete convergence bug found by fuzz testing — LWW conflict resolution with Lamport timestamps and add-wins semantics (`event-graph-walker/internal/fugue/tree.mbt`)
-- [ ] Add parser fuzz testing — random byte streams, verify no panics/aborts
+- [x] Add parser fuzz testing — random byte streams, verify no panics/aborts — ✅ Done. 7 fuzz tests in `loom/examples/lambda/src/parser_byte_fuzz_test.mbt`: raw BMP byte streams, control chars, high Unicode, mixed syntax, incremental edits with raw bytes
 - [x] Add E2E browser tests with Playwright — `examples/demo-react` now has Playwright coverage
 - [x] Run existing Playwright E2E in CI and pick a canonical browser app under test (`examples/demo-react`)
 - [ ] Add error path tests — malformed sync messages, corrupted operation logs, network interruptions
@@ -147,7 +147,7 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
 - [ ] Convert `abort()` calls in test files to proper assertions (`assert_true` / `inspect`) for better error messages
 - [x] Replace singleton JS FFI export state in `crdt.mbt` with a handle → `SyncEditor` map plus explicit destroy/dispose API
 - [ ] Split `projection/tree_editor.mbt` into focused files (render model, refresh/reuse logic, UI/edit operations, tree indexes)
-- [ ] Split `crdt.mbt` into focused FFI files (editor core, undo, presence, relay, websocket)
+- [x] Split `crdt.mbt` into focused FFI files (editor core, undo, presence, relay, websocket) — ✅ Done. Split into 6 files: `crdt.mbt` (core), `crdt_undo.mbt`, `crdt_ephemeral.mbt`, `crdt_relay.mbt`, `crdt_websocket.mbt`, `crdt_projection.mbt`
 
 ---
 
