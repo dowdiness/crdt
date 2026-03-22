@@ -91,12 +91,13 @@ Tracked by:
 
 - [x] Apply RLE memory optimization across CRDT pipeline — ✅ Done. Phases 0-3 merged: OpLog compressed to `Rle[OpRun]`, Document position cache to `Rle[VisibleRun]`, walker output to `Rle[LvRange]`, sync wire format compressed. See `event-graph-walker/docs/benchmarks/2026-03-18-rle-all-phases-complete.md`
 - [x] **Fix FugueTree stack overflow at ~500 nodes** — ✅ Done. Converted `traverse_tree` from recursive to iterative (explicit stack, 3-phase state machine). 500 defs: 12.84ms (60fps). 1000 defs: 36.83ms (30fps). (`event-graph-walker/internal/fugue/tree.mbt`)
-- [x] **Profile CRDT at 500+ def scale** — ✅ Done. Profiling at 1000 defs (36ms/keystroke) reveals:
-  - **Position cache rebuild: ~20-25ms** — `traverse_tree` O(n log n) forced on every keystroke because cache is invalidated after each mutation
-  - **LCA index rebuild: ~5-8ms** — Invalidated per tree insert, forces Euler tour + sparse table rebuild
-  - **SourceMap token spans: ~3-5ms** — Full syntax walk per keystroke
-  - **Incremental cache update is NOT viable** — FugueMax CRDT resolves inserts to positions determined by tree structure (parent/side/timestamp), not the caller's requested position. Only `traverse_tree` knows actual document order. Attempted Rle::insert at caller position but CRDT ordering semantics made it incorrect.
-- [ ] **Reduce per-keystroke traverse_tree cost** — The position cache must be rebuilt via `traverse_tree` because FugueMax determines document order. Options to explore: (a) cache traversal order and update incrementally using tree parent/side relationships, (b) augmented tree with maintained visible positions, (c) skip-list overlay for O(log n) position queries, (d) profile traverse_tree internals — O(n log n) from sibling sorting may be avoidable if most nodes have ≤1 child
+- [x] **Profile CRDT at 500+ def scale** — ✅ Done (two rounds of profiling). Key findings:
+  - **`traverse_tree` is NOT the bottleneck** — isolated benchmark: 0.19ms at 1000 nodes. Most nodes have 0-1 children, so sorting is effectively free.
+  - **Incremental position cache update is NOT viable** — FugueMax CRDT resolves inserts to positions determined by tree structure (parent/side/timestamp), not the caller's requested position. Attempted Rle::insert at caller position but CRDT ordering semantics made it incorrect (test failure: items placed at wrong positions).
+  - **CRDT-only is slower than full pipeline** — `get_text()` (45.8ms at 1000 defs) is more expensive than `get_proj_node() + get_source_map()` (39.1ms) because `to_text()` does string concatenation from 1000 individual chars.
+  - **Actual bottleneck is immutable HashMap overhead** — FugueTree uses `@immut/hashmap.HashMap` for both `items` and `children`. Each insert creates new HAMT nodes. At 1000 nodes, the cumulative cost of immutable data structure operations (insert, lookup, copy-on-write) dominates.
+  - **Per-keystroke breakdown at 1000 defs (~39ms full pipeline):** CRDT data structure ops (~20ms), position cache rebuild via RLE construction (~5ms), LCA index rebuild (~5ms), parser incremental (~2ms), projection pipeline (~5ms), SourceMap token spans (~2ms)
+- [ ] **Reduce CRDT data structure overhead** — The dominant cost at 1000 defs is immutable HashMap operations in FugueTree (`@immut/hashmap.HashMap[Lv, Item[T]]` for items, `@immut/hashmap.HashMap[Lv, Array[Lv]]` for children). Options: (a) switch to mutable HashMap (`Map[Lv, Item[T]]`) — simplest, biggest win, but breaks undo snapshot semantics, (b) structural sharing with copy-on-write at branch boundaries only, (c) persistent array-mapped trie with cheaper updates
 - [ ] **Memo Eq backdating cost** — `registry_memo` and `source_map_memo` use `derive(Eq)` for backdating, causing O(all_nodes) deep structural comparison per keystroke. Add versioned wrapper type or `physical_equal` fast-path in the Memo system. (`loom/incr/cells/memo.mbt`, `editor/projection_memo.mbt`)
 - [ ] Implement lazy loading for 100k+ operation documents (load causal graph skeleton, hydrate on demand)
 - [ ] Add B-tree indexing for FugueTree (O(n) → O(log n) random-access character lookup)
@@ -192,11 +193,12 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
 
 | # | Proposal | Effort | Impact |
 |---|----------|--------|--------|
-| 1 | **Fix FugueTree stack overflow** — hard blocker for 500+ defs | Low | **Critical** |
-| 2 | **Profile CRDT at scale** — find the real bottleneck | Low | High |
-| 3 | **Memo Eq backdating** — eliminate O(n) comparison per keystroke | Medium | High |
-| 4 | Future wasm support, currently unsupported | Low-Medium | High |
-| 5 | Complete WebSocket collaboration + recovery | High | High |
-| 6 | Rabbita projection editor performance | High | High | Mostly done |
-| 7 | Memory optimization (lazy loading, B-tree indexing) | High | Medium |
-| 8 | Code cleanup | Medium | Medium | Mostly done |
+| 1 | ~~Fix FugueTree stack overflow~~ | ~~Low~~ | ~~Critical~~ | ✅ Done |
+| 2 | ~~Profile CRDT at scale~~ | ~~Low~~ | ~~High~~ | ✅ Done |
+| 3 | **Reduce CRDT data structure overhead** — immutable HashMap is dominant cost at 1000 defs | Medium | High |
+| 4 | **Memo Eq backdating** — eliminate O(n) comparison per keystroke | Medium | High |
+| 5 | Future wasm support, currently unsupported | Low-Medium | High |
+| 6 | Complete WebSocket collaboration + recovery | High | High |
+| 7 | Rabbita projection editor performance | High | High | Mostly done |
+| 8 | Memory optimization (lazy loading, B-tree indexing) | High | Medium |
+| 9 | Code cleanup | Medium | Medium | Mostly done |
