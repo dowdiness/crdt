@@ -15,12 +15,23 @@ fn build_projection_memos(
   @incr.Memo[Map[@proj.NodeId, @proj.ProjNode]],
   @incr.Memo[@proj.SourceMap],
 ) {
+  // Change tracking side-channel: set by proj_memo, read by registry and source_map.
+  // None = full rebuild needed (first parse, def count change, no prev root).
+  // Some([]) = nothing changed. Some([2, 5]) = defs 2 and 5 changed. -1 = final_expr.
+  let changed_def_indices_ref : Ref[Array[Int]?] = Ref::new(None)
+  // Revision counter: bumped each time proj_memo recomputes. Downstream memos
+  // track the last revision they processed. If they skipped revisions (lazy
+  // access pattern), the delta in changed_def_indices_ref doesn't match their
+  // prev state, so they must fall back to full rebuild.
+  let proj_revision_ref : Ref[Int] = Ref::new(0)
+
   let proj_memo : @incr.Memo[@proj.FlatProj?] = @incr.Memo::new(
     rt,
     fn() -> @proj.FlatProj? {
       if source_text.get() == "" {
         prev_flat_proj_ref.val = None
         prev_syntax_root_ref.val = None
+        changed_def_indices_ref.val = None
         return None
       }
       let syntax_root = match syntax_tree.get() {
@@ -28,27 +39,65 @@ fn build_projection_memos(
         None => {
           prev_flat_proj_ref.val = None
           prev_syntax_root_ref.val = None
+          changed_def_indices_ref.val = None
           return None
         }
       }
       let counter = Ref::new(next_id_ref.val)
       let result = match (prev_flat_proj_ref.val, prev_syntax_root_ref.val) {
-        (Some(prev_fp), Some(prev_root)) =>
-          // Incremental path: compare CST children via physical_equal
-          @proj.to_flat_proj_incremental(
-            syntax_root, prev_root, prev_fp, counter,
+        (Some(prev_fp), Some(prev_root)) => {
+          let changed = Ref::new(([] : Array[Int]))
+          let result = @proj.to_flat_proj_incremental(
+            syntax_root,
+            prev_root,
+            prev_fp,
+            counter,
+            changed_indices=changed,
           )
+          // Force full rebuild when structural shape changed:
+          // - def count changed (indices not meaningful across different lengths)
+          // - final_expr added or removed (patch path assumes stable child layout)
+          // - expression-only document (no defs → ProjNode is not a Module,
+          //   patch path's children[idx] logic doesn't apply)
+          let final_expr_changed = match
+            (prev_fp.final_expr, result.final_expr) {
+            (Some(_), None) => true
+            (None, Some(_)) => true
+            _ => false
+          }
+          if result.defs.length() != prev_fp.defs.length() ||
+            final_expr_changed ||
+            result.defs.is_empty() {
+            changed_def_indices_ref.val = None
+          } else {
+            // When there is no final_expr, to_proj_node_with_prev_module_id
+            // synthesizes a fresh Unit body node (new node_id each time).
+            // Always mark the body as changed so the patch path updates it.
+            if result.final_expr is None && not(result.defs.is_empty()) {
+              if not(changed.val.contains(-1)) {
+                changed.val.push(-1)
+              }
+            }
+            changed_def_indices_ref.val = Some(changed.val)
+          }
+          result
+        }
         (Some(prev_fp), None) => {
           // No previous syntax root (e.g., after tree edit) — build fresh
           // and reconcile to preserve node IDs
           let new_fp = @proj.to_flat_proj(syntax_root, counter)
+          changed_def_indices_ref.val = None
           @proj.reconcile_flat_proj(prev_fp, new_fp, counter)
         }
-        _ => @proj.to_flat_proj(syntax_root, counter)
+        _ => {
+          changed_def_indices_ref.val = None
+          @proj.to_flat_proj(syntax_root, counter)
+        }
       }
       next_id_ref.val = counter.val
       prev_flat_proj_ref.val = Some(result)
       prev_syntax_root_ref.val = Some(syntax_root)
+      proj_revision_ref.val = proj_revision_ref.val + 1
       Some(result)
     },
     label="proj_node",
@@ -84,34 +133,167 @@ fn build_projection_memos(
     label="cached_proj_node",
   )
 
+  let prev_registry_ref : Ref[Map[@proj.NodeId, @proj.ProjNode]?] = Ref::new(
+    None,
+  )
+  let registry_prev_children_ref : Ref[Array[@proj.ProjNode]?] = Ref::new(None)
+  let registry_last_revision_ref : Ref[Int] = Ref::new(0)
+
   let registry_memo : @incr.Memo[Map[@proj.NodeId, @proj.ProjNode]] = @incr.Memo::new(
     rt,
     fn() -> Map[@proj.NodeId, @proj.ProjNode] {
-      let registry : Map[@proj.NodeId, @proj.ProjNode] = {}
       match cached_proj_node.get() {
-        Some(root) => register_node_tree(root, registry)
-        None => ()
+        Some(root) => {
+          // Detect revision skew: if this memo skipped revisions (wasn't
+          // accessed on intermediate edits), the delta in changed_def_indices_ref
+          // doesn't match our prev state. Fall back to full rebuild.
+          let current_rev = proj_revision_ref.val
+          let skipped = current_rev != registry_last_revision_ref.val + 1
+          let registry = match
+            (
+              changed_def_indices_ref.val,
+              prev_registry_ref.val,
+              registry_prev_children_ref.val,
+            ) {
+            (Some(indices), Some(prev_reg), Some(prev_children)) if indices.length() >
+              0 &&
+              not(skipped) => {
+              // Patch path: two-phase remove then add to avoid interleaving
+              // issues when defs are reordered (a later remove could delete
+              // an entry just added by an earlier iteration).
+              // Phase 1: remove all old subtrees
+              for idx in indices {
+                if idx == -1 {
+                  let last = prev_children.length() - 1
+                  if last >= 0 {
+                    unregister_subtree(prev_children[last], prev_reg)
+                  }
+                } else if idx >= 0 && idx < prev_children.length() {
+                  unregister_subtree(prev_children[idx], prev_reg)
+                }
+              }
+              // Phase 2: add all new subtrees
+              for idx in indices {
+                if idx == -1 {
+                  let last = root.children.length() - 1
+                  if last >= 0 {
+                    register_node_tree(root.children[last], prev_reg)
+                  }
+                } else if idx >= 0 && idx < root.children.length() {
+                  register_node_tree(root.children[idx], prev_reg)
+                }
+              }
+              // Update the Module node itself (positions may have changed)
+              prev_reg[root.id()] = root
+              prev_reg
+            }
+            _ => {
+              // Full rebuild
+              let reg : Map[@proj.NodeId, @proj.ProjNode] = {}
+              register_node_tree(root, reg)
+              reg
+            }
+          }
+          prev_registry_ref.val = Some(registry)
+          registry_prev_children_ref.val = Some(root.children.copy())
+          registry_last_revision_ref.val = current_rev
+          registry
+        }
+        None => {
+          prev_registry_ref.val = None
+          registry_prev_children_ref.val = None
+          registry_last_revision_ref.val = proj_revision_ref.val
+          {}
+        }
       }
-      registry
     },
     label="proj_registry",
   )
+
+  let prev_source_map_ref : Ref[@proj.SourceMap?] = Ref::new(None)
+  let source_map_prev_children_ref : Ref[Array[@proj.ProjNode]?] = Ref::new(
+    None,
+  )
+  let source_map_last_revision_ref : Ref[Int] = Ref::new(0)
 
   let source_map_memo : @incr.Memo[@proj.SourceMap] = @incr.Memo::new(
     rt,
     fn() -> @proj.SourceMap {
       match cached_proj_node.get() {
         Some(root) => {
-          let sm = @proj.SourceMap::from_ast(root)
-          // Populate token-level spans (param names, let-def names) for PM bridge.
-          // Requires the syntax tree to extract token positions from the CST.
-          match syntax_tree.get() {
-            Some(syntax_root) => sm.populate_token_spans(syntax_root, root)
-            None => ()
+          let current_rev = proj_revision_ref.val
+          let skipped = current_rev != source_map_last_revision_ref.val + 1
+          let sm = match
+            (
+              changed_def_indices_ref.val,
+              prev_source_map_ref.val,
+              source_map_prev_children_ref.val,
+            ) {
+            (Some(indices), Some(prev_sm), Some(prev_children)) if indices.length() >
+              0 &&
+              not(skipped) => {
+              // Patch path: two-phase remove then add to avoid interleaving
+              // issues when defs are reordered with ID-preserving reconciliation.
+              // Phase 1: remove all old subtrees
+              for idx in indices {
+                if idx == -1 {
+                  let last = prev_children.length() - 1
+                  if last >= 0 {
+                    prev_sm.remove_subtree(prev_children[last])
+                  }
+                } else if idx >= 0 && idx < prev_children.length() {
+                  prev_sm.remove_subtree(prev_children[idx])
+                }
+              }
+              // Phase 2: add all new subtrees
+              for idx in indices {
+                if idx == -1 {
+                  let last = root.children.length() - 1
+                  if last >= 0 {
+                    prev_sm.patch_subtree(root.children[last])
+                  }
+                } else if idx >= 0 && idx < root.children.length() {
+                  prev_sm.patch_subtree(root.children[idx])
+                }
+              }
+              // Update Module node range
+              prev_sm.node_to_range[root.id()] = @loom_core.Range::new(
+                root.start,
+                root.end,
+              )
+              prev_sm.rebuild_ranges()
+              // Always repopulate ALL token spans from the SyntaxNode tree.
+              // CstNode interning is position-independent, so reused defs may
+              // have shifted offsets that only the SyntaxNode reflects correctly.
+              match syntax_tree.get() {
+                Some(syntax_root) =>
+                  prev_sm.populate_token_spans(syntax_root, root)
+                None => ()
+              }
+              prev_sm
+            }
+            _ => {
+              // Full rebuild
+              let new_sm = @proj.SourceMap::from_ast(root)
+              match syntax_tree.get() {
+                Some(syntax_root) =>
+                  new_sm.populate_token_spans(syntax_root, root)
+                None => ()
+              }
+              new_sm
+            }
           }
+          prev_source_map_ref.val = Some(sm)
+          source_map_prev_children_ref.val = Some(root.children.copy())
+          source_map_last_revision_ref.val = current_rev
           sm
         }
-        None => @proj.SourceMap::new()
+        None => {
+          prev_source_map_ref.val = None
+          source_map_prev_children_ref.val = None
+          source_map_last_revision_ref.val = proj_revision_ref.val
+          @proj.SourceMap::new()
+        }
       }
     },
     label="source_map",
@@ -128,6 +310,17 @@ fn register_node_tree(
   registry[node.id()] = node
   for child in node.children {
     register_node_tree(child, registry)
+  }
+}
+
+///|
+fn unregister_subtree(
+  node : @proj.ProjNode,
+  registry : Map[@proj.NodeId, @proj.ProjNode],
+) -> Unit {
+  registry.remove(node.id())
+  for child in node.children {
+    unregister_subtree(child, registry)
   }
 }
 
