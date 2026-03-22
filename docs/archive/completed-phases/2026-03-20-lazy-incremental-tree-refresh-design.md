@@ -1,7 +1,7 @@
 # Lazy & Incremental Tree Refresh
 
 **Date:** 2026-03-20
-**Status:** Design approved
+**Status:** Complete
 **Scope:** `projection/tree_editor.mbt` — `TreeEditorState::refresh` optimization
 
 ---

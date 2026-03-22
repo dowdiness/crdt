@@ -60,11 +60,18 @@ Detailed documentation for each module:
 
 ## Active Plans
 
-- [Framework Extraction Design](plans/2026-03-18-framework-extraction-design.md) — Generic `ProjNode[T]` + `TreeNode`/`Renderable` traits
-- [BFT Adapter — Byzantine Fault Tolerance](plans/2026-03-19-bft-adapter-design.md) — Design only, implement after sync working
+- [Framework Extraction Design](plans/2026-03-18-framework-extraction-design.md) — Generic `ProjNode[T]` + `TreeNode`/`Renderable` traits (deferred)
+- [BFT Adapter — Byzantine Fault Tolerance](plans/2026-03-19-bft-adapter-design.md) — Design only, implement after sync working (deferred)
 - [Ideal Editor Implementation](plans/2026-03-19-ideal-editor-impl.md) — Rabbita host + PM/CM6 Web Component unified editor
 - [Rabbita Web Component Interop Design](plans/2026-03-20-rabbita-web-component-interop-design.md) — Export Rabbita cells as custom elements
 - [Rabbita Web Component Interop Impl](plans/2026-03-20-rabbita-web-component-interop-impl.md) — Step-by-step implementation
+- [Framework Extraction Phase 1](plans/2026-03-21-framework-extraction-phase1.md) — Parameterize ProjNode[T] (deferred)
+- [Incremental Parser Optimization Design](plans/2026-03-21-incremental-parser-optimization-design.md) — Phase 1 done, Phases 0/2/3 remain
+- [Incremental Parser Optimization Impl](plans/2026-03-21-incremental-parser-optimization-impl.md)
+- [Structural Editing Actions Design](plans/2026-03-21-structural-editing-actions-design.md) — Backend complete, UI partial
+- [Structural Editing Actions Impl](plans/2026-03-21-structural-editing-actions-impl.md)
+- [Structural Editing UI Impl](plans/2026-03-21-structural-editing-ui-impl.md)
+- [Incremental SourceMap & Registry](plans/2026-03-22-incremental-sourcemap-registry.md) — Active worktree, not merged
 
 ## Archive
 
@@ -92,6 +99,9 @@ Historical documentation, completed plans, and investigations.
 - [Ephemeral Store v2 Impl](archive/2026-03-19-ephemeral-store-v2-impl.md)
 - [WebSocket Transport Design](archive/2026-03-19-websocket-transport-design.md) — MoonBit-first relay + client, CF Durable Objects
 - [WebSocket Transport Impl](archive/2026-03-19-websocket-transport-impl.md)
+- [Lazy Incremental Tree Refresh Design](archive/completed-phases/2026-03-20-lazy-incremental-tree-refresh-design.md) (Complete)
+- [Lazy Incremental Tree Refresh Impl](archive/completed-phases/2026-03-20-lazy-incremental-tree-refresh-impl.md) (Complete)
+- [Refactoring Plans: File Decomposition](archive/completed-phases/2026-03-22-refactoring-plans.md) (Complete)
 
 ### Earlier Archive
 
