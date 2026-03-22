@@ -131,6 +131,10 @@ export class RelayRoom {
           }
 
           case "reset": {
+            if (!joined) {
+              ws.send(JSON.stringify({ type: "error", message: "Not joined" }));
+              break;
+            }
             this.state.storage.sql.exec("DELETE FROM operations");
             break;
           }
