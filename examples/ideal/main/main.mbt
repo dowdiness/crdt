@@ -598,7 +598,7 @@ fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     NamePromptSubmit => {
       let name = model.overlay.name_value.trim().to_string()
       if name == "" {
-        let overlay = { ..model.overlay, name_error: "Name cannot be empty" }
+        let overlay = { ..model.overlay, name_error: "Enter a name to continue" }
         return (none, { ..model, overlay, })
       }
       let overlay = { ..model.overlay, name_value: name }

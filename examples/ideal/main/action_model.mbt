@@ -73,14 +73,20 @@ fn get_submenu_choices(
   kind : @ast.Term,
 ) -> Array[(String, String)] {
   match action_id {
-    "change_op" | "wrap_bop" => [("Plus", "Plus"), ("Minus", "Minus")]
+    "change_op" | "wrap_bop" => [("+ (plus)", "Plus"), ("- (minus)", "Minus")]
     "unwrap" =>
       match kind {
-        @ast.Term::Bop(_, _, _) => [("left", "0"), ("right", "1")]
+        @ast.Term::Bop(_, _, _) =>
+          [("Keep left operand", "0"), ("Keep right operand", "1")]
         @ast.Term::If(_, _, _) =>
-          [("cond", "0"), ("then", "1"), ("else", "2")]
-        @ast.Term::App(_, _) => [("fn", "0"), ("arg", "1")]
-        _ => [("body", "0")]
+          [
+            ("Keep condition", "0"),
+            ("Keep then branch", "1"),
+            ("Keep else branch", "2"),
+          ]
+        @ast.Term::App(_, _) =>
+          [("Keep function", "0"), ("Keep argument", "1")]
+        _ => [("Keep body", "0")]
       }
     _ => []
   }
@@ -128,7 +134,7 @@ fn build_tree_edit_op(
         "0" => 0
         "1" => 1
         "2" => 2
-        _ => return Err("Invalid unwrap choice: " + choice)
+        _ => return Err("Select which child to keep")
       }
       Ok(Some(@proj.Unwrap(node_id~, keep_child_index~)))
     }
@@ -136,7 +142,7 @@ fn build_tree_edit_op(
     "change_op" => {
       let new_op = match parse_bop(choice) {
         Some(op) => op
-        None => return Err("Invalid operator choice: " + choice)
+        None => return Err("Select an operator")
       }
       Ok(Some(@proj.ChangeOperator(node_id~, new_op~)))
     }
@@ -150,7 +156,7 @@ fn build_tree_edit_op(
     "wrap_bop" => {
       let op = match parse_bop(choice) {
         Some(op) => op
-        None => return Err("Invalid operator choice: " + choice)
+        None => return Err("Select an operator")
       }
       Ok(Some(@proj.WrapInBop(node_id~, op~)))
     }
@@ -165,35 +171,35 @@ fn build_tree_edit_op(
       match ctx.binding_node_id {
         Some(binding_node_id) =>
           Ok(Some(@proj.DuplicateBinding(binding_node_id~)))
-        None => Err("No binding node ID for binding_duplicate")
+        None => Err("Select a let-binding first")
       }
     "binding_move_up" =>
       match ctx.binding_node_id {
         Some(binding_node_id) => Ok(Some(@proj.MoveBindingUp(binding_node_id~)))
-        None => Err("No binding node ID for binding_move_up")
+        None => Err("Select a let-binding first")
       }
     "binding_move_down" =>
       match ctx.binding_node_id {
         Some(binding_node_id) =>
           Ok(Some(@proj.MoveBindingDown(binding_node_id~)))
-        None => Err("No binding node ID for binding_move_down")
+        None => Err("Select a let-binding first")
       }
     "binding_inline_all" =>
       match ctx.binding_node_id {
         Some(binding_node_id) =>
           Ok(Some(@proj.InlineAllUsages(binding_node_id~)))
-        None => Err("No binding node ID for binding_inline_all")
+        None => Err("Select a let-binding first")
       }
     "binding_delete" =>
       match ctx.binding_node_id {
         Some(binding_node_id) => Ok(Some(@proj.DeleteBinding(binding_node_id~)))
-        None => Err("No binding node ID for binding_delete")
+        None => Err("Select a let-binding first")
       }
     "add_binding" =>
       match ctx.module_node_id {
         Some(module_node_id) => Ok(Some(@proj.AddBinding(module_node_id~)))
-        None => Err("No module node ID for add_binding")
+        None => Err("No module in scope")
       }
-    _ => Err("Unknown action: " + action_id)
+    _ => Err("Unknown action")
   }
 }

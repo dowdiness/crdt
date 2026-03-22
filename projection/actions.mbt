@@ -239,7 +239,7 @@ let wrap_if : Action = {
 ///|
 let wrap_bop : Action = {
   id: "wrap_bop",
-  label: "Wrap in +",
+  label: "Wrap in operator",
   mnemonic: "p",
   group: Wrap,
   needs_input: false,
@@ -248,7 +248,7 @@ let wrap_bop : Action = {
 ///|
 let wrap_app : Action = {
   id: "wrap_app",
-  label: "Wrap in application",
+  label: "Wrap in f(x)",
   mnemonic: "a",
   group: Wrap,
   needs_input: false,

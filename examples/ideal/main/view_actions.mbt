@@ -70,7 +70,14 @@ fn view_name_prompt(
   model : Model,
 ) -> @rabbita.Html {
   let prompt_label = match model.overlay.pending_action {
-    Some(action) => action.label
+    Some(action) =>
+      match action.id {
+        "rename" | "binding_rename" => "New name"
+        "extract_to_let" => "Variable name"
+        "wrap_lambda" => "Parameter name"
+        "add_binding" => "Binding name"
+        _ => action.label
+      }
     None => "Enter name"
   }
   let error_el : @rabbita.Html = if model.overlay.name_error != "" {
