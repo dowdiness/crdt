@@ -38,24 +38,7 @@ pub fn compute_text_edit(
     | Expand(..) => Ok(Some(([], RestoreCursor)))
     // CommitEdit: replace node span with new user-provided text
     CommitEdit(node_id~, new_value~) =>
-      match source_map.get_range(node_id) {
-        None => Err("Node not found: " + node_id.to_string())
-        Some(range) =>
-          Ok(
-            Some(
-              (
-                [
-                  {
-                    start: range.start,
-                    delete_len: range.end - range.start,
-                    inserted: new_value,
-                  },
-                ],
-                RestoreCursor,
-              ),
-            ),
-          )
-      }
+      compute_commit(ctx, node_id, new_value)
     // Delete: replace node with placeholder, re-rendering parent for normalization.
     // Special case: if parent is error, remove entirely.
     Delete(node_id~) =>
