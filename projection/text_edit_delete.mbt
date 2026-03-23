@@ -47,10 +47,7 @@ fn compute_delete(ctx : EditContext, node_id : NodeId) -> EditResult {
                   new_children.push(c)
                 }
               }
-              let new_parent_kind = rebuild_kind(
-                parent_node.kind,
-                new_children,
-              )
+              let new_parent_kind = rebuild_kind(parent_node.kind, new_children)
               let new_text = @ast.print_term(new_parent_kind)
               match source_map.get_range(parent_id) {
                 None => {

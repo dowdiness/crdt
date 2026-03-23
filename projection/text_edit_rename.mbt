@@ -16,9 +16,7 @@ fn compute_rename(
           )
         @ast.Term::Lam(old_name, _) =>
           // Lam: rename param + all bound Var occurrences in body
-          rename_lam_param(
-            node_id, n, old_name, new_name, source_map, registry,
-          )
+          rename_lam_param(node_id, n, old_name, new_name, source_map, registry)
         _ =>
           // Check if this node_id is a binding_node_id in flat_proj
           rename_binding_by_id(
@@ -27,9 +25,7 @@ fn compute_rename(
       }
     None =>
       // Node not in registry — check if it's a binding_node_id
-      rename_binding_by_id(
-        node_id, new_name, flat_proj, registry, source_map,
-      )
+      rename_binding_by_id(node_id, new_name, flat_proj, registry, source_map)
   }
 }
 

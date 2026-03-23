@@ -129,10 +129,7 @@ fn compute_extract_to_let(
 }
 
 ///|
-fn compute_inline_definition(
-  ctx : EditContext,
-  node_id : NodeId,
-) -> EditResult {
+fn compute_inline_definition(ctx : EditContext, node_id : NodeId) -> EditResult {
   let { source_text, source_map, registry, flat_proj } = ctx
   let node = match registry.get(node_id) {
     Some(n) => n
@@ -273,11 +270,7 @@ fn compute_inline_all_usages(
   for uid in usage_ids {
     let usage_lam_env = collect_lam_env(uid, registry)
     let mut would_capture = false
-    init_fv.each(fn(v) {
-      if usage_lam_env.contains(v) {
-        would_capture = true
-      }
-    })
+    init_fv.each(fn(v) { if usage_lam_env.contains(v) { would_capture = true } })
     if would_capture {
       return Err(
         "Cannot inline: would capture variables bound by enclosing lambda",

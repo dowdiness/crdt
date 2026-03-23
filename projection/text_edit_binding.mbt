@@ -14,11 +14,7 @@ fn compute_delete_binding(
     return Err("Binding not found: " + binding_node_id.to_string())
   }
   let (let_start, binding_end) = match
-    get_binding_text_range(
-      source_text,
-      source_map,
-      flat_proj.defs[def_index],
-    ) {
+    get_binding_text_range(source_text, source_map, flat_proj.defs[def_index]) {
     Ok(r) => r
     Err(e) => return Err(e)
   }
@@ -48,13 +44,7 @@ fn compute_delete_binding(
   Ok(
     Some(
       (
-        [
-          {
-            start: let_start,
-            delete_len: delete_end - let_start,
-            inserted: "",
-          },
-        ],
+        [{ start: let_start, delete_len: delete_end - let_start, inserted: "" }],
         RestoreCursor,
       ),
     ),
@@ -137,20 +127,12 @@ fn compute_move_binding_up(
   let prev_fv = free_vars(prev_def.1.kind, empty_env)
   if cur_fv.contains(prev_def.0) {
     return Err(
-      "Cannot move up: " +
-      cur_def.0 +
-      " uses " +
-      prev_def.0 +
-      " in its init",
+      "Cannot move up: " + cur_def.0 + " uses " + prev_def.0 + " in its init",
     )
   }
   if prev_fv.contains(cur_def.0) {
     return Err(
-      "Cannot move up: " +
-      prev_def.0 +
-      " uses " +
-      cur_def.0 +
-      " in its init",
+      "Cannot move up: " + prev_def.0 + " uses " + cur_def.0 + " in its init",
     )
   }
   if cur_def.0 == prev_def.0 {
@@ -215,20 +197,12 @@ fn compute_move_binding_down(
   let next_fv = free_vars(next_def.1.kind, empty_env)
   if next_fv.contains(cur_def.0) {
     return Err(
-      "Cannot move down: " +
-      next_def.0 +
-      " uses " +
-      cur_def.0 +
-      " in its init",
+      "Cannot move down: " + next_def.0 + " uses " + cur_def.0 + " in its init",
     )
   }
   if cur_fv.contains(next_def.0) {
     return Err(
-      "Cannot move down: " +
-      cur_def.0 +
-      " uses " +
-      next_def.0 +
-      " in its init",
+      "Cannot move down: " + cur_def.0 + " uses " + next_def.0 + " in its init",
     )
   }
   if cur_def.0 == next_def.0 {

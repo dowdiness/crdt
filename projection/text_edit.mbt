@@ -21,11 +21,7 @@ pub type EditResult = Result[(Array[SpanEdit], FocusHint)?, String]
 /// Translate a TreeEditOp into text span edits using the source map.
 /// All TreeEditOp variants are handled — no fallback to the old path.
 /// Returns Some([]) for no-op ops (Select, Collapse, etc.).
-pub fn compute_text_edit(
-  op : TreeEditOp,
-  ctx : EditContext,
-) -> EditResult {
-  let { source_text, source_map, registry, flat_proj } = ctx
+pub fn compute_text_edit(op : TreeEditOp, ctx : EditContext) -> EditResult {
   match op {
     // No-op operations — these don't modify source text
     Select(..)
@@ -37,8 +33,7 @@ pub fn compute_text_edit(
     | Collapse(..)
     | Expand(..) => Ok(Some(([], RestoreCursor)))
     // CommitEdit: replace node span with new user-provided text
-    CommitEdit(node_id~, new_value~) =>
-      compute_commit(ctx, node_id, new_value)
+    CommitEdit(node_id~, new_value~) => compute_commit(ctx, node_id, new_value)
     // Delete: replace node with placeholder, re-rendering parent for normalization.
     // Special case: if parent is error, remove entirely.
     Delete(node_id~) => compute_delete(ctx, node_id)
@@ -75,8 +70,7 @@ pub fn compute_text_edit(
     MoveBindingDown(binding_node_id~) =>
       compute_move_binding_down(ctx, binding_node_id)
     // AddBinding: delegate to InsertChild for Module nodes
-    AddBinding(module_node_id~) =>
-      compute_add_binding(ctx, module_node_id)
+    AddBinding(module_node_id~) => compute_add_binding(ctx, module_node_id)
     // Drop: move a node from source to target position
     Drop(source~, target~, position~) =>
       compute_drop(ctx, source, target, position)
