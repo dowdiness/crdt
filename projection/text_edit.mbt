@@ -283,34 +283,7 @@ pub fn compute_text_edit(
     }
     // Unwrap: replace a node with one of its children
     Unwrap(node_id~, keep_child_index~) =>
-      match (source_map.get_range(node_id), registry.get(node_id)) {
-        (Some(range), Some(node)) =>
-          if keep_child_index >= node.children.length() {
-            Err("Child index out of range")
-          } else {
-            let kept = node.children[keep_child_index]
-            let kept_text = @ast.print_term(kept.kind)
-            let kept_start = match source_map.get_range(kept.id()) {
-              Some(r) => r.start
-              None => range.start
-            }
-            Ok(
-              Some(
-                (
-                  [
-                    {
-                      start: range.start,
-                      delete_len: range.end - range.start,
-                      inserted: kept_text,
-                    },
-                  ],
-                  MoveCursor(position=kept_start),
-                ),
-              ),
-            )
-          }
-        _ => Err("Node not found: " + node_id.to_string())
-      }
+      compute_unwrap(ctx, node_id, keep_child_index)
     // WrapInIf: wrap a node in an if-then-else with placeholder condition
     WrapInIf(node_id~) =>
       match (source_map.get_range(node_id), registry.get(node_id)) {
@@ -361,73 +334,9 @@ pub fn compute_text_edit(
       }
     // ChangeOperator: change the operator of a Bop node
     ChangeOperator(node_id~, new_op~) =>
-      match (source_map.get_range(node_id), registry.get(node_id)) {
-        (Some(range), Some(node)) =>
-          match node.kind {
-            @ast.Term::Bop(_, l, r) => {
-              let new_text = @ast.print_term(Bop(new_op, l, r))
-              Ok(
-                Some(
-                  (
-                    [
-                      {
-                        start: range.start,
-                        delete_len: range.end - range.start,
-                        inserted: new_text,
-                      },
-                    ],
-                    RestoreCursor,
-                  ),
-                ),
-              )
-            }
-            _ => Err("ChangeOperator requires Bop node")
-          }
-        _ => Err("Node not found: " + node_id.to_string())
-      }
+      compute_change_operator(ctx, node_id, new_op)
     // SwapChildren: swap left/right children of Bop, or then/else of If
-    SwapChildren(node_id~) =>
-      match (source_map.get_range(node_id), registry.get(node_id)) {
-        (Some(range), Some(node)) =>
-          match node.kind {
-            @ast.Term::Bop(op, l, r) => {
-              let swapped = @ast.print_term(Bop(op, r, l))
-              Ok(
-                Some(
-                  (
-                    [
-                      {
-                        start: range.start,
-                        delete_len: range.end - range.start,
-                        inserted: swapped,
-                      },
-                    ],
-                    RestoreCursor,
-                  ),
-                ),
-              )
-            }
-            @ast.Term::If(c, t, e) => {
-              let swapped = @ast.print_term(If(c, e, t))
-              Ok(
-                Some(
-                  (
-                    [
-                      {
-                        start: range.start,
-                        delete_len: range.end - range.start,
-                        inserted: swapped,
-                      },
-                    ],
-                    RestoreCursor,
-                  ),
-                ),
-              )
-            }
-            _ => Err("SwapChildren requires Bop or If node")
-          }
-        _ => Err("Node not found: " + node_id.to_string())
-      }
+    SwapChildren(node_id~) => compute_swap_children(ctx, node_id)
     // DeleteBinding: remove a let binding line from a Module
     DeleteBinding(binding_node_id~) => {
       let mut def_index = -1
