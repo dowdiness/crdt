@@ -89,33 +89,6 @@ pub fn compute_text_edit(
     InlineAllUsages(binding_node_id~) =>
       compute_inline_all_usages(ctx, binding_node_id)
     // Rename: scope-aware renaming of variables and bindings
-    Rename(node_id~, new_name~) => {
-      let node = registry.get(node_id)
-      match node {
-        Some(n) =>
-          match n.kind {
-            @ast.Term::Var(old_name) =>
-              // Var: resolve to binder and rename binder + all usages
-              rename_from_var(
-                node_id, old_name, new_name, flat_proj, registry, source_map,
-              )
-            @ast.Term::Lam(old_name, _) =>
-              // Lam: rename param + all bound Var occurrences in body
-              rename_lam_param(
-                node_id, n, old_name, new_name, source_map, registry,
-              )
-            _ =>
-              // Check if this node_id is a binding_node_id in flat_proj
-              rename_binding_by_id(
-                node_id, new_name, flat_proj, registry, source_map,
-              )
-          }
-        None =>
-          // Node not in registry — check if it's a binding_node_id
-          rename_binding_by_id(
-            node_id, new_name, flat_proj, registry, source_map,
-          )
-      }
-    }
+    Rename(node_id~, new_name~) => compute_rename(ctx, node_id, new_name)
   }
 }
