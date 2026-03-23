@@ -12,7 +12,7 @@ import {
 // Values
 pub fn collect_lam_env(NodeId, Map[NodeId, ProjNode]) -> @hashset.HashSet[String]
 
-pub fn compute_text_edit(TreeEditOp, String, SourceMap, Map[NodeId, ProjNode], FlatProj) -> Result[(Array[SpanEdit], FocusHint)?, String]
+pub fn compute_text_edit(TreeEditOp, EditContext) -> Result[(Array[SpanEdit], FocusHint)?, String]
 
 pub fn find_binding_for_init(NodeId, FlatProj) -> (NodeId, Int)?
 
@@ -80,6 +80,13 @@ pub enum DropPosition {
 }
 pub impl Eq for DropPosition
 pub impl Show for DropPosition
+
+pub(all) struct EditContext {
+  source_text : String
+  source_map : SourceMap
+  registry : Map[NodeId, ProjNode]
+  flat_proj : FlatProj
+}
 
 pub struct FlatProj {
   defs : Array[(String, ProjNode, Int, NodeId)]
@@ -236,6 +243,7 @@ pub fn TreeEditorState::new() -> Self
 pub fn TreeEditorState::refresh(Self, ProjNode?, SourceMap) -> Self
 
 // Type aliases
+pub type EditResult = Result[(Array[SpanEdit], FocusHint)?, String]
 
 // Traits
 

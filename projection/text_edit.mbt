@@ -7,16 +7,25 @@ pub(all) struct SpanEdit {
 } derive(Show, Eq)
 
 ///|
+pub(all) struct EditContext {
+  source_text : String
+  source_map : SourceMap
+  registry : Map[NodeId, ProjNode]
+  flat_proj : FlatProj
+}
+
+///|
+pub type EditResult = Result[(Array[SpanEdit], FocusHint)?, String]
+
+///|
 /// Translate a TreeEditOp into text span edits using the source map.
 /// All TreeEditOp variants are handled — no fallback to the old path.
 /// Returns Some([]) for no-op ops (Select, Collapse, etc.).
 pub fn compute_text_edit(
   op : TreeEditOp,
-  source_text : String,
-  source_map : SourceMap,
-  registry : Map[NodeId, ProjNode],
-  flat_proj : FlatProj,
-) -> Result[(Array[SpanEdit], FocusHint)?, String] {
+  ctx : EditContext,
+) -> EditResult {
+  let { source_text, source_map, registry, flat_proj } = ctx
   match op {
     // No-op operations — these don't modify source text
     Select(..)
@@ -692,10 +701,7 @@ pub fn compute_text_edit(
           index=flat_proj.defs.length(),
           kind=@ast.Term::Int(0),
         ),
-        source_text,
-        source_map,
-        registry,
-        flat_proj,
+        ctx,
       )
     // Drop: move a node from source to target position
     Drop(source~, target~, position~) => {

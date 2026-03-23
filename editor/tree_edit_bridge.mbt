@@ -19,7 +19,8 @@ pub fn SyncEditor::apply_tree_edit(
     Some(fp) => fp
     None => return Err("No FlatProj available")
   }
-  match @proj.compute_text_edit(op, old_text, source_map, registry, flat_proj) {
+  let ctx : @proj.EditContext = { source_text: old_text, source_map, registry, flat_proj }
+  match @proj.compute_text_edit(op, ctx) {
     Ok(Some((edits, focus_hint))) => {
       if edits.is_empty() {
         return Ok(()) // no-op
