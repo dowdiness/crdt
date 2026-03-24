@@ -79,7 +79,7 @@ priv struct LazyPreorder {
 
 ///|
 /// Build the shallow reuse stamp for an interactive node.
-fn[T : Eq] interactive_node_stamp(
+fn[T] interactive_node_stamp(
   node : InteractiveTreeNode[T],
 ) -> InteractiveNodeStamp[T] {
   let child_ids : Array[NodeId] = []
