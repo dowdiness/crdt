@@ -1,11 +1,10 @@
-// ProjNode: Local node type for the projection package.
-// Replaces the removed @ast.AstNode with a Term-based equivalent.
-// ProjNode preserves node IDs and positions needed for projectional editing,
-// while using @ast.Term as the structural kind.
+// ProjNode[T]: Generic projection node parameterized by AST type T.
+// Preserves node IDs and positions needed for projectional editing.
+// T is the AST kind (e.g., @ast.Term for lambda calculus).
 
 ///|
-/// Local node type for the projection package.
-/// Replaces the removed @ast.AstNode with a Term-based equivalent.
+/// Generic projection node parameterized by AST type T.
+/// `kind : T` holds the AST node, `children : Array[ProjNode[T]]` holds child projections.
 pub struct ProjNode[T] {
   node_id : Int
   kind : T

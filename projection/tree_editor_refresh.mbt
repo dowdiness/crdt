@@ -60,7 +60,7 @@ fn[T] build_preorder_walk(
 
 ///|
 /// Check if a subtree can be completely skipped during refresh.
-fn[T : Eq + Renderable] can_skip_subtree(
+fn[T : TreeNode + Renderable] can_skip_subtree(
   proj_node : ProjNode[T],
   prev_node : InteractiveTreeNode[T],
   source_map : SourceMap,
@@ -98,8 +98,9 @@ fn[T : Eq + Renderable] can_skip_subtree(
   if drop_target != prev_node.drop_target {
     return false
   }
-  // Check kind matches
-  if proj_node.kind != prev_node.kind {
+  // Check kind matches — use same_kind + label instead of full T equality
+  // to avoid deep subtree comparison on complex AST types
+  if not(TreeNode::same_kind(proj_node.kind, prev_node.kind)) {
     return false
   }
   if Renderable::label(proj_node.kind) != prev_node.label {
