@@ -50,9 +50,11 @@ priv struct TreeUIState {
 
 ///|
 /// Shallow stamp for deciding whether a previously loaded subtree can be reused.
-priv struct InteractiveNodeStamp[T] {
+/// Shallow stamp — uses kind_tag + label instead of full T equality
+/// to keep stamp comparison O(1) rather than O(subtree).
+priv struct InteractiveNodeStamp {
   id : NodeId
-  kind : T
+  kind_tag : String
   label : String
   child_ids : Array[NodeId]
   elided_descendant_count : Int?
@@ -79,9 +81,9 @@ priv struct LazyPreorder {
 
 ///|
 /// Build the shallow reuse stamp for an interactive node.
-fn[T] interactive_node_stamp(
+fn[T : Renderable] interactive_node_stamp(
   node : InteractiveTreeNode[T],
-) -> InteractiveNodeStamp[T] {
+) -> InteractiveNodeStamp {
   let child_ids : Array[NodeId] = []
   let elided_descendant_count = match node.children {
     Loaded(children) => {
@@ -94,7 +96,7 @@ fn[T] interactive_node_stamp(
   }
   {
     id: node.id,
-    kind: node.kind,
+    kind_tag: Renderable::kind_tag(node.kind),
     label: node.label,
     child_ids,
     elided_descendant_count,
@@ -261,7 +263,7 @@ pub fn[T] TreeEditorState::new() -> TreeEditorState[T] {
 
 ///|
 /// Create tree editor state from a projection snapshot.
-pub fn[T : TreeNode + Renderable + Eq] TreeEditorState::from_projection(
+pub fn[T : TreeNode + Renderable] TreeEditorState::from_projection(
   proj : ProjNode[T]?,
   source_map : SourceMap,
 ) -> TreeEditorState[T] {

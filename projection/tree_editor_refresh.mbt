@@ -166,7 +166,7 @@ fn[T] carry_over_loaded_nodes(
 /// Simplified refresh that skips eager index building.
 /// Populates `new_loaded_nodes` as it walks but does not build preorder_ids,
 /// parent_by_child, or preorder_range_by_root.
-fn[T : TreeNode + Renderable + Eq] refresh_node_minimal(
+fn[T : TreeNode + Renderable] refresh_node_minimal(
   node : ProjNode[T],
   source_map : SourceMap,
   ui_state : TreeUIState,
@@ -259,9 +259,9 @@ fn[T : TreeNode + Renderable + Eq] refresh_node_minimal(
         }
       None => ()
     }
-    let stamp : InteractiveNodeStamp[T] = {
+    let stamp : InteractiveNodeStamp = {
       id: node_id,
-      kind: node.kind,
+      kind_tag: Renderable::kind_tag(node.kind),
       label,
       child_ids,
       elided_descendant_count: None,
@@ -640,7 +640,7 @@ fn[T] apply_selection_to_node(
 /// Refresh tree from projection while preserving UI state (collapsed nodes).
 /// Also prunes stale IDs from UI state that no longer exist in the tree.
 /// Uses `refresh_node_minimal` — no eager structural indexes are built.
-pub fn[T : TreeNode + Renderable + Eq] TreeEditorState::refresh(
+pub fn[T : TreeNode + Renderable] TreeEditorState::refresh(
   self : TreeEditorState[T],
   proj : ProjNode[T]?,
   source_map : SourceMap,
@@ -736,7 +736,7 @@ pub fn[T : TreeNode + Renderable + Eq] TreeEditorState::refresh(
 ///|
 /// Expand a node and hydrate its children from the current projection snapshot
 /// when the expanded branch is currently elided.
-pub fn[T : TreeNode + Renderable + Eq] TreeEditorState::expand_node(
+pub fn[T : TreeNode + Renderable] TreeEditorState::expand_node(
   self : TreeEditorState[T],
   node_id : NodeId,
   proj : ProjNode[T]?,
@@ -759,7 +759,7 @@ pub fn[T : TreeNode + Renderable + Eq] TreeEditorState::expand_node(
 /// Rebuild a single materialized subtree from the current projection snapshot.
 /// This still does an O(n) `get_node_in_tree(...)` lookup and is intended for
 /// one-off expand hydration, not bulk expand-all.
-fn[T : TreeNode + Renderable + Eq] TreeEditorState::hydrate_subtree(
+fn[T : TreeNode + Renderable] TreeEditorState::hydrate_subtree(
   self : TreeEditorState[T],
   node_id : NodeId,
   proj : ProjNode[T]?,

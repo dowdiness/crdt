@@ -695,11 +695,12 @@ test "TreeEditorState::refresh preserves unchanged sibling subtree through publi
     interactive_node_stamp(refreshed_left) == interactive_node_stamp(old_left),
     content="true",
   )
-  // After parameterization, stamp stores kind: T directly (not shape).
-  // Right subtree's kind changed (Int(4) → Int(5) inside Bop), so stamps differ.
+  // Stamp uses shallow kind_tag + label (not deep T equality).
+  // Right subtree's kind_tag and label are unchanged (both "Bop" / "+"),
+  // so stamps match — deep child changes are caught by recursive child walk.
   inspect(
     interactive_node_stamp(refreshed_right) == interactive_node_stamp(old_right),
-    content="false",
+    content="true",
   )
   inspect(refreshed_right_children[1].label, content="5")
 }

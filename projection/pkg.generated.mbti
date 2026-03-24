@@ -237,12 +237,12 @@ pub struct TreeEditorState[T] {
   // private fields
 }
 pub fn[T] TreeEditorState::apply_edit(Self[T], TreeEditOp) -> Self[T]
-pub fn[T : TreeNode + Renderable + Eq] TreeEditorState::expand_node(Self[T], NodeId, ProjNode[T]?, SourceMap) -> Self[T]
-pub fn[T : TreeNode + Renderable + Eq] TreeEditorState::from_projection(ProjNode[T]?, SourceMap) -> Self[T]
+pub fn[T : TreeNode + Renderable] TreeEditorState::expand_node(Self[T], NodeId, ProjNode[T]?, SourceMap) -> Self[T]
+pub fn[T : TreeNode + Renderable] TreeEditorState::from_projection(ProjNode[T]?, SourceMap) -> Self[T]
 pub fn[T] TreeEditorState::get_loaded_node(Self[T], NodeId) -> InteractiveTreeNode[T]?
 pub fn[T] TreeEditorState::has_node(Self[T], NodeId) -> Bool
 pub fn[T] TreeEditorState::new() -> Self[T]
-pub fn[T : TreeNode + Renderable + Eq] TreeEditorState::refresh(Self[T], ProjNode[T]?, SourceMap) -> Self[T]
+pub fn[T : TreeNode + Renderable] TreeEditorState::refresh(Self[T], ProjNode[T]?, SourceMap) -> Self[T]
 
 // Type aliases
 pub type EditResult = Result[(Array[SpanEdit], FocusHint)?, String]
