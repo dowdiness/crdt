@@ -26,7 +26,7 @@ pub impl TreeNode for @ast.Term with same_kind(self, other) {
     (Var(_), Var(_)) => true
     (Lam(_, _), Lam(_, _)) => true
     (App(_, _), App(_, _)) => true
-    (Bop(op1, _, _), Bop(op2, _, _)) => op1 == op2
+    (Bop(_, _, _), Bop(_, _, _)) => true
     (If(_, _, _), If(_, _, _)) => true
     (Module(_, _), Module(_, _)) => true
     (Unit, Unit) => true

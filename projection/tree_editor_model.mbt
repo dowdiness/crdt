@@ -28,7 +28,7 @@ pub struct InteractiveTreeNode[T] {
 
 ///|
 /// Create an interactive tree node from a ProjNode
-pub fn[T : TreeNode + Renderable] InteractiveTreeNode::from_term_node(
+pub fn[T : Renderable] InteractiveTreeNode::from_term_node(
   node : ProjNode[T],
   source_map : SourceMap,
 ) -> InteractiveTreeNode[T] {
@@ -110,7 +110,7 @@ fn[T] interactive_node_stamp(
 /// Create an interactive tree node from a ProjNode with UI state applied.
 /// This is a rendering helper only; index-backed editor operations should use
 /// `TreeEditorState::from_projection(...)`.
-fn[T : TreeNode + Renderable] InteractiveTreeNode::from_term_node_with_state(
+fn[T : Renderable] InteractiveTreeNode::from_term_node_with_state(
   node : ProjNode[T],
   source_map : SourceMap,
   collapsed_nodes : @immut/hashset.HashSet[NodeId],

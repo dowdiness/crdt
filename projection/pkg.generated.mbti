@@ -125,7 +125,7 @@ pub struct InteractiveTreeNode[T] {
   drop_target : Bool
   text_range : @core.Range
 }
-pub fn[T : TreeNode + Renderable] InteractiveTreeNode::from_term_node(ProjNode[T], SourceMap) -> Self[T]
+pub fn[T : Renderable] InteractiveTreeNode::from_term_node(ProjNode[T], SourceMap) -> Self[T]
 pub impl[T : Show] Show for InteractiveTreeNode[T]
 
 pub(all) struct NodeContext {

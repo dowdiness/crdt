@@ -69,6 +69,23 @@ test "reconcile_ast preserves IDs for matching nodes" {
 }
 
 ///|
+test "reconcile_ast preserves IDs across operator-only edits" {
+  let (old_root, _) = parse_to_proj_node("x + 1")
+  let (new_root, _) = parse_to_proj_node("x - 1")
+  let reconciled = reconcile_ast(old_root, new_root, Ref::new(100))
+  inspect(reconciled.node_id, content=old_root.node_id.to_string())
+  inspect(
+    reconciled.children[0].node_id,
+    content=old_root.children[0].node_id.to_string(),
+  )
+  inspect(
+    reconciled.children[1].node_id,
+    content=old_root.children[1].node_id.to_string(),
+  )
+  inspect(@ast.print_term(reconciled.kind), content="(x - 1)")
+}
+
+///|
 test "reconcile_ast shrinks rebuilt source map when children disappear" {
   let (old_root, _) = parse_to_proj_node("1 + 2 + 3")
   let (new_root, _) = parse_to_proj_node("1 + 2")

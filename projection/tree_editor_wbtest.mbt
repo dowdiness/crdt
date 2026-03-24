@@ -107,7 +107,7 @@ test "refresh_node_minimal skips unchanged subtrees" {
 
 ///|
 test "TreeEditorState::new creates empty state" {
-  let state = TreeEditorState::new()
+  let state : TreeEditorState[@ast.Term] = TreeEditorState::new()
   inspect(state.tree is None, content="true")
   inspect(state.selection.length(), content="0")
   inspect(state.editing_node is None, content="true")
