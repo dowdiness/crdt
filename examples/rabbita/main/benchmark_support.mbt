@@ -14,7 +14,7 @@ fn benchmark_model(source : String) -> Model {
   editor.set_text(source)
   {
     editor,
-    tree_state: @proj.TreeEditorState::from_projection(
+    tree_state: @proj.TreeEditorState[@ast.Term]::from_projection(
       editor.get_proj_node(),
       editor.get_source_map(),
     ),

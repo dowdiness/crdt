@@ -1,9 +1,9 @@
 ///|
 /// Find a node by its string ID in the interactive tree.
 fn find_node_by_id(
-  node : @proj.InteractiveTreeNode,
+  node : @proj.InteractiveTreeNode[@ast.Term],
   target_id : String,
-) -> @proj.InteractiveTreeNode? {
+) -> @proj.InteractiveTreeNode[@ast.Term]? {
   if node_id_to_string(node.id) == target_id {
     return Some(node)
   }
@@ -27,7 +27,7 @@ fn find_node_by_id(
 fn resolve_selected_node(
   model : Model,
   target_id : String,
-) -> @proj.InteractiveTreeNode? {
+) -> @proj.InteractiveTreeNode[@ast.Term]? {
   let loaded = match model.outline_state.tree {
     Some(root) => find_node_by_id(root, target_id)
     None => None
@@ -40,7 +40,7 @@ fn resolve_selected_node(
       match model.editor.get_node(node_id) {
         Some(node) =>
           Some(
-            @proj.InteractiveTreeNode::from_term_node(
+            @proj.InteractiveTreeNode[@ast.Term]::from_term_node(
               node,
               model.editor.get_source_map(),
             ),
@@ -53,7 +53,7 @@ fn resolve_selected_node(
 
 ///|
 /// Count children of a tree node.
-fn children_count(node : @proj.InteractiveTreeNode) -> Int {
+fn children_count(node : @proj.InteractiveTreeNode[@ast.Term]) -> Int {
   match node.children {
     @proj.Loaded(children) => children.length()
     @proj.Elided(n) => n
@@ -62,7 +62,7 @@ fn children_count(node : @proj.InteractiveTreeNode) -> Int {
 
 ///|
 /// Render the node details section of the inspector.
-fn view_node_details(node : @proj.InteractiveTreeNode) -> Html {
+fn view_node_details(node : @proj.InteractiveTreeNode[@ast.Term]) -> Html {
   let kind = kind_of(node.label)
   let count = children_count(node)
   div(class="panel-section", [

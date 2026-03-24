@@ -30,7 +30,7 @@ fn kind_of(label : String) -> String {
 /// Render a single outline tree node with collapse/expand and selection.
 fn view_outline_node(
   dispatch : Dispatch[Msg],
-  node : @proj.InteractiveTreeNode,
+  node : @proj.InteractiveTreeNode[@ast.Term],
   depth : Int,
   selected_node : String?,
 ) -> Html {

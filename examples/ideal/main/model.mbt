@@ -60,7 +60,7 @@ struct NodeActionContext {
 ///|
 pub struct Model {
   editor : @editor.SyncEditor[@ast.Term]
-  outline_state : @proj.TreeEditorState
+  outline_state : @proj.TreeEditorState[@ast.Term]
   mode : EditorMode
   workspace : WorkspaceLayout
   selected_node : String?

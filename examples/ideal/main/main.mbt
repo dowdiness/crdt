@@ -17,7 +17,7 @@ fn init_model() -> Model {
   let editor = @crdt.get_sync_editor().unwrap()
   let init_text = "let id = \\x.x\nlet apply = \\f.\\x.f x\napply id 42"
   editor.set_text(init_text)
-  let outline_state = @proj.TreeEditorState::from_projection(
+  let outline_state = @proj.TreeEditorState[@ast.Term]::from_projection(
     editor.get_proj_node(),
     editor.get_source_map(),
   )
@@ -155,7 +155,7 @@ fn view_toolbar(dispatch : Dispatch[Msg], model : Model) -> Html {
 ///|
 /// Check if a tree node has elided children in the outline state.
 fn tree_node_is_elided(
-  state : @proj.TreeEditorState,
+  state : @proj.TreeEditorState[@ast.Term],
   node_id : @proj.NodeId,
 ) -> Bool {
   match state.get_loaded_node(node_id) {
