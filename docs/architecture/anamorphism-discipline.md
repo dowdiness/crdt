@@ -172,7 +172,7 @@ Gaps: Full re-render on every change. No incremental rendering.
 
 The producer outputs a flat value. The consumer diffs against a cached previous value to discover what changed.
 
-**Where it appears:** Boundary 1 — `compute_edit()` diffs old and new text strings to find the damage region after a CRDT operation.
+**Where it appears:** Boundary 1 — a text diff discovers the damage region after a CRDT operation.
 
 **Cost:** O(n) on text length per edit instead of O(1) from the operation.
 
@@ -182,21 +182,21 @@ The producer outputs a flat value. The consumer diffs against a cached previous 
 
 The structure stores absolute positions. Moving or reusing a subtree requires recursively updating all positions within it.
 
-**Where it would appear:** If CstNode stored `(start, end)` instead of `width`.
+**Where it would appear:** If CST nodes stored absolute `(start, end)` spans instead of relative widths.
 
 **Cost:** O(subtree size) per reuse instead of O(1). Makes incremental parsing infeasible for large files.
 
-**Prevention:** Store only intrinsic properties (kind, relative width, children). Compute absolute context lazily in a wrapper layer (SyntaxNode computes positions from accumulated widths on traversal).
+**Prevention:** Store only intrinsic properties (kind, relative width, children). Compute absolute context lazily in a wrapper layer that accumulates widths on traversal.
 
 ### The Type Split (uniform error violation)
 
 Success and failure produce different types, forcing every consumer to handle two separate code paths.
 
-**Example:** `parse() → Result[AST, Error]` as the only API, with no way to obtain partial structure on failure.
+**Example:** A parse function that returns either a complete AST or an error, with no way to obtain partial structure on failure.
 
 **Cost:** Error-tolerant operations (display partial AST, offer completions at error site) become impossible. Every consumer must handle the error branch even when it could work with partial structure.
 
-**Prevention:** Make error a variant of the output type, not a separate channel. The construction always produces the output type; errors are values within the structure (ErrorNode in the CST, Error variant in Term). A strict/raising wrapper for convenience is acceptable as long as the recovery path also exists.
+**Prevention:** Make error a variant of the output type, not a separate channel. The construction always produces the output type; errors are values within the structure. A strict/raising wrapper for convenience is acceptable as long as the recovery path also exists.
 
 ### The Construction Protocol (transparency violation)
 
