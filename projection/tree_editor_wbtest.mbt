@@ -3,14 +3,16 @@
 ///|
 fn tree_editor_test_state(
   source : String,
-) -> (ProjNode, SourceMap, TreeEditorState) {
+) -> (ProjNode[@ast.Term], SourceMap, TreeEditorState[@ast.Term]) {
   let (root, _) = parse_to_proj_node(source)
   let source_map = SourceMap::from_ast(root)
   (root, source_map, TreeEditorState::from_projection(Some(root), source_map))
 }
 
 ///|
-fn tree_editor_test_ids(tree : InteractiveTreeNode?) -> Array[NodeId] {
+fn tree_editor_test_ids(
+  tree : InteractiveTreeNode[@ast.Term]?,
+) -> Array[NodeId] {
   let result : Array[NodeId] = []
   match tree {
     None => ()
@@ -21,7 +23,7 @@ fn tree_editor_test_ids(tree : InteractiveTreeNode?) -> Array[NodeId] {
 
 ///|
 fn tree_editor_test_collect(
-  node : InteractiveTreeNode,
+  node : InteractiveTreeNode[@ast.Term],
   result : Array[NodeId],
 ) -> Unit {
   result.push(node.id)
@@ -36,8 +38,8 @@ fn tree_editor_test_collect(
 
 ///|
 fn tree_editor_test_loaded_children(
-  node : InteractiveTreeNode,
-) -> Array[InteractiveTreeNode] {
+  node : InteractiveTreeNode[@ast.Term],
+) -> Array[InteractiveTreeNode[@ast.Term]] {
   match node.children {
     Loaded(children) => children
     Elided(_) => abort("expected loaded children")
@@ -45,7 +47,9 @@ fn tree_editor_test_loaded_children(
 }
 
 ///|
-fn tree_editor_test_elided_descendant_count(node : InteractiveTreeNode) -> Int {
+fn tree_editor_test_elided_descendant_count(
+  node : InteractiveTreeNode[@ast.Term],
+) -> Int {
   match node.children {
     Elided(descendant_count) => descendant_count
     Loaded(_) => abort("expected elided children")
@@ -54,12 +58,12 @@ fn tree_editor_test_elided_descendant_count(node : InteractiveTreeNode) -> Int {
 
 ///|
 fn tree_editor_test_refresh_minimal(
-  node : ProjNode,
+  node : ProjNode[@ast.Term],
   source_map : SourceMap,
   ui_state : TreeUIState,
-  previous_nodes : Map[NodeId, InteractiveTreeNode],
-) -> RefreshedInteractiveNode {
-  let new_loaded_nodes : Map[NodeId, InteractiveTreeNode] = {}
+  previous_nodes : Map[NodeId, InteractiveTreeNode[@ast.Term]],
+) -> RefreshedInteractiveNode[@ast.Term] {
+  let new_loaded_nodes : Map[NodeId, InteractiveTreeNode[@ast.Term]] = {}
   refresh_node_minimal(
     node, source_map, ui_state, previous_nodes, new_loaded_nodes,
   )
@@ -79,7 +83,7 @@ test "refresh_node_minimal skips unchanged subtrees" {
     editing_node: None,
     drop_target: None,
   }
-  let new_loaded_nodes : Map[NodeId, InteractiveTreeNode] = {}
+  let new_loaded_nodes : Map[NodeId, InteractiveTreeNode[@ast.Term]] = {}
   let left_result = refresh_node_minimal(
     reconciled.children[0],
     source_map,
@@ -103,7 +107,7 @@ test "refresh_node_minimal skips unchanged subtrees" {
 
 ///|
 test "TreeEditorState::new creates empty state" {
-  let state = TreeEditorState::new()
+  let state : TreeEditorState[@ast.Term] = TreeEditorState::new()
   inspect(state.tree is None, content="true")
   inspect(state.selection.length(), content="0")
   inspect(state.editing_node is None, content="true")
@@ -691,6 +695,9 @@ test "TreeEditorState::refresh preserves unchanged sibling subtree through publi
     interactive_node_stamp(refreshed_left) == interactive_node_stamp(old_left),
     content="true",
   )
+  // Stamp uses shallow kind_tag + label (not deep T equality).
+  // Right subtree's kind_tag and label are unchanged (both "Bop" / "+"),
+  // so stamps match — deep child changes are caught by recursive child walk.
   inspect(
     interactive_node_stamp(refreshed_right) == interactive_node_stamp(old_right),
     content="true",

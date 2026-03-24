@@ -3,6 +3,7 @@ package "dowdiness/canopy"
 
 import {
   "dowdiness/canopy/editor",
+  "dowdiness/lambda/ast",
 }
 
 // Values
@@ -50,7 +51,7 @@ pub fn get_proj_node_json(Int) -> String
 
 pub fn get_source_map_json(Int) -> String
 
-pub fn get_sync_editor() -> @editor.SyncEditor?
+pub fn get_sync_editor() -> @editor.SyncEditor[@ast.Term]?
 
 pub fn get_text(Int) -> String
 

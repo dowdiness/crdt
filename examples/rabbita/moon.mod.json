@@ -6,6 +6,9 @@
     "dowdiness/canopy": {
       "path": "../.."
     },
+    "dowdiness/lambda": {
+      "path": "../../loom/examples/lambda"
+    },
     "dowdiness/text_change": {
       "path": "../../lib/text-change"
     }

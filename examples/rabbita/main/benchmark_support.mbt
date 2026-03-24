@@ -10,14 +10,15 @@ fn benchmark_dispatch(_msg : Msg) -> @rabbita.Cmd {
 
 ///|
 fn benchmark_model(source : String) -> Model {
-  let editor = @editor.SyncEditor::new("bench")
+  let editor = @editor.SyncEditor::new_lambda("bench")
   editor.set_text(source)
+  let tree_state : @proj.TreeEditorState[@ast.Term] = @proj.TreeEditorState::from_projection(
+    editor.get_proj_node(),
+    editor.get_source_map(),
+  )
   {
     editor,
-    tree_state: @proj.TreeEditorState::from_projection(
-      editor.get_proj_node(),
-      editor.get_source_map(),
-    ),
+    tree_state,
     text_view: source,
     workspace_mode: Split,
     diagnostics_open: false,

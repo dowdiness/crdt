@@ -22,8 +22,8 @@ enum Msg {
 
 ///|
 struct Model {
-  editor : @editor.SyncEditor
-  tree_state : @proj.TreeEditorState
+  editor : @editor.SyncEditor[@ast.Term]
+  tree_state : @proj.TreeEditorState[@ast.Term]
   text_view : String
   workspace_mode : WorkspaceMode
   diagnostics_open : Bool
@@ -63,7 +63,7 @@ fn kind_of(label : String) -> String {
 }
 
 ///|
-fn selected_tree_node(model : Model) -> @proj.InteractiveTreeNode? {
+fn selected_tree_node(model : Model) -> @proj.InteractiveTreeNode[@ast.Term]? {
   match model.tree_state.selection {
     [node_id, ..] => model.tree_state.get_loaded_node(node_id)
     [] => None
@@ -93,7 +93,7 @@ fn has_hidden_selection(model : Model) -> Bool {
 
 ///|
 fn tree_node_is_elided(
-  state : @proj.TreeEditorState,
+  state : @proj.TreeEditorState[@ast.Term],
   node_id : @proj.NodeId,
 ) -> Bool {
   match state.get_loaded_node(node_id) {
@@ -116,9 +116,9 @@ fn can_hydrate_tree_node(model : Model, node_id : @proj.NodeId) -> Bool {
 ///|
 fn init_model() -> Model {
   let init_text = "let id = λx.x\nlet apply = λf.λx.f x\napply id 42"
-  let editor = @editor.SyncEditor::new("local")
+  let editor = @editor.SyncEditor::new_lambda("local")
   editor.set_text(init_text)
-  let tree_state = @proj.TreeEditorState::from_projection(
+  let tree_state : @proj.TreeEditorState[@ast.Term] = @proj.TreeEditorState::from_projection(
     editor.get_proj_node(),
     editor.get_source_map(),
   )
@@ -259,7 +259,7 @@ fn tab(label : String, on_click~ : Cmd, active? : Bool = false) -> Html {
 ///|
 fn view_tree_node(
   dispatch : Dispatch[Msg],
-  node : @proj.InteractiveTreeNode,
+  node : @proj.InteractiveTreeNode[@ast.Term],
   depth : Int,
 ) -> Html {
   let kind = kind_of(node.label)
@@ -534,7 +534,7 @@ fn root_node_id_for_test(model : Model) -> @proj.NodeId {
 
 ///|
 fn node_id_for_label_for_test(
-  node : @proj.InteractiveTreeNode,
+  node : @proj.InteractiveTreeNode[@ast.Term],
   label : String,
 ) -> @proj.NodeId? {
   if node.label == label {
