@@ -248,7 +248,7 @@ pub fn[T : TreeNode + Renderable + Eq] TreeEditorState::refresh(Self[T], ProjNod
 pub type EditResult = Result[(Array[SpanEdit], FocusHint)?, String]
 
 // Traits
-pub trait Renderable {
+pub(open) trait Renderable {
   kind_tag(Self) -> String
   label(Self) -> String
   placeholder(Self) -> String
@@ -256,7 +256,7 @@ pub trait Renderable {
 }
 pub impl Renderable for @ast.Term
 
-pub trait TreeNode {
+pub(open) trait TreeNode {
   children(Self) -> Array[Self]
   same_kind(Self, Self) -> Bool
 }
