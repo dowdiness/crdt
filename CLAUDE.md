@@ -105,13 +105,17 @@ git commit -m "chore: update event-graph-walker submodule"
 ## Key Facts
 
 **Project:** Canopy — incremental projectional editor
-**CRDT:** eg-walker algorithm with FugueMax sequence CRDT
+**CRDT:** eg-walker algorithm with FugueMax sequence CRDT, binary lifting jump pointers for O(log n) ancestor queries
 **Language:** MoonBit
 **Parser:** Lambda calculus with arithmetic (`λx.x`, `1+2`, `if-then-else`, `let x = 1`)
 **Ground truth:** Text CRDT (FugueMax), AST derived via incremental parsing (loom)
 **Submodules:** 6 git submodules (event-graph-walker, loom, svg-dsl, graphviz, valtio, rle)
 
 ## Development Workflow
+
+### Performance Optimization Rule
+
+**CRITICAL:** Before designing any performance optimization, write a microbenchmark that **reproduces the claimed bottleneck** in isolation. If the benchmark can't demonstrate the problem, stop and re-evaluate. Stale profiling data (from before prior optimizations) and O(bad) asymptotic complexity are not proof of a real problem. Check if existing mitigations (batch modes, caching, lazy eval) already neutralize the issue.
 
 ### Quality-First Approach
 
