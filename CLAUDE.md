@@ -93,10 +93,17 @@ git commit -m "chore: update event-graph-walker submodule"
   - [Workflow](docs/development/workflow.md)
   - [Conventions](docs/development/conventions.md)
   - [Testing](docs/development/testing.md)
+  - [Documentation Doctrine](docs/development/documentation-doctrine.md) — how to write docs that don't go stale
 
-- **Performance:** [docs/performance/](docs/performance/)
+- **Performance:** [docs/performance/](docs/performance/) — dated snapshots, not updated in place
 
 - **Archive:** `docs/archive/` — completed plans and stale documents. Do not search here unless you need historical context.
+
+**Documentation rules** (see [doctrine](docs/development/documentation-doctrine.md)):
+- Architecture docs = principles only, never reference specific types/fields/lines
+- Plans = implementation details, archived on completion
+- Performance docs = dated snapshots, never updated (new measurements → new files)
+- Code is the source of truth — if a doc and the code disagree, the doc is wrong
 
 **Submodule docs:**
 - [event-graph-walker](event-graph-walker/README.md) - CRDT library
