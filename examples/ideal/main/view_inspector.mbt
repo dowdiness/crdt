@@ -39,12 +39,13 @@ fn resolve_selected_node(
       let node_id = @proj.NodeId::from_int(node_id_int)
       match model.editor.get_node(node_id) {
         Some(node) =>
-          Some(
-            @proj.InteractiveTreeNode[@ast.Term]::from_term_node(
+          {
+            let itn : @proj.InteractiveTreeNode[@ast.Term] = @proj.InteractiveTreeNode::from_term_node(
               node,
               model.editor.get_source_map(),
-            ),
-          )
+            )
+            Some(itn)
+          }
         None => None
       }
     }

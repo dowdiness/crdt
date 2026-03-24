@@ -118,7 +118,7 @@ fn init_model() -> Model {
   let init_text = "let id = λx.x\nlet apply = λf.λx.f x\napply id 42"
   let editor = @editor.SyncEditor::new_lambda("local")
   editor.set_text(init_text)
-  let tree_state = @proj.TreeEditorState[@ast.Term]::from_projection(
+  let tree_state : @proj.TreeEditorState[@ast.Term] = @proj.TreeEditorState::from_projection(
     editor.get_proj_node(),
     editor.get_source_map(),
   )
