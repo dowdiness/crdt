@@ -80,49 +80,52 @@ Transparency:     [ ] evidence
 Gaps:
 ```
 
-### Current State (2026-03-08)
+### Current State (2026-03-08, updated 2026-03-24)
 
-**Boundary ①: CRDT Ops → Text Buffer**
+> **Principles only.** This audit records which properties hold and which are violated at each boundary. For specific types, fields, and backing structures, see the source code directly.
+
+**Boundary 1: CRDT Ops → Text Buffer**
 
 ```
-Producer:     eg-walker Document (FugueTree + OpLog)
-Consumer:     loom lexer/parser
+Producer:     CRDT document (text sequence CRDT + operation log)
+Consumer:     incremental lexer/parser
 Intermediate: String (document text)
 
 Completeness:     partial — text content complete, but damage information
-                  (what changed) is lost. Consumer must rediscover via
-                  O(n) text diff (compute_edit).
-Context-freedom:  partial — text is inherently positional (characters have
-                  absolute indices). Not a problem here because there is
-                  no incremental reuse of text fragments.
+                  (what changed) is lost. Consumer must rediscover
+                  what changed via text diff.
+Context-freedom:  partial — text is inherently positional. Not a problem
+                  here because there is no incremental reuse of text
+                  fragments.
 Uniform errors:   pass — concurrent conflicts resolved deterministically
-                  by FugueMax. Never surfaced as errors.
+                  by the sequence CRDT. Never surfaced as errors.
 Transparency:     pass — it is a string.
 
-Gaps: No damage region output. Strategy C in 02-reactive-pipeline.md
-      would have the CRDT carry edit position directly, eliminating
-      the retrospective diff.
+Gaps: No damage region output. The CRDT operation already knows what
+      position was affected — surfacing that information would
+      eliminate the retrospective diff.
 ```
 
-**Boundary ②: Text → CST (loom)**
+**Boundary 2: Text → CST (loom)**
 
 ```
-Producer:     loom lexer + parser with ReuseCursor
-Consumer:     SyntaxNode views, Term conversion, display
-Intermediate: CstNode { kind: RawKind, children: Array[CstNode], width: Int }
+Producer:     incremental lexer + parser with reuse cursor
+Consumer:     syntax views, term conversion, display
+Intermediate: CST node (kind, children, relative width — see source for
+              current field layout)
 
 Completeness:     pass — every byte of source represented. Whitespace,
                   comments, error tokens all preserved.
 Context-freedom:  pass — relative widths, no absolute positions. Subtrees
-                  are pure values. ReuseCursor reuses them at O(1).
-Uniform errors:   pass — ErrorNode is a CstNode with a different kind.
-                  Same type. parse_cst_recover always produces structure.
-Transparency:     pass — kind, children, width. Shape is meaning.
+                  are pure values, reusable at O(1).
+Uniform errors:   pass — error nodes are CST nodes with a different kind.
+                  Same type. Recovery parser always produces structure.
+Transparency:     pass — shape is meaning.
 
 Gaps: none. Reference implementation of the four properties.
 ```
 
-**Boundary ③: CST → Typed AST (aspirational)**
+**Boundary 3: CST → Typed AST (aspirational)**
 
 ```
 Producer:     semantic analyzer (not yet built)
@@ -132,9 +135,8 @@ Intermediate: not yet designed
 Completeness:     not designed — name resolution exists as a single-pass
                   fold, not an incremental structure.
 Context-freedom:  not designed — no node identity scheme chosen.
-                  See design-concerns.md for options (arena, span, hash).
                   Arena-based interning recommended for context-free identity.
-Uniform errors:   partial — Term::Error(msg) exists for parse errors.
+Uniform errors:   partial — error variant exists for parse errors.
                   Semantic errors (unbound variables, type mismatches)
                   have no uniform representation yet.
 Transparency:     not designed.
@@ -144,23 +146,22 @@ Gaps: This boundary needs design. This audit becomes the requirements spec:
       analysis to work.
 ```
 
-**Boundary ④: Typed AST → Display**
+**Boundary 4: Typed AST → Display**
 
 ```
-Producer:     projection layer (DOT renderer, error list builder)
+Producer:     projection layer (renderer, error list builder)
 Consumer:     DOM (terminal — no further reuse)
-Intermediate: String (DOT/HTML/text)
+Intermediate: String (rendered output)
 
 Completeness:     partial — AST carries enough for current display.
                   No styling or layout metadata.
 Context-freedom:  N/A — terminal output, no incremental reuse.
-Uniform errors:   pass — error nodes render as entries in the error list,
-                  red nodes in the DOT graph.
+Uniform errors:   pass — error nodes render as entries in the error list
+                  and highlighted nodes in the graph.
 Transparency:     pass — strings.
 
 Gaps: Full re-render on every change. No incremental rendering.
-      Projection module (lenses, tree editor state) exists in MoonBit
-      but is not wired to the web frontend.
+      Projection module exists but is not wired to the web frontend.
 ```
 
 ---
