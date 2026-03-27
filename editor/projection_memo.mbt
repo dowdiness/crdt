@@ -9,7 +9,7 @@
 priv struct VersionedFlatProj {
   proj : @proj.FlatProj?
   changed_at : @incr.Revision
-} derive(Eq)
+}
 
 ///|
 impl @incr.HasChangedAt for VersionedFlatProj with changed_at(self) -> @incr.Revision {
@@ -378,9 +378,7 @@ pub fn[T] SyncEditor::get_flat_proj(self : SyncEditor[T]) -> @proj.FlatProj? {
 
 ///|
 /// Returns the cached ProjNode (converted from FlatProj once per invalidation).
-pub fn[T : Eq] SyncEditor::get_proj_node(
-  self : SyncEditor[T],
-) -> @proj.ProjNode[T]? {
+pub fn[T] SyncEditor::get_proj_node(self : SyncEditor[T]) -> @proj.ProjNode[T]? {
   self.cached_proj_node.get()
 }
 
@@ -390,7 +388,7 @@ pub fn[T] SyncEditor::get_source_map(self : SyncEditor[T]) -> @proj.SourceMap {
 }
 
 ///|
-pub fn[T : Eq] SyncEditor::get_node(
+pub fn[T] SyncEditor::get_node(
   self : SyncEditor[T],
   id : @proj.NodeId,
 ) -> @proj.ProjNode[T]? {

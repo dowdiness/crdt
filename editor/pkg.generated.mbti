@@ -255,11 +255,11 @@ pub fn SyncEditor::get_dot_resolved(Self[@ast.Term]) -> String
 pub fn[T] SyncEditor::get_errors(Self[T]) -> Array[String]
 pub fn[T] SyncEditor::get_flat_proj(Self[T]) -> @projection.FlatProj?
 pub fn[T] SyncEditor::get_hub(Self[T]) -> EphemeralHub
-pub fn[T : Eq] SyncEditor::get_node(Self[T], @projection.NodeId) -> @projection.ProjNode[T]?
+pub fn[T] SyncEditor::get_node(Self[T], @projection.NodeId) -> @projection.ProjNode[T]?
 pub fn[T] SyncEditor::get_node_range(Self[T], @projection.NodeId) -> @core.Range?
 pub fn[T] SyncEditor::get_peer_cursors(Self[T]) -> Map[String, PeerCursor]
 pub fn[T] SyncEditor::get_peer_id(Self[T]) -> String
-pub fn[T : Eq] SyncEditor::get_proj_node(Self[T]) -> @projection.ProjNode[T]?
+pub fn[T] SyncEditor::get_proj_node(Self[T]) -> @projection.ProjNode[T]?
 pub fn SyncEditor::get_resolution(Self[@ast.Term]) -> @lambda.Resolution
 pub fn[T] SyncEditor::get_source_map(Self[T]) -> @projection.SourceMap
 pub fn[T] SyncEditor::get_text(Self[T]) -> String
