@@ -39,3 +39,31 @@ fn update_pan_move(
     }
   }
 }
+
+///|
+/// Zoom the viewport toward the cursor position `(cx, cy)` in canvas-local
+/// screen coords. Factor 0.9 = zoom out, 1/0.9 ≈ 1.111 = zoom in.
+fn update_zoom(
+  state : CanvasState,
+  delta : Double,
+  cx    : Double,
+  cy    : Double
+) -> CanvasState {
+  let factor = if delta > 0.0 { 0.9 } else { 1.0 / 0.9 }
+  let old_scale = state.viewport.scale
+  let raw = old_scale * factor
+  let new_scale = if raw < 0.1 {
+    0.1
+  } else if raw > 8.0 {
+    8.0
+  } else {
+    raw
+  }
+  let ratio = new_scale / old_scale
+  let new_viewport : Viewport = {
+    scale: new_scale,
+    x:     cx + (state.viewport.x - cx) * ratio,
+    y:     cy + (state.viewport.y - cy) * ratio,
+  }
+  { ..state, viewport: new_viewport }
+}

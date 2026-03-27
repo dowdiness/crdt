@@ -58,3 +58,46 @@ test "pan_move is no-op when not panning" {
   inspect(s.viewport.x, content="0")
   inspect(s.viewport.y, content="0")
 }
+
+///|
+test "zoom out (delta > 0) decreases scale" {
+  let state = make_test_state()
+  // cursor at (500, 400), scroll down → zoom out
+  let s = update_zoom(state, 1.0, 500.0, 400.0)
+  assert_true(s.viewport.scale < 1.0)
+}
+
+///|
+test "zoom in (delta < 0) increases scale" {
+  let state = make_test_state()
+  let s = update_zoom(state, -1.0, 500.0, 400.0)
+  assert_true(s.viewport.scale > 1.0)
+}
+
+///|
+test "zoom clamps to min 0.1" {
+  let state = { ..make_test_state(), viewport: { x: 0.0, y: 0.0, scale: 0.11 } }
+  let s = update_zoom(state, 1.0, 0.0, 0.0)
+  assert_eq(s.viewport.scale, 0.1)
+}
+
+///|
+test "zoom clamps to max 8.0" {
+  let state = { ..make_test_state(), viewport: { x: 0.0, y: 0.0, scale: 7.5 } }
+  let s = update_zoom(state, -1.0, 0.0, 0.0)
+  assert_eq(s.viewport.scale, 8.0)
+}
+
+///|
+test "zoom keeps cursor world position fixed" {
+  // World point under cursor before and after zoom must be identical.
+  let state = make_test_state() // pan=(0,0), scale=1.0
+  let cx = 300.0
+  let cy = 200.0
+  // world point under cursor before: (cx - pan.x) / scale = (300-0)/1 = 300
+  let world_x_before = (cx - state.viewport.x) / state.viewport.scale
+  let s = update_zoom(state, 1.0, cx, cy) // zoom out
+  let world_x_after = (cx - s.viewport.x) / s.viewport.scale
+  // Allow tiny float error
+  assert_true((world_x_before - world_x_after).abs() < 1.0e-9)
+}
