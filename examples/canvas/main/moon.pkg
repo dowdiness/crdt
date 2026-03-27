@@ -6,7 +6,16 @@ options(
   "is-main": true,
   link: {
     "js": {
-      "exports": [],
+      "exports": [
+        "create_canvas",
+        "pan_start",
+        "pan_move",
+        "zoom",
+        "node_drag_start",
+        "node_drag_move",
+        "pointer_up",
+        "get_render_state",
+      ],
     },
   },
 )
