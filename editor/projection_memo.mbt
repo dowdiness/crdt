@@ -5,7 +5,14 @@
 /// Wraps FlatProj? with a revision stamp for O(1) BackdateEq.
 /// changed_at only advances when the FlatProj content actually changes.
 /// Sequential keystrokes with no AST change leave changed_at stable,
-/// causing proj_memo to backdate and saving all downstream recomputation.
+/// causing proj_memo to backdate and skipping cached_proj_node,
+/// registry_memo, and source_map_memo recomputation entirely.
+///
+/// Measured: whitespace-only keystrokes (trivia edits) are ~5–10% faster
+/// than content-changing keystrokes at 1000 defs. The remaining cost is
+/// dominated by the incremental parse + O(N) to_flat_proj_incremental scan,
+/// not the downstream memos. The win grows when heavier downstream
+/// consumers (type checking, rendering) are added.
 priv struct VersionedFlatProj {
   proj : @proj.FlatProj?
   changed_at : @incr.Revision
@@ -145,7 +152,7 @@ fn build_lambda_projection_memos(
         changed_at: proj_changed_at_ref.val,
       }
     },
-    label="proj_node",
+    label="proj_flat",
   )
 
   // Single conversion FlatProj -> ProjNode, shared by registry + source_map + get_proj_node.
