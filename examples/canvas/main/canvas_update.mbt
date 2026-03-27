@@ -145,7 +145,6 @@ fn update_pointer_up(
     state.interaction.selected
   }
   let new_interaction : InteractionState = {
-    ..state.interaction,
     dragging:     None,
     panning:      None,
     pointer_down: false,
