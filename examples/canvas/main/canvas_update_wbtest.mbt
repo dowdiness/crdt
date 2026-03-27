@@ -101,3 +101,56 @@ test "zoom keeps cursor world position fixed" {
   // Allow tiny float error
   assert_true((world_x_before - world_x_after).abs() < 1.0e-9)
 }
+
+///|
+test "node_drag_start records offset from cursor to node origin" {
+  let state = make_test_state()
+  // Node 1 is at (100, 100). Grab it at world (110, 120).
+  // offset = node_pos - cursor = (100-110, 100-120) = (-10, -20)
+  let s = update_node_drag_start(state, NodeId(1), 110.0, 120.0)
+  guard s.interaction.dragging is Some(d)
+  assert_eq(d.node_id, NodeId(1))
+  inspect(d.offset_x, content="-10")
+  inspect(d.offset_y, content="-20")
+  assert_true(s.interaction.pointer_down)
+  assert_eq(s.interaction.did_move, false)
+}
+
+///|
+test "node_drag_start is no-op for unknown node id" {
+  let state = make_test_state()
+  let s = update_node_drag_start(state, NodeId(99), 0.0, 0.0)
+  assert_true(s.interaction.dragging is None)
+}
+
+///|
+test "node_drag_move updates node position" {
+  let state = make_test_state()
+  let s0 = update_node_drag_start(state, NodeId(1), 110.0, 120.0)
+  // offset = (-10, -20). Move cursor to (200, 300).
+  // new node pos = cursor + offset = (200 + -10, 300 + -20) = (190, 280)
+  let s1 = update_node_drag_move(s0, 200.0, 300.0)
+  let node = s1.nodes[0]
+  assert_eq(node.id, NodeId(1))
+  inspect(node.x, content="190")
+  inspect(node.y, content="280")
+  assert_true(s1.interaction.did_move)
+}
+
+///|
+test "node_drag_move does not affect other nodes" {
+  let state = make_test_state()
+  let s0 = update_node_drag_start(state, NodeId(1), 110.0, 120.0)
+  let s1 = update_node_drag_move(s0, 200.0, 300.0)
+  // Node 2 is unchanged
+  inspect(s1.nodes[1].x, content="400")
+  inspect(s1.nodes[1].y, content="200")
+}
+
+///|
+test "node_drag_move is no-op when not dragging" {
+  let state = make_test_state()
+  let s = update_node_drag_move(state, 999.0, 999.0)
+  inspect(s.nodes[0].x, content="100")
+  inspect(s.nodes[0].y, content="100")
+}

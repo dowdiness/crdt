@@ -67,3 +67,64 @@ fn update_zoom(
   }
   { ..state, viewport: new_viewport }
 }
+
+///|
+fn find_node(nodes : Array[CanvasNode], id : NodeId) -> CanvasNode? {
+  for node in nodes {
+    if node.id == id {
+      return Some(node)
+    }
+  }
+  None
+}
+
+///|
+fn update_node_drag_start(
+  state   : CanvasState,
+  node_id : NodeId,
+  world_x : Double,
+  world_y : Double
+) -> CanvasState {
+  match find_node(state.nodes, node_id) {
+    None => state
+    Some(node) => {
+      let drag : DragState = {
+        node_id,
+        offset_x: node.x - world_x,
+        offset_y: node.y - world_y,
+      }
+      let new_interaction : InteractionState = {
+        ..state.interaction,
+        dragging:     Some(drag),
+        pointer_down: true,
+        did_move:     false,
+      }
+      { ..state, interaction: new_interaction }
+    }
+  }
+}
+
+///|
+fn update_node_drag_move(
+  state   : CanvasState,
+  world_x : Double,
+  world_y : Double
+) -> CanvasState {
+  match state.interaction.dragging {
+    None => state
+    Some(drag) => {
+      let new_nodes = state.nodes.map(fn(node) {
+        if node.id == drag.node_id {
+          { ..node, x: world_x + drag.offset_x, y: world_y + drag.offset_y }
+        } else {
+          node
+        }
+      })
+      let new_interaction : InteractionState = {
+        ..state.interaction,
+        did_move: true,
+      }
+      { ..state, nodes: new_nodes, interaction: new_interaction }
+    }
+  }
+}
