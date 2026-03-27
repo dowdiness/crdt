@@ -205,3 +205,14 @@ test "pointer_up on background deselects" {
   let s1 = update_pointer_up(s0, 0)
   inspect(s1.interaction.selected, content="None")
 }
+
+///|
+test "get_render_state returns correct JSON shape" {
+  // create_canvas returns handle 0 on first call in test process
+  let handle = create_canvas()
+  let json_str = get_render_state(handle)
+  // Run `moon test --update` on first run to capture actual snapshot.
+  inspect(json_str, content=(
+    #|Object({"viewport": Object({"x": Number(520), "y": Number(300), "scale": Number(1)}), "nodes": Array([Object({"id": Number(1), "x": Number(-320), "y": Number(-160), "w": Number(200), "h": Number(120), "kind": Array([String("Shape"), String("#8250df")])}), Object({"id": Number(2), "x": Number(-60), "y": Number(-160), "w": Number(200), "h": Number(120), "kind": Array([String("Shape"), String("#c792ea")])}), Object({"id": Number(3), "x": Number(200), "y": Number(-160), "w": Number(200), "h": Number(120), "kind": Array([String("Shape"), String("#82aaff")])}), Object({"id": Number(4), "x": Number(-320), "y": Number(20), "w": Number(200), "h": Number(60), "kind": Array([String("Text"), String("Canopy Canvas")])}), Object({"id": Number(5), "x": Number(-60), "y": Number(20), "w": Number(200), "h": Number(60), "kind": Array([String("Text"), String("Pan · Zoom · Drag")])}), Object({"id": Number(6), "x": Number(200), "y": Number(20), "w": Number(200), "h": Number(60), "kind": Array([String("Text"), String("∞")])})])})
+  ))
+}
