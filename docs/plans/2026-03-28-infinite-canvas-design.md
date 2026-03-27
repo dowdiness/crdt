@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-28
 **Scope:** `examples/canvas/` demo package
-**Status:** Draft
+**Status:** Draft (revised after Codex review)
 
 ## Goal
 
@@ -23,7 +23,7 @@ transform: translate(panX px, panY px) scale(scale)
 transform-origin: 0 0
 ```
 
-Nodes are `position: absolute` children of `#world`, positioned at their world coordinates. Pan and zoom change only the transform string on `#world` — no node styles touched during viewport movement.
+Nodes are `position: absolute` children of `#world`, positioned at their world coordinates. Pan and zoom change only the transform string on `#world` — node styles are not touched during viewport movement, only during node drag.
 
 This approach is chosen over Canvas 2D because Canopy's nodes will eventually be live editor blocks (rich DOM content). CSS-transformed DOM nodes are the natural substrate for that future. Canvas 2D would require a DOM overlay hack for every interactive block.
 
@@ -35,40 +35,46 @@ A `<canvas id="overlay">` sits above `#world` with `pointer-events: none`. It is
 
 ## Package structure
 
+Standalone MoonBit module, mirroring `examples/ideal`:
+
 ```
 examples/canvas/
-├── moon.pkg.json          # MoonBit package, no editor dependencies
-├── canvas_state.mbt       # Types: CanvasState, Viewport, CanvasNode, InteractionState
-├── canvas_update.mbt      # Pure update functions: pan, zoom, drag, select
-├── canvas_init.mbt        # Default state + hardcoded seed nodes for demo
-├── ffi.mbt                # JS externs (minimal)
-├── index.html
-└── src/
-    ├── main.ts            # Bootstrap, event wiring, DOM patch loop
-    └── vite.config.ts     # Mirrors examples/web setup
+├── moon.mod.json          # module: "dowdiness/canopy-canvas", preferred-target: js
+├── main/
+│   ├── moon.pkg           # is-main: true, exports list
+│   ├── canvas_state.mbt   # Types: CanvasState, Viewport, CanvasNode, InteractionState
+│   ├── canvas_update.mbt  # Pure update functions: pan, zoom, drag, select
+│   ├── canvas_init.mbt    # create_canvas() entry point, seed nodes
+│   └── ffi.mbt            # JS externs (minimal)
+└── web/
+    ├── index.html
+    ├── package.json
+    ├── vite.config.ts
+    └── src/
+        └── main.ts        # Bootstrap, event wiring, RAF render loop
 ```
 
-MoonBit owns all state and logic. TypeScript is a thin shell: forwards events in, reads state out, applies DOM changes.
+MoonBit owns all state and logic. TypeScript is a thin shell: forwards events in, reads state out, applies DOM changes on each animation frame.
 
 ---
 
 ## Data model
 
 ```moonbit
-typealias NodeId = Int  // sequential counter, assigned at init
+type NodeId Int  // newtype, not a type alias — matches projection/types.mbt pattern
 
 struct Viewport {
-  x     : Float  // pan x (world origin in screen space)
-  y     : Float  // pan y
-  scale : Float  // zoom level, clamped to [0.1, 8.0]
+  x     : Double  // pan x (world origin in canvas-local screen space)
+  y     : Double  // pan y
+  scale : Double  // zoom level, clamped to [0.1, 8.0]
 }
 
 struct CanvasNode {
   id   : NodeId
-  x    : Float   // world coordinates
-  y    : Float
-  w    : Float
-  h    : Float
+  x    : Double  // world coordinates
+  y    : Double
+  w    : Double
+  h    : Double
   kind : NodeKind
 }
 
@@ -79,21 +85,23 @@ enum NodeKind {
 
 struct DragState {
   node_id  : NodeId
-  offset_x : Float  // cursor-to-node-origin offset in world coords
-  offset_y : Float
+  offset_x : Double  // cursor-to-node-origin offset in world coords
+  offset_y : Double
 }
 
 struct PanState {
-  start_screen_x : Float
-  start_screen_y : Float
-  start_pan_x    : Float
-  start_pan_y    : Float
+  start_screen_x : Double  // canvas-local screen coords at pan start
+  start_screen_y : Double
+  start_pan_x    : Double  // viewport pan at pan start
+  start_pan_y    : Double
 }
 
 struct InteractionState {
-  dragging : Option[DragState]
-  panning  : Option[PanState]
-  selected : Option[NodeId]
+  dragging     : DragState?
+  panning      : PanState?
+  selected     : NodeId?
+  pointer_down : Bool  // true from pointerdown until pointerup, used for click-vs-drag
+  did_move     : Bool  // true once pointermove fires during current pointer session
 }
 
 struct CanvasState {
@@ -110,7 +118,9 @@ struct CanvasState {
 Two coordinate spaces:
 
 - **World space** — where nodes live. Invariant to pan/zoom.
-- **Screen space** — what the user sees. Affected by viewport.
+- **Canvas-local screen space** — what the user sees, origin at top-left of `#canvas-root`.
+
+TypeScript subtracts `canvas.getBoundingClientRect()` from raw `clientX/clientY` before passing any coordinates to MoonBit. MoonBit never receives raw page coordinates.
 
 Conversions:
 
@@ -128,71 +138,97 @@ pan.y     = cy + (pan.y - cy) * (new_scale / old_scale)
 scale     = new_scale
 ```
 
-TypeScript handles the screen-to-world conversion before passing coordinates to MoonBit.
+where `cx, cy` are canvas-local screen coordinates.
 
 ---
 
 ## Interaction model
 
 ### Pan
-- `pointerdown` on background (not a node) → enter `PanState`, record `start_screen` and `start_pan`
-- `pointermove` → `viewport.x = start_pan.x + (current_screen.x - start_screen.x)`  (absolute, avoids float drift)
-- `pointerup` → clear `PanState`
+- `pan_start(handle, screen_x, screen_y)` — on `pointerdown` on background; saves `start_screen` and `start_pan` in `PanState`
+- `pan_move(handle, screen_x, screen_y)` — on `pointermove` while panning:
+  `viewport.x = start_pan.x + (screen_x - start_screen.x)` (absolute, avoids float drift)
+- `pointer_up(handle)` — clears `PanState`
 
 ### Zoom
-- `wheel` at cursor `(cx, cy)` → compute new scale → adjust pan per formula above
+- `zoom(handle, delta, cx, cy)` — on `wheel` event; computes new scale; adjusts pan per formula above
+- Wheel-to-scale mapping: `factor = delta > 0 ? 0.9 : 1/0.9` (per `deltaY` sign)
 
 ### Node drag
-- `pointerdown` on a node (identified by `data-node-id` attribute — free hit testing via DOM)
-- TypeScript converts pointer screen coords to world coords, passes both to MoonBit
-- MoonBit records `DragState { node_id, offset = node_pos - cursor_world }`
-- `pointermove` → `node.x = cursor_world.x + offset.x; node.y = cursor_world.y + offset.y`
-- `pointerup` → clear `DragState`
+- `node_drag_start(handle, node_id, world_x, world_y)` — on `pointerdown` on a node; sets `DragState { node_id, offset = node_pos - cursor_world }` and `did_move = false`
+- `node_drag_move(handle, world_x, world_y)` — on `pointermove` while dragging; sets `did_move = true`; updates `node.x = world_x + offset.x, node.y = world_y + offset.y`
+- `pointer_up(handle)` — clears `DragState`
 
 ### Selection
-- `pointerdown` on a node with no drag movement → set `selected = Some(node_id)`
-- Visual highlight only (border or shadow). No action attached in this demo.
+- On `pointer_up`: if `pointer_down && !did_move && there is a node under pointer` → set `selected = Some(node_id)`
+- TypeScript passes `node_id` (or `0` for none) into `pointer_up(handle, node_id)`
+- Visual highlight only (CSS class on the selected node div). No action attached in this demo.
+
+### Pointer capture
+TypeScript calls `element.setPointerCapture(e.pointerId)` on `pointerdown` so `pointermove` and `pointerup` are reliably received even when the pointer leaves `#canvas-root`.
 
 ---
 
 ## Render loop & JS bridge
 
-**Event-driven, not RAF-based.** Each event triggers: update MoonBit state → read state → patch DOM.
+**RAF-batched, not immediate.** Each event mutates MoonBit state, then schedules one `requestAnimationFrame` if not already pending. The frame callback calls `get_render_state(handle)` and patches the DOM once per frame. Matches the pattern in `examples/ideal/web/src/bridge.ts`.
 
-MoonBit exports (FFI surface):
+MoonBit exports (in `main/moon.pkg` `link.js.exports`):
 
 ```
-init() → Unit                              // called once, sets up state
-pan(dx, dy : Float) → Unit
-zoom(delta : Float, cx, cy : Float) → Unit // cx, cy in screen coords
-node_drag_start(id : NodeId, wx, wy : Float) → Unit
-node_drag_move(wx, wy : Float) → Unit
-pointer_up() → Unit
-get_render_state() → String                // JSON: { viewport, nodes, selected }
+create_canvas() -> Int                                    // returns handle, sets up state + seed nodes
+pan_start(handle: Int, sx: Double, sy: Double) -> Unit
+pan_move(handle: Int, sx: Double, sy: Double) -> Unit
+zoom(handle: Int, delta: Double, cx: Double, cy: Double) -> Unit
+node_drag_start(handle: Int, id: Int, wx: Double, wy: Double) -> Unit
+node_drag_move(handle: Int, wx: Double, wy: Double) -> Unit
+pointer_up(handle: Int, node_id: Int) -> Unit             // node_id=0 means background
+get_render_state(handle: Int) -> String                   // JSON (see schema below)
 ```
 
-TypeScript DOM patch after each event:
-1. Set `#world` CSS transform from `viewport`
-2. For each node in state: update `left`, `top`, `width`, `height` on matching `div`
-3. Add/remove node `div`s only when the node list changes
-4. Apply selection class to the selected node
+### `get_render_state` JSON schema
+
+```json
+{
+  "viewport": { "x": 0.0, "y": 0.0, "scale": 1.0 },
+  "nodes": [
+    { "id": 1, "x": 100.0, "y": 100.0, "w": 200.0, "h": 120.0,
+      "kind": ["Shape", "#8250df"] },
+    { "id": 2, "x": 350.0, "y": 100.0, "w": 200.0, "h": 80.0,
+      "kind": ["Text", "Hello, Canopy"] }
+  ],
+  "selected": 1
+}
+```
+
+`NodeKind` uses MoonBit's `derive(ToJson)` array-based enum encoding: `["Shape", color]` / `["Text", content]`. `selected` is `null` when nothing is selected.
+
+### TypeScript DOM patch (per RAF frame)
+
+1. Set `#world` CSS transform: `translate(${vp.x}px, ${vp.y}px) scale(${vp.scale})`
+2. For each node: `left`, `top`, `width`, `height` on the matching `div` (only changes if different)
+3. Add/remove node `div`s when the node list changes (demo: never changes after init)
+4. Toggle `.selected` CSS class on the selected node div
+
+Pan and zoom do **not** trigger step 2 (node styles unchanged) — only `#world` transform is updated.
 
 ---
 
 ## Demo content
 
-`canvas_init.mbt` provides hardcoded seed nodes: a mix of colored rectangles and text labels arranged around the origin. No add/delete UI. The demo loads, you can pan/zoom/drag, done.
+`canvas_init.mbt` provides `create_canvas()` which allocates state with hardcoded seed nodes: a mix of colored rectangles and text labels arranged around the world origin. No add/delete UI. The demo loads, you can pan/zoom/drag, done.
 
 ---
 
 ## Scope
 
 **In scope:**
-- Pan, zoom (clamped), node drag
-- Shape nodes (filled rect)
-- Text nodes (label)
-- Click-to-select (visual only)
+- Pan, zoom (clamped to [0.1, 8.0]), node drag
+- Shape nodes (filled rect with color)
+- Text nodes (label with content)
+- Click-to-select (visual only — CSS `.selected` class)
 - Hybrid overlay stub (`<canvas id="overlay">` + no-op `drawOverlay`)
+- Pointer capture for reliable drag/pan outside container
 
 **Out of scope for this demo:**
 - Add/delete nodes
