@@ -1,24 +1,19 @@
 type CanvasModule = {
-  create_canvas:   () => number;
-  pan_start:       (h: number, sx: number, sy: number) => void;
-  pan_move:        (h: number, sx: number, sy: number) => void;
-  zoom:            (h: number, delta: number, cx: number, cy: number) => void;
-  node_drag_start: (h: number, id: number, wx: number, wy: number) => void;
-  node_drag_move:  (h: number, wx: number, wy: number) => void;
-  pointer_up:      (h: number, nodeId: number) => void;
-  get_render_state:(h: number) => string;
+  create_canvas: () => number;
+  pointer_down:  (h: number, nodeId: number, sx: number, sy: number) => void;
+  pointer_move:  (h: number, sx: number, sy: number) => void;
+  pointer_up:    (h: number, nodeId: number) => void;
+  zoom:          (h: number, delta: number, cx: number, cy: number) => void;
+  get_render_state: (h: number) => string;
 };
 
-type Viewport   = { x: number; y: number; scale: number };
 type NodeKind   = ['Shape', string] | ['Text', string];
 type NodeData   = { id: number; x: number; y: number; w: number; h: number; kind: NodeKind };
-type RenderState = { viewport: Viewport; nodes: NodeData[]; selected?: number };
+type RenderState = { viewport: { x: number; y: number; scale: number }; nodes: NodeData[]; selected?: number };
 
 let mb: CanvasModule;
 let handle = -1;
 let rafPending = false;
-// Cached viewport — used by screenToWorld without re-parsing JSON
-let lastViewport: Viewport = { x: 0, y: 0, scale: 1 };
 
 const root     = document.getElementById('canvas-root') as HTMLDivElement;
 const world    = document.getElementById('world') as HTMLDivElement;
@@ -35,13 +30,10 @@ function scheduleRender(): void {
 function render(): void {
   rafPending = false;
   const state: RenderState = JSON.parse(mb.get_render_state(handle));
-  lastViewport = state.viewport;
 
-  // 1. Update world transform (pan + zoom — only #world touched, not node divs)
   const { x, y, scale } = state.viewport;
   world.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
 
-  // 2. Sync node divs (only meaningful changes during node drag)
   const seen = new Set<number>();
   for (const node of state.nodes) {
     seen.add(node.id);
@@ -72,30 +64,20 @@ function render(): void {
     div.classList.toggle('selected', state.selected != null && state.selected === node.id);
   }
 
-  // 3. Remove divs for deleted nodes (future: add/delete support)
   for (const [id, div] of nodeDivs) {
     if (!seen.has(id)) { div.remove(); nodeDivs.delete(id); }
   }
-
-  // 4. (Future) drawOverlay(state);
 }
 
-// ─── Coordinate helpers ───────────────────────────────────────────────────────
+// ─── DOM helpers ─────────────────────────────────────────────────────────────
 
-/** Pointer/wheel position in canvas-local screen space.
- *  Accepts MouseEvent so it works for both PointerEvent and WheelEvent. */
+/** Pointer/wheel position in canvas-local screen space. */
 function localCoords(e: MouseEvent): [number, number] {
   const rect = root.getBoundingClientRect();
   return [e.clientX - rect.left, e.clientY - rect.top];
 }
 
-/** Convert canvas-local screen coords to world coords. */
-function screenToWorld(sx: number, sy: number): [number, number] {
-  const { x, y, scale } = lastViewport;
-  return [(sx - x) / scale, (sy - y) / scale];
-}
-
-/** Walk up the DOM from event target to find data-node-id. Returns 0 for background. */
+/** Walk up from event target to find data-node-id. Returns 0 for background. */
 function nodeIdFromTarget(target: EventTarget | null): number {
   let el = target as HTMLElement | null;
   while (el && el !== world) {
@@ -107,8 +89,6 @@ function nodeIdFromTarget(target: EventTarget | null): number {
 
 // ─── Event wiring ─────────────────────────────────────────────────────────────
 
-type Interaction = 'none' | 'pan' | 'drag';
-let activeInteraction: Interaction = 'none';
 let activePointerId = -1;
 let pointerDownNodeId = 0;
 
@@ -118,35 +98,21 @@ root.addEventListener('pointerdown', (e: PointerEvent) => {
   const [sx, sy] = localCoords(e);
   const nodeId = nodeIdFromTarget(e.target);
   pointerDownNodeId = nodeId;
-
-  if (nodeId !== 0) {
-    const [wx, wy] = screenToWorld(sx, sy);
-    mb.node_drag_start(handle, nodeId, wx, wy);
-    activeInteraction = 'drag';
-  } else {
-    mb.pan_start(handle, sx, sy);
-    activeInteraction = 'pan';
-    root.classList.add('panning');
-  }
+  mb.pointer_down(handle, nodeId, sx, sy);
+  if (nodeId === 0) root.classList.add('panning');
   scheduleRender();
 });
 
 root.addEventListener('pointermove', (e: PointerEvent) => {
   if (e.pointerId !== activePointerId) return;
   const [sx, sy] = localCoords(e);
-  if (activeInteraction === 'pan') {
-    mb.pan_move(handle, sx, sy);
-  } else if (activeInteraction === 'drag') {
-    const [wx, wy] = screenToWorld(sx, sy);
-    mb.node_drag_move(handle, wx, wy);
-  }
+  mb.pointer_move(handle, sx, sy);
   scheduleRender();
 });
 
 root.addEventListener('pointerup', (e: PointerEvent) => {
   if (e.pointerId !== activePointerId) return;
   mb.pointer_up(handle, pointerDownNodeId);
-  activeInteraction = 'none';
   activePointerId = -1;
   pointerDownNodeId = 0;
   root.classList.remove('panning');
@@ -156,7 +122,6 @@ root.addEventListener('pointerup', (e: PointerEvent) => {
 root.addEventListener('pointercancel', () => {
   if (activePointerId === -1) return;
   mb.pointer_up(handle, 0);
-  activeInteraction = 'none';
   activePointerId = -1;
   pointerDownNodeId = 0;
   root.classList.remove('panning');
@@ -165,7 +130,7 @@ root.addEventListener('pointercancel', () => {
 
 root.addEventListener('wheel', (e: WheelEvent) => {
   e.preventDefault();
-  const [cx, cy] = localCoords(e); // WheelEvent extends MouseEvent ✓
+  const [cx, cy] = localCoords(e);
   mb.zoom(handle, e.deltaY, cx, cy);
   scheduleRender();
 }, { passive: false });
@@ -176,7 +141,7 @@ async function init(): Promise<void> {
   const mod = await import('@moonbit/canopy-canvas') as CanvasModule;
   mb = mod;
   handle = mb.create_canvas();
-  render(); // initial render
+  render();
 }
 
 init();

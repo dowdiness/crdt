@@ -9,38 +9,28 @@ pub fn create_canvas() -> Int {
 }
 
 ///|
-pub fn pan_start(handle : Int, sx : Double, sy : Double) -> Unit {
-  _registry[handle] = update_pan_start(_registry[handle], sx, sy)
+/// Handle pointer-down. `node_id` is the canvas node id under the pointer,
+/// or 0 for background. Dispatches to pan or drag start internally.
+pub fn pointer_down(
+  handle  : Int,
+  node_id : Int,
+  sx      : Double,
+  sy      : Double
+) -> Unit {
+  let id : NodeId? = if node_id <= 0 { None } else { Some(NodeId(node_id)) }
+  _registry[handle] = update_pointer_down(_registry[handle], id, sx, sy)
 }
 
 ///|
-pub fn pan_move(handle : Int, sx : Double, sy : Double) -> Unit {
-  _registry[handle] = update_pan_move(_registry[handle], sx, sy)
+/// Handle pointer-move in canvas-local screen coordinates.
+/// Routes to the active gesture (pan or drag) internally.
+pub fn pointer_move(handle : Int, sx : Double, sy : Double) -> Unit {
+  _registry[handle] = update_pointer_move(_registry[handle], sx, sy)
 }
 
 ///|
 pub fn zoom(handle : Int, delta : Double, cx : Double, cy : Double) -> Unit {
   _registry[handle] = update_zoom(_registry[handle], delta, cx, cy)
-}
-
-///|
-pub fn node_drag_start(
-  handle : Int,
-  node_id : Int,
-  world_x : Double,
-  world_y : Double,
-) -> Unit {
-  _registry[handle] = update_node_drag_start(
-    _registry[handle],
-    NodeId(node_id),
-    world_x,
-    world_y,
-  )
-}
-
-///|
-pub fn node_drag_move(handle : Int, world_x : Double, world_y : Double) -> Unit {
-  _registry[handle] = update_node_drag_move(_registry[handle], world_x, world_y)
 }
 
 ///|

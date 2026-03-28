@@ -76,6 +76,46 @@ fn update_zoom(
 }
 
 ///|
+fn screen_to_world(
+  viewport : Viewport,
+  sx       : Double,
+  sy       : Double
+) -> (Double, Double) {
+  ((sx - viewport.x) / viewport.scale, (sy - viewport.y) / viewport.scale)
+}
+
+///|
+/// Dispatch a pointer-down event to pan or drag based on node_id.
+/// Accepts screen coordinates; converts to world coords internally for dragging.
+fn update_pointer_down(
+  state   : CanvasState,
+  node_id : NodeId?,
+  sx      : Double,
+  sy      : Double
+) -> CanvasState {
+  match node_id {
+    None => update_pan_start(state, sx, sy)
+    Some(id) => {
+      let (wx, wy) = screen_to_world(state.viewport, sx, sy)
+      update_node_drag_start(state, id, wx, wy)
+    }
+  }
+}
+
+///|
+/// Dispatch a pointer-move event to the active gesture.
+/// Accepts screen coordinates; converts to world coords internally for dragging.
+fn update_pointer_move(state : CanvasState, sx : Double, sy : Double) -> CanvasState {
+  match state.interaction.dragging {
+    Some(_) => {
+      let (wx, wy) = screen_to_world(state.viewport, sx, sy)
+      update_node_drag_move(state, wx, wy)
+    }
+    None => update_pan_move(state, sx, sy)
+  }
+}
+
+///|
 fn find_node(nodes : Array[CanvasNode], id : NodeId) -> CanvasNode? {
   for node in nodes {
     if node.id == id {

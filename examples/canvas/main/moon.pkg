@@ -8,12 +8,10 @@ options(
     "js": {
       "exports": [
         "create_canvas",
-        "pan_start",
-        "pan_move",
-        "zoom",
-        "node_drag_start",
-        "node_drag_move",
+        "pointer_down",
+        "pointer_move",
         "pointer_up",
+        "zoom",
         "get_render_state",
       ],
     },
