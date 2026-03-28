@@ -6,11 +6,24 @@
 
 **Design reference:** `docs/plans/2026-03-18-framework-extraction-design.md`
 
-**Current state:** Phase 3 partially complete (2026-03-28). `framework/core/` created with
+**Current state:** Phase 3 done (2026-03-28, PR #66). `framework/core/` created with
 `NodeId`, `ProjNode[T]`, `next_proj_node_id`, `assign_fresh_ids`, `ToJson for ProjNode[T]`.
-`projection/` imports via `pub using` for backward compat. `TreeNode`/`Renderable` traits,
-`SourceMap`, and `reconcile` stay in `projection/` (MoonBit orphan rule + foreign-type method
-constraints). `EditAction[T]` removed (zero consumers). Task 7 (framework/editor/) deferred.
+`projection/` imports via `pub using` for backward compat. `EditAction[T]` removed (zero consumers).
+
+**MoonBit constraints discovered in Phase 3:**
+- **Orphan rule (package-level):** `impl Trait for Type` must be in the package defining
+  either the trait or the type. This blocks moving `TreeNode`/`Renderable` to `framework/core/`
+  (the `@ast.Term` impls would become foreign-trait-for-foreign-type in `projection/`).
+- **Foreign-type methods:** Can't define methods on types from other packages. This blocks
+  moving `SourceMap` to `framework/core/` unless `populate_token_spans` becomes a standalone fn.
+- **`pub using` with enums:** Makes them abstract (constructors unavailable). `DropPosition`/
+  `FocusHint` must stay as local definitions, not re-exports.
+
+**Ideal end state (requires loom submodule change):**
+Move `TreeNode`/`Renderable` trait definitions to `dowdiness/loom/core` (the parser framework
+defines how editors inspect ASTs). Then `dowdiness/lambda/ast` implements them (it already
+depends on loom). This resolves the orphan rule and lets `framework/core/` use the traits
+for `reconcile[T]` and `SourceMap::from_ast[T]` without depending on `@ast`.
 
 **Phase 1 summary:** `EditAction[T]`, Tier-2 edit methods (`delete_node`, `commit_edit`, `apply_text_transform`, `move_node`), and `is_dirty`/`refresh` boundary live in `projection/` and `editor/`. Package structure not yet extracted. FlatProj still in `projection/`.
 

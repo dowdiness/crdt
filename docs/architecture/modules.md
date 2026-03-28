@@ -51,12 +51,12 @@ The `crdt` module depends on `dowdiness/lambda` (`loom/examples/lambda/`) and `d
 
 **See:** [loom/README.md](../../loom/README.md) for detailed documentation.
 
-## `crdt/` Module (Lambda Calculus Editor Application)
+## `crdt/` Module (Canopy — Projectional Editor Application)
 
 Application layer that uses event-graph-walker and parser as path dependencies.
 
 ### `/` (root)
-JavaScript FFI bindings (`crdt.mbt`) that expose the editor API to JavaScript.
+JavaScript FFI bindings that expose the editor API to JavaScript.
 
 ### `lib/text-change/`
 Leaf MoonBit module with the pure contiguous `TextChange` algorithm shared by
@@ -64,21 +64,43 @@ Leaf MoonBit module with the pure contiguous `TextChange` algorithm shared by
 Inside this monorepo it is consumed via path dependencies; standalone packaging
 is deferred until the shared API shape settles.
 
-### `editor/`
-High-level editor abstractions (application-specific).
+### `framework/core/`
+Generic projectional editing primitives, independent of any language.
 
-- `SyncEditor` - Unified facade composing `TextDoc`, `UndoManager`, an edit-aware `ImperativeParser`, and memo-derived projection views
-- `Editor` - Thin compatibility shim for CLI/tests; not the primary editor path
+- Node identity, projection node structure, ID allocation, JSON serialization
+- Zero dependencies on `@ast` or `@lambda` — the acid test for framework genericity
+- Consumed by `projection/` (via `pub using` re-exports) and `editor/`
+
+### `editor/`
+High-level editor abstractions.
+
+- `SyncEditor[T]` - Generic facade composing `TextDoc`, `UndoManager`, `ImperativeParser`, and memo-derived projection views
+- Lambda-specific wiring: projection memo builder, tree edit bridge, tree edit JSON
 
 ### `projection/`
-Projectional editing support.
+Projectional editing traits, source mapping, and lambda-specific projection builders.
 
-- Pure `ProjNode`/`SourceMap` derivation and reconciliation
-- Interactive tree UI state (`TreeEditorState`)
-- Functional tree-edit operations that round-trip through `SyncEditor`
+- Capability traits (`TreeNode`, `Renderable`) that define how the framework inspects any AST type
+- `SourceMap` — bidirectional mapping between AST nodes and text positions
+- Reconciliation — preserves node identities across reparses
+- Lambda-specific: CST→ProjNode builders, FlatProj, text edit handlers, scope analysis
+- Re-exports generic types from `framework/core/` for backward compatibility
+
+### `lang/lambda/flat/`
+Lambda-specific flat projection representation.
 
 ### `cmd/main/`
 Command-line entry points and REPL.
+
+### Planned: trait placement migration
+
+`TreeNode` and `Renderable` currently live in `projection/` due to MoonBit's
+package-level orphan rule (the `@ast.Term` impls must colocate with the trait
+definitions or the type). The ideal architecture moves these traits to
+`dowdiness/loom/core` — the parser framework defines both how to build ASTs
+(grammar) and how editors inspect them (capability traits). The `@ast.Term`
+impls would then live in `dowdiness/lambda/ast` (which already depends on loom).
+This migration requires changes to the loom submodule.
 
 ## Dependencies
 
@@ -100,6 +122,10 @@ rle (independent, quickcheck only)
 event-graph-walker (depends on rle + quickcheck)
 
 crdt (depends on event-graph-walker + dowdiness/lambda + dowdiness/loom + dowdiness/text_change via path deps)
+  ├── framework/core (zero external deps — generic types)
+  ├── projection (depends on framework/core + lambda + loom + seam)
+  ├── editor (depends on projection + framework/core + event-graph-walker + loom + incr)
+  └── lang/lambda/flat (depends on projection + incr)
 ```
 
 ## MoonBit Module Configuration
