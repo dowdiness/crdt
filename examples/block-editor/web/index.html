@@ -4,9 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Canopy Block Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
+    @import url('https://cdn.jsdelivr.net/npm/@fontsource-variable/iosevka@5/index.min.css');
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; background: #1a1a2e; color: #e8e8f0; font-family: 'Inter', sans-serif; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #1a1a2e; color: #e8e8f0;
+      font-family: 'Manrope', system-ui, sans-serif;
+      font-size: 1rem;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
 
     nav[aria-label="Document tools"] {
       display: flex;
@@ -21,7 +34,8 @@
       border: 1px solid rgba(130, 160, 255, 0.25);
       border-radius: 6px;
       color: #e8e8f0;
-      font-size: 13px;
+      font-size: 0.8125rem;
+      font-weight: 500;
       cursor: pointer;
     }
     nav[aria-label="Document tools"] button:hover {

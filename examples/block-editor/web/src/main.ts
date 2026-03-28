@@ -101,11 +101,24 @@ function applyAriaRoles(div: HTMLDivElement, block: Block) {
 }
 
 // ── Block styling ──────────────────────────────────────────────────────
+
+// Type scale (1.25 ratio): body 1rem, each heading level steps up
+const HEADING_SCALE: Record<string, { size: string; weight: string; lineHeight: string; letterSpacing: string }> = {
+  '1': { size: '1.953rem', weight: '700', lineHeight: '1.15', letterSpacing: '-0.02em' },
+  '2': { size: '1.563rem', weight: '600', lineHeight: '1.2',  letterSpacing: '-0.015em' },
+  '3': { size: '1.25rem',  weight: '600', lineHeight: '1.3',  letterSpacing: '-0.01em' },
+  '4': { size: '1.1rem',   weight: '600', lineHeight: '1.35', letterSpacing: '0' },
+  '5': { size: '1rem',     weight: '600', lineHeight: '1.4',  letterSpacing: '0.01em' },
+  '6': { size: '0.875rem', weight: '600', lineHeight: '1.4',  letterSpacing: '0.02em' },
+};
+
 function styleBlock(div: HTMLDivElement, block: Block) {
   // Reset
   div.style.fontWeight = '';
   div.style.fontSize = '';
   div.style.fontFamily = '';
+  div.style.lineHeight = '';
+  div.style.letterSpacing = '';
   div.style.borderLeft = '';
   div.style.paddingLeft = '';
   div.style.color = '';
@@ -115,30 +128,31 @@ function styleBlock(div: HTMLDivElement, block: Block) {
 
   switch (block.block_type) {
     case 'heading': {
-      const sizes: Record<string, string> = {
-        '1': '2em', '2': '1.5em', '3': '1.25em',
-        '4': '1.1em', '5': '1em', '6': '0.9em',
-      };
-      div.style.fontSize = sizes[block.level] || '1.5em';
-      div.style.fontWeight = 'bold';
+      const scale = HEADING_SCALE[block.level] || HEADING_SCALE['2'];
+      div.style.fontSize = scale.size;
+      div.style.fontWeight = scale.weight;
+      div.style.lineHeight = scale.lineHeight;
+      div.style.letterSpacing = scale.letterSpacing;
       break;
     }
     case 'list_item':
       div.style.paddingLeft = '24px';
       break;
     case 'quote':
-      div.style.borderLeft = '3px solid rgba(130, 160, 255, 0.4)';
+      div.style.borderLeft = '3px solid rgba(130, 80, 223, 0.4)';
       div.style.paddingLeft = '16px';
-      div.style.color = 'rgba(232, 232, 240, 0.7)';
+      div.style.color = '#c8c8e0';
       break;
     case 'code':
-      div.style.fontFamily = "'JetBrains Mono', monospace";
-      div.style.background = 'rgba(130, 160, 255, 0.05)';
+      div.style.fontFamily = "'Iosevka', 'Iosevka Variable', monospace";
+      div.style.fontSize = '0.9rem';
+      div.style.lineHeight = '1.5';
+      div.style.background = 'rgba(130, 80, 223, 0.05)';
       div.style.paddingLeft = '12px';
       break;
     case 'divider':
       div.contentEditable = 'false';
-      div.style.borderTop = '1px solid rgba(130, 160, 255, 0.2)';
+      div.style.borderTop = '1px solid #2a2a48';
       div.style.minHeight = '0';
       div.style.padding = '8px 0';
       break;
