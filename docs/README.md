@@ -102,6 +102,8 @@ Historical documentation, completed plans, and investigations.
 - [Structural Editing Actions Impl](archive/completed-phases/2026-03-21-structural-editing-actions-impl.md) (Complete)
 - [Structural Editing UI Impl](archive/completed-phases/2026-03-21-structural-editing-ui-impl.md) (Complete)
 - [Incremental SourceMap & Registry](archive/completed-phases/2026-03-22-incremental-sourcemap-registry.md) (Complete)
+- [Two-Layer Architecture Design](archive/completed-phases/2026-03-28-two-layer-architecture-design.md) — `TermSym` Finally Tagless trait, `replay`, `Pretty` interpretation (Complete)
+- [Two-Layer Architecture Impl](archive/completed-phases/2026-03-28-two-layer-architecture-impl.md) — 6-task implementation plan (Complete)
 
 ### Earlier Archive
 

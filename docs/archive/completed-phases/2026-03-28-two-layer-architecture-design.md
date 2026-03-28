@@ -1,7 +1,7 @@
 # Two-Layer Architecture for Term
 
 **Date:** 2026-03-28
-**Status:** Design — approved, pending implementation
+**Status:** Complete
 
 ## What We're Building
 
