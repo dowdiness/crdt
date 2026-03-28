@@ -4,12 +4,9 @@ package "dowdiness/canopy/editor"
 import {
   "dowdiness/canopy/projection",
   "dowdiness/event-graph-walker/text",
-  "dowdiness/incr/cells",
   "dowdiness/lambda",
   "dowdiness/lambda/ast",
   "dowdiness/loom/core",
-  "dowdiness/loom/incremental",
-  "dowdiness/seam",
 }
 
 // Values
@@ -258,11 +255,11 @@ pub fn SyncEditor::get_dot_resolved(Self[@ast.Term]) -> String
 pub fn[T] SyncEditor::get_errors(Self[T]) -> Array[String]
 pub fn[T] SyncEditor::get_flat_proj(Self[T]) -> @projection.FlatProj?
 pub fn[T] SyncEditor::get_hub(Self[T]) -> EphemeralHub
-pub fn[T : Eq] SyncEditor::get_node(Self[T], @projection.NodeId) -> @projection.ProjNode[T]?
+pub fn[T] SyncEditor::get_node(Self[T], @projection.NodeId) -> @projection.ProjNode[T]?
 pub fn[T] SyncEditor::get_node_range(Self[T], @projection.NodeId) -> @core.Range?
 pub fn[T] SyncEditor::get_peer_cursors(Self[T]) -> Map[String, PeerCursor]
 pub fn[T] SyncEditor::get_peer_id(Self[T]) -> String
-pub fn[T : Eq] SyncEditor::get_proj_node(Self[T]) -> @projection.ProjNode[T]?
+pub fn[T] SyncEditor::get_proj_node(Self[T]) -> @projection.ProjNode[T]?
 pub fn SyncEditor::get_resolution(Self[@ast.Term]) -> @lambda.Resolution
 pub fn[T] SyncEditor::get_source_map(Self[T]) -> @projection.SourceMap
 pub fn[T] SyncEditor::get_text(Self[T]) -> String
@@ -273,7 +270,6 @@ pub fn[T] SyncEditor::insert_at(Self[T], Int, String, Int) -> Unit
 pub fn[T] SyncEditor::is_parse_valid(Self[T]) -> Bool
 pub fn[T] SyncEditor::mark_dirty(Self[T]) -> Unit
 pub fn[T] SyncEditor::move_cursor(Self[T], Int) -> Unit
-pub fn[T] SyncEditor::new(String, (String) -> @incremental.ImperativeParser[T], (@cells.Runtime, @cells.Signal[String], @cells.Signal[@seam.SyntaxNode?], @incremental.ImperativeParser[T]) -> (@cells.Memo[@projection.FlatProj?], @cells.Memo[@projection.ProjNode[T]?], @cells.Memo[Map[@projection.NodeId, @projection.ProjNode[T]]], @cells.Memo[@projection.SourceMap]), capture_timeout_ms? : Int) -> Self[T]
 pub fn SyncEditor::new_lambda(String, capture_timeout_ms? : Int) -> Self[@ast.Term]
 pub fn[T] SyncEditor::node_at_position(Self[T], Int) -> @projection.NodeId?
 pub fn[T] SyncEditor::redo(Self[T]) -> Bool
