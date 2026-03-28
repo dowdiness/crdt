@@ -193,9 +193,9 @@ pub fn[T : TreeNode] is_leaf_node(kind : T) -> Bool {
 
 ///|
 /// Check if a drop is valid
-pub fn is_valid_drop(
-  source : @ast.Term,
-  target : @ast.Term,
+pub fn[T] is_valid_drop(
+  source : T,
+  target : T,
   position : DropPosition,
 ) -> Bool {
   // Prevent dropping a node into itself or its descendants
