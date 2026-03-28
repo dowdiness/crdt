@@ -6,9 +6,11 @@
 
 **Design reference:** `docs/plans/2026-03-18-framework-extraction-design.md`
 
-**Current state:** Phase 2 complete (2026-03-28). `lang/lambda/flat/` created with `VersionedFlatProj`.
-`FlatProj` stays in `projection/` until Phase 4 (circular dep: `text_edit.mbt` uses `FlatProj`).
-Phase 3 (extract `framework/`) is next.
+**Current state:** Phase 3 partially complete (2026-03-28). `framework/core/` created with
+`NodeId`, `ProjNode[T]`, `next_proj_node_id`, `assign_fresh_ids`, `ToJson for ProjNode[T]`.
+`projection/` imports via `pub using` for backward compat. `TreeNode`/`Renderable` traits,
+`SourceMap`, and `reconcile` stay in `projection/` (MoonBit orphan rule + foreign-type method
+constraints). `EditAction[T]` removed (zero consumers). Task 7 (framework/editor/) deferred.
 
 **Phase 1 summary:** `EditAction[T]`, Tier-2 edit methods (`delete_node`, `commit_edit`, `apply_text_transform`, `move_node`), and `is_dirty`/`refresh` boundary live in `projection/` and `editor/`. Package structure not yet extracted. FlatProj still in `projection/`.
 
@@ -22,7 +24,7 @@ Phase 3 (extract `framework/`) is next.
 |-------|-------|------|----|----|
 | 1 — Additive API | 1–3 | Low | [#60](https://github.com/dowdiness/canopy/pull/60) | ✅ Done |
 | 2 — Create lang/lambda/flat/ | 4 | Low | 2 | ✅ Done |
-| 3 — Extract framework/ | 5–7 | High | 3 | Not started |
+| 3 — Extract framework/ | 5–7 | High | [#66](https://github.com/dowdiness/canopy/pull/66) | ✅ Partial (Tasks 5-6 done; Task 7 deferred) |
 | 4 — Extract lang/lambda/ | 8 | High | 4 | Blocked on TermSym |
 | 5 — Verification | 9 | Low | 5 | Not started |
 

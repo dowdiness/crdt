@@ -71,8 +71,9 @@ git commit -m "chore: update event-graph-walker submodule"
 | Package | Path | Purpose |
 |---------|------|---------|
 | `dowdiness/canopy` | `./` | Root: JS FFI entry, exports all public functions to JS |
+| `dowdiness/canopy/framework/core` | `framework/core/` | Generic types: NodeId, ProjNode[T], assign_fresh_ids |
 | `dowdiness/canopy/editor` | `editor/` | SyncEditor, EphemeralHub, cursor/presence tracking, undo |
-| `dowdiness/canopy/projection` | `projection/` | ProjectionNode, TextEdit, tree/text lenses, source map |
+| `dowdiness/canopy/projection` | `projection/` | Traits, SourceMap, TextEdit, tree/text lenses, reconcile |
 | `dowdiness/canopy/relay` | `relay/` | Relay room, wire protocol (multi-peer sync) |
 | `dowdiness/canopy/cmd/main` | `cmd/main/` | CLI entry point, REPL, demo |
 | `dowdiness/canopy/lang/lambda/flat` | `lang/lambda/flat/` | Flat lambda AST representation |
