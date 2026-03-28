@@ -38,7 +38,7 @@ pub fn next_proj_node_id(counter : Ref[Int]) -> Int {
 }
 
 ///|
-/// Assign fresh IDs to a ProjNode subtree.
+/// Assign fresh IDs to a ProjNode subtree (post-order: children before parent).
 /// Public for cross-package use by reconciliation.
 pub fn[T] assign_fresh_ids(
   node : ProjNode[T],

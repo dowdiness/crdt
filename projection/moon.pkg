@@ -10,10 +10,7 @@ import {
   "moonbitlang/core/immut/hashset" @immut/hashset,
 }
 
-// -9: struct_never_constructed — EditAction[T] is intentionally exported
-//     for language packages to construct; it has no usages within @proj itself.
-
-warnings = "-2-6-9"
+warnings = "-2-6"
 
 options(
   is_main: false,

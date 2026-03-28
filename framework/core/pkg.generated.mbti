@@ -13,21 +13,6 @@ pub fn next_proj_node_id(@ref.Ref[Int]) -> Int
 // Errors
 
 // Types and methods
-pub(all) enum DropPosition {
-  Before
-  After
-  Inside
-}
-pub impl Eq for DropPosition
-pub impl Show for DropPosition
-
-pub(all) enum FocusHint {
-  RestoreCursor
-  MoveCursor(position~ : Int)
-}
-pub impl Eq for FocusHint
-pub impl Show for FocusHint
-
 pub struct NodeId(Int)
 pub fn NodeId::from_int(Int) -> Self
 #deprecated
