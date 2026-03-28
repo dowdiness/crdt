@@ -6,6 +6,9 @@
   "deps": {
     "dowdiness/canopy": {
       "path": "../.."
+    },
+    "dowdiness/event-graph-walker": {
+      "path": "../../event-graph-walker"
     }
   }
 }

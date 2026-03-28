@@ -26,7 +26,7 @@ pub fn block_type_to_string(t : BlockType) -> (String, Map[String, String]) {
     ListItem(Numbered) => ("list_item", { "list_style": "numbered" })
     ListItem(Todo) => ("list_item", { "list_style": "todo" })
     Quote => ("quote", {})
-    Code(lang) => ("code", { "lang": lang })
+    Code(lang) => ("code", { "language": lang })
     Divider => ("divider", {})
     Raw => ("raw", {})
   }
@@ -59,7 +59,7 @@ pub fn block_type_from_props(
     "quote" => Quote
     "code" =>
       Code(
-        match get("lang") {
+        match get("language") {
           Some(lang) => lang
           None => ""
         },
