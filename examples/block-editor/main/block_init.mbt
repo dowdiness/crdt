@@ -11,7 +11,7 @@ let next_handle : Ref[Int] = { val: 1 }
 pub fn create_editor(replica_id : String) -> Int {
   let handle = next_handle.val
   next_handle.val = handle + 1
-  docs[handle] = BlockDoc::new(replica_id)
+  docs[handle] = BlockDoc::new(replica_id) catch { _ => return -1 }
   replica_ids[handle] = replica_id
   handle
 }
@@ -168,7 +168,7 @@ pub fn editor_insert_block_after(
     Some(doc) => {
       let after_id = parse_block_id(after_id_str)
       let bt = block_type_from_props(block_type_str, fn(_k) { None })
-      let new_id = doc.create_block_after(after_id, bt)
+      let new_id = doc.create_block_after(after_id, bt) catch { _ => return "" }
       id_key(new_id)
     }
     None => ""
@@ -190,7 +190,7 @@ pub fn editor_set_block_text(
 ///|
 pub fn editor_delete_block(handle : Int, id_str : String) -> Unit {
   match docs.get(handle) {
-    Some(doc) => doc.delete_block(parse_block_id(id_str))
+    Some(doc) => doc.delete_block(parse_block_id(id_str)) catch { _ => () }
     None => ()
   }
 }
@@ -225,7 +225,10 @@ pub fn editor_import_markdown(handle : Int, md : String) -> Unit {
   match docs.get(handle) {
     Some(_) => {
       let replica_id = get_replica_id(handle)
-      docs[handle] = block_doc_from_markdown(md, replica_id)
+      let new_doc = block_doc_from_markdown(md, replica_id) catch {
+        _ => return
+      }
+      docs[handle] = new_doc
     }
     None => ()
   }

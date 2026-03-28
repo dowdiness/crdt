@@ -11,7 +11,10 @@
 /// - `---` / `***` / `___` → Divider
 /// - consecutive non-blank lines → single Paragraph (joined with space)
 /// - blank lines → block separator
-pub fn block_doc_from_markdown(md : String, replica_id : String) -> BlockDoc {
+pub fn block_doc_from_markdown(
+  md : String,
+  replica_id : String,
+) -> BlockDoc raise @tree.TreeDocError {
   let doc = BlockDoc::new(replica_id)
   let lines = split_lines(md)
   let len = lines.length()
@@ -110,7 +113,10 @@ pub fn block_doc_from_markdown(md : String, replica_id : String) -> BlockDoc {
 // ── Private helpers ────────────────────────────────────────────────────────
 
 ///|
-fn flush_paragraph(doc : BlockDoc, buf : Array[String]) -> Unit {
+fn flush_paragraph(
+  doc : BlockDoc,
+  buf : Array[String],
+) -> Unit raise @tree.TreeDocError {
   if buf.length() > 0 {
     let text = buf.join(" ")
     let id = doc.create_block(Paragraph)

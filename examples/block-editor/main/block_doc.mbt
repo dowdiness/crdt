@@ -18,7 +18,7 @@ pub struct BlockDoc {
 }
 
 ///|
-pub fn BlockDoc::new(replica_id : String) -> BlockDoc {
+pub fn BlockDoc::new(replica_id : String) -> BlockDoc raise @tree.TreeDocError {
   { tree: @tree.TreeDoc::new(replica_id), texts: {}, replica_id }
 }
 
@@ -28,7 +28,7 @@ pub fn BlockDoc::create_block(
   self : BlockDoc,
   block_type : BlockType,
   parent? : @tree.TreeNodeId = root_block_id,
-) -> @tree.TreeNodeId {
+) -> @tree.TreeNodeId raise @tree.TreeDocError {
   let id = self.tree.create_node(parent~)
   self.texts[id_key(id)] = @text.TextDoc::new(self.replica_id)
   self.apply_block_type(id, block_type)
@@ -41,7 +41,7 @@ pub fn BlockDoc::create_block_after(
   self : BlockDoc,
   after_id : @tree.TreeNodeId,
   block_type : BlockType,
-) -> @tree.TreeNodeId {
+) -> @tree.TreeNodeId raise @tree.TreeDocError {
   let id = self.tree.create_node_after(parent=root_block_id, after=after_id)
   self.texts[id_key(id)] = @text.TextDoc::new(self.replica_id)
   self.apply_block_type(id, block_type)
@@ -50,7 +50,10 @@ pub fn BlockDoc::create_block_after(
 
 ///|
 /// Delete a block: move it to the tree trash.
-pub fn BlockDoc::delete_block(self : BlockDoc, id : @tree.TreeNodeId) -> Unit {
+pub fn BlockDoc::delete_block(
+  self : BlockDoc,
+  id : @tree.TreeNodeId,
+) -> Unit raise @tree.TreeDocError {
   self.tree.delete_node(id)
 }
 
@@ -60,7 +63,7 @@ pub fn BlockDoc::move_block(
   self : BlockDoc,
   id : @tree.TreeNodeId,
   new_parent~ : @tree.TreeNodeId,
-) -> Unit {
+) -> Unit raise @tree.TreeDocError {
   self.tree.move_node(target=id, new_parent~)
 }
 
