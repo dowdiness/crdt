@@ -93,6 +93,7 @@ let activePointerId = -1;
 let pointerDownNodeId = 0;
 
 root.addEventListener('pointerdown', (e: PointerEvent) => {
+  if (activePointerId !== -1) return; // ignore secondary pointers
   root.setPointerCapture(e.pointerId);
   activePointerId = e.pointerId;
   const [sx, sy] = localCoords(e);
@@ -119,8 +120,8 @@ root.addEventListener('pointerup', (e: PointerEvent) => {
   scheduleRender();
 });
 
-root.addEventListener('pointercancel', () => {
-  if (activePointerId === -1) return;
+root.addEventListener('pointercancel', (e: PointerEvent) => {
+  if (e.pointerId !== activePointerId) return;
   mb.pointer_up(handle, 0);
   activePointerId = -1;
   pointerDownNodeId = 0;
