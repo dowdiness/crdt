@@ -2,24 +2,6 @@
 
 Canopy — incremental projectional editor with CRDT collaboration, built in MoonBit.
 
-## Project Structure
-
-**Monorepo with git submodules:**
-- `event-graph-walker/` - CRDT library (submodule → [dowdiness/event-graph-walker](https://github.com/dowdiness/event-graph-walker))
-- `loom/` - Incremental parser framework (submodule → [dowdiness/loom](https://github.com/dowdiness/loom))
-  - `loom/loom/` — `dowdiness/loom`: parser framework (core, pipeline, incremental, viz)
-  - `loom/seam/` — `dowdiness/seam`: language-agnostic CST (CstNode, SyntaxNode)
-  - `loom/incr/` — `dowdiness/incr`: reactive signals (Signal, Memo)
-  - `loom/examples/lambda/` — `dowdiness/lambda`: lambda calculus parser
-- `svg-dsl/` - SVG DSL (submodule → [dowdiness/svg-dsl](https://github.com/dowdiness/svg-dsl))
-- `graphviz/` - Graphviz renderer (submodule → [dowdiness/graphviz](https://github.com/dowdiness/graphviz))
-- `valtio/` - Valtio state management (submodule → [dowdiness/valtio](https://github.com/dowdiness/valtio))
-- `rle/` - RLE data structure library (submodule → [dowdiness/rle](https://github.com/dowdiness/rle))
-- `editor/`, `projection/`, `cmd/` - Application packages (in monorepo)
-- `examples/web/`, `examples/demo-react/` - Web frontends (in monorepo)
-
-**Archive paths:** Completed plans go to `docs/archive/`, not `docs/plans/archive/`. Always confirm the archive directory with existing structure before moving files.
-
 ## MoonBit Language Notes
 
 - `pub` vs `pub(all)` visibility modifiers have different semantics — check current docs before using
@@ -81,6 +63,32 @@ cd ..
 git add event-graph-walker
 git commit -m "chore: update event-graph-walker submodule"
 ```
+
+## Package Map
+
+**Main module: `dowdiness/canopy`**
+
+| Package | Path | Purpose |
+|---------|------|---------|
+| `dowdiness/canopy` | `./` | Root: JS FFI entry, exports all public functions to JS |
+| `dowdiness/canopy/editor` | `editor/` | SyncEditor, EphemeralHub, cursor/presence tracking, undo |
+| `dowdiness/canopy/projection` | `projection/` | ProjectionNode, TextEdit, tree/text lenses, source map |
+| `dowdiness/canopy/relay` | `relay/` | Relay room, wire protocol (multi-peer sync) |
+| `dowdiness/canopy/cmd/main` | `cmd/main/` | CLI entry point, REPL, demo |
+| `dowdiness/canopy/lang/lambda/flat` | `lang/lambda/flat/` | Flat lambda AST representation |
+
+**Local module: `dowdiness/text_change`** (`lib/text-change/`) — text change utilities
+
+**Submodule deps (separate git repos):**
+
+| Module | Path | Purpose |
+|--------|------|---------|
+| `dowdiness/event-graph-walker` | `event-graph-walker/` | FugueMax CRDT, eg-walker algorithm |
+| `dowdiness/loom` | `loom/loom/` | Incremental parser framework |
+| `dowdiness/seam` | `loom/seam/` | Language-agnostic CST (CstNode, SyntaxNode) |
+| `dowdiness/incr` | `loom/incr/` | Reactive signals (Signal, Memo) |
+| `dowdiness/lambda` | `loom/examples/lambda/` | Lambda calculus parser |
+| `dowdiness/order-tree` | `order-tree/` | Order-tree (O(log n) ancestor queries, FugueMax position) |
 
 ## Documentation
 
@@ -172,16 +180,6 @@ git commit -m "chore: update event-graph-walker submodule"
 - Check for: integer overflow, zero/negative inputs, boundary validation, generation wrap-around
 - Do not suggest deleting public API types (Id structs, etc.) as 'unused' — they may be needed by downstream consumers
 - Verify method names match actual API before writing tests (e.g., check if it's `insert` vs `add_local_op`)
-
-## Important Notes
-
-- **Quality verification:** Use `/moonbit-check` skill for all MoonBit implementations
-- **Character-level ops:** Split multi-char inserts into individual chars
-- **Submodules:** After cloning, run `git submodule update --init --recursive`
-- **Snapshots:** Use `moon test --update` when behavior changes
-- **Interfaces:** Check `.mbti` files after refactoring
-- **Benchmarks:** Always use `--release` flag
-- **Parser module:** `dowdiness/lambda` in `loom/examples/lambda/`
 
 ## Git & PR Workflow
 
