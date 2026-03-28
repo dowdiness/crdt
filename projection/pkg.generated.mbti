@@ -25,8 +25,6 @@ pub fn get_actions_for_node(@ast.Term, @edits.NodeContext) -> Array[@edits.Actio
 
 pub fn[T : @dowdiness/loom/core.TreeNode] is_leaf_node(T) -> Bool
 
-pub fn[T] is_valid_drop(T, T, @edits.DropPosition) -> Bool
-
 pub fn parse_to_proj_node(String) -> (@dowdiness/canopy/framework/core.ProjNode[@ast.Term], Array[String])
 
 pub fn populate_token_spans(@dowdiness/canopy/framework/core.SourceMap, @seam.SyntaxNode, @dowdiness/canopy/framework/core.ProjNode[@ast.Term]) -> Unit

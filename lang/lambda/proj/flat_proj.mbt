@@ -169,8 +169,8 @@ pub fn reconcile_flat_proj(
 ) -> FlatProj {
   let old_defs = old_fp.defs
   let new_defs = new_fp.defs
-  let old_names = old_defs.map(fn(d) { d.0 })
-  let new_names = new_defs.map(fn(d) { d.0 })
+  let old_names = old_defs.map(d => d.0)
+  let new_names = new_defs.map(d => d.0)
   let new_matched = key_match(old_names, new_names)
 
   // Build reconciled defs
@@ -242,9 +242,9 @@ pub fn FlatProj::to_proj_node_with_prev_module_id(
   if self.defs.is_empty() {
     return body
   }
-  let children : Array[ProjNode[@ast.Term]] = self.defs.map(fn(d) { d.1 })
+  let children : Array[ProjNode[@ast.Term]] = self.defs.map(d => d.1)
   children.push(body)
-  let term_defs : Array[(@ast.VarName, @ast.Term)] = self.defs.map(fn(d) {
+  let term_defs : Array[(@ast.VarName, @ast.Term)] = self.defs.map(d => {
     (d.0, d.1.kind)
   })
   let start = self.defs[0].2
