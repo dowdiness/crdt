@@ -90,10 +90,46 @@ test "is_dirty set after insert/backspace" {
 }
 
 ///|
-test "refresh clears dirty flag" {
+test "refresh clears dirty flag and further edits are accepted" {
   let editor = SyncEditor::new_lambda("test")
   editor.set_text("x")
   inspect(editor.is_dirty(), content="true")
   editor.refresh()
   inspect(editor.is_dirty(), content="false")
+  // further edits work normally after refresh
+  let root = match editor.get_proj_node() {
+    None => fail("no proj node")
+    Some(n) => n
+  }
+  let result = editor.commit_edit(root.id(), "y", 0)
+  inspect(result is Ok(_), content="true")
+  inspect(editor.get_text(), content="y")
+  inspect(editor.is_dirty(), content="true")
+}
+
+///|
+test "move_node moves source before target and adjusts text" {
+  // "1 2" parses as App(Int(1), Int(2))
+  // children[0] = Int(1) at [0:1], children[1] = Int(2) at [2:3]
+  // Move Int(2) Before Int(1):
+  //   step 1: replace [2:3] with placeholder("0") → "1 0"
+  //   step 2: insert unparse("2") + " " at 0 → "2 1 0"
+  let editor = SyncEditor::new_lambda("test")
+  editor.set_text("1 2")
+  let root = match editor.get_proj_node() {
+    None => fail("no proj node")
+    Some(n) => n
+  }
+  // Need 2 children for App
+  if root.children.length() < 2 {
+    fail("expected App with 2 children, got \{root.children.length()}")
+  }
+  let src_id = root.children[1].id() // Int(2)
+  let tgt_id = root.children[0].id() // Int(1)
+  let result = editor.move_node(src_id, tgt_id, @proj.DropPosition::Before, 0)
+  inspect(result is Ok(_), content="true")
+  // source node no longer at its original span; text has changed
+  inspect(editor.get_text() == "1 2", content="false")
+  // dirty flag set after move
+  inspect(editor.is_dirty(), content="true")
 }

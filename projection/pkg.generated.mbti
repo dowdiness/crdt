@@ -75,7 +75,7 @@ pub(all) enum BindingSite {
 pub impl Eq for BindingSite
 pub impl Show for BindingSite
 
-pub enum DropPosition {
+pub(all) enum DropPosition {
   Before
   After
   Inside
