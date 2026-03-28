@@ -2,9 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a working block editor at `examples/block-editor/` supporting paragraph, heading, and list blocks — single peer, Markdown save/load, no collaboration yet.
+**Goal:** Build a working block editor at `examples/block-editor/` supporting paragraph, heading, and list blocks — single peer, in-browser Markdown download/upload, no collaboration yet.
 
 **Architecture:** MoonBit owns a pure state machine (`BlockDoc`). TypeScript is a thin shell: forwards input events in, reads state via `get_render_state(handle)`, patches `contenteditable` divs on each RAF frame. Block structure is a `TreeDoc` (Kleppmann's CRDT). Block content is a `Map[BlockId, TextDoc]`.
+
+**Prerequisites:** `@tree.TreeDoc` and `@text.TextDoc` are available from `dowdiness/event-graph-walker` (shipped in PR #12). No additional CRDT work needed before starting.
+
+**V1 simplifications (known deviations from the design doc):**
+- **No unified oplog.** Each `TextDoc` is an independent CRDT instance with no shared causal history. Unified version vector across tree + text ops is Phase 2 (design doc §"Joint CRDT invariants").
+- **Explicit order array.** `TreeDoc` does not expose `create_node_after`. `BlockDoc` carries an `order: Array[BlockId]` for display ordering. The tree still records structural ops for future sync.
+- **Line-by-line Markdown parser.** No Loom grammar. Multi-line paragraphs are accumulated across blank-line boundaries. Unknown syntax falls through to `Paragraph` (not `Raw`; raw-block preservation is Phase 2).
+- **Numbered-list start number ignored.** Exporter always renumbers from `1`. `3. item` round-trips to `1. item`.
+- **Save/load = browser download/upload.** No file-system API, no `.crdt` sidecar. A toolbar provides a "Download .md" button and a file-picker "Upload .md" button.
 
 **Design reference:** [2026-03-28-block-editor-design.md](2026-03-28-block-editor-design.md)
 
@@ -218,10 +227,34 @@ Save to: `examples/block-editor/web/vite.config.ts`
       padding-left: 1em;
       color: rgba(255,255,255,0.7);
     }
+    #toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    #toolbar button, #toolbar label {
+      background: rgba(130, 80, 223, 0.15);
+      border: 1px solid rgba(130, 80, 223, 0.4);
+      color: #c792ea;
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    #toolbar button:hover, #toolbar label:hover { background: rgba(130, 80, 223, 0.3); }
+    #btn-upload-input { display: none; }
   </style>
 </head>
 <body>
-  <div id="editor-root"></div>
+  <div id="editor-root">
+    <div id="toolbar">
+      <button id="btn-download">Download .md</button>
+      <label for="btn-upload-input">Upload .md
+        <input id="btn-upload-input" type="file" accept=".md,text/markdown,text/plain" />
+      </label>
+    </div>
+    <div id="editor-blocks"></div>
+  </div>
   <script type="module" src="./src/main.ts"></script>
 </body>
 </html>
@@ -440,6 +473,31 @@ test "BlockDoc: list item style" {
   doc.set_checked(id, true)
   inspect(doc.get_checked(id), content="true")
 }
+
+///|
+test "BlockDoc: create_block_after inserts at correct position" {
+  let doc = @main.BlockDoc::new("alice")
+  let a = doc.create_block(Paragraph, parent=@main.root_block_id)
+  let b = doc.create_block(Paragraph, parent=@main.root_block_id)
+  // Insert c after a — should land between a and b
+  let c = doc.create_block_after(a, Paragraph)
+  let children = doc.children(@main.root_block_id)
+  inspect(children.length(), content="3")
+  inspect(children[0] == a, content="true")
+  inspect(children[1] == c, content="true")
+  inspect(children[2] == b, content="true")
+}
+
+///|
+test "BlockDoc: create_block_after appends when after_id is last" {
+  let doc = @main.BlockDoc::new("alice")
+  let a = doc.create_block(Paragraph, parent=@main.root_block_id)
+  let b = doc.create_block_after(a, Paragraph)
+  let children = doc.children(@main.root_block_id)
+  inspect(children.length(), content="2")
+  inspect(children[0] == a, content="true")
+  inspect(children[1] == b, content="true")
+}
 ```
 
 Save to: `examples/block-editor/main/block_doc_wbtest.mbt`
@@ -478,6 +536,10 @@ pub let root_block_id : BlockId = @tree.root_id
 pub struct BlockDoc {
   priv tree : @tree.TreeDoc
   priv texts : Map[BlockId, @text.TextDoc]
+  /// Display order for root-level blocks. V1 simplification: TreeDoc does not
+  /// expose `create_node_after`, so we track order explicitly. Phase 2 replaces
+  /// this with fractional-index–based TreeDoc ordering.
+  priv mut order : Array[BlockId]
   priv replica_id : String
 }
 
@@ -486,12 +548,31 @@ pub fn BlockDoc::new(replica_id : String) -> BlockDoc {
   {
     tree: @tree.TreeDoc::new(replica_id),
     texts: Map::new(),
+    order: [],
     replica_id,
   }
 }
 
 ///|
-/// Create a new block of the given type under `parent`.
+/// Internal helper: attach type properties and a TextDoc to a newly created node id.
+fn BlockDoc::init_block(
+  self : BlockDoc,
+  id : BlockId,
+  block_type : BlockType,
+) -> Unit {
+  let (type_str, extra) = block_type_to_string(block_type)
+  self.tree.set_property(id, "type", type_str)
+  for key, value in extra {
+    self.tree.set_property(id, key, value)
+  }
+  match block_type {
+    Divider => ()
+    _ => self.texts.set(id, @text.TextDoc::new(self.replica_id))
+  }
+}
+
+///|
+/// Create a new block of the given type as the last child of `parent`.
 /// Returns the new block's id.
 pub fn BlockDoc::create_block(
   self : BlockDoc,
@@ -499,27 +580,51 @@ pub fn BlockDoc::create_block(
   parent~ : BlockId,
 ) -> BlockId {
   let id = self.tree.create_node(parent~)
-  // Write type and extra props into TreeDoc
-  let (type_str, extra) = block_type_to_string(block_type)
-  self.tree.set_property(id, "type", type_str)
-  for key, value in extra {
-    self.tree.set_property(id, key, value)
-  }
-  // Create an empty TextDoc for this block (only text-bearing blocks use it)
-  match block_type {
-    Divider => ()
-    _ => {
-      let text_doc = @text.TextDoc::new(self.replica_id)
-      self.texts.set(id, text_doc)
-    }
+  self.init_block(id, block_type)
+  if parent == root_block_id {
+    self.order.push(id)
   }
   id
 }
 
 ///|
-/// Delete a block (moves to trash in TreeDoc).
+/// Create a new block immediately after `after_id` in display order.
+/// If `after_id` is not in the order (e.g., not a root block), appends.
+pub fn BlockDoc::create_block_after(
+  self : BlockDoc,
+  after_id : BlockId,
+  block_type : BlockType,
+) -> BlockId {
+  let id = self.tree.create_node(parent=root_block_id)
+  self.init_block(id, block_type)
+  // Find insertion index
+  let mut insert_at = self.order.length()
+  for i = 0; i < self.order.length(); i = i + 1 {
+    if self.order[i] == after_id {
+      insert_at = i + 1
+      break
+    }
+  }
+  // Rebuild order with id at insert_at
+  let new_order : Array[BlockId] = []
+  for i = 0; i < self.order.length(); i = i + 1 {
+    if i == insert_at { new_order.push(id) }
+    new_order.push(self.order[i])
+  }
+  if insert_at == self.order.length() { new_order.push(id) }
+  self.order = new_order
+  id
+}
+
+///|
+/// Delete a block (moves to trash in TreeDoc; removes from display order).
 pub fn BlockDoc::delete_block(self : BlockDoc, id : BlockId) -> Unit {
   self.tree.delete_node(id)
+  let filtered : Array[BlockId] = []
+  for bid in self.order {
+    if bid != id { filtered.push(bid) }
+  }
+  self.order = filtered
 }
 
 ///|
@@ -534,8 +639,19 @@ pub fn BlockDoc::move_block(
 
 ///|
 /// Get visible children of a block (excludes deleted blocks).
+/// For root_block_id, returns the explicit display order.
+/// For non-root blocks, delegates to TreeDoc (Phase 2 nested blocks).
 pub fn BlockDoc::children(self : BlockDoc, parent : BlockId) -> Array[BlockId] {
-  self.tree.children(parent)
+  if parent == root_block_id {
+    // Filter out any blocks deleted externally (e.g., via apply_remote_op)
+    let result : Array[BlockId] = []
+    for id in self.order {
+      if self.tree.is_alive(id) { result.push(id) }
+    }
+    result
+  } else {
+    self.tree.children(parent)
+  }
 }
 
 ///|
@@ -1011,6 +1127,20 @@ test "import: code block" {
 }
 
 ///|
+test "import: multi-line paragraph accumulated into one block" {
+  let md =
+    #|First line of paragraph
+    #|second line of same paragraph
+    #|
+    #|New paragraph here
+  let doc = @main.block_doc_from_markdown(md, "alice")
+  let children = doc.children(@main.root_block_id)
+  inspect(children.length(), content="2")
+  inspect(doc.get_text(children[0]), content="First line of paragraph second line of same paragraph")
+  inspect(doc.get_text(children[1]), content="New paragraph here")
+}
+
+///|
 test "import: round-trip paragraph and heading" {
   let original =
     #|# My Document
@@ -1060,16 +1190,32 @@ Expected: `block_doc_from_markdown` not defined.
 ///   - Code fences: "```lang" ... "```"
 ///   - Block quotes: "> "
 ///   - Dividers: "---" or "***" or "___" (standalone)
-///   - Everything else: Paragraph
+///   - Paragraph: consecutive non-blank, non-special lines accumulated into one block.
 ///
-/// V1 limitation: no nested block parsing. Continuation-indented
-/// list children are treated as part of the parent list item's text.
-/// Blank lines between blocks are skipped.
+/// V1 deviations: no nested block parsing; unknown syntax becomes Paragraph (not Raw).
 
 ///|
 fn is_divider_line(line : String) -> Bool {
   let t = line.trim()
   t == "---" || t == "***" || t == "___"
+}
+
+///|
+/// Returns true if `line` opens a new structured block (not a paragraph continuation).
+fn is_special_line(line : String) -> Bool {
+  if line.trim() == "" { return true }
+  if is_divider_line(line) { return true }
+  if starts_with(line, "```") { return true }
+  if starts_with(line, "> ") { return true }
+  match heading_level(line) {
+    Some(_) => return true
+    None => ()
+  }
+  match list_marker(line) {
+    Some(_) => return true
+    None => ()
+  }
+  false
 }
 
 ///|
@@ -1193,10 +1339,15 @@ pub fn block_doc_from_markdown(md : String, replica_id : String) -> BlockDoc {
       }
       None => ()
     }
-    // Paragraph (default)
-    let id = doc.create_block(Paragraph, parent=root_block_id)
-    doc.set_text(id, line)
+    // Paragraph (default) — accumulate continuation lines until blank or special
+    let para_lines : Array[String] = [line]
     i = i + 1
+    while i < lines.length() && not(is_special_line(lines[i])) {
+      para_lines.push(lines[i])
+      i = i + 1
+    }
+    let id = doc.create_block(Paragraph, parent=root_block_id)
+    doc.set_text(id, para_lines.join(" "))
   }
   doc
 }
@@ -1344,13 +1495,13 @@ pub fn editor_insert_block_after(
   after_id_str : String,
   block_type_str : String,
 ) -> String {
-  // Parse after_id_str "agent:counter"
+  ignore(block_type_str)  // V1: always inserts a Paragraph; caller uses editor_set_block_type to convert
   let doc = _registry[handle]
-  let id = doc.create_block(Paragraph, parent=root_block_id)
-  ignore(after_id_str)
-  ignore(block_type_str)
-  // Return new block id string so TypeScript can focus it
-  id.agent + ":" + id.counter.to_string()
+  let new_id = match parse_block_id(after_id_str, doc) {
+    Some(after_id) => doc.create_block_after(after_id, Paragraph)
+    None => doc.create_block(Paragraph, parent=root_block_id)
+  }
+  new_id.agent + ":" + new_id.counter.to_string()
 }
 
 ///|
@@ -1555,7 +1706,7 @@ type RenderState = { blocks: BlockJson[] };
 let mb: EditorModule;
 let handle = -1;
 let rafPending = false;
-const root = document.getElementById('editor-root') as HTMLDivElement;
+const root = document.getElementById('editor-blocks') as HTMLDivElement;
 const blockDivs = new Map<string, HTMLDivElement>();
 
 // ── RAF render loop ────────────────────────────────────────────────────────
@@ -1641,7 +1792,33 @@ function attachBlockListeners(div: HTMLDivElement): void {
       scheduleRender();
       if (prevDiv) { prevDiv.focus(); placeCursorAtEnd(prevDiv); }
     }
+
+    // Autoformat: Space after a Markdown prefix converts the block type.
+    // e.g. "##" + Space → Heading(2), "-" + Space → BulletList
+    if (e.key === ' ') {
+      const text = (div.textContent ?? '').trimEnd();
+      const fmt = detectAutoformat(text);
+      if (fmt) {
+        e.preventDefault();
+        mb.editor_set_block_type(handle, id, fmt.type, fmt.level);
+        mb.editor_set_block_text(handle, id, '');
+        scheduleRender();
+      }
+    }
   });
+}
+
+// ── Autoformat detection ───────────────────────────────────────────────────
+
+function detectAutoformat(text: string): { type: string; level: number } | null {
+  // "# " through "###### " → heading
+  const headingMatch = text.match(/^(#{1,6})$/);
+  if (headingMatch) return { type: 'heading', level: headingMatch[1].length };
+  if (text === '-' || text === '*') return { type: 'list_item_bullet', level: 0 };
+  if (/^\d+\.$/.test(text))         return { type: 'list_item_numbered', level: 0 };
+  if (text === '- [ ]')             return { type: 'list_item_todo', level: 0 };
+  if (text === '>')                 return { type: 'quote', level: 0 };
+  return null;
 }
 
 function placeCursorAtStart(div: HTMLDivElement): void {
@@ -1673,7 +1850,8 @@ async function main(): Promise<void> {
   mb.editor_import_markdown(handle, [
     '# Welcome to Block Editor',
     '',
-    'Start typing below. Press **Enter** to create a new block.',
+    'Start typing below. Press Enter to create a new block.',
+    'Type "# " to convert a paragraph to a heading.',
     '',
     '- First bullet item',
     '- Second bullet item',
@@ -1683,6 +1861,31 @@ async function main(): Promise<void> {
   ].join('\n'));
 
   scheduleRender();
+
+  // ── Download Markdown ─────────────────────────────────────────────────────
+  document.getElementById('btn-download')?.addEventListener('click', () => {
+    const md = mb.editor_export_markdown(handle);
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'document.md'; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // ── Upload Markdown ───────────────────────────────────────────────────────
+  document.getElementById('btn-upload-input')?.addEventListener('change', (e: Event) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      mb.editor_import_markdown(handle, reader.result as string);
+      // Clear old divs so render loop recreates them in new order
+      blockDivs.forEach(div => div.remove());
+      blockDivs.clear();
+      scheduleRender();
+    };
+    reader.readAsText(file);
+  });
 }
 
 main();
@@ -1761,7 +1964,34 @@ Press Backspace in an empty block. Confirm:
 
 ---
 
-- [ ] **Step 8: Final commit**
+- [ ] **Step 8: Verify autoformat**
+
+In a paragraph, type `##` then Space. Confirm:
+- Block converts to a Heading(2)
+- Text is cleared (prefix consumed)
+
+Type `-` then Space. Confirm:
+- Block converts to a bullet list item
+
+---
+
+- [ ] **Step 9: Verify Download .md**
+
+Click the "Download .md" button. Confirm:
+- A `document.md` file is downloaded
+- Opening it shows the expected Markdown content
+
+---
+
+- [ ] **Step 10: Verify Upload .md**
+
+Click "Upload .md" and choose a local Markdown file. Confirm:
+- The editor reloads with blocks from the file
+- Headings and lists render correctly
+
+---
+
+- [ ] **Step 11: Final commit**
 
 ```
 feat(block-editor): working single-peer block editor demo
@@ -1773,20 +2003,25 @@ feat(block-editor): working single-peer block editor demo
 
 After the first slice works:
 
-1. **Nested blocks** — list items as parents of other blocks; indented rendering
-2. **Loom Markdown grammar** — replace the hand-written line parser with a proper Loom grammar for CommonMark block structure
-3. **Markdown source pane** — read-only or editable `export_markdown` view alongside the block view
-4. **File persistence** — `.md` + `.crdt` sidecar, file watcher, reconciliation
-5. **Collaboration** — two-peer sync via WebRTC using `TreeDoc::export_ops` / `apply_remote_op`
-6. **Undo/redo** — document-level UndoManager spanning tree + text ops
-7. **Slash commands** — `/heading`, `/bullet`, `/code` type conversions
-8. **Rabbita rendering** — replace DOM patching with Rabbita Elm-architecture
+1. **Nested blocks** — list items as parents of other blocks; indented rendering; replace `order` array with `TreeDoc::create_node_after`
+2. **Unified oplog** — shared version vector + causal history across tree + text ops (design doc §"Joint CRDT invariants")
+3. **Raw block preservation** — unknown Markdown syntax → `Raw` block, exported verbatim
+4. **Loom Markdown grammar** — replace the hand-written line parser with a proper Loom grammar for CommonMark block structure
+5. **Markdown source pane** — read-only or editable `export_markdown` view alongside the block view
+6. **File persistence** — `.md` + `.crdt` sidecar, file watcher, reconciliation
+7. **Collaboration** — two-peer sync via WebRTC using `TreeDoc::export_ops` / `apply_remote_op`
+8. **Undo/redo** — document-level UndoManager spanning tree + text ops
+9. **Slash commands** — `/heading`, `/bullet`, `/code` type conversions in addition to the Space-trigger autoformat already in Phase 1
+10. **Rabbita rendering** — replace DOM patching with Rabbita Elm-architecture
 
 ---
 
 ## Notes for Implementation
 
-- `BlockDoc::set_text` uses delete-then-insert for arbitrary assignment. The TypeScript shell should prefer `insert_char` / `delete_char` for incremental edits (preserves CRDT history granularity).
-- `render_state_to_json` flattens the tree to a top-level array. Phase 2 will add a `depth` field and `parent_id` when nested blocks are needed.
-- The `parse_block_id` function in `block_init.mbt` does a simple string split on the last `:`. Agent IDs must not contain `:` — enforce this in `BlockDoc::new` or document the constraint.
-- `editor_insert_block_after` currently ignores `after_id` and always appends to root. A proper implementation should find the index of `after_id` in the children list and insert at `index + 1` using fractional indexing. For the first slice this is acceptable; fix in Phase 2.
+- **`BlockDoc::set_text`** uses delete-then-insert for arbitrary assignment. The TypeScript shell should prefer `insert_char` / `delete_char` for incremental edits (preserves CRDT history granularity).
+- **`render_state_to_json`** flattens the tree to a top-level array. Phase 2 will add a `depth` field and `parent_id` when nested blocks are needed.
+- **`parse_block_id`** splits on the last `:`. Agent IDs must not contain `:` — enforce this in `BlockDoc::new` or document the constraint.
+- **`editor_insert_block_after`** now uses `create_block_after` which maintains the explicit `order` array. When Phase 2 adds fractional-index–based TreeDoc ordering, replace `order` with `TreeDoc::create_node_after` and drop the array.
+- **Autoformat** fires on Space (not Enter) so the user can undo the conversion by pressing Backspace before leaving the block. This matches Notion's behavior.
+- **Upload replaces the document.** `editor_import_markdown` replaces the registry entry with a fresh `BlockDoc`. Old `BlockId`s are no longer valid; `blockDivs` must be cleared before the next render.
+- **V1 known gaps (from Codex review):** unified oplog, Raw-block preservation, numbered-list start numbers, nested block creation. All documented in the V1 simplifications section at the top of this plan.
