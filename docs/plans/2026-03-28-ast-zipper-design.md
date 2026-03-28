@@ -200,14 +200,19 @@ Applying an action produces a result that couples the Zipper change with the dat
 
 ```moonbit
 pub(all) struct EditResult {
-  zipper : Zipper               // new Zipper state
-  action : EditAction           // the action that was applied (for logging)
-  role : PositionRole           // position role before the edit
-  tree_edit_op : TreeEditOp?    // None for navigation-only actions
+  zipper : Zipper        // new Zipper state
+  action : EditAction    // the action that was applied (for logging)
+  role : PositionRole    // position role before the edit
+  is_structural : Bool   // false for Move (navigation-only); true for all edits that mutate text
 }
 ```
 
-Note: `EditResult` carries a `TreeEditOp`, not a raw `TextDelta`. Text delta computation is delegated to the existing `compute_text_edit` pipeline, which already handles source text preservation, formatting, and span lookup. The Zipper does not reimplement text delta logic.
+`EditResult` does **not** carry a `TreeEditOp` or `NodeId`. The Zipper has no access to
+`NodeId` — those live in the ProjNode tree, which `apply_action` does not receive.
+Instead, `apply_action` returns the new Zipper state and an `is_structural` flag.
+The integration layer (`on_tree_key`) holds both the Zipper and the `SyncEditor`, so it
+resolves the `NodeId` via `find_proj_node_for_focus` and dispatches via the Tier-2 methods
+(`delete_node`, `commit_edit`, `apply_text_transform`) from Framework Extraction Phase 1.
 
 ---
 
@@ -331,6 +336,30 @@ pub fn from_root(term : Term) -> Zipper
 pub fn depth(z : Zipper) -> Int
 ```
 
+### ctx_to_child_index
+
+Maps a context frame to the child index of the hole within the reconstructed parent.
+Used by `zipper_to_trail` to walk the ProjNode tree in parallel with the Zipper path.
+
+```moonbit
+fn ctx_to_child_index(ctx : TermCtx) -> Int {
+  match ctx {
+    CtxLamBody(_)          => 0
+    CtxAppFunc(_)          => 0
+    CtxAppArg(_)           => 1
+    CtxBopLeft(..)         => 0
+    CtxBopRight(..)        => 1
+    CtxIfCond(..)          => 0
+    CtxIfThen(..)          => 1
+    CtxIfElse(..)          => 2
+    CtxModuleDef(before, ..) => before.length()
+    CtxModuleBody(defs)    => defs.length()
+  }
+}
+```
+
+This matches the index table in the "Path Indices" section.
+
 ---
 
 ## Applying Edit Actions
@@ -361,40 +390,41 @@ pub fn apply_action(
     Delete => {
       let hole_id = holes.fresh_hole_id()
       let z2 = { ..z, focus: Hole(hole_id) }
-      Ok({ zipper: z2, action, role, tree_edit_op: Some(TreeEditOp::Delete(focus_node_id(z))) })
+      Ok({ zipper: z2, action, role, is_structural: true })
     }
 
     Replace(new_term) => {
       let z2 = { ..z, focus: new_term }
-      Ok({ zipper: z2, action, role, tree_edit_op: Some(make_replace_op(z, new_term)) })
+      Ok({ zipper: z2, action, role, is_structural: true })
     }
 
     WrapLam(param) => {
       let z2 = { ..z, focus: Lam(param, z.focus) }
-      Ok({ zipper: z2, action, role, tree_edit_op: Some(TreeEditOp::WrapInLambda(focus_node_id(z), param)) })
+      Ok({ zipper: z2, action, role, is_structural: true })
     }
 
     WrapApp => {
       let hole_id = holes.fresh_hole_id()
       let z2 = { ..z, focus: App(z.focus, Hole(hole_id)) }
-      Ok({ zipper: z2, action, role, tree_edit_op: Some(TreeEditOp::WrapInApp(focus_node_id(z))) })
+      Ok({ zipper: z2, action, role, is_structural: true })
     }
 
     WrapBop(op) => {
       let hole_id = holes.fresh_hole_id()
       let z2 = { ..z, focus: Bop(op, z.focus, Hole(hole_id)) }
-      Ok({ zipper: z2, action, role, tree_edit_op: Some(make_wrap_bop_op(z, op)) })
+      Ok({ zipper: z2, action, role, is_structural: true })
     }
 
     UnwrapKeeping(child_idx) => {
       match unwrap_keeping(z, child_idx) {
-        Some(z2) => Ok({ zipper: z2, action, role, tree_edit_op: Some(make_unwrap_op(z, child_idx)) })
+        Some(z2) => Ok({ zipper: z2, action, role, is_structural: true })
         None => Err("cannot unwrap: invalid child index or leaf node")
       }
     }
 
     CommitLeafEdit(new_text) => {
-      Ok({ zipper: z, action, role, tree_edit_op: Some(TreeEditOp::CommitEdit(focus_node_id(z), new_text)) })
+      // Zipper stays at focus (text changed, structure unchanged)
+      Ok({ zipper: z, action, role, is_structural: true })
     }
   }
 }
@@ -437,24 +467,75 @@ If only one child is non-trivial (the rest are Holes or literals), the UI auto-s
 
 ### Text Delta Delegation
 
-`EditResult.tree_edit_op` is passed to the existing `compute_text_edit` pipeline:
+When `result.is_structural` is true, the integration layer (`on_tree_key`) resolves the
+NodeId and dispatches via the Tier-2 methods from Framework Extraction Phase 1:
 
 ```moonbit
 // In the integration layer (see Integration section):
-match result.tree_edit_op {
-  Some(op) => {
-    let delta = compute_text_edit(op, edit_context)  // existing function
-    sync_editor.apply_text_edit(delta)
-  }
-  None => ()  // navigation only
+if result.is_structural {
+  let proj_root = sync_editor.get_proj_node()??  // None → bail
+  let proj_node = find_proj_node_for_focus(zipper, proj_root)??  // None → bail
+  let node_id = proj_node.node_id
+  let _ = dispatch_tier2(sync_editor, node_id, result.action, timestamp_ms)
 }
 ```
 
-This avoids reimplementing text delta logic. `compute_text_edit` already handles:
-- Source text span lookup via SourceMap
-- Original text preservation (no reformatting of unchanged subtrees)
-- Placeholder text generation
-- Error handling for missing spans
+`dispatch_tier2` maps each `EditAction` to the appropriate Tier-2 call:
+
+```moonbit
+fn dispatch_tier2(
+  editor : SyncEditor[Term],
+  node_id : NodeId,
+  action : EditAction,
+  timestamp_ms : Int,
+) -> Result[Unit, String] {
+  match action {
+    Delete =>
+      editor.delete_node(node_id, timestamp_ms)
+    CommitLeafEdit(text) =>
+      editor.commit_edit(node_id, text, timestamp_ms)
+    Replace(new_term) =>
+      editor.commit_edit(node_id, @ast.print_term(new_term), timestamp_ms)
+    WrapLam(param) =>
+      editor.apply_text_transform(node_id, fn(src, s, e) {
+        Ok("(λ\{param}. \{src.substring(s, e)})")
+      }, timestamp_ms)
+    WrapApp =>
+      editor.apply_text_transform(node_id, fn(src, s, e) {
+        Ok("(\{src.substring(s, e)} _)")
+      }, timestamp_ms)
+    WrapBop(op) => {
+      let sym = match op { Plus => "+"; Minus => "-" }
+      editor.apply_text_transform(node_id, fn(src, s, e) {
+        Ok("(\{src.substring(s, e)} \{sym} _)")
+      }, timestamp_ms)
+    }
+    UnwrapKeeping(child_idx) => {
+      // Replace parent span with the source text of the kept child.
+      // The kept child's span is looked up via its NodeId in the ProjNode tree.
+      editor.apply_text_transform(node_id, fn(src, _, _) {
+        // proj_node.children[child_idx] is the kept child's ProjNode
+        // Its NodeId → range gives the preserved source span
+        let kept_id = proj_node.children[child_idx].node_id  // captured from outer scope
+        match editor.get_node_range(kept_id) {
+          Some(r) => Ok(src.substring(r.start, r.end_))
+          None    => Err("kept child not in source map")
+        }
+      }, timestamp_ms)
+    }
+    Move(_) => Ok(())  // navigation — no text edit
+  }
+}
+```
+
+This avoids reimplementing text delta logic. The Tier-2 methods handle:
+- Source text span lookup via `SourceMap`
+- CRDT op production + undo recording
+- Memo invalidation + incremental reparse
+
+Note: `UnwrapKeeping` requires `proj_node` (the focused node's ProjNode, found by
+`find_proj_node_for_focus`) to be in scope in `dispatch_tier2`. In practice, pass it as a
+parameter alongside `node_id`.
 
 ---
 
@@ -495,8 +576,7 @@ fn zipper_to_trail(z : Zipper) -> Array[(Term, Int)] {
       }
     }
   }
-  entries.rev()
-  entries
+  entries.rev()  // rev() returns a new reversed array; this is the return value
 }
 
 fn walk_matching(
@@ -627,6 +707,7 @@ fn on_tree_key(
   state : LambdaEditorState,
   action : EditAction,
   sync_editor : SyncEditor[Term],
+  timestamp_ms : Int,
 ) -> LambdaEditorState {
   let zipper = match state.zipper {
     Some(z) => z
@@ -637,46 +718,43 @@ fn on_tree_key(
     Err(_) => state  // invalid action, no-op
 
     Ok(result) => {
-      // 1. If structural edit, delegate to existing text-delta pipeline
-      match result.tree_edit_op {
-        Some(op) => {
-          let edit_context = EditContext {
-            source_text: sync_editor.get_text(),
-            source_map: sync_editor.get_source_map(),
-            registry: sync_editor.get_registry(),
-            flat_proj: sync_editor.get_flat_proj(),
-          }
-          match compute_text_edit(op, edit_context) {
-            Ok(delta) => sync_editor.apply_text_edit(delta.start, delta.old_end, delta.new_text, timestamp_ms)
-            Err(_) => ()
+      // 1. If structural edit, resolve NodeId and dispatch via Tier-2
+      if result.is_structural {
+        let proj_root = match sync_editor.get_proj_node() {
+          Some(r) => r
+          None => return state
+        }
+        match find_proj_node_for_focus(zipper, proj_root) {
+          None => return state  // Zipper focus not found in ProjNode tree
+          Some(proj_node) => {
+            let _ = dispatch_tier2(
+              sync_editor, proj_node.node_id, proj_node,
+              result.action, timestamp_ms,
+            )
           }
         }
-        None => ()  // navigation only
       }
 
       // 2. Log the action
       let log = state.action_log.copy()
       log.push((result.action, result.role))
 
-      // 3. Sync Zipper to reparsed AST
-      let new_term = sync_editor.get_ast()
-      let synced = match new_term {
-        Some(term) => sync_after_roundtrip(result.zipper, term)
+      // 3. Sync Zipper to reparsed AST (after text round-trip)
+      let synced = match sync_editor.get_ast() {
+        Some(new_term) => sync_after_roundtrip(result.zipper, new_term)
         None => None
       }
 
-      // 4. Register hole metadata after reconcile (if a hole was created)
+      // 4. Register hole metadata for newly created holes
       match result.action {
         Delete | WrapApp | WrapBop(_) => {
-          // The hole now has a stable NodeId from reconcile.
-          // Find it via Zipper position in ProjNode tree and register.
-          register_new_holes(state.hole_registry, synced, sync_editor)
+          register_new_holes(state.hole_registry, sync_editor, result)
         }
         _ => ()
       }
 
       {
-        tree_state: state.tree_state,  // updated via TreeEditorState::refresh separately
+        tree_state: state.tree_state,  // refreshed separately on next frame
         zipper: synced,
         hole_registry: state.hole_registry,
         action_log: log,
@@ -684,6 +762,44 @@ fn on_tree_key(
     }
   }
 }
+```
+
+### register_new_holes
+
+After the text round-trip, any newly created `Hole` nodes have stable `NodeId`s assigned
+by reconciliation. Scan the fresh ProjNode tree for holes not yet in the registry:
+
+```moonbit
+fn register_new_holes(
+  registry : HoleRegistry,
+  sync_editor : SyncEditor[Term],
+  result : EditResult,
+) -> Unit {
+  let proj_root = match sync_editor.get_proj_node() {
+    Some(r) => r
+    None => return
+  }
+  let info = HoleInfo::{ created_by: result.action, role: result.role }
+  collect_new_holes(proj_root, registry, info)
+}
+
+fn collect_new_holes(
+  node : ProjNode[Term],
+  registry : HoleRegistry,
+  info : HoleInfo,
+) -> Unit {
+  match node.kind {
+    Hole(_) =>
+      if registry.get(node.node_id).is_empty() {
+        registry.register(node.node_id, info)
+      }
+    _ => ()
+  }
+  for child in node.children {
+    collect_new_holes(child, registry, info)
+  }
+}
+```
 ```
 
 ### Collapsed Node Interaction
