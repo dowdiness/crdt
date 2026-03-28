@@ -18,6 +18,18 @@ pub fn create_editor(String) -> Int
 
 pub fn destroy_editor(Int) -> Unit
 
+pub fn editor_delete_block(Int, String) -> Unit
+
+pub fn editor_export_markdown(Int) -> String
+
+pub fn editor_import_markdown(Int, String) -> Unit
+
+pub fn editor_insert_block_after(Int, String, String) -> String
+
+pub fn editor_set_block_text(Int, String, String) -> Unit
+
+pub fn editor_set_block_type(Int, String, String, Int, String) -> Unit
+
 pub fn get_render_state(Int) -> String
 
 pub let root_block_id : @movable_tree.TreeNodeId
