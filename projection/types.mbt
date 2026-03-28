@@ -1,18 +1,13 @@
-// Active runtime types for projection editing.
+// Re-export generic types from framework/core for backward compatibility.
+// NodeId (struct) can be re-exported via pub using.
+// DropPosition and FocusHint (enums) are kept here as local typedefs
+// because pub using makes enums abstract (no constructor access, no derives).
 
 ///|
 using @loomcore {type Range}
 
 ///|
-/// Unique identifier for AST nodes (persistent across edits)
-pub struct NodeId(Int) derive(Show, Eq, Hash, Compare)
-
-///|
-/// Construct a NodeId from a raw integer.
-/// Used by cross-package JSON parsers that cannot directly construct NodeId.
-pub fn NodeId::from_int(n : Int) -> NodeId {
-  NodeId(n)
-}
+pub using @core {type NodeId}
 
 ///|
 /// Drop position for drag-and-drop operations

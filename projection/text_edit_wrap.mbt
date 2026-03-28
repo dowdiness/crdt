@@ -150,14 +150,14 @@ fn compute_insert_child(
                 // Insert before the body (last child)
                 let body = parent_node.children[parent_node.children.length() -
                   1]
-                match source_map.get_range(NodeId(body.node_id)) {
+                match source_map.get_range(NodeId::from_int(body.node_id)) {
                   Some(r) => r.start
                   None => parent_range.end
                 }
               } else {
                 match
                   source_map.get_range(
-                    NodeId(parent_node.children[index].node_id),
+                    NodeId::from_int(parent_node.children[index].node_id),
                   ) {
                   Some(r) => r.start
                   None => parent_range.start

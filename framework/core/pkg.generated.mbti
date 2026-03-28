@@ -1,0 +1,41 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/canopy/framework/core"
+
+import {
+  "moonbitlang/core/ref",
+}
+
+// Values
+pub fn[T] assign_fresh_ids(ProjNode[T], @ref.Ref[Int]) -> ProjNode[T]
+
+pub fn next_proj_node_id(@ref.Ref[Int]) -> Int
+
+// Errors
+
+// Types and methods
+pub struct NodeId(Int)
+pub fn NodeId::from_int(Int) -> Self
+#deprecated
+pub fn NodeId::inner(Self) -> Int
+pub impl Compare for NodeId
+pub impl Eq for NodeId
+pub impl Hash for NodeId
+pub impl Show for NodeId
+
+pub struct ProjNode[T] {
+  node_id : Int
+  kind : T
+  children : Array[ProjNode[T]]
+  start : Int
+  end : Int
+}
+pub fn[T] ProjNode::id(Self[T]) -> NodeId
+pub fn[T] ProjNode::new(T, Int, Int, Int, Array[Self[T]]) -> Self[T]
+pub impl[T : Eq] Eq for ProjNode[T]
+pub impl[T : Show] Show for ProjNode[T]
+pub impl[T : ToJson] ToJson for ProjNode[T]
+
+// Type aliases
+
+// Traits
+

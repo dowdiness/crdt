@@ -63,7 +63,7 @@ fn find_enclosing_lam_binder(
 ) -> BindingSite? {
   for pid, pnode in registry {
     for child in pnode.children {
-      if NodeId(child.node_id) == node_id {
+      if NodeId::from_int(child.node_id) == node_id {
         match pnode.kind {
           @ast.Term::Lam(param, _) =>
             if param == name {
@@ -157,7 +157,7 @@ pub fn collect_lam_env(
   fn walk_up(nid : NodeId) {
     for pid, pnode in registry {
       for child in pnode.children {
-        if NodeId(child.node_id) == nid {
+        if NodeId::from_int(child.node_id) == nid {
           match pnode.kind {
             @ast.Term::Lam(param, _) => env = env.add(param)
             _ => ()

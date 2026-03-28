@@ -5,7 +5,7 @@
 test "apply_edit shifts positions backward on delete" {
   // Create a source map with a node at position 5-10
   let source_map = SourceMap::new()
-  let node_id = NodeId(1)
+  let node_id = NodeId::from_int(1)
   source_map.node_to_range[node_id] = Range::new(5, 10)
   source_map.rebuild_ranges()
 
@@ -26,7 +26,7 @@ test "apply_edit shifts positions backward on delete" {
 ///|
 test "apply_edit leaves nodes before deletion unchanged" {
   let source_map = SourceMap::new()
-  let node_id = NodeId(1)
+  let node_id = NodeId::from_int(1)
   source_map.node_to_range[node_id] = Range::new(0, 3)
   source_map.rebuild_ranges()
 
@@ -47,7 +47,7 @@ test "apply_edit leaves nodes before deletion unchanged" {
 ///|
 test "apply_edit handles overlapping deletion" {
   let source_map = SourceMap::new()
-  let node_id = NodeId(1)
+  let node_id = NodeId::from_int(1)
   // Node spans 3-10
   source_map.node_to_range[node_id] = Range::new(3, 10)
   source_map.rebuild_ranges()
@@ -71,11 +71,11 @@ test "apply_edit handles overlapping deletion" {
 test "apply_edit multiple nodes" {
   let source_map = SourceMap::new()
   // Node A at 0-3 (before deletion)
-  source_map.node_to_range[NodeId(1)] = Range::new(0, 3)
+  source_map.node_to_range[NodeId::from_int(1)] = Range::new(0, 3)
   // Node B at 5-8 (overlaps with deletion end)
-  source_map.node_to_range[NodeId(2)] = Range::new(5, 8)
+  source_map.node_to_range[NodeId::from_int(2)] = Range::new(5, 8)
   // Node C at 10-15 (after deletion)
-  source_map.node_to_range[NodeId(3)] = Range::new(10, 15)
+  source_map.node_to_range[NodeId::from_int(3)] = Range::new(10, 15)
   source_map.rebuild_ranges()
 
   // Delete characters at position 4-6
@@ -83,7 +83,7 @@ test "apply_edit multiple nodes" {
   source_map.apply_edit(4, deleted_range)
 
   // Node A (0-3): unchanged (ends before edit_start)
-  match source_map.get_range(NodeId(1)) {
+  match source_map.get_range(NodeId::from_int(1)) {
     Some(range) => {
       inspect(range.start, content="0")
       inspect(range.end, content="3")
@@ -92,7 +92,7 @@ test "apply_edit multiple nodes" {
   }
 
   // Node B (5-8): overlaps, start unchanged, end shifts backward by 2
-  match source_map.get_range(NodeId(2)) {
+  match source_map.get_range(NodeId::from_int(2)) {
     Some(range) => {
       inspect(range.start, content="5")
       inspect(range.end, content="6") // 8 - 2 = 6
@@ -101,7 +101,7 @@ test "apply_edit multiple nodes" {
   }
 
   // Node C (10-15): after deletion, shifts backward by 2
-  match source_map.get_range(NodeId(3)) {
+  match source_map.get_range(NodeId::from_int(3)) {
     Some(range) => {
       inspect(range.start, content="8") // 10 - 2 = 8
       inspect(range.end, content="13") // 15 - 2 = 13
@@ -113,7 +113,7 @@ test "apply_edit multiple nodes" {
 ///|
 test "apply_edit with zero-length deletion does nothing" {
   let source_map = SourceMap::new()
-  let node_id = NodeId(1)
+  let node_id = NodeId::from_int(1)
   source_map.node_to_range[node_id] = Range::new(5, 10)
   source_map.rebuild_ranges()
 
@@ -165,8 +165,8 @@ test "SourceMap::patch_subtree adds new node entries" {
   )
   sm.patch_subtree(node)
   inspect(sm.node_count(), content="3")
-  inspect(sm.get_range(NodeId(10)) is Some(_), content="true")
-  inspect(sm.get_range(NodeId(11)) is Some(_), content="true")
+  inspect(sm.get_range(NodeId::from_int(10)) is Some(_), content="true")
+  inspect(sm.get_range(NodeId::from_int(11)) is Some(_), content="true")
 }
 
 ///|
@@ -190,6 +190,6 @@ test "SourceMap::remove_subtree then patch_subtree replaces entries" {
   sm.rebuild_ranges()
   inspect(sm.node_count(), content="3")
 
-  inspect(sm.get_range(NodeId(5)), content="None")
-  inspect(sm.get_range(NodeId(7)) is Some(_), content="true")
+  inspect(sm.get_range(NodeId::from_int(5)), content="None")
+  inspect(sm.get_range(NodeId::from_int(7)) is Some(_), content="true")
 }

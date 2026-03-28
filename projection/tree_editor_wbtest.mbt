@@ -437,7 +437,7 @@ test "WrapInLambda keeps wrapped node selected" {
 test "refresh prunes stale ids from UI state" {
   let (root, source_map, state) = tree_editor_test_state("1 + 2")
   let ids = tree_editor_test_ids(state.tree)
-  let stale_id = NodeId(9999)
+  let stale_id = NodeId::from_int(9999)
   let stale_state = {
     ..state,
     selection: [ids[0], stale_id],
