@@ -104,6 +104,9 @@ Historical documentation, completed plans, and investigations.
 - [Incremental SourceMap & Registry](archive/completed-phases/2026-03-22-incremental-sourcemap-registry.md) (Complete)
 - [Two-Layer Architecture Design](archive/completed-phases/2026-03-28-two-layer-architecture-design.md) — `TermSym` Finally Tagless trait, `replay`, `Pretty` interpretation (Complete)
 - [Two-Layer Architecture Impl](archive/completed-phases/2026-03-28-two-layer-architecture-impl.md) — 6-task implementation plan (Complete)
+- [Infinite Canvas Design](archive/completed-phases/2026-03-28-infinite-canvas-design.md) — pan/zoom/drag CSS-transformed DOM canvas (Complete)
+- [Infinite Canvas Impl](archive/completed-phases/2026-03-28-infinite-canvas-impl.md) — `examples/canvas/` implementation plan (Complete)
+- [MovableTree CRDT Impl](archive/completed-phases/2026-03-28-movable-tree-crdt-impl.md) — Kleppmann's move algorithm in event-graph-walker (Complete)
 
 ### Earlier Archive
 

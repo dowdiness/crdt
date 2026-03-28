@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-28
 **Scope:** `examples/canvas/` demo package
-**Status:** Draft (revised after Codex review)
+**Status:** Complete
 
 ## Goal
 
