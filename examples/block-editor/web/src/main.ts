@@ -43,6 +43,7 @@ function render() {
     div.dataset.type = block.block_type;
     div.dataset.level = block.level;
     div.dataset.listStyle = block.list_style;
+    div.dataset.checked = String(block.checked);
     applyAriaRoles(div, block);
     styleBlock(div, block);
 
