@@ -67,3 +67,27 @@ pub(all) struct CanvasState {
   nodes       : Array[CanvasNode]
   interaction : InteractionState
 } derive(Show)
+
+///|
+/// Default state centers the world origin in a 1440×800 browser viewport
+/// and seeds six demo nodes.
+pub impl Default for CanvasState with default() -> CanvasState {
+  {
+    viewport: { x: 520.0, y: 300.0, scale: 1.0 },
+    nodes: [
+      { id: NodeId(1), x: -320.0, y: -160.0, w: 200.0, h: 120.0, kind: NodeKind::Shape("#8250df") },
+      { id: NodeId(2), x: -60.0,  y: -160.0, w: 200.0, h: 120.0, kind: NodeKind::Shape("#c792ea") },
+      { id: NodeId(3), x: 200.0,  y: -160.0, w: 200.0, h: 120.0, kind: NodeKind::Shape("#82aaff") },
+      { id: NodeId(4), x: -320.0, y: 20.0,   w: 200.0, h: 60.0,  kind: NodeKind::Text("Canopy Canvas") },
+      { id: NodeId(5), x: -60.0,  y: 20.0,   w: 200.0, h: 60.0,  kind: NodeKind::Text("Pan · Zoom · Drag") },
+      { id: NodeId(6), x: 200.0,  y: 20.0,   w: 200.0, h: 60.0,  kind: NodeKind::Text("∞") },
+    ],
+    interaction: {
+      dragging:     None,
+      panning:      None,
+      selected:     None,
+      pointer_down: false,
+      did_move:     false,
+    },
+  }
+}
