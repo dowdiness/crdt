@@ -28,7 +28,7 @@ pub fn block_doc_to_markdown(doc : BlockDoc) -> String {
     if i > 0 {
       let need_blank = match (prev_type, bt) {
         // Same list style: no blank line
-        (Some(ListItem(a)), ListItem(b)) => not(list_style_eq(a, b))
+        (Some(ListItem(a)), ListItem(b)) => a != b
         // Everything else gets a blank line between blocks
         _ => true
       }
@@ -96,16 +96,4 @@ pub fn block_doc_to_markdown(doc : BlockDoc) -> String {
     }
   }
   buf.to_string()
-}
-
-// ── Private helpers ────────────────────────────────────────────────────────
-
-///|
-fn list_style_eq(a : ListStyle, b : ListStyle) -> Bool {
-  match (a, b) {
-    (Bullet, Bullet) => true
-    (Numbered, Numbered) => true
-    (Todo, Todo) => true
-    _ => false
-  }
 }

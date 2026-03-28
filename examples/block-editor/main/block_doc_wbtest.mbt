@@ -338,3 +338,87 @@ test "import: heading-like lines inside code fence stay as code" {
     #|--- not a divider
   inspect(doc.get_text(children[0]), content=expected)
 }
+
+///|
+test "round-trip: numbered list" {
+  let md =
+    #|1. first
+    #|2. second
+    #|3. third
+    #|
+  let doc = block_doc_from_markdown(md, "alice")
+  let out = block_doc_to_markdown(doc)
+  inspect(out, content=md)
+}
+
+///|
+test "round-trip: todo list" {
+  let md =
+    #|- [ ] unchecked
+    #|- [x] checked
+    #|
+  let doc = block_doc_from_markdown(md, "alice")
+  let out = block_doc_to_markdown(doc)
+  inspect(out, content=md)
+}
+
+///|
+test "round-trip: code block" {
+  let md =
+    #|```js
+    #|console.log("hello")
+    #|```
+    #|
+  let doc = block_doc_from_markdown(md, "alice")
+  let out = block_doc_to_markdown(doc)
+  inspect(out, content=md)
+}
+
+///|
+test "round-trip: blockquote" {
+  let md =
+    #|> quoted text
+    #|
+  let doc = block_doc_from_markdown(md, "alice")
+  let out = block_doc_to_markdown(doc)
+  inspect(out, content=md)
+}
+
+///|
+test "round-trip: divider" {
+  let md =
+    #|---
+    #|
+  let doc = block_doc_from_markdown(md, "alice")
+  let out = block_doc_to_markdown(doc)
+  inspect(out, content=md)
+}
+
+///|
+test "import: CRLF line endings" {
+  let doc = block_doc_from_markdown("# Title\r\n\r\nSome text\r\n", "alice")
+  let children = doc.children(root_block_id)
+  inspect(children.length(), content="2")
+  inspect(doc.get_type(children[0]), content="Heading(1)")
+  inspect(doc.get_text(children[0]), content="Title")
+  inspect(doc.get_type(children[1]), content="Paragraph")
+  inspect(doc.get_text(children[1]), content="Some text")
+}
+
+///|
+test "import: uppercase todo checkbox" {
+  let doc = block_doc_from_markdown("- [X] done\n", "alice")
+  let children = doc.children(root_block_id)
+  inspect(children.length(), content="1")
+  inspect(doc.get_type(children[0]), content="ListItem(Todo)")
+  inspect(doc.get_checked(children[0]), content="true")
+  inspect(doc.get_text(children[0]), content="done")
+}
+
+///|
+test "import: divider with spaces" {
+  let doc = block_doc_from_markdown("- - -\n", "alice")
+  let children = doc.children(root_block_id)
+  inspect(children.length(), content="1")
+  inspect(doc.get_type(children[0]), content="Divider")
+}

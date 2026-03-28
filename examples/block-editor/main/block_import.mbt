@@ -76,7 +76,7 @@ pub fn block_doc_from_markdown(md : String, replica_id : String) -> BlockDoc {
       i = i + 1
       continue
     }
-    if starts_with(line, "- [x] ") {
+    if starts_with(line, "- [x] ") || starts_with(line, "- [X] ") {
       flush_paragraph(doc, para_buf)
       let text = string_slice(line, 6, line.length())
       let id = doc.create_block(ListItem(Todo))
@@ -143,12 +143,22 @@ fn flush_paragraph(doc : BlockDoc, buf : Array[String]) -> Unit {
 }
 
 ///|
-/// Split a string into lines (handles \n). Drops trailing empty line from trailing \n.
+/// Split a string into lines. Handles both \n and \r\n line endings.
+/// Drops trailing empty line from trailing newline.
 fn split_lines(s : String) -> Array[String] {
   let lines : Array[String] = []
   let buf = StringBuilder::new()
   for i = 0; i < s.length(); i = i + 1 {
-    if s[i] == '\n' {
+    if s[i] == '\r' {
+      // Skip \r — if followed by \n, the \n will push the line
+      // If \r alone (old Mac), treat as line break
+      if i + 1 < s.length() && s[i + 1] == '\n' {
+        continue
+      } else {
+        lines.push(buf.to_string())
+        buf.reset()
+      }
+    } else if s[i] == '\n' {
       lines.push(buf.to_string())
       buf.reset()
     } else {
@@ -198,21 +208,32 @@ fn count_heading_hashes(line : String) -> Int {
 }
 
 ///|
-/// Check if a line is a divider: "---", "***", or "___" (3+ of same char, nothing else).
+/// Check if a line is a thematic break: 3+ of the same marker char ('-', '*', '_'),
+/// optionally separated by spaces, with nothing else on the line.
 fn is_divider(line : String) -> Bool {
   if line.length() < 3 {
     return false
   }
-  let ch = line[0]
-  if ch != '-' && ch != '*' && ch != '_' {
+  // Find first non-space character to determine marker
+  let mut marker : UInt16 = 0
+  for i = 0; i < line.length(); i = i + 1 {
+    if line[i] != ' ' {
+      marker = line[i]
+      break
+    }
+  }
+  if marker != '-' && marker != '*' && marker != '_' {
     return false
   }
-  for i = 1; i < line.length(); i = i + 1 {
-    if line[i] != ch {
+  let mut count = 0
+  for i = 0; i < line.length(); i = i + 1 {
+    if line[i] == marker {
+      count = count + 1
+    } else if line[i] != ' ' {
       return false
     }
   }
-  true
+  count >= 3
 }
 
 ///|
