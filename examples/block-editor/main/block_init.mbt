@@ -63,9 +63,146 @@ fn parse_block_id(s : String) -> @tree.TreeNodeId {
 }
 
 ///|
+fn with_doc(handle : Int, f : (BlockDoc) -> Unit) -> Unit {
+  match docs.get(handle) {
+    Some(doc) => f(doc)
+    None => ()
+  }
+}
+
+///|
 pub fn get_render_state(handle : Int) -> String {
   match docs.get(handle) {
-    Some(_) => "{\"blocks\":[]}" // placeholder — Task 2 will implement fully
+    Some(doc) => {
+      let buf = StringBuilder::new()
+      buf.write_string("{\"blocks\":[")
+      let children = doc.children(root_block_id)
+      for i = 0; i < children.length(); i = i + 1 {
+        if i > 0 {
+          buf.write_string(",")
+        }
+        let id = children[i]
+        let (type_str, props) = block_type_to_string(doc.get_type(id))
+        buf.write_string("{\"id\":\"")
+        buf.write_string(id_key(id))
+        buf.write_string("\",\"block_type\":\"")
+        buf.write_string(type_str)
+        buf.write_string("\",\"level\":\"")
+        buf.write_string(match props.get("level") {
+          Some(v) => v
+          None => ""
+        })
+        buf.write_string("\",\"list_style\":\"")
+        buf.write_string(match props.get("list_style") {
+          Some(v) => v
+          None => ""
+        })
+        buf.write_string("\",\"checked\":")
+        buf.write_string(if doc.get_checked(id) { "true" } else { "false" })
+        buf.write_string(",\"text\":\"")
+        write_json_escaped(buf, doc.get_text(id))
+        buf.write_string("\"}")
+      }
+      buf.write_string("]}")
+      buf.to_string()
+    }
     None => "{\"blocks\":[]}"
+  }
+}
+
+///|
+fn write_json_escaped(buf : StringBuilder, s : String) -> Unit {
+  for i = 0; i < s.length(); i = i + 1 {
+    let ch = s[i]
+    if ch == '"' {
+      buf.write_string("\\\"")
+    } else if ch == '\\' {
+      buf.write_string("\\\\")
+    } else if ch == '\n' {
+      buf.write_string("\\n")
+    } else if ch == '\r' {
+      buf.write_string("\\r")
+    } else if ch == '\t' {
+      buf.write_string("\\t")
+    } else {
+      buf.write_string(s[i:i + 1].to_string())
+    }
+  }
+}
+
+///|
+pub fn editor_insert_block_after(
+  handle : Int,
+  after_id_str : String,
+  block_type_str : String,
+) -> String {
+  match docs.get(handle) {
+    Some(doc) => {
+      let after_id = parse_block_id(after_id_str)
+      let bt = block_type_from_props(block_type_str, fn(_k) { None })
+      let new_id = doc.create_block_after(after_id, bt)
+      id_key(new_id)
+    }
+    None => ""
+  }
+}
+
+///|
+pub fn editor_set_block_text(handle : Int, id_str : String, text : String) -> Unit {
+  match docs.get(handle) {
+    Some(doc) => doc.set_text(parse_block_id(id_str), text)
+    None => ()
+  }
+}
+
+///|
+pub fn editor_delete_block(handle : Int, id_str : String) -> Unit {
+  match docs.get(handle) {
+    Some(doc) => doc.delete_block(parse_block_id(id_str))
+    None => ()
+  }
+}
+
+///|
+pub fn editor_set_block_type(
+  handle : Int,
+  id_str : String,
+  type_str : String,
+  level : Int,
+  list_style : String,
+) -> Unit {
+  match docs.get(handle) {
+    Some(doc) => {
+      let bt = block_type_from_props(type_str, fn(k) {
+        if k == "level" {
+          Some(level.to_string())
+        } else if k == "list_style" && list_style != "" {
+          Some(list_style)
+        } else {
+          None
+        }
+      })
+      doc.set_type(parse_block_id(id_str), bt)
+    }
+    None => ()
+  }
+}
+
+///|
+pub fn editor_import_markdown(handle : Int, md : String) -> Unit {
+  match docs.get(handle) {
+    Some(_) => {
+      let replica_id = get_replica_id(handle)
+      docs[handle] = block_doc_from_markdown(md, replica_id)
+    }
+    None => ()
+  }
+}
+
+///|
+pub fn editor_export_markdown(handle : Int) -> String {
+  match docs.get(handle) {
+    Some(doc) => block_doc_to_markdown(doc)
+    None => ""
   }
 }
