@@ -110,12 +110,14 @@ function nodeIdFromTarget(target: EventTarget | null): number {
 type Interaction = 'none' | 'pan' | 'drag';
 let activeInteraction: Interaction = 'none';
 let activePointerId = -1;
+let pointerDownNodeId = 0;
 
 root.addEventListener('pointerdown', (e: PointerEvent) => {
   root.setPointerCapture(e.pointerId);
   activePointerId = e.pointerId;
   const [sx, sy] = localCoords(e);
   const nodeId = nodeIdFromTarget(e.target);
+  pointerDownNodeId = nodeId;
 
   if (nodeId !== 0) {
     const [wx, wy] = screenToWorld(sx, sy);
@@ -143,10 +145,10 @@ root.addEventListener('pointermove', (e: PointerEvent) => {
 
 root.addEventListener('pointerup', (e: PointerEvent) => {
   if (e.pointerId !== activePointerId) return;
-  const nodeId = nodeIdFromTarget(e.target);
-  mb.pointer_up(handle, nodeId);
+  mb.pointer_up(handle, pointerDownNodeId);
   activeInteraction = 'none';
   activePointerId = -1;
+  pointerDownNodeId = 0;
   root.classList.remove('panning');
   scheduleRender();
 });
@@ -156,6 +158,7 @@ root.addEventListener('pointercancel', () => {
   mb.pointer_up(handle, 0);
   activeInteraction = 'none';
   activePointerId = -1;
+  pointerDownNodeId = 0;
   root.classList.remove('panning');
   scheduleRender();
 });

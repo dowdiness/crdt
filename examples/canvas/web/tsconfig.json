@@ -4,11 +4,12 @@
     "module": "ES2020",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "moduleResolution": "bundler",
+    "baseUrl": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "paths": {
-      "@moonbit/canopy-canvas": ["../../_build/js/release/build/main/main.js"]
+      "@moonbit/canopy-canvas": ["../_build/js/release/build/main/main.d.ts"]
     }
   },
   "include": ["src/**/*"],

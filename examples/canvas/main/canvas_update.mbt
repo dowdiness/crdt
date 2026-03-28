@@ -35,7 +35,14 @@ fn update_pan_move(
         x: pan.start_pan_x + (screen_x - pan.start_screen_x),
         y: pan.start_pan_y + (screen_y - pan.start_screen_y),
       }
-      { ..state, viewport: new_viewport }
+      let did_move = state.interaction.did_move ||
+        screen_x != pan.start_screen_x ||
+        screen_y != pan.start_screen_y
+      let new_interaction : InteractionState = {
+        ..state.interaction,
+        did_move,
+      }
+      { ..state, viewport: new_viewport, interaction: new_interaction }
     }
   }
 }

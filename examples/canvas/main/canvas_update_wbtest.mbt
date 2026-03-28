@@ -38,6 +38,7 @@ test "pan_move translates viewport by delta from start" {
   inspect(s1.viewport.x, content="60")
   inspect(s1.viewport.y, content="40")
   inspect(s1.viewport.scale, content="1")
+  inspect(s1.interaction.did_move, content="true")
 }
 
 ///|
@@ -204,6 +205,18 @@ test "pointer_up on background deselects" {
   let s0 = update_pan_start(state, 0.0, 0.0)
   let s1 = update_pointer_up(s0, 0)
   inspect(s1.interaction.selected, content="None")
+}
+
+///|
+test "pointer_up after pan movement preserves selection" {
+  let state : CanvasState = {
+    ..make_test_state(),
+    interaction: { ..make_test_state().interaction, selected: Some(NodeId(1)) },
+  }
+  let s0 = update_pan_start(state, 0.0, 0.0)
+  let s1 = update_pan_move(s0, 40.0, 20.0)
+  let s2 = update_pointer_up(s1, 0)
+  inspect(s2.interaction.selected, content="Some(NodeId(1))")
 }
 
 ///|
