@@ -1,0 +1,67 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/canopy/framework/core"
+
+import {
+  "moonbitlang/core/ref",
+}
+
+// Values
+pub fn[T] assign_fresh_ids(ProjNode[T], @ref.Ref[Int]) -> ProjNode[T]
+
+pub fn max_int(Int, Int) -> Int
+
+pub fn min_int(Int, Int) -> Int
+
+pub fn next_proj_node_id(@ref.Ref[Int]) -> Int
+
+// Errors
+
+// Types and methods
+pub(all) enum DropPosition {
+  Before
+  After
+  Inside
+}
+pub impl Eq for DropPosition
+pub impl Show for DropPosition
+
+pub struct EditAction[T] {
+  label : String
+  shortcut : String?
+  applicable : (ProjNode[T], NodeId) -> Bool
+  compute_replacement : (String, Int, Int) -> Result[String, String]
+}
+
+pub(all) enum FocusHint {
+  RestoreCursor
+  MoveCursor(position~ : Int)
+}
+pub impl Eq for FocusHint
+pub impl Show for FocusHint
+
+pub(all) struct NodeId(Int)
+pub fn NodeId::from_int(Int) -> Self
+#deprecated
+pub fn NodeId::inner(Self) -> Int
+pub impl Compare for NodeId
+pub impl Eq for NodeId
+pub impl Hash for NodeId
+pub impl Show for NodeId
+
+pub struct ProjNode[T] {
+  node_id : Int
+  kind : T
+  children : Array[ProjNode[T]]
+  start : Int
+  end : Int
+}
+pub fn[T] ProjNode::id(Self[T]) -> NodeId
+pub fn[T] ProjNode::new(T, Int, Int, Int, Array[Self[T]]) -> Self[T]
+pub impl[T : Eq] Eq for ProjNode[T]
+pub impl[T : Show] Show for ProjNode[T]
+pub impl[T : ToJson] ToJson for ProjNode[T]
+
+// Type aliases
+
+// Traits
+

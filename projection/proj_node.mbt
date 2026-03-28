@@ -1,58 +1,8 @@
-// ProjNode[T]: Generic projection node parameterized by AST type T.
-// Preserves node IDs and positions needed for projectional editing.
-// T is the AST kind (e.g., @ast.Term for lambda calculus).
+// ProjNode re-exported from framework/core.
+// Lambda-specific projection builders remain here.
 
 ///|
-/// Generic projection node parameterized by AST type T.
-/// `kind : T` holds the AST node, `children : Array[ProjNode[T]]` holds child projections.
-pub struct ProjNode[T] {
-  node_id : Int
-  kind : T
-  children : Array[ProjNode[T]]
-  start : Int
-  end : Int
-} derive(Show, Eq)
-
-///|
-pub fn[T] ProjNode::new(
-  kind : T,
-  start : Int,
-  end : Int,
-  node_id : Int,
-  children : Array[ProjNode[T]],
-) -> ProjNode[T] {
-  { node_id, kind, children, start, end }
-}
-
-///|
-pub fn[T] ProjNode::id(self : ProjNode[T]) -> NodeId {
-  NodeId(self.node_id)
-}
-
-///|
-fn next_proj_node_id(counter : Ref[Int]) -> Int {
-  let id = counter.val
-  counter.val = counter.val + 1
-  id
-}
-
-///|
-fn min_int(a : Int, b : Int) -> Int {
-  if a < b {
-    a
-  } else {
-    b
-  }
-}
-
-///|
-fn max_int(a : Int, b : Int) -> Int {
-  if a > b {
-    a
-  } else {
-    b
-  }
-}
+pub using @core {type ProjNode}
 
 ///|
 fn error_node_with_span(
@@ -61,7 +11,7 @@ fn error_node_with_span(
   end : Int,
   counter : Ref[Int],
 ) -> ProjNode[@ast.Term] {
-  ProjNode::new(Error(message), start, end, next_proj_node_id(counter), [])
+  ProjNode::new(Error(message), start, end, @core.next_proj_node_id(counter), [])
 }
 
 ///|
@@ -81,9 +31,9 @@ fn app_node(
 ) -> ProjNode[@ast.Term] {
   ProjNode::new(
     App(left.kind, right.kind),
-    min_int(left.start, right.start),
-    max_int(left.end, right.end),
-    next_proj_node_id(counter),
+    @core.min_int(left.start, right.start),
+    @core.max_int(left.end, right.end),
+    @core.next_proj_node_id(counter),
     [left, right],
   )
 }
@@ -97,9 +47,9 @@ fn bop_node(
 ) -> ProjNode[@ast.Term] {
   ProjNode::new(
     Bop(op, left.kind, right.kind),
-    min_int(left.start, right.start),
-    max_int(left.end, right.end),
-    next_proj_node_id(counter),
+    @core.min_int(left.start, right.start),
+    @core.max_int(left.end, right.end),
+    @core.next_proj_node_id(counter),
     [left, right],
   )
 }
@@ -114,7 +64,7 @@ pub fn syntax_to_proj_node(
       Int(v.value().unwrap_or(0)),
       node.start(),
       node.end(),
-      next_proj_node_id(counter),
+      @core.next_proj_node_id(counter),
       [],
     )
   } else if @parser.VarRefView::cast(node) is Some(v) {
@@ -122,7 +72,7 @@ pub fn syntax_to_proj_node(
       Var(v.name()),
       node.start(),
       node.end(),
-      next_proj_node_id(counter),
+      @core.next_proj_node_id(counter),
       [],
     )
   } else if @parser.LambdaExprView::cast(node) is Some(v) {
@@ -134,7 +84,7 @@ pub fn syntax_to_proj_node(
       Lam(v.param(), body.kind),
       node.start(),
       node.end(),
-      next_proj_node_id(counter),
+      @core.next_proj_node_id(counter),
       [body],
     )
   } else if @parser.AppExprView::cast(node) is Some(v) {
@@ -184,7 +134,7 @@ pub fn syntax_to_proj_node(
       If(cond.kind, then_.kind, else_.kind),
       node.start(),
       node.end(),
-      next_proj_node_id(counter),
+      @core.next_proj_node_id(counter),
       [cond, then_, else_],
     )
   } else if @parser.ParenExprView::cast(node) is Some(v) {
@@ -239,7 +189,13 @@ pub fn to_proj_node(
   let mut result = match final_proj {
     Some(p) => p
     None =>
-      ProjNode::new(Unit, root.end(), root.end(), next_proj_node_id(counter), [])
+      ProjNode::new(
+        Unit,
+        root.end(),
+        root.end(),
+        @core.next_proj_node_id(counter),
+        [],
+      )
   }
   if defs.length() > 0 {
     let children : Array[ProjNode[@ast.Term]] = defs.map(fn(d) { d.1 })
@@ -251,7 +207,7 @@ pub fn to_proj_node(
       Module(term_defs, result.kind),
       defs[0].2,
       result.end,
-      next_proj_node_id(counter),
+      @core.next_proj_node_id(counter),
       children,
     )
   }

@@ -138,13 +138,13 @@ test "token span: get_token_span returns None for missing role" {
   // "name" does not
   guard sm.get_token_span(lambda_id, "name") is None
   // Non-existent node
-  guard sm.get_token_span(NodeId(999), "param") is None
+  guard sm.get_token_span(@core.NodeId(999), "param") is None
 }
 
 ///|
 test "token span: set_token_span manual" {
   let sm = SourceMap::new()
-  let nid = NodeId(42)
+  let nid = @core.NodeId(42)
   sm.set_token_span(nid, "test_role", Range::new(10, 20))
   guard sm.get_token_span(nid, "test_role") is Some(span)
   inspect(span.start, content="10")

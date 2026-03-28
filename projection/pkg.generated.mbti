@@ -3,20 +3,19 @@ package "dowdiness/canopy/projection"
 
 import {
   "dowdiness/lambda/ast",
-  "dowdiness/loom/core",
   "dowdiness/seam",
   "moonbitlang/core/immut/hashset",
   "moonbitlang/core/ref",
 }
 
 // Values
-pub fn collect_lam_env(NodeId, Map[NodeId, ProjNode[@ast.Term]]) -> @hashset.HashSet[String]
+pub fn collect_lam_env(@dowdiness/canopy/framework/core.NodeId, Map[@dowdiness/canopy/framework/core.NodeId, @dowdiness/canopy/framework/core.ProjNode[@ast.Term]]) -> @hashset.HashSet[String]
 
 pub fn compute_text_edit(TreeEditOp, EditContext[@ast.Term]) -> Result[(Array[SpanEdit], FocusHint)?, String]
 
-pub fn find_binding_for_init(NodeId, FlatProj) -> (NodeId, Int)?
+pub fn find_binding_for_init(@dowdiness/canopy/framework/core.NodeId, FlatProj) -> (@dowdiness/canopy/framework/core.NodeId, Int)?
 
-pub fn find_usages(String, Int, FlatProj, Map[NodeId, ProjNode[@ast.Term]]) -> Array[NodeId]
+pub fn find_usages(String, Int, FlatProj, Map[@dowdiness/canopy/framework/core.NodeId, @dowdiness/canopy/framework/core.ProjNode[@ast.Term]]) -> Array[@dowdiness/canopy/framework/core.NodeId]
 
 pub fn free_vars(@ast.Term, @hashset.HashSet[String]) -> @hashset.HashSet[String]
 
@@ -26,25 +25,25 @@ pub fn[T : TreeNode] is_leaf_node(T) -> Bool
 
 pub fn is_valid_drop(@ast.Term, @ast.Term, DropPosition) -> Bool
 
-pub fn parse_to_proj_node(String) -> (ProjNode[@ast.Term], Array[String])
+pub fn parse_to_proj_node(String) -> (@dowdiness/canopy/framework/core.ProjNode[@ast.Term], Array[String])
 
 pub fn print_flat_proj(FlatProj) -> String
 
-pub fn[T : TreeNode] reconcile(ProjNode[T], ProjNode[T], @ref.Ref[Int]) -> ProjNode[T]
+pub fn[T : TreeNode] reconcile(@dowdiness/canopy/framework/core.ProjNode[T], @dowdiness/canopy/framework/core.ProjNode[T], @ref.Ref[Int]) -> @dowdiness/canopy/framework/core.ProjNode[T]
 
-pub fn reconcile_ast(ProjNode[@ast.Term], ProjNode[@ast.Term], @ref.Ref[Int]) -> ProjNode[@ast.Term]
+pub fn reconcile_ast(@dowdiness/canopy/framework/core.ProjNode[@ast.Term], @dowdiness/canopy/framework/core.ProjNode[@ast.Term], @ref.Ref[Int]) -> @dowdiness/canopy/framework/core.ProjNode[@ast.Term]
 
 pub fn reconcile_flat_proj(FlatProj, FlatProj, @ref.Ref[Int]) -> FlatProj
 
-pub fn resolve_binder(NodeId, String, FlatProj, Map[NodeId, ProjNode[@ast.Term]], SourceMap) -> BindingSite?
+pub fn resolve_binder(@dowdiness/canopy/framework/core.NodeId, String, FlatProj, Map[@dowdiness/canopy/framework/core.NodeId, @dowdiness/canopy/framework/core.ProjNode[@ast.Term]], SourceMap) -> BindingSite?
 
-pub fn syntax_to_proj_node(@seam.SyntaxNode, @ref.Ref[Int]) -> ProjNode[@ast.Term]
+pub fn syntax_to_proj_node(@seam.SyntaxNode, @ref.Ref[Int]) -> @dowdiness/canopy/framework/core.ProjNode[@ast.Term]
 
 pub fn to_flat_proj(@seam.SyntaxNode, @ref.Ref[Int]) -> FlatProj
 
 pub fn to_flat_proj_incremental(@seam.SyntaxNode, @seam.SyntaxNode, FlatProj, @ref.Ref[Int], changed_indices? : @ref.Ref[Array[Int]]) -> FlatProj
 
-pub fn to_proj_node(@seam.SyntaxNode, @ref.Ref[Int]) -> ProjNode[@ast.Term]
+pub fn to_proj_node(@seam.SyntaxNode, @ref.Ref[Int]) -> @dowdiness/canopy/framework/core.ProjNode[@ast.Term]
 
 // Errors
 
@@ -69,8 +68,8 @@ pub impl Eq for ActionGroup
 pub impl Show for ActionGroup
 
 pub(all) enum BindingSite {
-  LamBinder(lam_id~ : NodeId)
-  ModuleBinder(binding_node_id~ : NodeId, def_index~ : Int)
+  LamBinder(lam_id~ : @dowdiness/canopy/framework/core.NodeId)
+  ModuleBinder(binding_node_id~ : @dowdiness/canopy/framework/core.NodeId, def_index~ : Int)
 }
 pub impl Eq for BindingSite
 pub impl Show for BindingSite
@@ -83,28 +82,21 @@ pub(all) enum DropPosition {
 pub impl Eq for DropPosition
 pub impl Show for DropPosition
 
-pub struct EditAction[T] {
-  label : String
-  shortcut : String?
-  applicable : (ProjNode[T], NodeId) -> Bool
-  compute_replacement : (String, Int, Int) -> Result[String, String]
-}
-
 pub(all) struct EditContext[T] {
   source_text : String
   source_map : SourceMap
-  registry : Map[NodeId, ProjNode[T]]
+  registry : Map[@dowdiness/canopy/framework/core.NodeId, @dowdiness/canopy/framework/core.ProjNode[T]]
   flat_proj : FlatProj
 }
 
 pub struct FlatProj {
-  defs : Array[(String, ProjNode[@ast.Term], Int, NodeId)]
-  final_expr : ProjNode[@ast.Term]?
+  defs : Array[(String, @dowdiness/canopy/framework/core.ProjNode[@ast.Term], Int, @dowdiness/canopy/framework/core.NodeId)]
+  final_expr : @dowdiness/canopy/framework/core.ProjNode[@ast.Term]?
 }
 pub fn FlatProj::empty() -> Self
-pub fn FlatProj::from_proj_node(ProjNode[@ast.Term]) -> Self
-pub fn FlatProj::to_proj_node(Self, @ref.Ref[Int]) -> ProjNode[@ast.Term]
-pub fn FlatProj::to_proj_node_with_prev_module_id(Self, @ref.Ref[Int], Int?) -> ProjNode[@ast.Term]
+pub fn FlatProj::from_proj_node(@dowdiness/canopy/framework/core.ProjNode[@ast.Term]) -> Self
+pub fn FlatProj::to_proj_node(Self, @ref.Ref[Int]) -> @dowdiness/canopy/framework/core.ProjNode[@ast.Term]
+pub fn FlatProj::to_proj_node_with_prev_module_id(Self, @ref.Ref[Int], Int?) -> @dowdiness/canopy/framework/core.ProjNode[@ast.Term]
 pub impl Eq for FlatProj
 pub impl Show for FlatProj
 
@@ -122,7 +114,7 @@ pub enum InteractiveChildren[T] {
 pub impl[T : Show] Show for InteractiveChildren[T]
 
 pub struct InteractiveTreeNode[T] {
-  id : NodeId
+  id : @dowdiness/canopy/framework/core.NodeId
   kind : T
   label : String
   children : InteractiveChildren[T]
@@ -130,64 +122,42 @@ pub struct InteractiveTreeNode[T] {
   editing : Bool
   collapsed : Bool
   drop_target : Bool
-  text_range : @core.Range
+  text_range : @dowdiness/loom/core.Range
 }
-pub fn[T : Renderable] InteractiveTreeNode::from_term_node(ProjNode[T], SourceMap) -> Self[T]
+pub fn[T : Renderable] InteractiveTreeNode::from_term_node(@dowdiness/canopy/framework/core.ProjNode[T], SourceMap) -> Self[T]
 pub impl[T : Show] Show for InteractiveTreeNode[T]
 
 pub(all) struct NodeContext {
   is_let_binding : Bool
-  binding_node_id : NodeId?
+  binding_node_id : @dowdiness/canopy/framework/core.NodeId?
   binding_def_index : Int?
-  module_node_id : NodeId?
+  module_node_id : @dowdiness/canopy/framework/core.NodeId?
 }
 pub fn NodeContext::new() -> Self
-pub fn NodeContext::new_binding(binding_node_id~ : NodeId, binding_def_index~ : Int, module_node_id~ : NodeId) -> Self
+pub fn NodeContext::new_binding(binding_node_id~ : @dowdiness/canopy/framework/core.NodeId, binding_def_index~ : Int, module_node_id~ : @dowdiness/canopy/framework/core.NodeId) -> Self
 pub impl Eq for NodeContext
 pub impl Show for NodeContext
 
-pub struct NodeId(Int)
-pub fn NodeId::from_int(Int) -> Self
-#deprecated
-pub fn NodeId::inner(Self) -> Int
-pub impl Compare for NodeId
-pub impl Eq for NodeId
-pub impl Hash for NodeId
-pub impl Show for NodeId
-
-pub struct ProjNode[T] {
-  node_id : Int
-  kind : T
-  children : Array[ProjNode[T]]
-  start : Int
-  end : Int
-}
-pub fn[T] ProjNode::id(Self[T]) -> NodeId
-pub fn[T] ProjNode::new(T, Int, Int, Int, Array[Self[T]]) -> Self[T]
-pub impl[T : Eq] Eq for ProjNode[T]
-pub impl[T : Show] Show for ProjNode[T]
-pub impl[T : ToJson] ToJson for ProjNode[T]
-
 pub struct SourceMap {
-  node_to_range : Map[NodeId, @core.Range]
-  ranges : Array[(@core.Range, NodeId)]
-  token_spans : Map[NodeId, Map[String, @core.Range]]
+  node_to_range : Map[@dowdiness/canopy/framework/core.NodeId, @dowdiness/loom/core.Range]
+  ranges : Array[(@dowdiness/loom/core.Range, @dowdiness/canopy/framework/core.NodeId)]
+  token_spans : Map[@dowdiness/canopy/framework/core.NodeId, Map[String, @dowdiness/loom/core.Range]]
 }
-pub fn SourceMap::apply_edit(Self, Int, @core.Range) -> Unit
-pub fn[T] SourceMap::from_ast(ProjNode[T]) -> Self
-pub fn SourceMap::get_range(Self, NodeId) -> @core.Range?
-pub fn SourceMap::get_token_span(Self, NodeId, String) -> @core.Range?
-pub fn SourceMap::innermost_node_at(Self, Int) -> NodeId?
+pub fn SourceMap::apply_edit(Self, Int, @dowdiness/loom/core.Range) -> Unit
+pub fn[T] SourceMap::from_ast(@dowdiness/canopy/framework/core.ProjNode[T]) -> Self
+pub fn SourceMap::get_range(Self, @dowdiness/canopy/framework/core.NodeId) -> @dowdiness/loom/core.Range?
+pub fn SourceMap::get_token_span(Self, @dowdiness/canopy/framework/core.NodeId, String) -> @dowdiness/loom/core.Range?
+pub fn SourceMap::innermost_node_at(Self, Int) -> @dowdiness/canopy/framework/core.NodeId?
 pub fn SourceMap::new() -> Self
 pub fn SourceMap::node_count(Self) -> Int
-pub fn SourceMap::nodes_at_position(Self, Int) -> Array[NodeId]
-pub fn SourceMap::nodes_in_range(Self, @core.Range) -> Array[NodeId]
-pub fn[T] SourceMap::patch_subtree(Self, ProjNode[T]) -> Unit
-pub fn SourceMap::populate_token_spans(Self, @seam.SyntaxNode, ProjNode[@ast.Term]) -> Unit
-pub fn[T] SourceMap::rebuild(Self, ProjNode[T]) -> Unit
+pub fn SourceMap::nodes_at_position(Self, Int) -> Array[@dowdiness/canopy/framework/core.NodeId]
+pub fn SourceMap::nodes_in_range(Self, @dowdiness/loom/core.Range) -> Array[@dowdiness/canopy/framework/core.NodeId]
+pub fn[T] SourceMap::patch_subtree(Self, @dowdiness/canopy/framework/core.ProjNode[T]) -> Unit
+pub fn SourceMap::populate_token_spans(Self, @seam.SyntaxNode, @dowdiness/canopy/framework/core.ProjNode[@ast.Term]) -> Unit
+pub fn[T] SourceMap::rebuild(Self, @dowdiness/canopy/framework/core.ProjNode[T]) -> Unit
 pub fn SourceMap::rebuild_ranges(Self) -> Unit
-pub fn[T] SourceMap::remove_subtree(Self, ProjNode[T]) -> Unit
-pub fn SourceMap::set_token_span(Self, NodeId, String, @core.Range) -> Unit
+pub fn[T] SourceMap::remove_subtree(Self, @dowdiness/canopy/framework/core.ProjNode[T]) -> Unit
+pub fn SourceMap::set_token_span(Self, @dowdiness/canopy/framework/core.NodeId, String, @dowdiness/loom/core.Range) -> Unit
 pub impl Eq for SourceMap
 pub impl Show for SourceMap
 pub impl ToJson for SourceMap
@@ -201,58 +171,64 @@ pub impl Eq for SpanEdit
 pub impl Show for SpanEdit
 
 pub(all) enum TreeEditOp {
-  Select(node_id~ : NodeId)
-  SelectRange(start~ : NodeId, end~ : NodeId)
-  StartEdit(node_id~ : NodeId)
-  CommitEdit(node_id~ : NodeId, new_value~ : String)
+  Select(node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  SelectRange(start~ : @dowdiness/canopy/framework/core.NodeId, end~ : @dowdiness/canopy/framework/core.NodeId)
+  StartEdit(node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  CommitEdit(node_id~ : @dowdiness/canopy/framework/core.NodeId, new_value~ : String)
   CancelEdit
-  Delete(node_id~ : NodeId)
-  WrapInLambda(node_id~ : NodeId, var_name~ : String)
-  WrapInApp(node_id~ : NodeId)
-  InsertChild(parent~ : NodeId, index~ : Int, kind~ : @ast.Term)
-  StartDrag(node_id~ : NodeId)
-  DragOver(target~ : NodeId, position~ : DropPosition)
-  Drop(source~ : NodeId, target~ : NodeId, position~ : DropPosition)
-  Collapse(node_id~ : NodeId)
-  Expand(node_id~ : NodeId)
-  Unwrap(node_id~ : NodeId, keep_child_index~ : Int)
-  SwapChildren(node_id~ : NodeId)
-  WrapInIf(node_id~ : NodeId)
-  WrapInBop(node_id~ : NodeId, op~ : @ast.Bop)
-  ChangeOperator(node_id~ : NodeId, new_op~ : @ast.Bop)
-  DeleteBinding(binding_node_id~ : NodeId)
-  DuplicateBinding(binding_node_id~ : NodeId)
-  MoveBindingUp(binding_node_id~ : NodeId)
-  MoveBindingDown(binding_node_id~ : NodeId)
-  AddBinding(module_node_id~ : NodeId)
-  ExtractToLet(node_id~ : NodeId, var_name~ : String)
-  InlineDefinition(node_id~ : NodeId)
-  InlineAllUsages(binding_node_id~ : NodeId)
-  Rename(node_id~ : NodeId, new_name~ : String)
+  Delete(node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  WrapInLambda(node_id~ : @dowdiness/canopy/framework/core.NodeId, var_name~ : String)
+  WrapInApp(node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  InsertChild(parent~ : @dowdiness/canopy/framework/core.NodeId, index~ : Int, kind~ : @ast.Term)
+  StartDrag(node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  DragOver(target~ : @dowdiness/canopy/framework/core.NodeId, position~ : DropPosition)
+  Drop(source~ : @dowdiness/canopy/framework/core.NodeId, target~ : @dowdiness/canopy/framework/core.NodeId, position~ : DropPosition)
+  Collapse(node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  Expand(node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  Unwrap(node_id~ : @dowdiness/canopy/framework/core.NodeId, keep_child_index~ : Int)
+  SwapChildren(node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  WrapInIf(node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  WrapInBop(node_id~ : @dowdiness/canopy/framework/core.NodeId, op~ : @ast.Bop)
+  ChangeOperator(node_id~ : @dowdiness/canopy/framework/core.NodeId, new_op~ : @ast.Bop)
+  DeleteBinding(binding_node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  DuplicateBinding(binding_node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  MoveBindingUp(binding_node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  MoveBindingDown(binding_node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  AddBinding(module_node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  ExtractToLet(node_id~ : @dowdiness/canopy/framework/core.NodeId, var_name~ : String)
+  InlineDefinition(node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  InlineAllUsages(binding_node_id~ : @dowdiness/canopy/framework/core.NodeId)
+  Rename(node_id~ : @dowdiness/canopy/framework/core.NodeId, new_name~ : String)
 }
 pub impl Show for TreeEditOp
 
 pub struct TreeEditorState[T] {
   tree : InteractiveTreeNode[T]?
-  selection : Array[NodeId]
-  editing_node : NodeId?
+  selection : Array[@dowdiness/canopy/framework/core.NodeId]
+  editing_node : @dowdiness/canopy/framework/core.NodeId?
   edit_value : String
-  dragging : NodeId?
-  drop_target : NodeId?
+  dragging : @dowdiness/canopy/framework/core.NodeId?
+  drop_target : @dowdiness/canopy/framework/core.NodeId?
   drop_position : DropPosition?
-  collapsed_nodes : @hashset.HashSet[NodeId]
+  collapsed_nodes : @hashset.HashSet[@dowdiness/canopy/framework/core.NodeId]
   // private fields
 }
 pub fn[T] TreeEditorState::apply_edit(Self[T], TreeEditOp) -> Self[T]
-pub fn[T : TreeNode + Renderable] TreeEditorState::expand_node(Self[T], NodeId, ProjNode[T]?, SourceMap) -> Self[T]
-pub fn[T : TreeNode + Renderable] TreeEditorState::from_projection(ProjNode[T]?, SourceMap) -> Self[T]
-pub fn[T] TreeEditorState::get_loaded_node(Self[T], NodeId) -> InteractiveTreeNode[T]?
-pub fn[T] TreeEditorState::has_node(Self[T], NodeId) -> Bool
+pub fn[T : TreeNode + Renderable] TreeEditorState::expand_node(Self[T], @dowdiness/canopy/framework/core.NodeId, @dowdiness/canopy/framework/core.ProjNode[T]?, SourceMap) -> Self[T]
+pub fn[T : TreeNode + Renderable] TreeEditorState::from_projection(@dowdiness/canopy/framework/core.ProjNode[T]?, SourceMap) -> Self[T]
+pub fn[T] TreeEditorState::get_loaded_node(Self[T], @dowdiness/canopy/framework/core.NodeId) -> InteractiveTreeNode[T]?
+pub fn[T] TreeEditorState::has_node(Self[T], @dowdiness/canopy/framework/core.NodeId) -> Bool
 pub fn[T] TreeEditorState::new() -> Self[T]
-pub fn[T : TreeNode + Renderable] TreeEditorState::refresh(Self[T], ProjNode[T]?, SourceMap) -> Self[T]
+pub fn[T : TreeNode + Renderable] TreeEditorState::refresh(Self[T], @dowdiness/canopy/framework/core.ProjNode[T]?, SourceMap) -> Self[T]
 
 // Type aliases
+pub using @dowdiness/canopy/framework/core {type EditAction}
+
 pub type EditResult = Result[(Array[SpanEdit], FocusHint)?, String]
+
+pub using @dowdiness/canopy/framework/core {type NodeId}
+
+pub using @dowdiness/canopy/framework/core {type ProjNode}
 
 // Traits
 pub(open) trait Renderable {

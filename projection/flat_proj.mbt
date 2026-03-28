@@ -23,7 +23,7 @@ pub fn to_flat_proj(root : @seam.SyntaxNode, counter : Ref[Int]) -> FlatProj {
         None =>
           error_node_for_syntax("missing let binding value", child, counter)
       }
-      let id = NodeId(next_proj_node_id(counter))
+      let id = @core.NodeId(@core.next_proj_node_id(counter))
       defs.push((v.name(), init, child.start(), id))
     } else if final_proj is None {
       final_proj = Some(syntax_to_proj_node(child, counter))
@@ -91,7 +91,7 @@ pub fn to_flat_proj_incremental(
               "missing let binding value", new_child, counter,
             )
         }
-        let id = NodeId(next_proj_node_id(counter))
+        let id = @core.NodeId(@core.next_proj_node_id(counter))
         defs.push((v.name(), init, new_child.start(), id))
       }
     } else if final_proj is None {
@@ -182,8 +182,8 @@ pub fn reconcile_flat_proj(
       let reconciled_init = reconcile_ast(old_entry.1, new_init, counter)
       result_defs.push((name, reconciled_init, start, old_entry.3))
     } else {
-      let fresh_init = assign_fresh_ids(new_init, counter)
-      let fresh_id = NodeId(next_proj_node_id(counter))
+      let fresh_init = @core.assign_fresh_ids(new_init, counter)
+      let fresh_id = @core.NodeId(@core.next_proj_node_id(counter))
       result_defs.push((name, fresh_init, start, fresh_id))
     }
   }
@@ -191,7 +191,7 @@ pub fn reconcile_flat_proj(
   // Reconcile final_expr
   let final_expr = match (old_fp.final_expr, new_fp.final_expr) {
     (Some(old_fe), Some(new_fe)) => Some(reconcile_ast(old_fe, new_fe, counter))
-    (None, Some(new_fe)) => Some(assign_fresh_ids(new_fe, counter))
+    (None, Some(new_fe)) => Some(@core.assign_fresh_ids(new_fe, counter))
     (Some(_), None) => None
     (None, None) => None
   }
@@ -232,7 +232,7 @@ pub fn FlatProj::to_proj_node_with_prev_module_id(
       } else {
         0
       }
-      ProjNode::new(Unit, end_pos, end_pos, next_proj_node_id(counter), [])
+      ProjNode::new(Unit, end_pos, end_pos, @core.next_proj_node_id(counter), [])
     }
   }
   if self.defs.is_empty() {
@@ -246,7 +246,7 @@ pub fn FlatProj::to_proj_node_with_prev_module_id(
   let start = self.defs[0].2
   let module_id = match prev_module_id {
     Some(id) => id
-    None => next_proj_node_id(counter)
+    None => @core.next_proj_node_id(counter)
   }
   ProjNode::new(
     Module(term_defs, body.kind),
@@ -272,7 +272,7 @@ pub fn FlatProj::from_proj_node(root : ProjNode[@ast.Term]) -> FlatProj {
               term_defs[i].0,
               init_child,
               init_child.start,
-              NodeId(init_child.node_id),
+              @core.NodeId(init_child.node_id),
             ),
           )
         }

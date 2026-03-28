@@ -21,7 +21,7 @@ pub fn[T : TreeNode] reconcile(
       reconciled_children,
     )
   } else {
-    assign_fresh_ids(new, counter)
+    @core.assign_fresh_ids(new, counter)
   }
 }
 
@@ -92,18 +92,8 @@ fn[T : TreeNode] reconcile_children(
         reconcile(old_children[new_matched[j]], new_children[j], counter),
       )
     } else {
-      result.push(assign_fresh_ids(new_children[j], counter))
+      result.push(@core.assign_fresh_ids(new_children[j], counter))
     }
   }
   result
-}
-
-///|
-fn[T] assign_fresh_ids(node : ProjNode[T], counter : Ref[Int]) -> ProjNode[T] {
-  let new_id = next_proj_node_id(counter)
-  let new_children : Array[ProjNode[T]] = []
-  for child in node.children {
-    new_children.push(assign_fresh_ids(child, counter))
-  }
-  ProjNode::new(node.kind, node.start, node.end, new_id, new_children)
 }
