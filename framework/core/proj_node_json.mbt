@@ -3,7 +3,7 @@
 
 ///|
 pub impl[T : ToJson] ToJson for ProjNode[T] with to_json(self) {
-  let children_json : Array[Json] = self.children.map(fn(c) { c.to_json() })
+  let children_json : Array[Json] = self.children.map(c => c.to_json())
   {
     "node_id": self.node_id,
     "kind": self.kind.to_json(),

@@ -64,9 +64,9 @@ test "actions for Error: only delete" {
 ///|
 test "binding context adds binding actions" {
   let ctx = NodeContext::new_binding(
-    binding_node_id=@core.NodeId(99),
+    binding_node_id=NodeId::from_int(99),
     binding_def_index=0,
-    module_node_id=@core.NodeId(1),
+    module_node_id=NodeId::from_int(1),
   )
   let actions = get_actions_for_node(@ast.Term::Int(0), ctx)
   let ids = actions.map(fn(a) { a.id })

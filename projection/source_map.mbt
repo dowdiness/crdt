@@ -32,7 +32,7 @@ pub fn[T] SourceMap::from_ast(root : ProjNode[T]) -> SourceMap {
 ///|
 /// Recursively build the map from an AST node
 fn[T] SourceMap::build_from_node(self : SourceMap, node : ProjNode[T]) -> Unit {
-  let node_id = @core.NodeId(node.node_id)
+  let node_id = NodeId::from_int(node.node_id)
   let range = Range::new(node.start, node.end)
   self.node_to_range[node_id] = range
 
@@ -70,7 +70,7 @@ pub fn[T] SourceMap::remove_subtree(
   self : SourceMap,
   node : ProjNode[T],
 ) -> Unit {
-  let node_id = @core.NodeId(node.node_id)
+  let node_id = NodeId::from_int(node.node_id)
   self.node_to_range.remove(node_id)
   self.token_spans.remove(node_id)
   for child in node.children {
@@ -86,7 +86,7 @@ pub fn[T] SourceMap::patch_subtree(
   self : SourceMap,
   node : ProjNode[T],
 ) -> Unit {
-  let node_id = @core.NodeId(node.node_id)
+  let node_id = NodeId::from_int(node.node_id)
   self.node_to_range[node_id] = Range::new(node.start, node.end)
   for child in node.children {
     self.patch_subtree(child)

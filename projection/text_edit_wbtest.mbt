@@ -117,7 +117,7 @@ test "compute_text_edit: no-op ops return empty array" {
   let registry = text_edit_test_registry(proj)
   let fp = FlatProj::from_proj_node(proj)
   let result = compute_text_edit(
-    Select(node_id=@core.NodeId(0)),
+    Select(node_id=NodeId::from_int(0)),
     make_edit_ctx(text, source_map, registry, fp),
   )
   inspect(result, content="Ok(Some(([], RestoreCursor)))")
@@ -302,7 +302,7 @@ test "compute_text_edit: Drop with unknown source returns error" {
   let registry = text_edit_test_registry(proj)
   let fp = FlatProj::from_proj_node(proj)
   let result = compute_text_edit(
-    Drop(source=@core.NodeId(9999), target=proj.id(), position=Before),
+    Drop(source=NodeId::from_int(9999), target=proj.id(), position=Before),
     make_edit_ctx(text, source_map, registry, fp),
   )
   inspect(result is Err(_), content="true")
@@ -316,7 +316,7 @@ test "compute_text_edit: WrapInLambda with unknown node returns error" {
   let registry = text_edit_test_registry(proj)
   let fp = FlatProj::from_proj_node(proj)
   let result = compute_text_edit(
-    WrapInLambda(node_id=@core.NodeId(9999), var_name="x"),
+    WrapInLambda(node_id=NodeId::from_int(9999), var_name="x"),
     make_edit_ctx(text, source_map, registry, fp),
   )
   inspect(result is Err(_), content="true")
@@ -330,7 +330,7 @@ test "compute_text_edit: CommitEdit with unknown node returns error" {
   let registry = text_edit_test_registry(proj)
   let fp = FlatProj::from_proj_node(proj)
   let result = compute_text_edit(
-    CommitEdit(node_id=@core.NodeId(9999), new_value="x"),
+    CommitEdit(node_id=NodeId::from_int(9999), new_value="x"),
     make_edit_ctx(text, source_map, registry, fp),
   )
   inspect(result is Err(_), content="true")
@@ -555,7 +555,7 @@ test "compute_text_edit: DeleteBinding with unknown id returns error" {
   let registry = text_edit_test_registry(proj)
   let fp = FlatProj::from_proj_node(proj)
   let result = compute_text_edit(
-    DeleteBinding(binding_node_id=@core.NodeId(9999)),
+    DeleteBinding(binding_node_id=NodeId::from_int(9999)),
     make_edit_ctx(text, source_map, registry, fp),
   )
   inspect(result is Err(_), content="true")
@@ -871,7 +871,7 @@ test "compute_text_edit: InlineAllUsages with unknown binding returns error" {
   let registry = text_edit_test_registry(proj)
   let fp = FlatProj::from_proj_node(proj)
   let result = compute_text_edit(
-    InlineAllUsages(binding_node_id=@core.NodeId(9999)),
+    InlineAllUsages(binding_node_id=NodeId::from_int(9999)),
     make_edit_ctx(text, source_map, registry, fp),
   )
   inspect(result is Err(_), content="true")
@@ -1034,7 +1034,7 @@ test "compute_text_edit: Rename with unknown node returns error" {
   let (proj, sm, registry, fp) = parse_with_token_spans(text)
   let _ = proj
   let result = compute_text_edit(
-    Rename(node_id=@core.NodeId(9999), new_name="y"),
+    Rename(node_id=NodeId::from_int(9999), new_name="y"),
     make_edit_ctx(text, sm, registry, fp),
   )
   inspect(result is Err(_), content="true")
@@ -1117,7 +1117,7 @@ test "compute_text_edit: InlineAllUsages rejects capture" {
 test "compute_text_edit: middleware rejects missing node for structural ops" {
   let text = "42"
   let (_, source_map, registry, fp) = parse_with_token_spans(text)
-  let fake_id = @core.NodeId(99999)
+  let fake_id = NodeId::from_int(99999)
   let result = compute_text_edit(
     Delete(node_id=fake_id),
     make_edit_ctx(text, source_map, registry, fp),
@@ -1205,7 +1205,7 @@ test "compute_text_edit: InsertChild rejects negative index" {
 test "compute_text_edit: AddBinding rejects non-Module target" {
   let text = "42"
   let (_, source_map, registry, fp) = parse_with_token_spans(text)
-  let root_id = @core.NodeId(0)
+  let root_id = NodeId::from_int(0)
   // root is an Int, not a Module
   let result = compute_text_edit(
     AddBinding(module_node_id=root_id),

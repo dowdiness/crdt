@@ -73,7 +73,7 @@ fn find_parent(
 ) -> (NodeId, ProjNode[@ast.Term], Int)? {
   for pid, pnode in registry {
     for i, child in pnode.children {
-      if @core.NodeId(child.node_id) == node_id {
+      if NodeId::from_int(child.node_id) == node_id {
         return Some((pid, pnode, i))
       }
     }

@@ -28,7 +28,7 @@ pub(all) enum FocusHint {
 pub impl Eq for FocusHint
 pub impl Show for FocusHint
 
-pub(all) struct NodeId(Int)
+pub struct NodeId(Int)
 pub fn NodeId::from_int(Int) -> Self
 #deprecated
 pub fn NodeId::inner(Self) -> Int

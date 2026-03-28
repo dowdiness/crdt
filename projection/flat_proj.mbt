@@ -23,7 +23,7 @@ pub fn to_flat_proj(root : @seam.SyntaxNode, counter : Ref[Int]) -> FlatProj {
         None =>
           error_node_for_syntax("missing let binding value", child, counter)
       }
-      let id = @core.NodeId(@core.next_proj_node_id(counter))
+      let id = NodeId::from_int(@core.next_proj_node_id(counter))
       defs.push((v.name(), init, child.start(), id))
     } else if final_proj is None {
       final_proj = Some(syntax_to_proj_node(child, counter))
@@ -91,7 +91,7 @@ pub fn to_flat_proj_incremental(
               "missing let binding value", new_child, counter,
             )
         }
-        let id = @core.NodeId(@core.next_proj_node_id(counter))
+        let id = NodeId::from_int(@core.next_proj_node_id(counter))
         defs.push((v.name(), init, new_child.start(), id))
       }
     } else if final_proj is None {
@@ -183,7 +183,7 @@ pub fn reconcile_flat_proj(
       result_defs.push((name, reconciled_init, start, old_entry.3))
     } else {
       let fresh_init = @core.assign_fresh_ids(new_init, counter)
-      let fresh_id = @core.NodeId(@core.next_proj_node_id(counter))
+      let fresh_id = NodeId::from_int(@core.next_proj_node_id(counter))
       result_defs.push((name, fresh_init, start, fresh_id))
     }
   }
@@ -272,7 +272,7 @@ pub fn FlatProj::from_proj_node(root : ProjNode[@ast.Term]) -> FlatProj {
               term_defs[i].0,
               init_child,
               init_child.start,
-              @core.NodeId(init_child.node_id),
+              NodeId::from_int(init_child.node_id),
             ),
           )
         }
