@@ -3,15 +3,29 @@ fn make_test_state() -> CanvasState {
   {
     viewport: { x: 0.0, y: 0.0, scale: 1.0 },
     nodes: [
-      { id: NodeId(1), x: 100.0, y: 100.0, w: 200.0, h: 100.0, kind: NodeKind::Shape("#8250df") },
-      { id: NodeId(2), x: 400.0, y: 200.0, w: 150.0, h:  80.0, kind: NodeKind::Text("hello") },
+      {
+        id: NodeId(1),
+        x: 100.0,
+        y: 100.0,
+        w: 200.0,
+        h: 100.0,
+        kind: NodeKind::Shape("#8250df"),
+      },
+      {
+        id: NodeId(2),
+        x: 400.0,
+        y: 200.0,
+        w: 150.0,
+        h: 80.0,
+        kind: NodeKind::Text("hello"),
+      },
     ],
     interaction: {
-      dragging:     None,
-      panning:      None,
-      selected:     None,
+      dragging: None,
+      panning: None,
+      selected: None,
       pointer_down: false,
-      did_move:     false,
+      did_move: false,
     },
   }
 }
@@ -225,7 +239,11 @@ test "get_render_state returns correct JSON shape" {
   let handle = create_canvas()
   let json_str = get_render_state(handle)
   // Run `moon test --update` on first run to capture actual snapshot.
-  inspect(json_str, content=(
-    #|Object({"viewport": Object({"x": Number(520), "y": Number(300), "scale": Number(1)}), "nodes": Array([Object({"id": Number(1), "x": Number(-320), "y": Number(-160), "w": Number(200), "h": Number(120), "kind": Array([String("Shape"), String("#8250df")])}), Object({"id": Number(2), "x": Number(-60), "y": Number(-160), "w": Number(200), "h": Number(120), "kind": Array([String("Shape"), String("#c792ea")])}), Object({"id": Number(3), "x": Number(200), "y": Number(-160), "w": Number(200), "h": Number(120), "kind": Array([String("Shape"), String("#82aaff")])}), Object({"id": Number(4), "x": Number(-320), "y": Number(20), "w": Number(200), "h": Number(60), "kind": Array([String("Text"), String("Canopy Canvas")])}), Object({"id": Number(5), "x": Number(-60), "y": Number(20), "w": Number(200), "h": Number(60), "kind": Array([String("Text"), String("Pan · Zoom · Drag")])}), Object({"id": Number(6), "x": Number(200), "y": Number(20), "w": Number(200), "h": Number(60), "kind": Array([String("Text"), String("∞")])})])})
-  ))
+  inspect(
+    json_str,
+    content=(
+      #|{"viewport":{"x":520,"y":300,"scale":1},"nodes":[{"id":1,"x":-320,"y":-160,"w":200,"h":120,"kind":["Shape","#8250df"]},{"id":2,"x":-60,"y":-160,"w":200,"h":120,"kind":["Shape","#c792ea"]},{"id":3,"x":200,"y":-160,"w":200,"h":120,"kind":["Shape","#82aaff"]},{"id":4,"x":-320,"y":20,"w":200,"h":60,"kind":["Text","Canopy Canvas"]},{"id":5,"x":-60,"y":20,"w":200,"h":60,"kind":["Text","Pan · Zoom · Drag"]},{"id":6,"x":200,"y":20,"w":200,"h":60,"kind":["Text","∞"]}]}
+
+    ),
+  )
 }

@@ -3,73 +3,8 @@
 let _registry : Array[CanvasState] = []
 
 ///|
-fn make_initial_state() -> CanvasState {
-  {
-    // Center the world origin roughly in a 1440×800 browser viewport
-    viewport: { x: 520.0, y: 300.0, scale: 1.0 },
-    nodes: [
-      {
-        id: NodeId(1),
-        x: -320.0,
-        y: -160.0,
-        w: 200.0,
-        h: 120.0,
-        kind: NodeKind::Shape("#8250df"),
-      },
-      {
-        id: NodeId(2),
-        x: -60.0,
-        y: -160.0,
-        w: 200.0,
-        h: 120.0,
-        kind: NodeKind::Shape("#c792ea"),
-      },
-      {
-        id: NodeId(3),
-        x: 200.0,
-        y: -160.0,
-        w: 200.0,
-        h: 120.0,
-        kind: NodeKind::Shape("#82aaff"),
-      },
-      {
-        id: NodeId(4),
-        x: -320.0,
-        y: 20.0,
-        w: 200.0,
-        h: 60.0,
-        kind: NodeKind::Text("Canopy Canvas"),
-      },
-      {
-        id: NodeId(5),
-        x: -60.0,
-        y: 20.0,
-        w: 200.0,
-        h: 60.0,
-        kind: NodeKind::Text("Pan · Zoom · Drag"),
-      },
-      {
-        id: NodeId(6),
-        x: 200.0,
-        y: 20.0,
-        w: 200.0,
-        h: 60.0,
-        kind: NodeKind::Text("∞"),
-      },
-    ],
-    interaction: {
-      dragging: None,
-      panning: None,
-      selected: None,
-      pointer_down: false,
-      did_move: false,
-    },
-  }
-}
-
-///|
 pub fn create_canvas() -> Int {
-  _registry.push(make_initial_state())
+  _registry.push(CanvasState::default())
   _registry.length() - 1
 }
 
@@ -93,10 +28,13 @@ pub fn node_drag_start(
   handle : Int,
   node_id : Int,
   world_x : Double,
-  world_y : Double
+  world_y : Double,
 ) -> Unit {
   _registry[handle] = update_node_drag_start(
-    _registry[handle], NodeId(node_id), world_x, world_y,
+    _registry[handle],
+    NodeId(node_id),
+    world_x,
+    world_y,
   )
 }
 
@@ -144,5 +82,5 @@ pub fn get_render_state(handle : Int) -> String {
     ({ id, x: n.x, y: n.y, w: n.w, h: n.h, kind: n.kind } : NodeJson)
   })
   let rs : RenderStateJson = { viewport: state.viewport, nodes, selected }
-  rs.to_json().to_string()
+  rs.to_json().stringify()
 }
