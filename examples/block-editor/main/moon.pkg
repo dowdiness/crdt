@@ -5,5 +5,19 @@ import {
 
 options(
   "is-main": true,
-  link: { "js": { "exports": [ ] } },
+  link: {
+    "js": {
+      "exports": [
+        "create_editor",
+        "destroy_editor",
+        "get_render_state",
+        "editor_insert_block_after",
+        "editor_set_block_text",
+        "editor_delete_block",
+        "editor_set_block_type",
+        "editor_import_markdown",
+        "editor_export_markdown",
+      ],
+    },
+  },
 )
