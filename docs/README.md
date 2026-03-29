@@ -2,6 +2,12 @@
 
 Documentation for Canopy — an incremental projectional editor with CRDT collaboration.
 
+## Agent Entry Point
+
+`AGENTS.md` is the canonical repo-level agent guidance file.
+`CLAUDE.md` is a compatibility symlink to `AGENTS.md` and should not be edited
+directly.
+
 ## Quick Start
 
 - **[CLAUDE.md](../CLAUDE.md)** - Quick reference for Claude Code
@@ -40,6 +46,7 @@ Guides for contributing and developing.
 
 - [API Reference](development/API_REFERENCE.md) - High-level MoonBit API overview
 - [JS Integration Guide](development/JS_INTEGRATION.md) - How to use the editor from JavaScript/Web
+- [Task Tracking](development/task-tracking.md) - Agent-friendly rules for TODOs, plans, and issues
 - [Tree Editing Manual](development/TREE_EDIT_MANUAL.md) - Structural projectional editing reference
 - [Monorepo & Submodules](development/monorepo.md) - Git submodule setup, daily cheat sheet, and workflows
 - [Workflow](development/workflow.md) - Development process and common commands
@@ -64,6 +71,7 @@ Detailed documentation for each module:
 
 ## Active Plans
 
+- [Plan Template](plans/TEMPLATE.md) — Canonical template for executable task plans
 - [Block Editor Design](plans/2026-03-28-block-editor-design.md) — Block-based document editor vision
 - [Block Editor 1b](plans/2026-03-28-block-editor-1b-document.md) — BlockDoc CRUD
 - [Block Editor 1c](plans/2026-03-28-block-editor-1c-markdown.md) — Markdown import/export

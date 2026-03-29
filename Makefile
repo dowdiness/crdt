@@ -1,4 +1,4 @@
-.PHONY: help test test-all check check-all fmt fmt-check build build-js build-web test-demo-react-e2e clean install-hooks release-artifacts
+.PHONY: help test test-all check check-all fmt fmt-check check-agent-doc-links build build-js build-web test-demo-react-e2e clean install-hooks release-artifacts
 
 help: ## Show this help message
 	@echo "Canopy - Development Tasks"
@@ -8,6 +8,9 @@ help: ## Show this help message
 	@echo "Available targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
 
+check-agent-doc-links: ## Verify CLAUDE.md is a symlink to AGENTS.md
+	@bash ./scripts/check-agent-doc-links.sh
+
 test: ## Run tests for main module
 	@./scripts/run-moon-module.sh test .
 
@@ -15,9 +18,11 @@ test-all: ## Run tests for all modules (including submodules)
 	@./scripts/test-all.sh
 
 check: ## Run moon check for main module
+	@bash ./scripts/check-agent-doc-links.sh
 	@./scripts/run-moon-module.sh check .
 
 check-all: ## Run moon check and fmt for all modules
+	@bash ./scripts/check-agent-doc-links.sh
 	@./scripts/check-all.sh
 
 fmt: ## Format code with moon fmt
@@ -25,6 +30,7 @@ fmt: ## Format code with moon fmt
 	moon info
 
 fmt-check: ## Check formatting for the main module without keeping changes
+	@bash ./scripts/check-agent-doc-links.sh
 	@./scripts/run-moon-module.sh fmt-check .
 
 build: ## Build main module (default target)

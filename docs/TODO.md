@@ -2,11 +2,34 @@
 
 Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 
+## How To Read This File
+
+`docs/TODO.md` is the active backlog index, not the full implementation spec.
+
+For coding-agent-friendly execution:
+
+- keep each active item short,
+- link one canonical plan doc in `docs/plans/` for non-trivial work,
+- define an observable exit condition,
+- move completed or superseded execution detail to `docs/archive/`.
+
+Tracking guide: [Task Tracking](development/task-tracking.md)
+Plan template: [Plan Template](plans/TEMPLATE.md)
+
 ## Priority Legend
 
 - **Impact:** High / Medium / Low
 - **Effort:** High / Medium / Low
 - **Status:** Not Started / In Progress / Done
+
+## Preferred Item Format
+
+```md
+- [ ] <task title>
+  Why: <why it matters>
+  Plan: `docs/plans/<date>-<slug>.md` or GitHub issue
+  Exit: <observable done state>
+```
 
 ---
 
@@ -43,9 +66,15 @@ Improvement proposals for the eg-walker CRDT Lambda Calculus Editor.
 
 **Impact:** High | **Effort:** High
 
-- [ ] Complete WebSocket client integration (sync protocol designed, TypeScript API stub exists)
+- [ ] Complete WebSocket client integration
+  Why: the wire protocol exists, but the supported browser-side integration path is not yet treated as a finished, documented workflow.
+  Plan: `docs/plans/2026-03-29-websocket-client-integration.md`
+  Exit: one canonical client flow is implemented, documented, and validated.
 - [ ] Implement `SyncRequest`/`SyncResponse` recovery so malformed/incompatible `CrdtOps` does not leave peers diverged silently
-- [ ] Reject duplicate/invalid relay peer IDs in `RelayRoom` instead of trusting caller uniqueness
+- [ ] Reject duplicate/invalid relay peer IDs in `RelayRoom`
+  Why: `RelayRoom` still trusts caller uniqueness and membership correctness instead of enforcing defined room behavior itself.
+  Plan: `docs/plans/2026-03-29-relay-peer-validation.md`
+  Exit: duplicate peer IDs and invalid membership operations have defined, tested behavior.
 - [x] Fix P2-1: Remote sync pollutes undo history — `UndoManager.set_tracking()` implemented; valtio TS layer suppresses tracking during remote op application (see `event-graph-walker/docs/UNDO_MANAGER_DESIGN.md`)
 - [x] Fix P2-2: Position-based undo replays stale positions after concurrent edits — replaced with LV-based UndoManager; tombstone revival restores characters at exact CRDT position regardless of concurrent edits (Phase 1+2 complete, see `event-graph-walker/docs/UNDO_MANAGER_DESIGN.md`)
 - [x] Wire `apply_sync` to suppress undo tracking — `SyncEditor::apply_sync` now disables tracking before applying remote ops
@@ -162,7 +191,10 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
 
 **Impact:** Medium | **Effort:** Medium
 
-- [ ] Convert `abort()` calls in test files to proper assertions (`assert_true` / `inspect`) for better error messages
+- [ ] Convert `abort()` calls in test files to proper assertions
+  Why: assertion-style failures currently use `abort(...)` in many tests, which makes diagnostics harsher and less informative than explicit assertions.
+  Plan: `docs/plans/2026-03-29-test-abort-cleanup.md`
+  Exit: targeted test-side `abort(...)` checks are replaced with assertion-based failures and affected suites stay green.
 - [x] Replace singleton JS FFI export state in `crdt.mbt` with a handle → `SyncEditor` map plus explicit destroy/dispose API
 - [x] Split `projection/tree_editor.mbt` into focused files (render model, refresh/reuse logic, UI/edit operations, tree indexes) — ✅ Done. `tree_editor.mbt` (edit ops), `tree_editor_model.mbt` (types + state + constructors), `tree_editor_refresh.mbt` (refresh/reuse/indexes)
 - [x] Split `crdt.mbt` into focused FFI files (editor core, undo, presence, relay, websocket) — ✅ Done. Split into 6 files: `crdt.mbt` (core), `crdt_undo.mbt`, `crdt_ephemeral.mbt`, `crdt_relay.mbt`, `crdt_websocket.mbt`, `crdt_projection.mbt`
@@ -205,7 +237,10 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 - [x] Sync connection status — SyncStatus in PEERS panel with colored dot
 - [x] Mobile layout — drawer panels, 44px touch targets, safe areas, scrim, landscape mode
 - [x] CSS design system audit — zero raw values outside `:root`, 45 custom properties
-- [ ] Inspector panel — wire up node details (type, source range, children) on outline click
+- [ ] Inspector panel
+  Why: the Ideal editor already has partial inspector UI, but the backlog item is still unfinished until outline selection reliably shows the intended node details, including source range.
+  Plan: `docs/plans/2026-03-29-ideal-inspector-panel.md`
+  Exit: outline click reliably populates the inspector with kind/type, source range, and child information.
 - [ ] Structure mode — test and polish PM block editor, verify lazy-loading works
 - [ ] Graphviz SVG theming — SVG uses hardcoded `Arial` from submodule; needs `pub(all) struct SvgConfig` to customize
 - [ ] Grammar: interleaved let/expr — `Module` AST supports `ModuleItem` in parser already, but `FlatProj` storage change caused 2x regression from MoonBit enum boxing. Alternative: add helper methods on existing `FlatProj` for interleaved views.

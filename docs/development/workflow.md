@@ -28,6 +28,15 @@ The short version:
 - isolate any unavoidable workaround in a single helper with a comment naming
   the missing upstream API.
 
+## Tracking Work
+
+Before starting medium or large work, decide the canonical tracking surface:
+
+- use [Task Tracking](task-tracking.md) for the repo's tracking rules,
+- create a plan in [`docs/plans/`](../plans/) from
+  [TEMPLATE.md](../plans/TEMPLATE.md) when the task is non-trivial,
+- keep [`docs/TODO.md`](../TODO.md) as the short active backlog index.
+
 ## Working with the Parser
 
 The parser lives in `loom/examples/lambda/`. The framework is in `loom/loom/`. When modifying:
