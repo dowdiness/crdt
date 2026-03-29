@@ -91,6 +91,43 @@ test "go_left from Module body to last def" {
 }
 
 ///|
+test "root position" {
+  let z = from_root(@ast.Int(42))
+  inspect(position_role(z), content="Root")
+}
+
+///|
+test "function position in App" {
+  let z = from_root(@ast.App(@ast.Var("f"), @ast.Int(1)))
+  let down = go_down(z).unwrap()
+  inspect(position_role(down), content="FunctionPosition")
+}
+
+///|
+test "argument position in App" {
+  let z = from_root(@ast.App(@ast.Var("f"), @ast.Int(1)))
+  let down = go_down(z).unwrap()
+  let right = go_right(down).unwrap()
+  inspect(position_role(right), content="ArgumentPosition")
+}
+
+///|
+test "else branch in If" {
+  let z = from_root(@ast.If(@ast.Int(1), @ast.Int(2), @ast.Int(3)))
+  let c = go_down(z).unwrap()
+  let t = go_right(c).unwrap()
+  let e = go_right(t).unwrap()
+  inspect(position_role(e), content="ElseBranch")
+}
+
+///|
+test "let definition role carries name" {
+  let z = from_root(@ast.Module([("x", @ast.Int(1))], @ast.Var("x")))
+  let d = go_down(z).unwrap()
+  inspect(position_role(d), content="LetDefinition(\"x\")")
+}
+
+///|
 test "to_path_indices round-trip" {
   let term = @ast.If(@ast.Int(1), @ast.Int(2), @ast.Int(3))
   let z = from_root(term)
