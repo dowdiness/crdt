@@ -14,6 +14,34 @@ pub(all) enum PositionRole {
 } derive(Show)
 
 ///|
+pub fn available_actions_for_zipper(z : Zipper) -> Array[EditAction] {
+  let focus = z.focus
+  let actions : Array[EditAction] = []
+  actions.push(Delete)
+  actions.push(WrapLam("x"))
+  actions.push(WrapApp)
+  actions.push(WrapIf)
+  actions.push(WrapBop(@ast.Plus))
+  actions.push(WrapBop(@ast.Minus))
+  let n = children_of(focus).length()
+  for i in 0..<n {
+    actions.push(Unwrap(i))
+  }
+  // SwapChildren: Bop and If only (backend only supports these)
+  match focus {
+    @ast.Bop(_, _, _) | @ast.If(_, _, _) => actions.push(SwapChildren)
+    _ => ()
+  }
+  // ChangeOperator: Bop focus only
+  match focus {
+    @ast.Bop(@ast.Plus, _, _) => actions.push(ChangeOperator(@ast.Minus))
+    @ast.Bop(@ast.Minus, _, _) => actions.push(ChangeOperator(@ast.Plus))
+    _ => ()
+  }
+  actions
+}
+
+///|
 pub fn position_role(z : Zipper) -> PositionRole {
   match z.path {
     Empty => Root

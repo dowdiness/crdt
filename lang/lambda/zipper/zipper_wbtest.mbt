@@ -179,3 +179,35 @@ test "to_path_indices round-trip" {
   let z2 = focus_at(term, indices)
   inspect(z2.focus, content="Int(2)")
 }
+
+///|
+test "available_actions includes SwapChildren for Bop" {
+  let z = from_root(@ast.Bop(@ast.Plus, @ast.Int(1), @ast.Int(2)))
+  let actions = available_actions_for_zipper(z)
+  let has_swap = actions.iter().any(fn(a) { match a { SwapChildren => true; _ => false } })
+  inspect(has_swap, content="true")
+}
+
+///|
+test "available_actions excludes SwapChildren for App" {
+  let z = from_root(@ast.App(@ast.Var("f"), @ast.Int(1)))
+  let actions = available_actions_for_zipper(z)
+  let has_swap = actions.iter().any(fn(a) { match a { SwapChildren => true; _ => false } })
+  inspect(has_swap, content="false")
+}
+
+///|
+test "available_actions includes Unwrap for non-leaf" {
+  let z = from_root(@ast.App(@ast.Var("f"), @ast.Int(1)))
+  let actions = available_actions_for_zipper(z)
+  let has_unwrap = actions.iter().any(fn(a) { match a { Unwrap(_) => true; _ => false } })
+  inspect(has_unwrap, content="true")
+}
+
+///|
+test "available_actions excludes Unwrap for leaf" {
+  let z = from_root(@ast.Int(42))
+  let actions = available_actions_for_zipper(z)
+  let has_unwrap = actions.iter().any(fn(a) { match a { Unwrap(_) => true; _ => false } })
+  inspect(has_unwrap, content="false")
+}
