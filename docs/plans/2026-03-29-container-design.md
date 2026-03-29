@@ -226,7 +226,7 @@ In `event-graph-walker/container/`. Composes refactored internal packages.
 
 | Current | New | Reason |
 |---------|-----|--------|
-| `text/Document` | `text/TextState` | Mutable text CRDT state; Document is now the container concept |
+| `text/TextDoc` | `text/TextState` | Mutable text CRDT state; Document is now the container concept |
 | `tree/TreeDoc` | `tree/TreeState` | Same pattern |
 | `tree/TreeDocError` | `tree/TreeError` | Follows from TreeState rename |
 
