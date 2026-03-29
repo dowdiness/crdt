@@ -16,6 +16,8 @@ pub fn compute_edit(String, String) -> @dowdiness/loom/core.Edit
 
 pub fn decode_message(Bytes) -> SyncMessage?
 
+pub fn decode_message_result(Bytes) -> Result[SyncMessage, ProtocolError]
+
 pub fn encode_message(SyncMessage) -> Bytes
 
 pub fn encode_relayed_crdt_ops(String, Bytes) -> Bytes
@@ -38,6 +40,20 @@ pub(all) suberror EphemeralError {
   InvalidPeerKey(key~ : String)
 }
 pub fn EphemeralError::message(Self) -> String
+
+pub(all) suberror ProtocolError {
+  MessageTooShort(length~ : Int)
+  UnsupportedVersion(version~ : Byte)
+  UnknownMessageType(msg_type~ : Byte)
+  MissingNamespace
+  InvalidNamespace(tag~ : Byte)
+  MissingRoomControlSubtype
+  InvalidRoomControlSubtype(sub_type~ : Byte)
+  MissingField(field~ : String)
+  InvalidSyncJson(detail~ : String)
+  InvalidVersionJson(detail~ : String)
+}
+pub fn ProtocolError::message(Self) -> String
 
 pub(all) suberror TreeEditError {
   ExpectedJsonObject

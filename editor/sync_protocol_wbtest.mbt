@@ -69,11 +69,25 @@ test "decode rejects wrong version" {
 }
 
 ///|
+test "decode_message_result reports wrong version" {
+  let result = decode_message_result(b"\xFF\x01\x00")
+  guard result is Err(err)
+  inspect(err.message(), content="unsupported protocol version: 255")
+}
+
+///|
 test "decode rejects too short" {
   let buf = @buffer.new()
   buf.write_byte(b'\x02')
   buf.write_byte(b'\x01')
   inspect(decode_message(buf.to_bytes()), content="None")
+}
+
+///|
+test "decode_message_result reports unknown message type" {
+  let result = decode_message_result(b"\x02\xFF\x00")
+  guard result is Err(err)
+  inspect(err.message(), content="unknown protocol message type: 255")
 }
 
 ///|
@@ -240,4 +254,11 @@ test "v2: SyncRequest with empty version_json" {
     }
     _ => fail("expected SyncRequest")
   }
+}
+
+///|
+test "decode_message_result reports missing room control subtype" {
+  let result = decode_message_result(b"\x02\x05\x00")
+  guard result is Err(err)
+  inspect(err.message(), content="missing room control subtype")
 }
