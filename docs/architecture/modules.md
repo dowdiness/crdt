@@ -75,7 +75,7 @@ Generic projectional editing primitives, independent of any language.
 ### `editor/`
 High-level editor abstractions.
 
-- `SyncEditor[T]` — generic facade composing `TextDoc`, `UndoManager`, `ImperativeParser`, and memo-derived projection views
+- `SyncEditor[T]` — generic facade composing `TextState`, `UndoManager`, `ImperativeParser`, and memo-derived projection views
 - Lambda-specific wiring: projection memo builder, tree edit bridge, tree edit JSON
 
 ### `projection/`

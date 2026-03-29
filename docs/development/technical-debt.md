@@ -10,7 +10,7 @@ design pressure originates, not where it first becomes inconvenient.
 
 Examples from this codebase:
 
-- If `SyncEditor` needs range deletion but `TextDoc` only exposes single-item
+- If `SyncEditor` needs range deletion but `TextState` only exposes single-item
   delete, the real fix belongs in `event-graph-walker/text`, not in more helper
   loops inside `editor/`.
 - If multiple root packages need old/new text diffing, centralize that logic
@@ -119,7 +119,7 @@ As of 2026-03-15, the highest-value debt to pay next is:
 2. Continue retiring projection compatibility-era public surface that is no
    longer part of the `SyncEditor` path.
 3. Keep active architecture docs aligned with the current
-   `SyncEditor -> TextDoc + UndoManager + ImperativeParser + memo-derived projection`
+   `SyncEditor -> TextState + UndoManager + ImperativeParser + memo-derived projection`
    design.
 
 Detailed execution plan:

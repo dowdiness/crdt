@@ -301,7 +301,7 @@ With BFT (flags = 0x01):
 | Topological sort | eg-walker CausalGraph (existing) |
 | Operation storage | eg-walker OpLog (existing) |
 
-No internal eg-walker logic is modified. The only change is adding public accessors to `text/` package: `SyncMessage::runs()`, `SyncMessage::heads()`, and re-exporting `OpRun`/`RawVersion` types (see Prerequisites). The BFT adapter receives `SignedEvent`, validates it, extracts `op_runs` + `heads`, and passes them to `TextDoc.sync().apply()`.
+No internal eg-walker logic is modified. The only change is adding public accessors to `text/` package: `SyncMessage::runs()`, `SyncMessage::heads()`, and re-exporting `OpRun`/`RawVersion` types (see Prerequisites). The BFT adapter receives `SignedEvent`, validates it, extracts `op_runs` + `heads`, and passes them to `TextState.sync().apply()`.
 
 ### What About Shared Types?
 
@@ -311,7 +311,7 @@ The analysis of eg-walker's internals showed:
 - **RawVersion could be shared** if the sync protocol needs it. But for now, the BFT adapter only reads `OpRun.agent` and `OpRun.start_seq` — it doesn't need to import eg-walker's internal types.
 - **VersionVector is useful for sync** but not for BFT.
 
-Decision: No type extraction for BFT. The adapter depends on eg-walker's public API (`OpRun`, `RawVersion`, `TextDoc.sync()`) only. These types must be re-exported from `text/` package (see Prerequisites).
+Decision: No type extraction for BFT. The adapter depends on eg-walker's public API (`OpRun`, `RawVersion`, `TextState.sync()`) only. These types must be re-exported from `text/` package (see Prerequisites).
 
 ## What Changes
 
