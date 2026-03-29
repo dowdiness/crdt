@@ -41,6 +41,9 @@ Completed in the second pass:
 
 - `loom/examples/json` parser, error-recovery, and incremental tests now use
   `try!` / `fail(...)` instead of assertion-style `abort(...)`
+- `loom/examples/lambda` parser, error-recovery, and CRDT peer tests now use
+  helper-based `fail(...)` / `try!` expectation failures instead of
+  assertion-style `abort(...)`
 
 ## Desired State
 
