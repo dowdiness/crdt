@@ -19,7 +19,7 @@ Build a JSON projection pipeline (`lang/json/`) that proves `framework/core/` wo
 framework/core/                 ← MODIFY: add SpanEdit, FocusHint (shared across languages)
 
 loom/examples/json/src/         ← existing: parser, grammar, JsonValue AST
-  ast.mbt                       ← MODIFY: add TreeNode + Renderable impls
+  proj_traits.mbt               ← CREATE: TreeNode + Renderable trait impls
   value_convert.mbt             ← MODIFY: make parse_json_string pub
   moon.pkg                      ← MODIFY: add @loomcore import for traits
 
@@ -32,7 +32,7 @@ canopy/editor/
 ```
 
 Same three-layer pattern as lambda:
-1. Trait impls in type owner (`loom/examples/json/src/ast.mbt`)
+1. Trait impls in type owner (`loom/examples/json/src/proj_traits.mbt`)
 2. Projection builders in canopy (`lang/json/proj/`)
 3. Edit handlers + editor bridge in canopy (`lang/json/edits/`)
 

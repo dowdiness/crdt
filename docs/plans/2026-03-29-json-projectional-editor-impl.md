@@ -33,6 +33,7 @@ Each task must pass all tests before proceeding.
 **Files:**
 - Modify: `framework/core/types.mbt` — add SpanEdit and FocusHint definitions
 - Modify: `lang/lambda/edits/types.mbt` — replace definitions with `pub using @core { type SpanEdit, type FocusHint }`
+- Modify: `lang/lambda/edits/text_edit.mbt` — update references (SpanEdit is also used here)
 - Modify: `framework/core/moon.pkg` — no new deps needed
 
 - [ ] **Step 1: Add SpanEdit and FocusHint to `framework/core/types.mbt`**
@@ -52,12 +53,14 @@ pub(all) enum FocusHint {
 } derive(Show, Eq)
 ```
 
-- [ ] **Step 2: Update `lang/lambda/edits/types.mbt`**
+- [ ] **Step 2: Update `lang/lambda/edits/types.mbt` and `lang/lambda/edits/text_edit.mbt`**
 
-Replace the local SpanEdit and FocusHint definitions with re-exports:
+In `lang/lambda/edits/types.mbt`, replace the local SpanEdit and FocusHint definitions with re-exports:
 ```moonbit
 pub using @core { type SpanEdit, type FocusHint }
 ```
+
+In `lang/lambda/edits/text_edit.mbt`, update any direct references to use the re-exported types (no code change needed if they already reference `SpanEdit` unqualified — the re-export makes them available).
 
 Keep all other definitions (DropPosition, JsonEditOp-equivalent types) unchanged.
 
@@ -529,7 +532,7 @@ cd .. && git add loom && git commit -m "chore: bump loom (TreeNode/Renderable fo
 1. **SyntaxNode has no `.text()` method** — only SyntaxToken has `.text()`. Use `node.token_text(kind)` or `node.find_token(kind)` to extract token text from nodes.
 2. **MemberNode CST structure:** Token children are `StringToken` (key) and `ColonToken`. Node children are the value node (via `child.nth_child(0)`).
 3. **Member span for delete correctness:** Each Object ProjNode child uses the **MemberNode's span** (not the value's span), so that `SourceMap::get_range()` for a child covers the full `"key": value` text. This means delete removes the entire member.
-4. **String values:** Use `node.token_text(StringToken.to_raw())` to get the raw quoted text, then strip quotes. Full unescape is unnecessary for the projection builder — the CST raw text displays correctly.
+4. **String values:** Use `node.token_text(StringToken.to_raw())` to get the raw quoted text, then `@json.parse_json_string(text)` for proper unescaping (handles `\"`, `\\`, `\n`, Unicode escapes). Made pub in Task 3.
 
 **Reference files:**
 - `loom/examples/json/src/value_convert.mbt` lines 153-185 (member extraction pattern)
@@ -544,15 +547,13 @@ cd .. && git add loom && git commit -m "chore: bump loom (TreeNode/Renderable fo
 
 - [ ] **Step 1: Create `lang/json/proj/moon.pkg`**
 
-```json
-{
-  "import": {
-    "dowdiness/canopy/framework/core": "@core",
-    "dowdiness/json": "@json",
-    "dowdiness/loom/core": "@loomcore",
-    "dowdiness/seam": "@seam",
-    "moonbitlang/core/strconv": ""
-  }
+```
+import {
+  "dowdiness/canopy/framework/core" @core,
+  "dowdiness/json" @json,
+  "dowdiness/loom/core" @loomcore,
+  "dowdiness/seam" @seam,
+  "moonbitlang/core/strconv",
 }
 ```
 
@@ -747,11 +748,7 @@ pub fn syntax_to_proj_node(
   } else if kind == @json.StringValue.to_raw() {
     // StringValue node contains a StringToken child. Extract its text.
     let raw = node.token_text(@json.StringToken.to_raw())
-    let inner = if raw.length() >= 2 {
-      raw.substring(start=1, end=raw.length() - 1)
-    } else {
-      raw
-    }
+    let inner = @json.parse_json_string(raw)
     ProjNode::new(
       @json.String(inner),
       node.start(), node.end(),
@@ -896,12 +893,7 @@ fn extract_member(
     match elem {
       @seam.SyntaxElement::Token(t) =>
         if @json.StringToken.to_raw() == t.kind() {
-          let raw = t.text()
-          key = if raw.length() >= 2 {
-            raw.substring(start=1, end=raw.length() - 1)
-          } else {
-            raw
-          }
+          key = @json.parse_json_string(t.text())
           break
         }
       _ => ()
@@ -956,7 +948,17 @@ pub fn populate_token_spans(
   syntax_root : @seam.SyntaxNode,
   proj_root : ProjNode[@json.JsonValue],
 ) -> Unit {
-  collect_key_spans(source_map, syntax_root, proj_root)
+  // Unwrap RootNode — syntax_to_proj_node does this, so the proj_root
+  // corresponds to the child under RootNode, not RootNode itself.
+  let syntax_node = if syntax_root.kind() == @json.RootNode.to_raw() {
+    match syntax_root.first_child() {
+      Some(child) => child
+      None => return
+    }
+  } else {
+    syntax_root
+  }
+  collect_key_spans(source_map, syntax_node, proj_root)
 }
 
 ///|
@@ -1191,14 +1193,13 @@ git commit -m "feat(json): add memo builder for JSON projection pipeline"
 
 - [ ] **Step 1: Create `lang/json/edits/moon.pkg`**
 
-```json
-{
-  "import": {
-    "dowdiness/canopy/framework/core": "@core",
-    "dowdiness/canopy/lang/json/proj": "@json_proj",
-    "dowdiness/json": "@json",
-    "dowdiness/loom/core": "@loomcore"
-  }
+```
+import {
+  "dowdiness/canopy/framework/core" @core,
+  "dowdiness/canopy/lang/json/proj" @json_proj,
+  "dowdiness/json" @json,
+  "dowdiness/loom/core" @loomcore,
+  "dowdiness/seam" @seam,
 }
 ```
 
@@ -1222,18 +1223,8 @@ pub(all) enum JsonEditOp {
   CommitEdit(node_id~ : NodeId, new_value~ : String)
 } derive(Show, Eq)
 
-///|
-pub(all) struct JsonSpanEdit {
-  start : Int
-  delete_len : Int
-  inserted : String
-} derive(Show, Eq)
-
-///|
-pub(all) enum JsonFocusHint {
-  RestoreCursor
-  MoveCursor(position~ : Int)
-} derive(Show, Eq)
+// SpanEdit and FocusHint are imported from @core (framework/core/types.mbt).
+// No duplicate definitions needed — use @core.SpanEdit and @core.FocusHint directly.
 ```
 
 - [ ] **Step 3: Write edit handler tests**
@@ -1451,7 +1442,7 @@ test "Unwrap single-member object" {
 Create `lang/json/edits/compute_json_edit.mbt`:
 
 ```moonbit
-using @core {type ProjNode, type NodeId, type SourceMap}
+using @core {type ProjNode, type NodeId, type SourceMap, type SpanEdit, type FocusHint}
 using @loomcore {type Range}
 
 ///|
@@ -1460,7 +1451,7 @@ pub fn compute_json_edit(
   source : String,
   proj : ProjNode[@json.JsonValue],
   source_map : SourceMap,
-) -> Result[(Array[JsonSpanEdit], JsonFocusHint)?, String] {
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
   match op {
     Delete(node_id~) => compute_delete(node_id, source, proj, source_map)
     AddMember(object_id~, key~) => compute_add_member(object_id, key, source, proj, source_map)
@@ -1481,7 +1472,7 @@ fn compute_delete(
   source : String,
   _proj : ProjNode[@json.JsonValue],
   source_map : SourceMap,
-) -> Result[(Array[JsonSpanEdit], JsonFocusHint)?, String] {
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
   let range = match source_map.get_range(node_id) {
     Some(r) => r
     None => return Err("node not in source map")
@@ -1511,13 +1502,13 @@ fn compute_delete(
       }
       if start > 0 && source[start - 1] == ',' {
         start = start - 1
-        let edits = [JsonSpanEdit::{ start, delete_len: delete_end - start, inserted: "" }]
+        let edits = [SpanEdit::{ start, delete_len: delete_end - start, inserted: "" }]
         return Ok(Some((edits, RestoreCursor)))
       }
       break
     }
   }
-  let edits = [JsonSpanEdit::{ start: delete_start, delete_len: end - delete_start, inserted: "" }]
+  let edits = [SpanEdit::{ start: delete_start, delete_len: end - delete_start, inserted: "" }]
   Ok(Some((edits, RestoreCursor)))
 }
 
@@ -1533,7 +1524,7 @@ fn compute_add_member(
   source : String,
   _proj : ProjNode[@json.JsonValue],
   source_map : SourceMap,
-) -> Result[(Array[JsonSpanEdit], JsonFocusHint)?, String] {
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
   let range = match source_map.get_range(object_id) {
     Some(r) => r
     None => return Err("object not in source map")
@@ -1551,7 +1542,7 @@ fn compute_add_member(
   let escaped_key = @json.json_escape(key)
   let prefix = if has_content { ", " } else { "" }
   let new_member = prefix + "\"" + escaped_key + "\": null"
-  let edits = [JsonSpanEdit::{ start: insert_pos, delete_len: 0, inserted: new_member }]
+  let edits = [SpanEdit::{ start: insert_pos, delete_len: 0, inserted: new_member }]
   let cursor_pos = insert_pos + new_member.length() // after "null"
   Ok(Some((edits, MoveCursor(position=cursor_pos))))
 }
@@ -1562,7 +1553,7 @@ fn compute_add_element(
   source : String,
   _proj : ProjNode[@json.JsonValue],
   source_map : SourceMap,
-) -> Result[(Array[JsonSpanEdit], JsonFocusHint)?, String] {
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
   let range = match source_map.get_range(array_id) {
     Some(r) => r
     None => return Err("array not in source map")
@@ -1576,7 +1567,7 @@ fn compute_add_element(
     }
   }
   let prefix = if has_content { ", " } else { "" }
-  let edits = [JsonSpanEdit::{ start: insert_pos, delete_len: 0, inserted: prefix + "null" }]
+  let edits = [SpanEdit::{ start: insert_pos, delete_len: 0, inserted: prefix + "null" }]
   Ok(Some((edits, MoveCursor(position=insert_pos + prefix.length()))))
 }
 
@@ -1585,14 +1576,14 @@ fn compute_wrap_in_array(
   node_id : NodeId,
   _source : String,
   source_map : SourceMap,
-) -> Result[(Array[JsonSpanEdit], JsonFocusHint)?, String] {
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
   let range = match source_map.get_range(node_id) {
     Some(r) => r
     None => return Err("node not in source map")
   }
   let edits = [
-    JsonSpanEdit::{ start: range.start, delete_len: 0, inserted: "[" },
-    JsonSpanEdit::{ start: range.end, delete_len: 0, inserted: "]" },
+    SpanEdit::{ start: range.start, delete_len: 0, inserted: "[" },
+    SpanEdit::{ start: range.end, delete_len: 0, inserted: "]" },
   ]
   Ok(Some((edits, RestoreCursor)))
 }
@@ -1603,7 +1594,7 @@ fn compute_wrap_in_object(
   key : String,
   _source : String,
   source_map : SourceMap,
-) -> Result[(Array[JsonSpanEdit], JsonFocusHint)?, String] {
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
   let range = match source_map.get_range(node_id) {
     Some(r) => r
     None => return Err("node not in source map")
@@ -1611,8 +1602,8 @@ fn compute_wrap_in_object(
   let escaped_key = @json.json_escape(key)
   let prefix = "{\"" + escaped_key + "\": "
   let edits = [
-    JsonSpanEdit::{ start: range.start, delete_len: 0, inserted: prefix },
-    JsonSpanEdit::{ start: range.end, delete_len: 0, inserted: "}" },
+    SpanEdit::{ start: range.start, delete_len: 0, inserted: prefix },
+    SpanEdit::{ start: range.end, delete_len: 0, inserted: "}" },
   ]
   Ok(Some((edits, RestoreCursor)))
 }
@@ -1623,7 +1614,7 @@ fn compute_unwrap(
   source : String,
   proj : ProjNode[@json.JsonValue],
   source_map : SourceMap,
-) -> Result[(Array[JsonSpanEdit], JsonFocusHint)?, String] {
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
   let range = match source_map.get_range(node_id) {
     Some(r) => r
     None => return Err("node not in source map")
@@ -1645,7 +1636,7 @@ fn compute_unwrap(
         None => return Err("child not in source map")
       }
       let content = source.substring(start=child_range.start, end=child_range.end)
-      let edits = [JsonSpanEdit::{ start: range.start, delete_len: range.end - range.start, inserted: content }]
+      let edits = [SpanEdit::{ start: range.start, delete_len: range.end - range.start, inserted: content }]
       Ok(Some((edits, RestoreCursor)))
     }
     @json.Object(members) => {
@@ -1662,8 +1653,8 @@ fn compute_unwrap(
       // the full member, we look at the child's sub-children for containers,
       // or use the source_map range for leaf values.
       // Simplest correct approach: unparse the value kind.
-      let content = @core.Renderable::unparse(child.kind)
-      let edits = [JsonSpanEdit::{ start: range.start, delete_len: range.end - range.start, inserted: content }]
+      let content = @loomcore.Renderable::unparse(child.kind)
+      let edits = [SpanEdit::{ start: range.start, delete_len: range.end - range.start, inserted: content }]
       Ok(Some((edits, RestoreCursor)))
     }
     _ => Err("can only unwrap Array or Object")
@@ -1675,7 +1666,7 @@ fn compute_change_type(
   node_id : NodeId,
   new_type : String,
   source_map : SourceMap,
-) -> Result[(Array[JsonSpanEdit], JsonFocusHint)?, String] {
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
   let range = match source_map.get_range(node_id) {
     Some(r) => r
     None => return Err("node not in source map")
@@ -1689,7 +1680,7 @@ fn compute_change_type(
     "object" => "{}"
     _ => return Err("unknown type: " + new_type)
   }
-  let edits = [JsonSpanEdit::{ start: range.start, delete_len: range.end - range.start, inserted: replacement }]
+  let edits = [SpanEdit::{ start: range.start, delete_len: range.end - range.start, inserted: replacement }]
   Ok(Some((edits, MoveCursor(position=range.start + replacement.length()))))
 }
 
@@ -1699,7 +1690,7 @@ fn compute_rename_key(
   key_index : Int,
   new_key : String,
   source_map : SourceMap,
-) -> Result[(Array[JsonSpanEdit], JsonFocusHint)?, String] {
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
   let role = "key:" + key_index.to_string()
   let span = match source_map.get_token_span(object_id, role) {
     Some(s) => s
@@ -1708,7 +1699,7 @@ fn compute_rename_key(
   // Replace the entire quoted key token, escaping the new key
   let escaped_key = @json.json_escape(new_key)
   let replacement = "\"" + escaped_key + "\""
-  let edits = [JsonSpanEdit::{ start: span.start, delete_len: span.end - span.start, inserted: replacement }]
+  let edits = [SpanEdit::{ start: span.start, delete_len: span.end - span.start, inserted: replacement }]
   Ok(Some((edits, RestoreCursor)))
 }
 
@@ -1717,12 +1708,12 @@ fn compute_commit(
   node_id : NodeId,
   new_value : String,
   source_map : SourceMap,
-) -> Result[(Array[JsonSpanEdit], JsonFocusHint)?, String] {
+) -> Result[(Array[SpanEdit], FocusHint)?, String] {
   let range = match source_map.get_range(node_id) {
     Some(r) => r
     None => return Err("node not in source map")
   }
-  let edits = [JsonSpanEdit::{ start: range.start, delete_len: range.end - range.start, inserted: new_value }]
+  let edits = [SpanEdit::{ start: range.start, delete_len: range.end - range.start, inserted: new_value }]
   Ok(Some((edits, MoveCursor(position=range.start + new_value.length()))))
 }
 ```
@@ -1758,37 +1749,26 @@ git commit -m "feat(json): add edit handlers — delete, add, wrap, unwrap, rena
 
 **Files:**
 - Create: `lang/json/edits/json_edit_bridge.mbt`
-- Modify: `editor/sync_editor_text.mbt` — make `apply_text_edit_internal` pub
 
-- [ ] **Step 1: Make `apply_text_edit_internal` public**
+> **Note:** `apply_text_edit_internal` was already made pub in Task 3 Step 4. No duplicate change needed here.
 
-In `editor/sync_editor_text.mbt`, change:
-```moonbit
-// Before:
-fn[T] SyncEditor::apply_text_edit_internal(
-// After:
-pub fn[T] SyncEditor::apply_text_edit_internal(
-```
-
-- [ ] **Step 2: Update `lang/json/edits/moon.pkg`**
+- [ ] **Step 1: Update `lang/json/edits/moon.pkg`**
 
 Add editor dependency:
-```json
-{
-  "import": {
-    "dowdiness/canopy/editor": "@editor",
-    "dowdiness/canopy/framework/core": "@core",
-    "dowdiness/canopy/lang/json/proj": "@json_proj",
-    "dowdiness/json": "@json",
-    "dowdiness/loom/core": "@loomcore",
-    "dowdiness/seam": "@seam"
-  }
+```
+import {
+  "dowdiness/canopy/editor" @editor,
+  "dowdiness/canopy/framework/core" @core,
+  "dowdiness/canopy/lang/json/proj" @json_proj,
+  "dowdiness/json" @json,
+  "dowdiness/loom/core" @loomcore,
+  "dowdiness/seam" @seam,
 }
 ```
 
 > **Note:** `@seam` is needed for the RenameKey test which parses CST and calls `SyntaxNode::from_cst`.
 
-- [ ] **Step 3: Implement the bridge**
+- [ ] **Step 2: Implement the bridge**
 
 Create `lang/json/edits/json_edit_bridge.mbt`:
 
@@ -1836,16 +1816,16 @@ pub fn apply_json_edit(
 }
 ```
 
-- [ ] **Step 4: Run `moon check`**
+- [ ] **Step 3: Run `moon check`**
 
 ```bash
 moon check
 ```
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add lang/json/edits/ editor/sync_editor_text.mbt editor/pkg.generated.mbti
+git add lang/json/edits/
 git commit -m "feat(json): add edit bridge connecting JsonEditOp to SyncEditor"
 ```
 
@@ -2086,8 +2066,8 @@ This ensures:
 
 ### String handling
 
-- `parse_json_string()` in `value_convert.mbt` is private (`fn`, not `pub fn`).
-- The projection builder strips quotes with simple substring (no full unescape). This is sufficient because the ProjNode stores the display/reconciliation value, not the source-faithful value.
+- `parse_json_string()` in `value_convert.mbt` is made `pub` in Task 3.
+- The projection builder uses `@json.parse_json_string(raw)` for both string values and member keys, ensuring proper unescaping of JSON escape sequences (`\"`, `\\`, `\n`, Unicode escapes, etc.).
 - `json_escape()` in `proj_traits.mbt` is `pub` so edit handlers can use it for key insertion.
 - `unparse` for `Error(_)` produces `"null"` (valid JSON), not `"null /* error: msg */"`.
 
@@ -2131,9 +2111,9 @@ The projection builder uses `@json.ObjectNode.to_raw()` etc. to match syntax kin
 
 **`lang/json/proj/moon.pkg`:**
 ```
-dowdiness/canopy/framework/core, dowdiness/canopy/lang/lambda/flat,
-dowdiness/incr, dowdiness/json, dowdiness/loom, dowdiness/loom/core,
-dowdiness/seam, moonbitlang/core/strconv
+dowdiness/canopy/framework/core, dowdiness/incr, dowdiness/json,
+dowdiness/loom, dowdiness/loom/core, dowdiness/seam,
+moonbitlang/core/strconv
 ```
 
 **`lang/json/edits/moon.pkg`:**
