@@ -42,5 +42,5 @@ When a structural edit is performed:
 1.  The `TreeEditOp` is applied to the current `ProjNode` tree.
 2.  The resulting `ProjNode` is unparsed back into a Lambda Calculus string.
 3.  The `SyncEditor` performs a diff between the old and new text.
-4.  Minimal CRDT operations are generated and applied to the `TextDoc`.
+4.  Minimal CRDT operations are generated and applied to the `TextState`.
 5.  The incremental parser reparses the text, and the `SourceMap` reconciles the new AST with existing `NodeId`s to preserve UI state.

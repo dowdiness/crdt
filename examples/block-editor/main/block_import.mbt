@@ -14,7 +14,7 @@
 pub fn block_doc_from_markdown(
   md : String,
   replica_id : String,
-) -> BlockDoc raise @tree.TreeDocError {
+) -> BlockDoc raise @tree.TreeError {
   let doc = BlockDoc::new(replica_id)
   let lines = split_lines(md)
   let len = lines.length()
@@ -116,7 +116,7 @@ pub fn block_doc_from_markdown(
 fn flush_paragraph(
   doc : BlockDoc,
   buf : Array[String],
-) -> Unit raise @tree.TreeDocError {
+) -> Unit raise @tree.TreeError {
   if buf.length() > 0 {
     let text = buf.join(" ")
     let id = doc.create_block(Paragraph)

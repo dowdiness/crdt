@@ -149,7 +149,7 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
 
 ### CRDT API limitations
 
-- [x] **Char-by-char delete for range deletions** — ✅ Done. `TextDoc` now exposes `replace_range` in `event-graph-walker/text/text_doc.mbt`.
+- [x] **Char-by-char delete for range deletions** — ✅ Done. `TextState` now exposes `replace_range` in `event-graph-walker/text/text_doc.mbt`.
 - [x] **No undo tracking for tree edits** — ✅ Done. `apply_tree_edit` now uses `apply_text_edit_internal` with `record_undo=true`. Tree edits are undoable via `SyncEditor.undo()`.
 
 ### Resolved: CRDT position ordering bug
