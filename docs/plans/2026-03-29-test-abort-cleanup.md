@@ -21,6 +21,8 @@ Out:
 - The active backlog still lists conversion of `abort()`-based tests to proper
   assertions as open work.
 - Current usage spans multiple modules and submodules.
+- Execution is paused after the main-module pass plus focused `loom/examples`
+  slices, rather than being the active task.
 
 ## Progress
 
@@ -36,6 +38,8 @@ Remaining work:
   test packages
 - any remaining assertion-like `abort(...)` uses outside the first-pass main
   module files
+- resume only when this becomes the active cleanup task again; current remaining
+  footprint is concentrated mostly in `loom/` and `graphviz/`
 
 Completed in the second pass:
 
