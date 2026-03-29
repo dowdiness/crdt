@@ -2,7 +2,7 @@
 // Converts CST SyntaxNodes to ProjNode[JsonValue].
 
 ///|
-using @core {type ProjNode}
+using @core {type ProjNode, type NodeId}
 
 ///|
 /// Convert a SyntaxNode to a ProjNode[JsonValue].
