@@ -1,7 +1,7 @@
 # JSON Projectional Editor — Design
 
 **Date:** 2026-03-29
-**Status:** Approved (revised after Codex review)
+**Status:** Approved (revised: architectural improvements + Codex review fixes)
 
 ## Goal
 
@@ -16,16 +16,19 @@ Build a JSON projection pipeline (`lang/json/`) that proves `framework/core/` wo
 ## Architecture
 
 ```
-loom/examples/json/src/     ← existing: parser, grammar, JsonValue AST
-  ast.mbt                   ← MODIFY: add TreeNode + Renderable impls
-  moon.pkg                  ← MODIFY: add @loomcore import
+framework/core/                 ← MODIFY: add SpanEdit, FocusHint (shared across languages)
+
+loom/examples/json/src/         ← existing: parser, grammar, JsonValue AST
+  ast.mbt                       ← MODIFY: add TreeNode + Renderable impls
+  value_convert.mbt             ← MODIFY: make parse_json_string pub
+  moon.pkg                      ← MODIFY: add @loomcore import for traits
 
 canopy/lang/json/
-  proj/                     ← NEW: syntax_to_proj_node, populate_token_spans
-  edits/                    ← NEW: JsonEditOp, text edit handlers, bridge
+  proj/                         ← NEW: syntax_to_proj_node, populate_token_spans, memo builder
+  edits/                        ← NEW: JsonEditOp, text edit handlers, bridge
 
 canopy/editor/
-  sync_editor.mbt           ← MODIFY: generalize proj_memo to support non-FlatProj languages
+  sync_editor.mbt               ← MODIFY: add SyncEditor::new_generic (3-memo, no FlatProj)
 ```
 
 Same three-layer pattern as lambda:
@@ -33,25 +36,43 @@ Same three-layer pattern as lambda:
 2. Projection builders in canopy (`lang/json/proj/`)
 3. Edit handlers + editor bridge in canopy (`lang/json/edits/`)
 
-## Prerequisite: Generalize SyncEditor proj_memo
+## Prerequisite 1: Move SpanEdit + FocusHint to framework/core/
 
-**Blocker:** `SyncEditor[T]` currently hard-wires `proj_memo: Memo[VersionedFlatProj]` and the `build_memos` callback returns a 4-tuple including `Memo[VersionedFlatProj]`. JSON has no FlatProj.
+**Problem:** `SpanEdit` and `FocusHint` are defined in `lang/lambda/edits/types.mbt` but are structurally generic — they describe text span replacements and cursor hints with no lambda-specific content. The JSON editor needs the same types.
 
-**Fix:** Make the FlatProj memo optional in SyncEditor:
-- Change `proj_memo` field type from `Memo[VersionedFlatProj]` to `Memo[VersionedFlatProj]?`
-- Change `build_memos` callback to return `(Memo[VersionedFlatProj]?, Memo[ProjNode[T]?], Memo[Map[NodeId, ProjNode[T]]], Memo[SourceMap])`
-- `get_flat_proj()` returns `None` when proj_memo is None
-- `SyncEditor::new_lambda` passes `Some(flat_proj_memo)` (unchanged behavior)
-- JSON's builder passes `None`
+**Fix:** Move both to `framework/core/types.mbt`. Update `lang/lambda/edits/types.mbt` to re-export via `pub using @core { type SpanEdit, type FocusHint }`. JSON imports from `@core` directly — no lambda dependency.
 
-This is a minimal change (~10 lines in sync_editor.mbt + projection_memo.mbt). The lambda path is unchanged.
+This also establishes the convention: **edit result types are framework-level, edit operation enums are language-level.**
 
-**Alternative (future):** Extract FlatProj memo entirely from SyncEditor into the language-specific bridge. This is Task 7 from the framework extraction plan — deferred.
+## Prerequisite 2: Add SyncEditor::new_generic (no FlatProj)
+
+**Problem:** `SyncEditor::new` requires a `build_memos` callback returning `(Memo[VersionedFlatProj], ...)`. JSON has no FlatProj, and `lang/json/` should not depend on `@lambda_flat`.
+
+**Fix:** Add a second public constructor that takes a 3-memo builder:
+
+```moonbit
+pub fn[T] SyncEditor::new_generic(
+  agent_id, make_parser,
+  build_memos : (Runtime, Signal[String], Signal[SyntaxNode?], ImperativeParser[T])
+    -> (Memo[ProjNode[T]?], Memo[Map[NodeId, ProjNode[T]]], Memo[SourceMap]),
+  capture_timeout_ms?,
+) -> SyncEditor[T]
+```
+
+Internally sets `proj_memo = None`. The existing `new_lambda` is unchanged. `get_flat_proj()` returns `None` for editors created via `new_generic`.
+
+**Why not just make proj_memo optional?** That still requires the JSON memo builder to return a 4-tuple with `None` as first element, typed as `Memo[VersionedFlatProj]?`. The JSON package would need to import `@lambda_flat` just for the type. A separate constructor avoids this entirely.
+
+## Prerequisite 3: Make parse_json_string pub in loom
+
+**Problem:** The projection builder needs to properly unescape JSON string values (handle `\"`, `\\`, `\n`, Unicode escapes). The JSON module already has `parse_json_string` in `value_convert.mbt` but it's private (`fn`, not `pub fn`).
+
+**Fix:** Change to `pub fn parse_json_string(raw : String) -> String`. One-line change in the loom submodule.
 
 ## Component 1: TreeNode + Renderable for JsonValue
 
-**Location:** `loom/examples/json/src/ast.mbt`
-**Dep change:** Add `"dowdiness/loom/core" @loomcore` to `loom/examples/json/src/moon.pkg`. No `moon.mod.json` change needed — JSON module already depends on `dowdiness/loom` which includes loom/core.
+**Location:** `loom/examples/json/src/proj_traits.mbt` (new file)
+**Dep change:** `@loomcore` already imported in JSON's `moon.pkg` as `@core` (same package).
 
 ### TreeNode
 
@@ -65,243 +86,110 @@ same_kind:
   constructor-tag equality (Null==Null, Bool==Bool, Array==Array, etc.)
 ```
 
-**Design choice: values-only children for Object.** Object members are `(String, JsonValue)` tuples. Only the JsonValue part becomes a ProjNode child. Key names appear in the parent Object's label and are accessible via token spans for rename operations.
+**Design choice: values-only children for Object.** Key names appear in the parent Object's label and are accessible via token spans for rename operations. ProjNode children use **MemberNode spans** (not value-only spans) so delete operations remove the full member text.
 
-**Known limitation:** When an Object has multiple children of the same kind (e.g., `{"a": 1, "b": 2}` — two Numbers), `reconcile`'s LCS algorithm matches by `same_kind` and positional order. This preserves IDs correctly for in-order edits but may mis-assign IDs after reordering same-kind siblings. Lambda has the same limitation with multiple same-kind let-bindings. This is acceptable for framework validation.
+**Known limitation:** Same-kind siblings in an Object (e.g., two Numbers) reconcile by positional order. This is the same as lambda's let-bindings. Acceptable for framework validation.
 
-**Future options:**
-- (B) Add `Member(String, JsonValue)` variant to JsonValue — members become first-class nodes with distinct kinds
-- (C) Create `JsonExpr` wrapper type in canopy — avoids modifying loom submodule
+**Future options:** (B) Add Member variant to JsonValue, or (C) create JsonExpr wrapper.
 
 ### Renderable
 
 ```
-kind_tag:
-  "Null", "Bool", "Number", "String", "Array", "Object", "Error"
+kind_tag: "Null", "Bool", "Number", "String", "Array", "Object", "Error"
 
 label:
   Null → "null"
   Bool(b) → b.to_string()
-  Number(n) → n.to_string()
-  String(s) → "\"" + truncate(s, 20) + "\""
-  Array(items) → "[" + items.length().to_string() + " items]"
-  Object(members) → "{" + members.map(m => m.0).join(", ") + "}"
+  Number(n) → format without trailing .0
+  String(s) → quoted, truncated at 20 chars
+  Array(items) → "[N items]"
+  Object(members) → "{key1, key2, ...}"
   Error(msg) → "Error: " + msg
 
 placeholder (per-kind):
-  Null → "null"
-  Bool → "false"
-  Number → "0"
-  String → "\"\""
-  Array → "[]"
-  Object → "{}"
-  Error → "null"
+  Null→"null", Bool→"false", Number→"0", String→"\"\"",
+  Array→"[]", Object→"{}", Error→"null"
 
-unparse: JSON serialization with proper escaping, indentation
+unparse: JSON serialization with proper escaping via json_escape helper
+  Error(_) produces "null" (valid JSON)
 ```
-
-### Estimated size: ~60 lines
 
 ## Component 2: Projection Builder (`lang/json/proj/`)
 
 ### `proj_node.mbt` — CST → ProjNode[JsonValue]
 
-`syntax_to_proj_node(node: SyntaxNode, counter: Ref[Int]) -> ProjNode[JsonValue]`
+**Key insight: use MemberNode spans for Object children.** Each value ProjNode in an Object uses the parent MemberNode's `start`/`end`, not the value node's. This ensures `source_map.get_range()` returns the full member span (key + colon + value), enabling correct delete operations.
 
-Mapping:
+**Text extraction from CST nodes:** Uses seam's `SyntaxNode` API:
+- Key text: `member_node.all_children()` → find first `SyntaxElement::Token(t)` where `t.kind() == StringToken.to_raw()` → `parse_json_string(t.text())`
+- String values: `node.token_text(StringToken.to_raw())` → `parse_json_string(text)`
+- Number values: `node.token_text(NumberToken.to_raw())` → parse_double
+- Bool values: `node.find_token(TrueKeyword.to_raw())` to determine true/false
+- Value nodes: `member_node.nth_child(0)` (first node child, not token child)
 
-| SyntaxKind | JsonValue | Children |
-|---|---|---|
-| RootNode | recurse into single child | — |
-| ObjectNode | `Object(members)` | recurse each MemberNode's value child |
-| ArrayNode | `Array(items)` | recurse each value child |
-| MemberNode | — (parent Object collects key+value) | — |
-| StringValue | `String(text)` | leaf |
-| NumberValue | `Number(parsed)` | leaf |
-| BoolValue | `Bool(true/false)` | leaf |
-| NullValue | `Null` | leaf |
-| ErrorNode | `Error(message)` | leaf |
+### `populate_token_spans.mbt`
 
-**MemberNode handling:** ObjectNode iterates its MemberNode children, extracts `(key_text, recurse(value_child))` tuples to build `Object(Array[(String, JsonValue)])`. Each value child becomes a ProjNode child of the Object ProjNode. Key text comes from the StringToken inside MemberNode.
+Extracts key name spans from MemberNode's StringToken. Span covers the **entire quoted token** (including quotes). Must unwrap RootNode before walking children.
 
-**Error recovery:** The JSON parser produces ErrorNode for malformed input and synthesizes `Error("missing ...")` values for incomplete members. The projection builder must handle:
-- MemberNode with missing value → `Error("missing value")` ProjNode child
-- MemberNode with missing key → use `""` as key text
-- ErrorNode at any position → `Error(message)` leaf ProjNode
-- Intermediate invalid states during typing (e.g., `{"a": }` while user types)
+### `json_memo.mbt` — Memo builder
 
-### `populate_token_spans.mbt` — Token span extraction
+Returns 3 memos (not 4 — no FlatProj):
+1. `Memo[ProjNode[JsonValue]?]` — reconciled projection tree
+2. `Memo[Map[NodeId, ProjNode[JsonValue]]]` — node registry
+3. `Memo[SourceMap]` — position tracking with token spans
 
-Standalone function: `populate_token_spans(source_map, syntax_root, proj_root)`
-
-Extracts key name spans from MemberNode's StringToken children. Stored with role `"key:0"`, `"key:1"`, etc. on the Object ProjNode.
-
-**Span contract:** Key spans cover the **entire StringToken** including quotes (e.g., `"name"` → span [3, 9) for `{"name": 1}`). RenameKey replaces the entire token and must produce valid quoted JSON (handle escaping).
-
-### Estimated size: ~180 lines
+No dependency on `@lambda_flat`.
 
 ## Component 3: Edit Handlers (`lang/json/edits/`)
 
-### `json_edit_op.mbt` — Edit operation enum
+### JsonEditOp enum (language-specific)
 
-```moonbit
-pub(all) enum JsonEditOp {
-  // Generic UI ops
-  Select(node_id~: NodeId)
-  Collapse(node_id~: NodeId)
-  Expand(node_id~: NodeId)
-  StartEdit(node_id~: NodeId)
-  CommitEdit(node_id~: NodeId, new_value~: String)
-  CancelEdit
-  // JSON structural ops
-  Delete(node_id~: NodeId)
-  AddMember(object_id~: NodeId, key~: String)
-  AddElement(array_id~: NodeId)
-  WrapInArray(node_id~: NodeId)
-  WrapInObject(node_id~: NodeId, key~: String)
-  Unwrap(node_id~: NodeId)
-  ChangeType(node_id~: NodeId, new_type~: String)
-  RenameKey(object_id~: NodeId, key_index~: Int, new_key~: String)
-  DuplicateMember(object_id~: NodeId, key_index~: Int)
-  ReorderUp(object_id~: NodeId, key_index~: Int)
-  ReorderDown(object_id~: NodeId, key_index~: Int)
-}
-```
+Delete, AddMember, AddElement, WrapInArray, WrapInObject, Unwrap, ChangeType, RenameKey, CommitEdit.
 
-### `compute_json_edit.mbt` — Edit dispatch + bridge
+No generic UI ops (Select, Collapse, etc.) — those go through TreeEditorState directly.
 
-```moonbit
-pub fn compute_json_edit(
-  op: JsonEditOp,
-  source: String,
-  proj: ProjNode[JsonValue],
-  source_map: SourceMap,
-) -> Result[(Array[SpanEdit], FocusHint)?, String]
-```
+### `compute_json_edit` returns `Result[(Array[SpanEdit], FocusHint)?, String]`
 
-Each handler computes text replacements via source map span lookup.
+Uses the **shared** `SpanEdit` and `FocusHint` from `framework/core/` — same types as lambda.
 
-### `json_edit_bridge.mbt` — SyncEditor bridge
+### `apply_json_edit` bridge
 
-```moonbit
-pub fn SyncEditor::apply_json_edit(
-  self: SyncEditor[JsonValue],
-  op: JsonEditOp,
-  timestamp_ms: Int,
-) -> Result[Unit, String]
-```
+Free function (not a method on SyncEditor) that:
+1. Reads proj + source_map from SyncEditor memos
+2. Calls `compute_json_edit`
+3. Applies span edits in reverse document order via SyncEditor's public API
 
-Analogous to lambda's `apply_tree_edit`. Reads proj + source_map from memos, calls `compute_json_edit`, applies resulting text edits via `apply_text_edit_internal`. Lives in `lang/json/edits/` — **not** in `editor/`.
+Requires `apply_text_edit_internal` to be made `pub` on SyncEditor.
 
-**Note:** This requires `apply_text_edit_internal` to be accessible from `lang/json/edits/`. Currently it's a private method on SyncEditor. Options:
-- Make it `pub` (simplest, minor API surface increase)
-- Use the public `apply_text_edit` method instead (slightly different semantics — records undo by default)
-- Pass a closure from the bridge
+### Key edit handler details
 
-### Estimated size: ~280 lines
-
-## Component 4: SyncEditor Integration
-
-### `SyncEditor::new_json`
-
-Lives in `lang/json/edits/` (not `editor/`), analogous to how `new_lambda` could eventually move to `lang/lambda/`.
-
-```moonbit
-pub fn SyncEditor::new_json(
-  agent_id: String,
-  capture_timeout_ms?: Int,
-) -> SyncEditor[JsonValue]
-```
-
-**Note:** `SyncEditor::new` is currently `fn` (package-private to editor/). To call it from `lang/json/edits/`, either:
-- Make `SyncEditor::new` `pub` (opens the generic constructor to all packages)
-- Add a `SyncEditor::new_generic` public constructor that takes the 3-memo builder (no FlatProj)
-
-Wires `json_grammar` + `build_json_projection_memos`.
-
-### `build_json_projection_memos`
-
-Simpler than lambda's — no FlatProj, no incremental def tracking:
-
-1. Syntax tree signal → ProjNode[JsonValue] via `syntax_to_proj_node`
-2. Reconcile with previous ProjNode (preserve IDs)
-3. Build registry (walk tree, collect NodeId → ProjNode)
-4. Build SourceMap from ProjNode tree + `populate_token_spans`
-
-Returns `(None, proj_node_memo, registry_memo, source_map_memo)` — first element is `None` (no FlatProj).
-
-### Estimated size: ~120 lines
+- **Delete:** Uses the MemberNode span (from source map) to remove the entire member including key+colon. Handles trailing comma cleanup.
+- **Unwrap:** Guards single-element only. Returns Err for multi-element containers. Extracts value by finding the child ProjNode's original value span within the member span.
+- **RenameKey:** Uses token span `"key:N"` to replace the quoted key. Applies `json_escape` to the new key.
+- **AddMember/AddElement:** Inserts before closing delimiter. Handles comma insertion.
 
 ## Testing Strategy
 
-Whitebox tests in `lang/json/proj/` and `lang/json/edits/`:
+Same as before, plus:
+- **RenameKey test** with escaped characters
+- **Duplicate-kind reconciliation** test
+- **Error recovery** during intermediate typing states
+- **get_flat_proj returns None** for JSON editor
+- Assertions check actual values, not just `is Some(_)`
 
-**Projection tests:**
-- Parse `{"a": 1, "b": true}` → correct ProjNode tree (Object with 2 children)
-- Parse `[1, "hello", null]` → correct Array children
-- Parse nested `{"a": {"b": 1}}` → correct nesting
-- Parse empty `{}` and `[]` → correct leaf nodes
-- SourceMap positions match text spans
-- Token spans for member keys cover quoted strings
-
-**Error recovery tests:**
-- `{"a": }` (missing value) → Error child node
-- `{: 1}` (missing key) → handled gracefully
-- `{"a": 1, }` (trailing comma) → parser recovers
-- `{"a" 1}` (missing colon) → parser recovers
-
-**Reconciliation tests:**
-- Edit a value → reparse → reconcile preserves Object and sibling IDs
-- Add member → reparse → new member gets fresh ID, others preserved
-- Delete member → reparse → remaining members keep IDs
-- **Duplicate-kind test:** `{"a": 1, "b": 2}` → edit "b" value → both Number children should reconcile correctly by position
-
-**Edit handler tests:**
-- Delete member from object → correct text with comma handling
-- Add member to object → correct JSON with comma
-- Wrap value in array → `[value]`
-- Rename key → correct quoted replacement with escaping
-- Change type (null → string) → kind-specific placeholder
-
-**Integration tests:**
-- SyncEditor::new_json round-trip: create → edit → get_text → verify
-- reconcile + SourceMap consistent after edits
-
-## Loomgen Comparison
-
-By building JSON by hand alongside lambda, we identify which boilerplate is mechanical vs language-specific:
-
-| Component | Generatable? | Pattern |
-|---|---|---|
-| TreeNode impl | Yes | Derivable from enum shape |
-| Renderable (kind_tag, same_kind) | Yes | Constructor-tag mapping |
-| Renderable (label, unparse) | Partial | Needs per-variant hints |
-| Renderable (placeholder) | Yes | Annotation-driven |
-| syntax_to_proj_node | Yes | Mechanical CST→ProjNode mapping |
-| populate_token_spans | Yes | Token role extraction |
-| Edit handlers | No | Language-specific logic |
-| Memo builder | Partial | Presence/absence of FlatProj varies |
-
-Actual line counts will be measured after implementation and compared against lambda's equivalents.
-
-## Dependencies
+## Dependencies (no cross-language deps)
 
 ```
-loom/examples/json/src/
-  moon.pkg: add "dowdiness/loom/core" @loomcore
-
-canopy/lang/json/proj/
-  moon.pkg: @core, @json, @loomcore, @seam
-
-canopy/lang/json/edits/
-  moon.pkg: @core, @json, @loomcore, lang/json/proj, editor (for SyncEditor access)
+framework/core/     ← SpanEdit, FocusHint (shared)
+lang/json/proj/     ← @core, @json, @loomcore, @seam, @incr, @loom
+lang/json/edits/    ← @core, @json, @loomcore, lang/json/proj, editor
 ```
 
-No circular dependencies. `lang/json/` imports from `framework/core/` and loom — not from `projection/` or `lang/lambda/`.
+`lang/json/` does NOT import `@lambda_flat`, `@lambda_proj`, `@lambda_edits`, or `projection/`.
 
 ## Risks
 
-1. **SyncEditor generalization** — Making proj_memo optional touches a core struct. Regression risk mitigated by existing 517+ tests.
-2. **SyncEditor::new visibility** — Making the constructor public or adding a generic variant changes the editor package's API surface.
-3. **apply_text_edit_internal access** — The JSON edit bridge needs to call private SyncEditor methods. May require making them public.
-4. **Error recovery edge cases** — JSON parser has extensive recovery; projection must handle all recovered states without crashing.
+1. **SyncEditor::new_generic** — New public constructor. Low risk with existing tests.
+2. **SpanEdit/FocusHint move** — Re-export preserves backward compat. Low risk.
+3. **apply_text_edit_internal visibility** — Making it pub is a minor API surface increase.
+4. **Error recovery** — JSON parser has extensive recovery; projection must handle all states.

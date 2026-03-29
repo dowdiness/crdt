@@ -4,9 +4,9 @@
 
 **Goal:** Build a JSON projection pipeline that proves framework/core works with a second real language, validated by tests.
 
-**Architecture:** Trait impls in loom JSON module (type owner), projection builders in `canopy/lang/json/proj/`, edit handlers in `canopy/lang/json/edits/`. SyncEditor generalized to support languages without FlatProj.
+**Architecture:** Shared edit types (SpanEdit, FocusHint) in framework/core. Trait impls in loom JSON module (type owner). Projection builders in `canopy/lang/json/proj/`. Edit handlers in `canopy/lang/json/edits/`. New `SyncEditor::new_generic` constructor avoids FlatProj dependency.
 
-**Tech Stack:** MoonBit, loom parser framework, framework/core (ProjNode, SourceMap, reconcile)
+**Tech Stack:** MoonBit, loom parser framework, framework/core (ProjNode, SourceMap, reconcile, SpanEdit, FocusHint)
 
 **Design spec:** `docs/design/2026-03-29-json-projectional-editor-design.md`
 
@@ -16,41 +16,82 @@
 
 | Phase | Tasks | What |
 |-------|-------|------|
-| A — Prerequisite | 1 | Generalize SyncEditor proj_memo to optional |
-| B — Loom submodule | 2 | TreeNode + Renderable impls for JsonValue |
-| C — Projection pipeline | 3–4 | syntax_to_proj_node, populate_token_spans, memo builder |
-| D — Edit handlers | 5–6 | JsonEditOp, compute_json_edit, edit bridge |
-| E — Integration | 7 | new_json_editor, end-to-end tests |
+| A — Prerequisites | 1–3 | Move SpanEdit/FocusHint to framework/core; add SyncEditor::new_generic; make parse_json_string pub |
+| B — Loom submodule | 4 | TreeNode + Renderable impls for JsonValue |
+| C — Projection pipeline | 5–6 | syntax_to_proj_node, populate_token_spans, memo builder |
+| D — Edit handlers | 7–8 | JsonEditOp, compute_json_edit, edit bridge |
+| E — Integration | 9 | new_json_editor, end-to-end tests |
 
 Each task must pass all tests before proceeding.
 
 ---
 
-## Task 1: Generalize SyncEditor proj_memo to optional
+## Task 1: Move SpanEdit + FocusHint to framework/core/
 
-**Why:** SyncEditor hard-wires `proj_memo: Memo[VersionedFlatProj]`. JSON has no FlatProj. Make it optional so non-FlatProj languages can use SyncEditor.
+**Why:** These types are structurally generic (text span replacement + cursor hint). Moving them to framework/core allows both lambda and JSON to share them without cross-language dependencies.
 
 **Files:**
-- Modify: `editor/sync_editor.mbt` — change `proj_memo` field type, `new` constructor signature
-- Modify: `editor/projection_memo.mbt` — update `build_lambda_projection_memos` return type, `get_flat_proj`
+- Modify: `framework/core/types.mbt` — add SpanEdit and FocusHint definitions
+- Modify: `lang/lambda/edits/types.mbt` — replace definitions with `pub using @core { type SpanEdit, type FocusHint }`
+- Modify: `framework/core/moon.pkg` — no new deps needed
 
-- [ ] **Step 1: Change `proj_memo` field to optional**
+- [ ] **Step 1: Add SpanEdit and FocusHint to `framework/core/types.mbt`**
 
-In `editor/sync_editor.mbt`, change the struct field:
 ```moonbit
-// Before:
-priv proj_memo : @incr.Memo[@lambda_flat.VersionedFlatProj]
+///|
+pub(all) struct SpanEdit {
+  start : Int
+  delete_len : Int
+  inserted : String
+} derive(Show, Eq)
 
-// After:
-priv proj_memo : @incr.Memo[@lambda_flat.VersionedFlatProj]?
+///|
+pub(all) enum FocusHint {
+  RestoreCursor
+  MoveCursor(position~ : Int)
+} derive(Show, Eq)
 ```
 
-- [ ] **Step 2: Update `SyncEditor::new` constructor signature**
+- [ ] **Step 2: Update `lang/lambda/edits/types.mbt`**
 
-Change the `build_memos` callback return type and the struct construction:
-
+Replace the local SpanEdit and FocusHint definitions with re-exports:
 ```moonbit
-fn[T] SyncEditor::new(
+pub using @core { type SpanEdit, type FocusHint }
+```
+
+Keep all other definitions (DropPosition, JsonEditOp-equivalent types) unchanged.
+
+- [ ] **Step 3: Run `moon check && moon test`**
+
+All existing tests must pass unchanged — `@proj.SpanEdit` resolves through the re-export chain.
+
+- [ ] **Step 4: `moon info && moon fmt`**
+
+- [ ] **Step 5: Commit**
+
+```bash
+git commit -m "refactor: move SpanEdit and FocusHint to framework/core (shared across languages)"
+```
+
+---
+
+## Task 2: Add SyncEditor::new_generic (no FlatProj dependency)
+
+**Why:** JSON has no FlatProj. A separate constructor avoids requiring `lang/json/` to import `@lambda_flat` just for the type signature.
+
+**Files:**
+- Modify: `editor/sync_editor.mbt` — add `proj_memo` as optional, add `new_generic` constructor
+- Modify: `editor/projection_memo.mbt` — update `build_lambda_projection_memos` return, update `get_flat_proj`
+
+- [ ] **Step 1: Make `proj_memo` optional and add `new_generic`**
+
+In `editor/sync_editor.mbt`:
+```moonbit
+// Change field:
+priv proj_memo : @incr.Memo[@lambda_flat.VersionedFlatProj]?
+
+// Add public generic constructor:
+pub fn[T] SyncEditor::new_generic(
   agent_id : String,
   make_parser : (String) -> @loom.ImperativeParser[T],
   build_memos : (
@@ -59,30 +100,21 @@ fn[T] SyncEditor::new(
     @incr.Signal[@seam.SyntaxNode?],
     @loom.ImperativeParser[T],
   ) -> (
-    @incr.Memo[@lambda_flat.VersionedFlatProj]?,  // <- Optional now
     @incr.Memo[@proj.ProjNode[T]?],
     @incr.Memo[Map[@proj.NodeId, @proj.ProjNode[T]]],
     @incr.Memo[@proj.SourceMap],
   ),
   capture_timeout_ms? : Int = 500,
 ) -> SyncEditor[T] {
+  // Same body as `new`, but:
+  // - build_memos returns 3-tuple (no FlatProj)
+  // - proj_memo = None
+}
 ```
 
-- [ ] **Step 3: Update `build_lambda_projection_memos` to return `Some(...)`**
+- [ ] **Step 2: Update existing `new` to wrap `proj_memo` in `Some`**
 
-In `editor/projection_memo.mbt`, change the return type to match:
-```moonbit
-pub fn build_lambda_projection_memos(
-  ...
-) -> (
-  @incr.Memo[@lambda_flat.VersionedFlatProj]?,
-  ...
-)
-```
-
-And wrap the return value: `(Some(proj_memo), cached_proj_node, registry_memo, source_map_memo)`
-
-- [ ] **Step 4: Update `get_flat_proj` to handle None**
+- [ ] **Step 3: Update `get_flat_proj` to handle None**
 
 ```moonbit
 pub fn[T] SyncEditor::get_flat_proj(self : SyncEditor[T]) -> @proj.FlatProj? {
@@ -93,28 +125,71 @@ pub fn[T] SyncEditor::get_flat_proj(self : SyncEditor[T]) -> @proj.FlatProj? {
 }
 ```
 
-- [ ] **Step 5: Run `moon check` and fix any compilation errors**
+- [ ] **Step 4: Update `build_lambda_projection_memos` return type**
 
-The `apply_tree_edit` bridge in `tree_edit_bridge.mbt` calls `self.get_flat_proj()` which already returns `Option` — no change needed there.
+Wrap the FlatProj memo return in `Some(...)` to match the new optional field.
 
-```bash
-moon check && moon test
+- [ ] **Step 5: Run `moon check && moon test`**
+
+- [ ] **Step 6: `moon info && moon fmt` && Commit**
+
+---
+
+## Task 3: Make parse_json_string pub + make apply_text_edit_internal pub
+
+**Why:** The projection builder needs proper string unescaping (already implemented in loom). The edit bridge needs to apply text edits through SyncEditor.
+
+**Files:**
+- Modify: `loom/examples/json/src/value_convert.mbt` — change `fn parse_json_string` to `pub fn parse_json_string`
+- Modify: `editor/sync_editor_text.mbt` — change `fn[T] SyncEditor::apply_text_edit_internal` to `pub fn[T]`
+
+- [ ] **Step 1: Make parse_json_string pub**
+
+In `loom/examples/json/src/value_convert.mbt` line 5:
+```moonbit
+// Before:
+fn parse_json_string(raw : String) -> String {
+// After:
+pub fn parse_json_string(raw : String) -> String {
 ```
 
-Expected: all 524+ tests pass.
-
-- [ ] **Step 6: `moon info && moon fmt`**
-
-- [ ] **Step 7: Commit**
+- [ ] **Step 2: Run loom JSON tests**
 
 ```bash
-git add editor/sync_editor.mbt editor/projection_memo.mbt editor/pkg.generated.mbti
-git commit -m "refactor(editor): make SyncEditor proj_memo optional for non-FlatProj languages"
+cd loom/examples/json && moon check && moon test
+```
+
+- [ ] **Step 3: Commit in loom, push, bump submodule**
+
+```bash
+cd loom/examples/json && git add src/value_convert.mbt && git commit -m "feat(json): make parse_json_string pub for projection builder"
+cd loom && git push
+cd .. && git add loom
+```
+
+- [ ] **Step 4: Make apply_text_edit_internal pub**
+
+In `editor/sync_editor_text.mbt`:
+```moonbit
+// Before:
+fn[T] SyncEditor::apply_text_edit_internal(
+// After:
+pub fn[T] SyncEditor::apply_text_edit_internal(
+```
+
+- [ ] **Step 5: Run `moon check && moon test`**
+
+- [ ] **Step 6: `moon info && moon fmt` && Commit**
+
+```bash
+git commit -m "refactor: make apply_text_edit_internal pub for cross-package edit bridges"
 ```
 
 ---
 
-## Task 2: Add TreeNode + Renderable impls for JsonValue
+> **Note:** Old Task 1 (optional proj_memo) is now superseded by Task 2 (new_generic constructor). The following tasks are renumbered from the original plan.
+
+## Task 4: Add TreeNode + Renderable impls for JsonValue
 
 **Why:** JsonValue needs these traits for reconciliation and rendering in the projection pipeline.
 
@@ -446,7 +521,7 @@ cd .. && git add loom && git commit -m "chore: bump loom (TreeNode/Renderable fo
 
 ---
 
-## Task 3: Create lang/json/proj/ — projection builder
+## Task 5: Create lang/json/proj/ — projection builder
 
 **Why:** Converts JSON CST (SyntaxNode) to ProjNode[JsonValue] for the framework pipeline.
 
@@ -968,7 +1043,7 @@ git commit -m "feat(json): add projection builder — syntax_to_proj_node and po
 
 ---
 
-## Task 4: Create memo builder for JSON
+## Task 6: Create memo builder for JSON
 
 **Why:** SyncEditor needs a `build_memos` callback that produces ProjNode, registry, and SourceMap memos from the parser signals.
 
@@ -977,22 +1052,19 @@ git commit -m "feat(json): add projection builder — syntax_to_proj_node and po
 
 - [ ] **Step 1: Update `lang/json/proj/moon.pkg` with all needed imports**
 
-```json
-{
-  "import": {
-    "dowdiness/canopy/framework/core": "@core",
-    "dowdiness/canopy/lang/lambda/flat": "@lambda_flat",
-    "dowdiness/incr": "@incr",
-    "dowdiness/json": "@json",
-    "dowdiness/loom": "@loom",
-    "dowdiness/loom/core": "@loomcore",
-    "dowdiness/seam": "@seam",
-    "moonbitlang/core/strconv": ""
-  }
+```
+import {
+  "dowdiness/canopy/framework/core" @core,
+  "dowdiness/incr" @incr,
+  "dowdiness/json" @json,
+  "dowdiness/loom" @loom,
+  "dowdiness/loom/core" @loomcore,
+  "dowdiness/seam" @seam,
+  "moonbitlang/core/strconv",
 }
 ```
 
-> **Note:** `@lambda_flat` is needed for the return type to match SyncEditor's `build_memos` callback signature. `@incr` and `@loom` are needed for the memo builder. `@strconv` is needed for number parsing in the projection builder (Task 3).
+> **Note:** No `@lambda_flat` dependency — uses `SyncEditor::new_generic` (3-memo callback from Task 2).
 
 - [ ] **Step 2: Implement `build_json_projection_memos`**
 
@@ -1011,7 +1083,6 @@ pub fn build_json_projection_memos(
   syntax_tree : @incr.Signal[@seam.SyntaxNode?],
   parser : @loom.ImperativeParser[@json.JsonValue],
 ) -> (
-  @incr.Memo[@lambda_flat.VersionedFlatProj]?,
   @incr.Memo[ProjNode[@json.JsonValue]?],
   @incr.Memo[Map[NodeId, ProjNode[@json.JsonValue]]],
   @incr.Memo[SourceMap],
@@ -1070,7 +1141,7 @@ pub fn build_json_projection_memos(
     },
   )
 
-  (None, proj_memo, registry_memo, source_map_memo)
+  (proj_memo, registry_memo, source_map_memo)
 }
 
 ///|
@@ -1102,7 +1173,7 @@ git commit -m "feat(json): add memo builder for JSON projection pipeline"
 
 ---
 
-## Task 5: Create lang/json/edits/ — edit handlers
+## Task 7: Create lang/json/edits/ — edit handlers
 
 **Why:** Provides structural JSON edit operations (add member, delete, wrap, rename key, etc.).
 
@@ -1681,7 +1752,7 @@ git commit -m "feat(json): add edit handlers — delete, add, wrap, unwrap, rena
 
 ---
 
-## Task 6: Create JSON edit bridge
+## Task 8: Create JSON edit bridge
 
 **Why:** Connects JsonEditOp to SyncEditor[JsonValue] — applies structural edits through the text CRDT.
 
@@ -1780,53 +1851,27 @@ git commit -m "feat(json): add edit bridge connecting JsonEditOp to SyncEditor"
 
 ---
 
-## Task 7: new_json_editor + end-to-end tests
+## Task 9: new_json_editor + end-to-end tests
 
 **Why:** Wire everything together and prove the full pipeline works.
 
 **Files:**
-- Modify: `editor/sync_editor.mbt` — make `SyncEditor::new` pub
 - Create: `lang/json/edits/sync_editor_json.mbt` — new_json_editor constructor
 - Create: `lang/json/edits/integration_wbtest.mbt` — end-to-end tests
 
-- [ ] **Step 1: Make `SyncEditor::new` public**
-
-In `editor/sync_editor.mbt`:
-```moonbit
-// Before:
-fn[T] SyncEditor::new(
-// After:
-pub fn[T] SyncEditor::new(
-```
-
-- [ ] **Step 2: Update `lang/json/edits/moon.pkg` with loom dependency**
-
-Add `"dowdiness/loom" @loom` if not already present:
-```json
-{
-  "import": {
-    "dowdiness/canopy/editor": "@editor",
-    "dowdiness/canopy/framework/core": "@core",
-    "dowdiness/canopy/lang/json/proj": "@json_proj",
-    "dowdiness/json": "@json",
-    "dowdiness/loom": "@loom",
-    "dowdiness/loom/core": "@loomcore",
-    "dowdiness/seam": "@seam"
-  }
-}
-```
-
-- [ ] **Step 3: Create `new_json_editor`**
+- [ ] **Step 1: Create `new_json_editor`**
 
 Create `lang/json/edits/sync_editor_json.mbt`:
 
 ```moonbit
 ///|
+/// Create a JSON projectional editor.
+/// Uses SyncEditor::new_generic (no FlatProj dependency).
 pub fn new_json_editor(
   agent_id : String,
   capture_timeout_ms? : Int = 500,
 ) -> @editor.SyncEditor[@json.JsonValue] {
-  @editor.SyncEditor::new(
+  @editor.SyncEditor::new_generic(
     agent_id,
     fn(s) { @loom.new_imperative_parser(s, @json.json_grammar) },
     @json_proj.build_json_projection_memos,
@@ -1834,6 +1879,8 @@ pub fn new_json_editor(
   )
 }
 ```
+
+> **Note:** Uses `new_generic` from Task 2 — returns 3 memos, no FlatProj. `lang/json/edits/moon.pkg` needs `"dowdiness/loom" @loom` if not already present.
 
 - [ ] **Step 4: Write end-to-end integration tests**
 
