@@ -65,6 +65,26 @@ The inconsistency is mostly at higher layers:
   strings/JSON, which is acceptable at the edge but should not be the internal
   default.
 
+## Progress
+
+Completed implementation slices:
+
+- tree-edit and projection-edit boundaries now use typed `TreeEditError`
+- ephemeral decode/store validation now uses typed `EphemeralError`
+- websocket wire decoding now has typed `ProtocolError` via
+  `decode_message_result(...)`, while `ws_on_message(...)` keeps malformed-input
+  drop behavior explicit
+- root FFI and UI-facing call sites continue to flatten errors through
+  `.message()` at the edge
+
+Remaining work:
+
+- document the boundary strategy in contributor/API docs
+- decide whether the `editor/` surface needs a final wrapper type beyond the
+  current per-boundary enums
+- audit any remaining generic catches in `editor/` that should be documented or
+  translated instead
+
 ## Desired State
 
 ### 1. Preserve Existing Low-Level Domain Errors
@@ -166,20 +186,21 @@ If relay validation becomes active after the container implementation lands, add
 ## Steps
 
 1. Add a small shared error definition file in `editor/` for the new editor
-   boundary errors.
+   boundary errors. Done.
 
 2. Migrate `editor/ephemeral_encoding.mbt` and related call sites from generic
-   `Failure::Failure(...)` to `EphemeralError`.
+   `Failure::Failure(...)` to `EphemeralError`. Done.
 
 3. Migrate structural edit parsing and application boundaries:
    - `editor/tree_edit_json.mbt`
    - `editor/sync_editor_tree_edit.mbt`
-   from `String`-based errors to `TreeEditError` or `EditorError`.
+   from `String`-based errors to `TreeEditError` or `EditorError`. Done.
 
 4. Audit `editor/sync_editor_ws.mbt` and classify each failure path:
    - protocol decode failures -> `ProtocolError` or explicit drop policy
    - sync/apply failures -> wrapped `@text.TextError`
    - recovery failures -> explicit retry/drop/escalate behavior
+   Done for protocol decode + websocket message handling.
 
 5. Keep `crdt*.mbt` as the flattening edge:
    - continue returning strings/JSON for now,
@@ -195,12 +216,12 @@ If relay validation becomes active after the container implementation lands, add
 
 ## Acceptance Criteria
 
-- [ ] Existing low-level domain errors in `event-graph-walker/` and `loom/` remain the canonical source for their domains.
-- [ ] `editor/` has explicit typed boundary errors instead of relying on generic `Failure::Failure(...)` or pervasive `String` errors.
-- [ ] Structural tree-edit failures no longer use raw strings as the primary internal error representation.
-- [ ] WebSocket/protocol error handling documents which malformed inputs are intentionally dropped versus propagated or wrapped.
+- [x] Existing low-level domain errors in `event-graph-walker/` and `loom/` remain the canonical source for their domains.
+- [x] `editor/` has explicit typed boundary errors instead of relying on generic `Failure::Failure(...)` or pervasive `String` errors.
+- [x] Structural tree-edit failures no longer use raw strings as the primary internal error representation.
+- [x] WebSocket/protocol error handling documents which malformed inputs are intentionally dropped versus propagated or wrapped.
 - [ ] FFI entrypoints remain the main place where typed internal errors are flattened to strings/JSON.
-- [ ] Relevant tests cover the migrated error boundaries.
+- [x] Relevant tests cover the migrated error boundaries.
 
 ## Validation
 

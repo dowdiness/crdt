@@ -9,10 +9,10 @@ fn setup_bridge(text : String) -> SyncEditor[@ast.Term] {
 }
 
 ///|
-fn get_root_id(editor : SyncEditor[@ast.Term]) -> @proj.NodeId {
+fn get_root_id(editor : SyncEditor[@ast.Term]) -> @proj.NodeId raise {
   match editor.get_proj_node() {
     Some(node) => node.id()
-    None => abort("No tree root")
+    None => fail("expected tree root")
   }
 }
 
@@ -170,7 +170,7 @@ test "apply_tree_edit - Delete non-root node inserts valid placeholder" {
   let editor = setup_bridge("x + 1")
   let target = match editor.get_proj_node() {
     Some(root) => root.children[1].id()
-    None => abort("No tree root")
+    None => fail("expected tree root")
   }
   let result = editor.apply_tree_edit(
     @proj.TreeEditOp::Delete(node_id=target),

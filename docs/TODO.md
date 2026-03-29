@@ -198,10 +198,12 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
   Why: `editor/` still mixes typed low-level errors, generic failures, raw strings, and silent catches across protocol, ephemeral, and tree-edit boundaries.
   Plan: `docs/plans/2026-03-29-error-taxonomy.md`
   Exit: `editor/` uses explicit boundary error types and root FFI remains the primary error-flattening edge.
+  Progress: tree-edit, ephemeral, and websocket/protocol slices are complete; the remaining work is conventions/API docs follow-through and any final wrapper cleanup.
 - [ ] Convert `abort()` calls in test files to proper assertions
   Why: assertion-style failures currently use `abort(...)` in many tests, which makes diagnostics harsher and less informative than explicit assertions.
   Plan: `docs/plans/2026-03-29-test-abort-cleanup.md`
   Exit: targeted test-side `abort(...)` checks are replaced with assertion-based failures and affected suites stay green.
+  Progress: in progress; first pass targets main-module test helpers and parser fixture setup.
 - [x] Replace singleton JS FFI export state in `crdt.mbt` with a handle → `SyncEditor` map plus explicit destroy/dispose API
 - [x] Split `projection/tree_editor.mbt` into focused files (render model, refresh/reuse logic, UI/edit operations, tree indexes) — ✅ Done. `tree_editor.mbt` (edit ops), `tree_editor_model.mbt` (types + state + constructors), `tree_editor_refresh.mbt` (refresh/reuse/indexes)
 - [x] Split `crdt.mbt` into focused FFI files (editor core, undo, presence, relay, websocket) — ✅ Done. Split into 6 files: `crdt.mbt` (core), `crdt_undo.mbt`, `crdt_ephemeral.mbt`, `crdt_relay.mbt`, `crdt_websocket.mbt`, `crdt_projection.mbt`

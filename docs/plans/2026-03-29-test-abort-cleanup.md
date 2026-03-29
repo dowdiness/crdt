@@ -22,6 +22,21 @@ Out:
   assertions as open work.
 - Current usage spans multiple modules and submodules.
 
+## Progress
+
+Completed in the first pass:
+
+- main-module test helpers that were using `abort(...)` as assertion logic now
+  use `fail(...)` with explicit `raise` signatures where needed
+- parser fixture helpers in the main module no longer use `abort("parse failed")`
+
+Remaining work:
+
+- similar cleanup in submodules such as `graphviz/`, `loom/`, and other focused
+  test packages
+- any remaining assertion-like `abort(...)` uses outside the first-pass main
+  module files
+
 ## Desired State
 
 - Routine expectation failures in tests use assertions or snapshots rather than
@@ -37,9 +52,9 @@ Out:
 
 ## Acceptance Criteria
 
-- [ ] Assertion-like `abort(...)` calls are removed from the targeted test files.
+- [x] Assertion-like `abort(...)` calls are removed from the targeted main-module test files in the first pass.
 - [ ] Intentional panic tests remain explicit and correct.
-- [ ] Affected test suites still pass.
+- [x] Affected test suites still pass.
 
 ## Validation
 

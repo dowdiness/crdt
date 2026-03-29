@@ -1,6 +1,6 @@
 ///|
-fn parse_syntax(text : String) -> @seam.SyntaxNode {
-  let (cst, _) = @parser.parse_cst(text) catch { _ => abort("parse failed") }
+fn parse_syntax(text : String) -> @seam.SyntaxNode raise {
+  let (cst, _) = @parser.parse_cst(text) catch { _ => fail("parse failed") }
   @seam.SyntaxNode::from_cst(cst)
 }
 
