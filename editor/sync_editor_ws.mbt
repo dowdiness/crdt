@@ -1,6 +1,67 @@
 // WebSocket lifecycle methods for SyncEditor.
 
 ///|
+fn parse_sync_message_json(
+  payload : Bytes,
+) -> Result[@text.SyncMessage, ProtocolError] {
+  let json_str = payload.to_unchecked_string()
+  Ok(@text.SyncMessage::from_json_string(json_str)) catch {
+    err => Err(ProtocolError::InvalidSyncJson(detail=err.message()))
+  }
+}
+
+///|
+fn parse_sync_request_payload(
+  payload : Bytes,
+) -> Result[(String, String, String), ProtocolError] {
+  let reader = Reader::new(payload)
+  let sender = match read_string_field(reader, "sender") {
+    Ok(sender) => sender
+    Err(err) => return Err(err)
+  }
+  let request_id = match read_string_field(reader, "request_id") {
+    Ok(request_id) => request_id
+    Err(err) => return Err(err)
+  }
+  let version_json = match read_string_field(reader, "version_json") {
+    Ok(version_json) => version_json
+    Err(err) => return Err(err)
+  }
+  Ok((sender, request_id, version_json))
+}
+
+///|
+fn parse_sync_response_payload(
+  payload : Bytes,
+) -> Result[(String, String, String), ProtocolError] {
+  let reader = Reader::new(payload)
+  let sender = match read_string_field(reader, "sender") {
+    Ok(sender) => sender
+    Err(err) => return Err(err)
+  }
+  let request_id = match read_string_field(reader, "request_id") {
+    Ok(request_id) => request_id
+    Err(err) => return Err(err)
+  }
+  let sync_json = match read_string_field(reader, "sync_json") {
+    Ok(sync_json) => sync_json
+    Err(err) => return Err(err)
+  }
+  Ok((sender, request_id, sync_json))
+}
+
+///|
+fn should_retry_sync_error(err : Error) -> Bool {
+  match err {
+    @text.TextError::SyncFailed(@text.SyncFailure::MissingDependency(..)) =>
+      true
+    @text.TextError::SyncFailed(@text.SyncFailure::Timeout(..)) => true
+    @text.TextError::VersionNotFound => true
+    _ => false
+  }
+}
+
+///|
 /// Called when WebSocket connects. Stores the ws reference.
 /// Note: the relay server handles PeerJoined broadcast on connect —
 /// the client does NOT send PeerJoined itself (that would duplicate it).
@@ -13,20 +74,20 @@ pub fn[T] SyncEditor::ws_on_open(
 
 ///|
 pub fn[T] SyncEditor::ws_on_message(self : SyncEditor[T], data : Bytes) -> Unit {
-  let msg = match decode_message(data) {
-    Some(m) => m
-    None => return
+  let msg = match decode_message_result(data) {
+    Ok(m) => m
+    Err(_) => return
   }
   match msg {
     CrdtOps(payload) => {
       // CrdtOps is used for backwards-compatible full-state exchange (PeerJoined).
       // Recovery is not possible here because there is no sender ID.
       // Once all peers use RelayedCrdtOps, this path only handles PeerJoined sync.
-      let json_str = payload.to_unchecked_string()
-      try {
-        let crdt_msg = @text.SyncMessage::from_json_string(json_str)
-        self.apply_sync(crdt_msg)
-      } catch {
+      let crdt_msg = match parse_sync_message_json(payload) {
+        Ok(crdt_msg) => crdt_msg
+        Err(_) => return
+      }
+      self.apply_sync(crdt_msg) catch {
         _ => ()
       }
     }
@@ -59,10 +120,11 @@ pub fn[T] SyncEditor::ws_on_message(self : SyncEditor[T], data : Bytes) -> Unit 
       }
     }
     SyncRequest(payload) => {
-      let reader = Reader::new(payload)
-      let sender = read_string(reader) catch { _ => return }
-      let request_id = read_string(reader) catch { _ => return }
-      let version_json = read_string(reader) catch { _ => return }
+      let (sender, request_id, version_json) = match
+        parse_sync_request_payload(payload) {
+        Ok(parts) => parts
+        Err(_) => return
+      }
       // Parse requester's version and export delta
       let peer_version = @text.Version::from_json_string(version_json) catch {
         _ => {
@@ -86,10 +148,11 @@ pub fn[T] SyncEditor::ws_on_message(self : SyncEditor[T], data : Bytes) -> Unit 
       self.ws_send(wire)
     }
     SyncResponse(payload) => {
-      let reader = Reader::new(payload)
-      let _sender = read_string(reader) catch { _ => return }
-      let request_id = read_string(reader) catch { _ => return }
-      let sync_json = read_string(reader) catch { _ => return }
+      let (_sender, request_id, sync_json) = match
+        parse_sync_response_payload(payload) {
+        Ok(parts) => parts
+        Err(_) => return
+      }
       let ctx = match self.recovery {
         Some(ctx) => ctx
         None => return // Not recovering, ignore
@@ -133,36 +196,30 @@ pub fn[T] SyncEditor::ws_on_message(self : SyncEditor[T], data : Bytes) -> Unit 
           err => {
             // Re-enter recovery with the failed deferred message,
             // carrying over remaining un-applied messages
-            match err {
-              @text.TextError::SyncFailed(
-                @text.SyncFailure::MissingDependency(..)
+            if should_retry_sync_error(err) {
+              self.recovery_epoch += 1
+              let new_ctx = RecoveryContext::new(
+                ctx.peer_id,
+                msg,
+                self.recovery_epoch,
               )
-              | @text.TextError::SyncFailed(@text.SyncFailure::Timeout(..))
-              | @text.TextError::VersionNotFound => {
-                self.recovery_epoch += 1
-                let new_ctx = RecoveryContext::new(
-                  ctx.peer_id,
-                  msg,
-                  self.recovery_epoch,
-                )
-                // Buffer remaining deferred messages
-                for j = i + 1; j < deferred.length(); j = j + 1 {
-                  new_ctx.buffer_message(deferred[j])
-                }
-                self.recovery = Some(new_ctx)
-                self.send_sync_request(ctx.peer_id, self.recovery_epoch)
+              // Buffer remaining deferred messages
+              for j = i + 1; j < deferred.length(); j = j + 1 {
+                new_ctx.buffer_message(deferred[j])
               }
-              _ => continue // Non-retryable, skip and try next
+              self.recovery = Some(new_ctx)
+              self.send_sync_request(ctx.peer_id, self.recovery_epoch)
+              break // Retryable — entered new recovery, stop draining
             }
-            break // Retryable — entered new recovery, stop draining
+            continue // Non-retryable, skip and try next
           }
         }
       }
     }
     RelayedCrdtOps(sender~, payload~) => {
-      let json_str = payload.to_unchecked_string()
-      let crdt_msg = @text.SyncMessage::from_json_string(json_str) catch {
-        _ => return
+      let crdt_msg = match parse_sync_message_json(payload) {
+        Ok(crdt_msg) => crdt_msg
+        Err(_) => return
       }
       // If recovering from this sender, buffer instead of applying
       match self.recovery {
@@ -174,14 +231,10 @@ pub fn[T] SyncEditor::ws_on_message(self : SyncEditor[T], data : Bytes) -> Unit 
         None => ()
       }
       self.apply_sync(crdt_msg) catch {
-        @text.TextError::SyncFailed(@text.SyncFailure::MissingDependency(..)) =>
-          self.enter_recovery(sender, crdt_msg)
-        @text.TextError::SyncFailed(@text.SyncFailure::Timeout(..)) =>
-          self.enter_recovery(sender, crdt_msg)
-        @text.TextError::VersionNotFound =>
-          self.enter_recovery(sender, crdt_msg)
-        // Non-retryable errors are silently dropped (same as before)
-        _ => ()
+        err =>
+          if should_retry_sync_error(err) {
+            self.enter_recovery(sender, crdt_msg)
+          }
       }
     }
   }

@@ -10,8 +10,8 @@ fn parse_with_token_spans(
   SourceMap,
   Map[NodeId, ProjNode[@ast.Term]],
   FlatProj,
-) {
-  let (cst, _) = @parser.parse_cst(text) catch { _ => abort("parse failed") }
+) raise {
+  let (cst, _) = @parser.parse_cst(text) catch { _ => fail("parse failed") }
   let syntax = @seam.SyntaxNode::from_cst(cst)
   let counter = Ref::new(0)
   let proj = to_proj_node(syntax, counter)

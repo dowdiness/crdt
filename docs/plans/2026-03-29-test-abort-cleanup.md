@@ -21,6 +21,33 @@ Out:
 - The active backlog still lists conversion of `abort()`-based tests to proper
   assertions as open work.
 - Current usage spans multiple modules and submodules.
+- Execution is paused after the main-module pass plus focused `loom/examples`
+  slices, rather than being the active task.
+
+## Progress
+
+Completed in the first pass:
+
+- main-module test helpers that were using `abort(...)` as assertion logic now
+  use `fail(...)` with explicit `raise` signatures where needed
+- parser fixture helpers in the main module no longer use `abort("parse failed")`
+
+Remaining work:
+
+- similar cleanup in submodules such as `graphviz/`, `loom/`, and other focused
+  test packages
+- any remaining assertion-like `abort(...)` uses outside the first-pass main
+  module files
+- resume only when this becomes the active cleanup task again; current remaining
+  footprint is concentrated mostly in `loom/` and `graphviz/`
+
+Completed in the second pass:
+
+- `loom/examples/json` parser, error-recovery, and incremental tests now use
+  `try!` / `fail(...)` instead of assertion-style `abort(...)`
+- `loom/examples/lambda` parser, error-recovery, and CRDT peer tests now use
+  helper-based `fail(...)` / `try!` expectation failures instead of
+  assertion-style `abort(...)`
 
 ## Desired State
 
@@ -37,9 +64,9 @@ Out:
 
 ## Acceptance Criteria
 
-- [ ] Assertion-like `abort(...)` calls are removed from the targeted test files.
+- [x] Assertion-like `abort(...)` calls are removed from the targeted main-module test files in the first pass.
 - [ ] Intentional panic tests remain explicit and correct.
-- [ ] Affected test suites still pass.
+- [x] Affected test suites still pass.
 
 ## Validation
 

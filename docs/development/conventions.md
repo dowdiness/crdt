@@ -133,12 +133,68 @@ When making changes that affect the public API or architecture, update the corre
 
 ## Error Handling
 
-Prefer pattern matching over exceptions:
+Use the narrowest error boundary that matches the owning layer.
+
+### Low-level domain errors stay local
+
+- `event-graph-walker/text` owns `TextError` and `SyncFailure`
+- `loom` owns lexer/parser errors
+- tree/document internals keep their own domain errors
+
+Do not wrap these early just to make everything look uniform.
+
+### `editor/` uses typed boundary errors
+
+At the editor boundary, prefer the explicit local error types over raw strings
+or generic `Failure::Failure(...)`:
+
+- `EphemeralError`
+- `TreeEditError`
+- `ProtocolError`
+
+Use their `.message()` helpers only when crossing into UI, CLI, or FFI-facing
+string surfaces.
+
+### Flatten at the edge
+
+Internal code should keep typed errors as long as possible. Root FFI entrypoints
+may flatten them to strings or JSON.
+
+Current example:
+
+```moonbit
+match parse_tree_edit_op(json) {
+  Ok(op) =>
+    match editor.apply_tree_edit(op, timestamp_ms) {
+      Ok(_) => "ok"
+      Err(err) => "error: " + err.message()
+    }
+  Err(err) => "error: " + err.message()
+}
+```
+
+### Silent catches need explicit policy
+
+If malformed remote input is intentionally dropped for resilience, document that
+at the catch site. Otherwise prefer translating to a typed boundary error or
+propagating upward.
+
+### Pattern matching is still preferred
+
+Prefer matching on structured results and typed errors over string inspection:
 
 ```moonbit
 match result {
   Some(value) => process(value)
   None => default_value
+}
+```
+
+```moonbit
+match err {
+  @text.TextError::SyncFailed(@text.SyncFailure::MissingDependency(..)) =>
+    retry()
+  _ => stop()
 }
 ```
 

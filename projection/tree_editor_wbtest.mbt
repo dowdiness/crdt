@@ -39,20 +39,20 @@ fn tree_editor_test_collect(
 ///|
 fn tree_editor_test_loaded_children(
   node : InteractiveTreeNode[@ast.Term],
-) -> Array[InteractiveTreeNode[@ast.Term]] {
+) -> Array[InteractiveTreeNode[@ast.Term]] raise {
   match node.children {
     Loaded(children) => children
-    Elided(_) => abort("expected loaded children")
+    Elided(_) => fail("expected loaded children")
   }
 }
 
 ///|
 fn tree_editor_test_elided_descendant_count(
   node : InteractiveTreeNode[@ast.Term],
-) -> Int {
+) -> Int raise {
   match node.children {
     Elided(descendant_count) => descendant_count
-    Loaded(_) => abort("expected elided children")
+    Loaded(_) => fail("expected elided children")
   }
 }
 

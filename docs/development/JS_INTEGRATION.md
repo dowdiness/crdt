@@ -112,4 +112,9 @@ Each run represents multiple consecutive operations from the same agent. For lin
     - Listen for local changes and broadcast `export_since_json` deltas to peers via WebSockets/WebRTC.
     - Periodically call `ephemeral_remove_outdated` to prune disconnected peers.
 4.  **Lifecycle:** Call `destroy_editor(handle)` when an editor is permanently torn down so the JS module can release it from the handle registry.
-5.  **Error Handling:** FFI calls that might fail are wrapped in `try/catch` in MoonBit; ensure your JS integration also handles generated-module/runtime errors.
+5.  **Error Handling:** the root FFI is the string/JSON flattening edge. Typed
+    internal errors such as `TreeEditError` are converted to strings there.
+    Example: `apply_tree_edit_json(...)` returns `"ok"` or `"error: <message>"`.
+    Integration code should still handle generated-module/runtime exceptions,
+    but ordinary editor failures are expected to arrive through these string
+    return values rather than raw MoonBit error objects.
