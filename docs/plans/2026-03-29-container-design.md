@@ -12,91 +12,114 @@ BlockDoc wraps one TreeDoc + N independent TextDoc instances. Each owns its own 
 
 A Container is a single causal history that multiplexes typed operations to typed state machines. One CausalGraph, one VersionVector, one oplog. Every operation — tree move, property set, text insert, text delete — gets one LV from one shared graph.
 
-## Design Principle: New Concerns in New Code
+## Breaking the LV Triple Coupling
 
-The mapping between global LVs and per-block local indices is inherent in multi-container architecture. It belongs in the Container (the new layer that introduces the concept), not in the primitives (FugueTree, Branch, OpLog — well-tested, correct as-is).
+The current text pipeline uses a single `Int` as graph LV, op ID, and Fugue item ID simultaneously. This implicit coupling prevents sharing a CausalGraph across containers.
+
+The refactoring separates these into distinct concepts with type aliases:
+
+```moonbit
+type Lv = Int       // global causal version — assigned by shared CausalGraph
+type ItemId = Int   // per-container dense item identity — assigned by FugueTree
+```
+
+Type aliases (not tuple structs) — safety comes from architectural separation (each package only uses one ID type), not from the type system. Clear naming + package boundaries + explicit conversion at bridge points. If ID confusion bugs arise in practice, upgrade to tuple structs then.
+
+| Package | Uses | Responsibility |
+|---------|------|---------------|
+| `causal_graph/` | `Lv` | Versioning, causal queries |
+| `fugue/` | `ItemId` | Sequence CRDT, dense storage |
+| `oplog/` | `Lv` for causal ordering | Operation storage |
+| `branch/` | Both — explicit conversion at the bridge | Materialized state, retreat/advance |
+| `movable_tree/` | `Lv` directly (one tree, no sparseness) | Tree CRDT |
+| `container/` | Both — owns the `Lv → ItemId` mapping per block | Dispatch, sync, undo |
 
 ## Architecture
 
 ```
 Document
-├── CausalGraph                         shared, one LV space, unchanged
-├── ops: Array[LogEntry]                unified oplog, all ops, global LVs
-│   └── LogEntry = { lv: Int, op: Op }
+├── CausalGraph                         shared, one Lv space, all ops
+├── ops: Array[LogEntry]                unified oplog, global Lvs
+│   └── LogEntry = { lv: Lv, op: Op }
 ├── seen_ops: Map                       dedup
-├── tree: MovableTree                   global LVs directly (one tree, no sparseness)
+├── tree: MovableTree                   global Lvs directly (one tree)
 ├── tree_log: TreeOpLog                 Kleppmann conflict resolution
 ├── blocks: Map[TreeNodeId, TextBlock]  per-block text state machines
 │   └── TextBlock
-│       ├── oplog: OpLog                local ops, local indices (0, 1, 2...)
-│       ├── branch: Branch              local state, uses shared CausalGraph for causal queries
-│       ├── fugue: FugueTree            local indices, unchanged
-│       └── lv_table: LvTable           global_lv ↔ local_index bidirectional mapping
+│       ├── oplog: OpLog                per-block ops, dense ItemIds
+│       ├── branch: Branch              accepts shared CausalGraph + Lv→ItemId mapping
+│       ├── fugue: FugueTree            dense ItemIds, unchanged storage model
+│       └── lv_table: LvTable           Lv ↔ ItemId bidirectional mapping
 ├── property_state: Map                 LWW resolution
 ├── agent_id: String
 ├── lamport_clock: Int
 └── next_counter: Int
 ```
 
-### Why per-block local indices?
+### Why per-block dense ItemIds
 
-FugueTree stores items as `items: Array[Item[T]?]` where index = LV. With a shared LV space, a block's text ops have sparse LVs like [3, 7, 12, 45]. At scale (1000 tree ops + 100 blocks × 100 text ops = 11,000 total), each block's array would be 11,000 slots for ~100 items — 110× overhead. Not acceptable.
+FugueTree stores items as `items: Array[Item[T]?]` where index = ID. With a shared Lv space, a block's text ops have sparse Lvs like [3, 7, 12, 45] — 46-slot array for 4 items. At scale (11K total ops, 100 per block), 110x overhead. Per-block dense ItemIds avoid this.
 
-Each block keeps its own dense 0-based local index space. FugueTree, OpLog, and Branch work on local indices unchanged. The Container maintains a `LvTable` per block for bidirectional global↔local translation.
+### Why tree uses Lvs directly
 
-### Why tree uses global LVs directly
+One tree. Its ops are not interleaved with another tree's ops. MovableTree and TreeOpLog use global Lvs without sparseness.
 
-There is exactly one tree. Its ops are not interleaved with another tree's ops. MovableTree and TreeOpLog use global LVs without sparseness or translation.
+## Refactoring Scope
 
-## The One Refactoring: Branch
+The `graph Lv = op ID = Fugue item ID` triple coupling pervades OpLog, Branch, MergeContext, and DeleteIndex. Breaking this is a substantial refactoring of the internal text pipeline, not a single-package change.
 
-Branch currently gets its CausalGraph from OpLog. For multi-container use, it needs to accept an external shared CausalGraph for causal queries while using the per-block OpLog for op data.
+### What changes
 
-```
-Current:  Branch uses oplog.causal_graph for everything
-New:      Branch accepts external CausalGraph + LV filter/translation
-```
+| Package | Change | Scope |
+|---------|--------|-------|
+| `causal_graph/` | Introduce `Lv` type alias in API | Small — rename Int → Lv in signatures |
+| `fugue/` | Introduce `ItemId` type alias, decouple from Lv | Medium — item storage uses ItemId, not Lv |
+| `oplog/` | Decouple op storage index from Lv. Accept ops with Lv for causal ordering + ItemId for Fugue references | Medium — currently assumes Lv = storage index |
+| `branch/` | Accept external CausalGraph for causal queries. Convert Lv → ItemId explicitly. Refactor MergeContext and DeleteIndex. | Large — the bridge between two ID spaces |
+| `movable_tree/` | None | None |
+| `fractional_index/` | None | None |
+| `container/` | New package | New code |
 
-Branch.merge becomes:
-1. Query shared CausalGraph: `diff_frontiers_lvs(old, new)` → global LVs
-2. Filter: keep only this block's LVs (Container provides the filter via LvTable)
-3. Translate: global LV → local index (Container provides via LvTable)
-4. Retreat/advance on per-block FugueTree using local indices — algorithm unchanged
+### What stays unchanged
 
-For standalone TextState (lambda editor): TextState owns its own CausalGraph and passes it to Branch with identity translation (global LV = local index). Same behavior as today. No regression.
+- CausalGraph internals (already content-agnostic)
+- MovableTree / TreeOpLog (uses Lv directly, no ItemId concern)
+- FractionalIndex (no LV dependency)
+- FugueTree merge algorithm (conflict resolution logic unchanged; only storage indexing changes)
+- Branch retreat/advance algorithm (logic unchanged; only ID translation added at boundaries)
 
 ## Op Enum
 
-Closed enum. No trait/registry — we control the entire codebase. Adding a new data type means adding variants + match arms; compiler-enforced exhaustive matching catches missing arms.
+Closed enum. No trait/registry. Compiler-enforced exhaustive matching.
+
+Text ops use **Fugue-native data** — one character per op (current model splits strings into char ops). `origin_left` and `origin_right` are global Lvs. `None` sentinel for document start/end boundaries.
 
 ```moonbit
 pub(all) enum Op {
   TreeMove(TreeMoveOp)
   TreeProperty(TreePropertyOp)
-  TextInsert(target: TreeNodeId, origin_left: Int, origin_right: Int, content: String)
-  TextDelete(target: TreeNodeId, item_lv: Int)
+  TextInsert(target: TreeNodeId, origin_left: Lv?, origin_right: Lv?, content: Char)
+  TextDelete(target: TreeNodeId, item_lv: Lv)
 }
 ```
-
-Text ops use **Fugue-native data** (origin_left, origin_right as global LVs), not cursor positions. A cursor position from one replica is meaningless after concurrent edits. The Container translates origin LVs to local indices when dispatching to FugueTree.
 
 LogEntry wraps Op with metadata:
 ```moonbit
 pub(all) struct LogEntry {
-  lv: Int
+  lv: Lv
   op: Op
 }
 ```
 
-Transaction grouping for undo is tracked separately as `(agent, start_lv, end_lv)` ranges in the LogEntry stream — not a field on Op. Local ops from one agent within a transaction have contiguous LVs.
+Transaction grouping tracked separately as `(agent, start_lv, end_lv)` ranges — not a field on Op.
 
 ## Text Container Lifecycle
 
 - **Creation:** Implicit. `create_node` auto-creates a TextBlock (empty FugueTree + Branch + OpLog + LvTable).
-- **Deletion:** Tree node moves to trash. TextBlock is kept — text edits on trashed blocks are preserved in the oplog for undo.
-- **Restoration:** If a trashed block is restored (undo or concurrent move), its TextBlock has full history intact.
-- **Remote text on unknown block:** If a remote text op arrives for a block not yet created locally (out-of-order delivery), the Container creates the TextBlock eagerly. The block creation op will arrive later via causal delivery.
-- **Local text on trashed block:** Rejected with `DocumentError::TargetNotFound`. Local UI should not allow editing trashed blocks.
+- **Deletion:** Tree node moves to trash. TextBlock kept for undo.
+- **Restoration:** Trashed block restored — TextBlock has full history.
+- **Remote text on unknown block:** Container creates TextBlock eagerly. Block creation op arrives later via causal delivery.
+- **Local text on trashed block:** Rejected with `DocumentError::TargetNotFound`.
 
 ## Public API
 
@@ -116,7 +139,7 @@ Properties (LWW on tree nodes):
 - `set_property(id, key, value)`
 - `get_property(id, key) -> String?`
 
-Text (per-block):
+Text (per-block, one char per op):
 - `insert_text(id, pos, text) raise DocumentError`
 - `delete_text(id, pos) raise DocumentError`
 - `replace_text(id, range, text) raise DocumentError`
@@ -139,21 +162,23 @@ Undo:
 ## Dispatch
 
 ```moonbit
-fn Document::dispatch_op(self, lv: Int, op: Op) raise DocumentError {
+fn Document::dispatch_op(self, lv: Lv, op: Op) raise DocumentError {
   match op {
     TreeMove(m) => self.tree_log.apply(self.tree, m)
     TreeProperty(p) => self.apply_property_lww(p)
     TextInsert(target, origin_left, origin_right, content) => {
       let block = self.get_or_create_text(target)
-      let local_left = block.lv_table.to_local(origin_left)
-      let local_right = block.lv_table.to_local(origin_right)
-      let local_lv = block.lv_table.register(lv)
-      block.fugue.insert(local_lv, local_left, local_right, content)
+      let local_left = block.lv_table.to_item_id(origin_left)
+      let local_right = block.lv_table.to_item_id(origin_right)
+      let local_id = block.lv_table.register(lv)
+      block.oplog.add(local_id, local_left, local_right, content)
+      block.branch.apply_insert(local_id, local_left, local_right, content)
     }
     TextDelete(target, item_lv) => {
       let block = self.get_or_create_text(target)
-      let local_item = block.lv_table.to_local(item_lv)
-      block.fugue.delete(local_item)
+      let local_item = block.lv_table.to_item_id(item_lv)
+      block.oplog.add_delete(local_item)
+      block.branch.apply_delete(local_item)
     }
   }
 }
@@ -177,13 +202,13 @@ pub(all) suberror DocumentError {
 ```
 container/
   document.mbt    Document struct, all mutation methods, dispatch
-  types.mbt       Op, LogEntry, LvTable, SyncMessage, Version
+  types.mbt       Op, LogEntry, LvTable, Lv, ItemId
   errors.mbt      DocumentError
   sync.mbt        export/import protocol
   undo.mbt        transactions, undo/redo
 ```
 
-All in `event-graph-walker/container/`. Composes existing internal packages.
+In `event-graph-walker/container/`. Composes refactored internal packages.
 
 ## Naming Changes
 
@@ -197,7 +222,7 @@ TextState and TreeState remain as public packages for standalone single-CRDT con
 
 ## Block Editor Integration
 
-No BlockDoc wrapper. The block-editor uses `@container.Document` directly. Domain logic (BlockType, markdown) lives as free functions:
+No BlockDoc wrapper. The block-editor uses `@container.Document` directly. Domain logic (BlockType, markdown) as free functions:
 
 ```moonbit
 fn create_block(doc: @container.Document, block_type: BlockType, ..) -> TreeNodeId
@@ -205,7 +230,7 @@ fn block_doc_from_markdown(md: String, replica_id: String) -> @container.Documen
 fn block_doc_to_markdown(doc: @container.Document) -> String
 ```
 
-The JS bridge holds `Map[Int, @container.Document]` directly.
+JS bridge holds `Map[Int, @container.Document]` directly.
 
 ## Implementation Phases
 
@@ -213,25 +238,16 @@ Each phase delivers a working increment. Refactoring happens inside the phase th
 
 | Phase | Delivers | Includes |
 |-------|----------|----------|
-| **0** | Rename: Document→TextState, TreeDoc→TreeState, TreeDocError→TreeError | Mechanical find-and-replace across event-graph-walker + canopy consumers |
-| **1** | Container + tree ops. Block editor switches to `@container.Document`. | Document struct, shared CausalGraph, Op enum (TreeMove + TreeProperty), DocumentError, `move_node_after` |
-| **2** | Per-block text in Container. Block editor drops TextDoc map. | Refactor Branch (accept external CausalGraph + LV filter/translation). Add TextInsert/TextDelete to Op with Fugue-native data. TextBlock lifecycle. LvTable. |
-| **3** | Unified sync. Two peers converge on a block document. | One export/import protocol. Fix tree causal parents (currently fabricated from frontier). Document-wide VersionVector diff. |
-| **4** | Document-level undo. Undo spans tree + text. | Transaction boundaries as (agent, start_lv, end_lv) ranges. Reverse delegation to TreeOpLog and per-block UndoManager. |
+| **0** | Rename: Document→TextState, TreeDoc→TreeState, TreeDocError→TreeError | Mechanical. Across event-graph-walker + canopy consumers. |
+| **1** | Container + tree ops. Block editor switches to `@container.Document`. | Document struct, shared CausalGraph, Op enum (TreeMove + TreeProperty), DocumentError, `move_node_after`. Lv type alias introduced. |
+| **2** | Per-block text in Container. Block editor drops TextDoc map. | Refactor OpLog, Branch, MergeContext, DeleteIndex to separate Lv from ItemId. LvTable. TextBlock lifecycle. TextInsert/TextDelete ops (one char per op, Fugue-native origins, Lv? for None sentinels). ItemId type alias introduced. |
+| **3** | Unified sync. Two peers converge on a block document. | Fix tree causal parents (currently fabricated from frontier). One export/import protocol. Document-wide VersionVector diff. SyncMessage schema. |
+| **4** | Document-level undo. Undo spans tree + text. | Transaction boundaries as (agent, start_lv, end_lv) ranges. Translation-aware undo contract. Reverse delegation to TreeOpLog and per-block text undo. |
 
-Phase 2 is the hardest — it requires the Branch refactoring and the LvTable translation layer. Phases 3 and 4 build on the foundation from 1 and 2.
-
-## What Changes in Existing Code
-
-| Package | Change | Risk |
-|---------|--------|------|
-| CausalGraph | None | None |
-| FugueTree | None | None |
-| OpLog | None (per-block OpLogs use local indices) | None |
-| MovableTree / TreeOpLog | None (uses global LVs) | None |
-| **Branch** | Accept external CausalGraph + LV filter/translation | **Medium** — focused change, algorithm unchanged |
-| TextState (standalone) | Pass own CausalGraph to Branch with identity translation | Low |
+Phase 2 is the largest — it's the internal text pipeline refactoring. Phases 3 and 4 build on the foundation from 1 and 2.
 
 ## Future Consideration
 
 SyncEditor (projectional editing) and the block editor share a structural pattern: Editor = Document + domain-specific concerns. If a shared editor base emerges from usage, extract it then. The Document API should be editor-agnostic.
+
+Type aliases (Lv, ItemId) can be upgraded to tuple structs if ID confusion bugs arise in practice.
