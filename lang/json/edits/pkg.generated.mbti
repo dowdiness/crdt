@@ -24,12 +24,23 @@ pub(all) enum JsonEditOp {
   WrapInArray(node_id~ : @core.NodeId)
   WrapInObject(node_id~ : @core.NodeId, key~ : String)
   Unwrap(node_id~ : @core.NodeId)
-  ChangeType(node_id~ : @core.NodeId, new_type~ : String)
+  ChangeType(node_id~ : @core.NodeId, new_type~ : JsonType)
   RenameKey(object_id~ : @core.NodeId, key_index~ : Int, new_key~ : String)
   CommitEdit(node_id~ : @core.NodeId, new_value~ : String)
 }
 pub impl Eq for JsonEditOp
 pub impl Show for JsonEditOp
+
+pub(all) enum JsonType {
+  JNull
+  JBool
+  JNumber
+  JString
+  JArray
+  JObject
+}
+pub impl Eq for JsonType
+pub impl Show for JsonType
 
 // Type aliases
 

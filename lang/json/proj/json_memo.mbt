@@ -42,7 +42,7 @@ pub fn build_json_projection_memos(
     fn() -> Map[NodeId, ProjNode[@json.JsonValue]] {
       let reg : Map[NodeId, ProjNode[@json.JsonValue]] = {}
       match proj_memo.get() {
-        Some(root) => collect_registry(root, reg)
+        Some(root) => @core.collect_registry(root, reg)
         None => ()
       }
       reg
@@ -66,15 +66,4 @@ pub fn build_json_projection_memos(
   )
 
   (proj_memo, registry_memo, source_map_memo)
-}
-
-///|
-fn collect_registry(
-  node : ProjNode[@json.JsonValue],
-  reg : Map[NodeId, ProjNode[@json.JsonValue]],
-) -> Unit {
-  reg[node.id()] = node
-  for child in node.children {
-    collect_registry(child, reg)
-  }
 }

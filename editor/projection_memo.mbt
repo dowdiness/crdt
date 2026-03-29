@@ -207,10 +207,10 @@ fn build_lambda_projection_memos(
                 if idx == -1 {
                   let last = root.children.length() - 1
                   if last >= 0 {
-                    register_node_tree(root.children[last], prev_reg)
+                    @proj.collect_registry(root.children[last], prev_reg)
                   }
                 } else if idx >= 0 && idx < root.children.length() {
-                  register_node_tree(root.children[idx], prev_reg)
+                  @proj.collect_registry(root.children[idx], prev_reg)
                 }
               }
               // Update the Module node itself (positions may have changed)
@@ -220,7 +220,7 @@ fn build_lambda_projection_memos(
             _ => {
               // Full rebuild
               let reg : Map[@proj.NodeId, @proj.ProjNode[@ast.Term]] = {}
-              register_node_tree(root, reg)
+              @proj.collect_registry(root, reg)
               reg
             }
           }
@@ -330,17 +330,6 @@ fn build_lambda_projection_memos(
   )
 
   (proj_memo, cached_proj_node, registry_memo, source_map_memo)
-}
-
-///|
-fn[T] register_node_tree(
-  node : @proj.ProjNode[T],
-  registry : Map[@proj.NodeId, @proj.ProjNode[T]],
-) -> Unit {
-  registry[node.id()] = node
-  for child in node.children {
-    register_node_tree(child, registry)
-  }
 }
 
 ///|

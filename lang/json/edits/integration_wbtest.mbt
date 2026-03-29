@@ -171,7 +171,7 @@ test "apply ChangeType" {
     Some(p) => {
       let result = apply_json_edit(
         editor,
-        ChangeType(node_id=p.id(), new_type="array"),
+        ChangeType(node_id=p.id(), new_type=JArray),
         0,
       )
       inspect(result is Ok(_), content="true")
@@ -189,7 +189,7 @@ test "apply ChangeType to object" {
     Some(p) => {
       let result = apply_json_edit(
         editor,
-        ChangeType(node_id=p.id(), new_type="object"),
+        ChangeType(node_id=p.id(), new_type=JObject),
         0,
       )
       inspect(result is Ok(_), content="true")

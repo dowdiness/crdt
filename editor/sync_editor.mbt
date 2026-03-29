@@ -51,42 +51,7 @@ fn[T] SyncEditor::new(
   let (proj_memo, cached_proj_node, registry_memo, source_map_memo) = build_memos(
     parser_rt, source_text, syntax_tree, parser,
   )
-  let hub = EphemeralHub::new(agent_id)
-  let cursor_view = PeerCursorView::new()
-  let wire_peer_id = hub.wire_peer_id
-  // Subscribe to cursor store events to update cursor_view (skip local peer).
-  // The cursor store holds position + selection; presence (name, color) is
-  // joined from the presence store by apply_raw_update via the full Map value.
-  let cursor_store = hub.get_store(Cursor)
-  ignore(
-    cursor_store.subscribe(fn(event) {
-      for key in event.added() {
-        if key == wire_peer_id {
-          continue
-        }
-        match cursor_store.get(key) {
-          Some(value) => cursor_view.apply_raw_update(key, value)
-          None => ()
-        }
-      }
-      for key in event.updated() {
-        if key == wire_peer_id {
-          continue
-        }
-        match cursor_store.get(key) {
-          Some(value) => cursor_view.apply_raw_update(key, value)
-          None => ()
-        }
-      }
-      for key in event.removed() {
-        if key == wire_peer_id {
-          continue
-        }
-        cursor_view.remove(key)
-      }
-      true
-    }),
-  )
+  let (hub, cursor_view) = setup_hub_and_cursor(agent_id)
   {
     doc: @text.TextState::new(agent_id),
     undo: @undo.UndoManager::new(agent_id, capture_timeout_ms~),
@@ -152,6 +117,35 @@ pub fn[T] SyncEditor::new_generic(
   let (cached_proj_node, registry_memo, source_map_memo) = build_memos(
     parser_rt, source_text, syntax_tree, parser,
   )
+  let (hub, cursor_view) = setup_hub_and_cursor(agent_id)
+  {
+    doc: @text.TextState::new(agent_id),
+    undo: @undo.UndoManager::new(agent_id, capture_timeout_ms~),
+    parser,
+    parser_rt,
+    source_text,
+    syntax_tree,
+    cursor: 0,
+    proj_memo: None,
+    cached_proj_node,
+    registry_memo,
+    source_map_memo,
+    hub,
+    cursor_view,
+    peer_id: agent_id,
+    ws: None,
+    recovery: None,
+    recovery_epoch: 0,
+    projection_dirty: false,
+  }
+}
+
+// --- Hub and cursor setup ---
+
+///|
+/// Create an EphemeralHub and PeerCursorView, wiring up the cursor store
+/// subscription so remote peer cursors are tracked automatically.
+fn setup_hub_and_cursor(agent_id : String) -> (EphemeralHub, PeerCursorView) {
   let hub = EphemeralHub::new(agent_id)
   let cursor_view = PeerCursorView::new()
   let wire_peer_id = hub.wire_peer_id
@@ -185,26 +179,7 @@ pub fn[T] SyncEditor::new_generic(
       true
     }),
   )
-  {
-    doc: @text.TextState::new(agent_id),
-    undo: @undo.UndoManager::new(agent_id, capture_timeout_ms~),
-    parser,
-    parser_rt,
-    source_text,
-    syntax_tree,
-    cursor: 0,
-    proj_memo: None,
-    cached_proj_node,
-    registry_memo,
-    source_map_memo,
-    hub,
-    cursor_view,
-    peer_id: agent_id,
-    ws: None,
-    recovery: None,
-    recovery_epoch: 0,
-    projection_dirty: false,
-  }
+  (hub, cursor_view)
 }
 
 // --- Ephemeral presence methods ---

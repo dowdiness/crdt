@@ -331,21 +331,19 @@ fn compute_unwrap(
 fn compute_change_type(
   source_map : SourceMap,
   node_id : NodeId,
-  new_type : String,
+  new_type : JsonType,
 ) -> Result[(Array[SpanEdit], FocusHint)?, String] {
   let range = match source_map.get_range(node_id) {
     Some(r) => r
     None => return Err("node not found in source map")
   }
   let placeholder = match new_type {
-    "null" => "null"
-    "true" => "true"
-    "false" => "false"
-    "number" => "0"
-    "string" => "\"\""
-    "array" => "[]"
-    "object" => "{}"
-    _ => return Err("unknown type: " + new_type)
+    JNull => "null"
+    JBool => "false"
+    JNumber => "0"
+    JString => "\"\""
+    JArray => "[]"
+    JObject => "{}"
   }
   let edit = SpanEdit::{
     start: range.start,
@@ -371,7 +369,7 @@ fn compute_rename_key(
   key_index : Int,
   new_key : String,
 ) -> Result[(Array[SpanEdit], FocusHint)?, String] {
-  let role = "key:" + key_index.to_string()
+  let role = @json_proj.key_role(key_index)
   let key_range = match source_map.get_token_span(object_id, role) {
     Some(r) => r
     None => return Err("key span not found for " + role)

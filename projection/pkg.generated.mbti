@@ -13,6 +13,8 @@ import {
 // Values
 pub fn collect_lam_env(@dowdiness/canopy/framework/core.NodeId, Map[@dowdiness/canopy/framework/core.NodeId, @dowdiness/canopy/framework/core.ProjNode[@ast.Term]]) -> @hashset.HashSet[String]
 
+pub fn[T] collect_registry(@dowdiness/canopy/framework/core.ProjNode[T], Map[@dowdiness/canopy/framework/core.NodeId, @dowdiness/canopy/framework/core.ProjNode[T]]) -> Unit
+
 pub fn compute_text_edit(@edits.TreeEditOp, @edits.EditContext[@ast.Term]) -> Result[(Array[@dowdiness/canopy/framework/core.SpanEdit], @dowdiness/canopy/framework/core.FocusHint)?, String]
 
 pub fn find_binding_for_init(@dowdiness/canopy/framework/core.NodeId, @proj.FlatProj) -> (@dowdiness/canopy/framework/core.NodeId, Int)?

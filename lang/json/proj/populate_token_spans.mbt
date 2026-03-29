@@ -5,6 +5,12 @@
 using @core {type SourceMap}
 
 ///|
+/// Token span role for object member keys. Convention: "key:0", "key:1", etc.
+pub fn key_role(index : Int) -> String {
+  "key:" + index.to_string()
+}
+
+///|
 /// Populate token-level spans by walking a SyntaxNode tree in parallel
 /// with a ProjNode tree. Handles RootNode unwrapping.
 pub fn populate_token_spans(
@@ -47,7 +53,7 @@ fn collect_token_spans(
             match elem {
               @seam.SyntaxElement::Token(t) =>
                 if t.kind() == @json.StringToken.to_raw() {
-                  let role = "key:" + proj_idx.to_string()
+                  let role = key_role(proj_idx)
                   source_map.set_token_span(
                     child_proj.id(),
                     role,
