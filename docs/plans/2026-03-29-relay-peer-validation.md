@@ -1,11 +1,22 @@
 # Relay Peer ID Validation
 
+## Status
+
+Blocked.
+
+Blocked on:
+- container implementation / next sync mechanism
+
 ## Why
 
 `RelayRoom` currently trusts caller-supplied peer IDs and membership state.
 That keeps the room implementation simple, but it leaves duplicate IDs and
 invalid disconnect/message cases dependent on external glue rather than the room
 API itself.
+
+This work is intentionally deferred until the container implementation defines
+the next sync boundary. Tightening validation earlier risks hardening the wrong
+interface.
 
 ## Scope
 
@@ -30,6 +41,8 @@ Out:
 - The room API has explicit, tested behavior for duplicate peer IDs and invalid
   membership operations.
 - Invalid room operations do not silently rely on caller discipline.
+- The validation rules match the post-container sync design rather than the
+  current pre-container assumptions.
 
 ## Steps
 
@@ -56,6 +69,8 @@ moon check
 
 - Tightening validation may require small adapter changes if existing callers
   depended on silent no-op behavior.
+- Doing this too early could lock in validation behavior that no longer matches
+  the container-based sync design.
 
 ## Notes
 

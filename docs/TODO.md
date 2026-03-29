@@ -71,10 +71,13 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
   Plan: `docs/plans/2026-03-29-websocket-client-integration.md`
   Exit: one canonical client flow is implemented, documented, and validated.
 - [ ] Implement `SyncRequest`/`SyncResponse` recovery so malformed/incompatible `CrdtOps` does not leave peers diverged silently
+  Why: recovery semantics should be finalized after the container implementation defines the next sync boundary, not against the current pre-container transport assumptions.
+  Plan: `docs/plans/2026-03-29-sync-recovery-followup.md`
+  Exit: revisit after container implementation; then align retry, buffering, and failure behavior with the new sync boundary.
 - [ ] Reject duplicate/invalid relay peer IDs in `RelayRoom`
-  Why: `RelayRoom` still trusts caller uniqueness and membership correctness instead of enforcing defined room behavior itself.
+  Why: `RelayRoom` still trusts caller uniqueness and membership correctness, but hardening this boundary should wait until the container implementation defines the next sync boundary clearly.
   Plan: `docs/plans/2026-03-29-relay-peer-validation.md`
-  Exit: duplicate peer IDs and invalid membership operations have defined, tested behavior.
+  Exit: revisit after container implementation; then define and test duplicate peer IDs and invalid membership behavior against the new sync boundary.
 - [x] Fix P2-1: Remote sync pollutes undo history — `UndoManager.set_tracking()` implemented; valtio TS layer suppresses tracking during remote op application (see `event-graph-walker/docs/UNDO_MANAGER_DESIGN.md`)
 - [x] Fix P2-2: Position-based undo replays stale positions after concurrent edits — replaced with LV-based UndoManager; tombstone revival restores characters at exact CRDT position regardless of concurrent edits (Phase 1+2 complete, see `event-graph-walker/docs/UNDO_MANAGER_DESIGN.md`)
 - [x] Wire `apply_sync` to suppress undo tracking — `SyncEditor::apply_sync` now disables tracking before applying remote ops
