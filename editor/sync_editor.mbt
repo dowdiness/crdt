@@ -1,9 +1,9 @@
-// SyncEditor: Unified facade composing TextDoc + UndoManager + incremental parser.
+// SyncEditor: Unified facade composing TextState + UndoManager + incremental parser.
 // Parsing stays edit-aware via ImperativeParser; projection views are memo-derived.
 
 ///|
 pub struct SyncEditor[T] {
-  priv doc : @text.TextDoc
+  priv doc : @text.TextState
   priv undo : @undo.UndoManager
   priv parser : @loom.ImperativeParser[T]
   priv parser_rt : @incr.Runtime
@@ -88,7 +88,7 @@ fn[T] SyncEditor::new(
     }),
   )
   {
-    doc: @text.TextDoc::new(agent_id),
+    doc: @text.TextState::new(agent_id),
     undo: @undo.UndoManager::new(agent_id, capture_timeout_ms~),
     parser,
     parser_rt,

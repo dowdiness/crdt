@@ -9,17 +9,17 @@ pub let root_block_id : @tree.TreeNodeId = @tree.root_id
 ///|
 /// A collaborative block document.
 ///
-/// Wraps a `TreeDoc` for block hierarchy and a per-block `TextDoc` map for
+/// Wraps a `TreeState` for block hierarchy and a per-block `TextState` map for
 /// text content. Block ordering delegates to the tree CRDT's fractional indexing.
 pub struct BlockDoc {
-  priv tree : @tree.TreeDoc
-  priv texts : Map[String, @text.TextDoc]
+  priv tree : @tree.TreeState
+  priv texts : Map[String, @text.TextState]
   priv replica_id : String
 }
 
 ///|
-pub fn BlockDoc::new(replica_id : String) -> BlockDoc raise @tree.TreeDocError {
-  { tree: @tree.TreeDoc::new(replica_id), texts: {}, replica_id }
+pub fn BlockDoc::new(replica_id : String) -> BlockDoc raise @tree.TreeError {
+  { tree: @tree.TreeState::new(replica_id), texts: {}, replica_id }
 }
 
 ///|
@@ -28,9 +28,9 @@ pub fn BlockDoc::create_block(
   self : BlockDoc,
   block_type : BlockType,
   parent? : @tree.TreeNodeId = root_block_id,
-) -> @tree.TreeNodeId raise @tree.TreeDocError {
+) -> @tree.TreeNodeId raise @tree.TreeError {
   let id = self.tree.create_node(parent~)
-  self.texts[id_key(id)] = @text.TextDoc::new(self.replica_id)
+  self.texts[id_key(id)] = @text.TextState::new(self.replica_id)
   self.apply_block_type(id, block_type)
   id
 }
@@ -41,9 +41,9 @@ pub fn BlockDoc::create_block_after(
   self : BlockDoc,
   after_id : @tree.TreeNodeId,
   block_type : BlockType,
-) -> @tree.TreeNodeId raise @tree.TreeDocError {
+) -> @tree.TreeNodeId raise @tree.TreeError {
   let id = self.tree.create_node_after(parent=root_block_id, after=after_id)
-  self.texts[id_key(id)] = @text.TextDoc::new(self.replica_id)
+  self.texts[id_key(id)] = @text.TextState::new(self.replica_id)
   self.apply_block_type(id, block_type)
   id
 }
@@ -53,7 +53,7 @@ pub fn BlockDoc::create_block_after(
 pub fn BlockDoc::delete_block(
   self : BlockDoc,
   id : @tree.TreeNodeId,
-) -> Unit raise @tree.TreeDocError {
+) -> Unit raise @tree.TreeError {
   self.tree.delete_node(id)
 }
 
@@ -63,7 +63,7 @@ pub fn BlockDoc::move_block(
   self : BlockDoc,
   id : @tree.TreeNodeId,
   new_parent~ : @tree.TreeNodeId,
-) -> Unit raise @tree.TreeDocError {
+) -> Unit raise @tree.TreeError {
   self.tree.move_node(target=id, new_parent~)
 }
 

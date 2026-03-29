@@ -57,7 +57,7 @@ pub impl Eq for EditModeState
 pub impl Show for EditModeState
 
 pub struct Editor {
-  doc : @text.TextDoc
+  doc : @text.TextState
   mut cursor : Int
 }
 pub fn Editor::apply_sync(Self, @text.SyncMessage) -> Unit raise
