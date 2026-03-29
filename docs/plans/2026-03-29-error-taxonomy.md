@@ -79,7 +79,6 @@ Completed implementation slices:
 
 Remaining work:
 
-- document the boundary strategy in contributor/API docs
 - decide whether the `editor/` surface needs a final wrapper type beyond the
   current per-boundary enums
 - audit any remaining generic catches in `editor/` that should be documented or
@@ -210,7 +209,7 @@ If relay validation becomes active after the container implementation lands, add
 6. Update docs:
    - `docs/development/conventions.md`
    - `docs/development/API_REFERENCE.md`
-   to explain the boundary strategy.
+   to explain the boundary strategy. Done.
 
 7. Add or update tests for the affected error surfaces.
 
@@ -220,7 +219,7 @@ If relay validation becomes active after the container implementation lands, add
 - [x] `editor/` has explicit typed boundary errors instead of relying on generic `Failure::Failure(...)` or pervasive `String` errors.
 - [x] Structural tree-edit failures no longer use raw strings as the primary internal error representation.
 - [x] WebSocket/protocol error handling documents which malformed inputs are intentionally dropped versus propagated or wrapped.
-- [ ] FFI entrypoints remain the main place where typed internal errors are flattened to strings/JSON.
+- [x] FFI entrypoints remain the main place where typed internal errors are flattened to strings/JSON.
 - [x] Relevant tests cover the migrated error boundaries.
 
 ## Validation

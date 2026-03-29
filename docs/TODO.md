@@ -194,11 +194,11 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
 
 **Impact:** Medium | **Effort:** Medium
 
-- [ ] Introduce typed `editor/` boundary errors
+- [x] Introduce typed `editor/` boundary errors
   Why: `editor/` still mixes typed low-level errors, generic failures, raw strings, and silent catches across protocol, ephemeral, and tree-edit boundaries.
   Plan: `docs/plans/2026-03-29-error-taxonomy.md`
   Exit: `editor/` uses explicit boundary error types and root FFI remains the primary error-flattening edge.
-  Progress: tree-edit, ephemeral, and websocket/protocol slices are complete; the remaining work is conventions/API docs follow-through and any final wrapper cleanup.
+  Note: tree-edit, ephemeral, and websocket/protocol slices are implemented; contributor and API docs now describe the current boundary strategy. A future wrapper-type decision can be tracked separately if needed.
 - [ ] Convert `abort()` calls in test files to proper assertions
   Why: assertion-style failures currently use `abort(...)` in many tests, which makes diagnostics harsher and less informative than explicit assertions.
   Plan: `docs/plans/2026-03-29-test-abort-cleanup.md`

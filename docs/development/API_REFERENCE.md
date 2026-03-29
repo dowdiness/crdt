@@ -7,8 +7,8 @@ This document provides a high-level reference for the core MoonBit APIs in the `
 The `SyncEditor` is the primary facade for the editor application, integrating the CRDT document, incremental parser, and undo manager.
 
 ### Construction
-- `SyncEditor::new(agent_id : String, capture_timeout_ms? : Int = 500, ephemeral_timeout_ms? : UInt64 = 60000UL) -> SyncEditor`
-  Creates a new editor instance for the given agent.
+- `SyncEditor::new_lambda(agent_id : String, capture_timeout_ms? : Int = 500) -> SyncEditor[@ast.Term]`
+  Creates the lambda-calculus editor facade used by the current apps and tests.
 
 ### Text Operations
 - `insert(text : String) -> Unit raise`
@@ -56,22 +56,62 @@ The `SyncEditor` is the primary facade for the editor application, integrating t
   Returns true if the current text parses without errors.
 
 ### Projectional Editing
-- `apply_tree_edit(op : @proj.TreeEditOp, timestamp_ms : Int) -> Result[Unit, String]`
+- `apply_tree_edit(op : @proj.TreeEditOp, timestamp_ms : Int) -> Result[Unit, TreeEditError]`
   Applies a structural tree edit by round-tripping through the text CRDT.
+- `delete_node(node_id : @proj.NodeId, timestamp_ms : Int) -> Result[Unit, TreeEditError]`
+- `commit_edit(node_id : @proj.NodeId, new_text : String, timestamp_ms : Int) -> Result[Unit, TreeEditError]`
+- `move_node(source_id : @proj.NodeId, target_id : @proj.NodeId, position : @proj.DropPosition, timestamp_ms : Int) -> Result[Unit, TreeEditError]`
+
+### WebSocket / Wire Protocol
+- `decode_message(data : Bytes) -> SyncMessage?`
+  Compatibility decoder that drops malformed frames by returning `None`.
+- `decode_message_result(data : Bytes) -> Result[SyncMessage, ProtocolError]`
+  Typed decoder for callers that need explicit protocol failure reasons.
+- `ws_on_message(data : Bytes) -> Unit`
+  Applies incoming wire data. Malformed protocol/input frames are intentionally
+  dropped as resilience policy; typed decode helpers exist when diagnostics are
+  needed outside the hot path.
 
 ## EphemeralStore (`@editor.EphemeralStore`)
 
 Manages transient state like peer cursors and presence information.
 
-- `set(key : String, value : EphemeralValue) -> Unit raise`
+- `set(key : String, value : EphemeralValue) -> Unit raise EphemeralError`
   Sets a value for a specific key (usually a peer ID).
 - `get(key : String) -> EphemeralValue?`
   Retrieves a value for a key.
-- `delete(key : String) -> Unit raise`
+- `delete(key : String) -> Unit raise EphemeralError`
   Removes a key from the store.
 - `encode_all() -> Bytes`
   Encodes all non-expired state for broadcasting.
-- `apply(data : Bytes) -> Unit raise`
+- `apply(data : Bytes) -> Unit raise EphemeralError`
   Applies an encoded update from a peer.
 - `remove_outdated() -> Unit`
   Prunes expired entries based on `timeout_ms`.
+
+## Editor Error Types
+
+The `editor` package now uses typed boundary errors rather than raw strings for
+its main internal error surfaces:
+
+- `EphemeralError`
+- `TreeEditError`
+- `ProtocolError`
+
+Each exposes `.message()` for conversion at UI/FFI edges.
+
+Low-level sync/document failures still come from `@text.TextError` and should
+remain owned by the text layer.
+
+## JavaScript FFI Edge
+
+The root JS FFI remains a string/JSON boundary. Internal typed errors are
+flattened there rather than earlier in the call stack.
+
+Examples:
+
+- `apply_tree_edit_json(handle, op_json, timestamp_ms) -> "ok" | "error: ..."`
+- `apply_sync_json(handle, sync_json) -> String`
+- `export_all_json(handle) -> String`
+
+See [JS Integration](JS_INTEGRATION.md) for the browser-facing surface.
