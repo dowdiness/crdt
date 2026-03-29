@@ -20,7 +20,7 @@
 | B — Loom submodule | 2 | TreeNode + Renderable impls for JsonValue |
 | C — Projection pipeline | 3–4 | syntax_to_proj_node, populate_token_spans, memo builder |
 | D — Edit handlers | 5–6 | JsonEditOp, compute_json_edit, edit bridge |
-| E — Integration | 7 | SyncEditor::new_json, end-to-end tests |
+| E — Integration | 7 | new_json_editor, end-to-end tests |
 
 Each task must pass all tests before proceeding.
 
@@ -118,14 +118,15 @@ git commit -m "refactor(editor): make SyncEditor proj_memo optional for non-Flat
 
 **Why:** JsonValue needs these traits for reconciliation and rendering in the projection pipeline.
 
+**Important:** TreeNode and Renderable are defined in `dowdiness/loom/core` (file `loom/loom/src/core/proj_traits.mbt`). The JSON module already imports `dowdiness/loom/core` as `@core`.
+
 **Files:**
-- Modify: `loom/examples/json/src/moon.pkg` — may need alias adjustment
 - Create: `loom/examples/json/src/proj_traits.mbt` — trait impls
 - Create: `loom/examples/json/src/proj_traits_test.mbt` — tests
 
 - [ ] **Step 1: Check if `@core.TreeNode` is accessible**
 
-In the JSON module, `@core` already refers to `dowdiness/loom/core` which defines TreeNode and Renderable. Verify:
+In the JSON module, `@core` refers to `dowdiness/loom/core` which defines TreeNode and Renderable. Verify:
 
 ```bash
 grep 'TreeNode\|Renderable' loom/loom/src/core/pkg.generated.mbti
@@ -217,6 +218,27 @@ test "Renderable::unparse — round-trip" {
   inspect(@core.Renderable::unparse(Number(42.0)), content="42")
   inspect(@core.Renderable::unparse(String("hello")), content="\"hello\"")
 }
+
+///|
+test "Renderable::unparse — error produces valid JSON" {
+  inspect(@core.Renderable::unparse(Error("something went wrong")), content="null")
+}
+
+///|
+test "Renderable::unparse — string with escapes" {
+  inspect(
+    @core.Renderable::unparse(String("line1\nline2")),
+    content="\"line1\\nline2\"",
+  )
+  inspect(
+    @core.Renderable::unparse(String("tab\there")),
+    content="\"tab\\there\"",
+  )
+  inspect(
+    @core.Renderable::unparse(String("a\"b")),
+    content="\"a\\\"b\"",
+  )
+}
 ```
 
 - [ ] **Step 3: Run tests to verify they fail**
@@ -239,7 +261,7 @@ Create `loom/examples/json/src/proj_traits.mbt`:
 pub impl @core.TreeNode for JsonValue with children(self) {
   match self {
     Array(items) => items
-    Object(members) => members.map(m => m.1)
+    Object(members) => members.map(fn(m) { m.1 })
     _ => []
   }
 }
@@ -285,7 +307,9 @@ pub impl @core.Renderable for JsonValue with label(self) {
     Number(n) => {
       let s = n.to_string()
       // Strip trailing .0 for integers
-      if s.ends_with(".0") {
+      if s.length() >= 2 &&
+        s[s.length() - 2] == '.' &&
+        s[s.length() - 1] == '0' {
         s.substring(end=s.length() - 2)
       } else {
         s
@@ -298,7 +322,7 @@ pub impl @core.Renderable for JsonValue with label(self) {
         "\"" + s + "\""
       }
     Array(items) => "[" + items.length().to_string() + " items]"
-    Object(members) => "{" + members.map(m => m.0).join(", ") + "}"
+    Object(members) => "{" + members.map(fn(m) { m.0 }).join(", ") + "}"
     Error(msg) => "Error: " + msg
   }
 }
@@ -328,36 +352,53 @@ fn json_unparse(value : JsonValue, depth : Int) -> String {
     Bool(b) => b.to_string()
     Number(n) => {
       let s = n.to_string()
-      if s.ends_with(".0") { s.substring(end=s.length() - 2) } else { s }
+      if s.length() >= 2 &&
+        s[s.length() - 2] == '.' &&
+        s[s.length() - 1] == '0' {
+        s.substring(end=s.length() - 2)
+      } else {
+        s
+      }
     }
     String(s) => "\"" + json_escape(s) + "\""
     Array(items) =>
       if items.is_empty() {
         "[]"
       } else {
-        let indent = "  ".repeat(depth + 1)
-        let close_indent = "  ".repeat(depth)
-        let parts = items.map(item => indent + json_unparse(item, depth + 1))
+        let indent = make_indent(depth + 1)
+        let close_indent = make_indent(depth)
+        let parts = items.map(fn(item) { indent + json_unparse(item, depth + 1) })
         "[\n" + parts.join(",\n") + "\n" + close_indent + "]"
       }
     Object(members) =>
       if members.is_empty() {
         "{}"
       } else {
-        let indent = "  ".repeat(depth + 1)
-        let close_indent = "  ".repeat(depth)
-        let parts = members.map(m =>
+        let indent = make_indent(depth + 1)
+        let close_indent = make_indent(depth)
+        let parts = members.map(fn(m) {
           indent + "\"" + json_escape(m.0) + "\": " + json_unparse(m.1, depth + 1)
-        )
+        })
         "{\n" + parts.join(",\n") + "\n" + close_indent + "}"
       }
-    Error(msg) => "null /* error: " + msg + " */"
+    Error(_) => "null"
   }
 }
 
 ///|
-fn json_escape(s : String) -> String {
-  let buf = @buffer.new()
+fn make_indent(depth : Int) -> String {
+  let buf = StringBuilder::new()
+  for i = 0; i < depth; i = i + 1 {
+    buf.write_string("  ")
+  }
+  buf.to_string()
+}
+
+///|
+/// Escape a string for JSON output. Handles double-quote, backslash,
+/// and common control characters.
+pub fn json_escape(s : String) -> String {
+  let buf = StringBuilder::new()
   for ch in s {
     match ch {
       '"' => buf.write_string("\\\"")
@@ -371,6 +412,8 @@ fn json_escape(s : String) -> String {
   buf.to_string()
 }
 ```
+
+> **Note:** `json_escape` is `pub` so the canopy projection builder can import it for edit handlers that insert key strings.
 
 - [ ] **Step 6: Run tests**
 
@@ -390,7 +433,7 @@ cd loom/examples/json && moon test --update
 
 ```bash
 cd loom/examples/json
-git add src/proj_traits.mbt src/proj_traits_test.mbt src/moon.pkg src/pkg.generated.mbti
+git add src/proj_traits.mbt src/proj_traits_test.mbt src/pkg.generated.mbti
 git commit -m "feat(json): implement TreeNode and Renderable for JsonValue"
 ```
 
@@ -405,7 +448,18 @@ cd .. && git add loom && git commit -m "chore: bump loom (TreeNode/Renderable fo
 
 ## Task 3: Create lang/json/proj/ — projection builder
 
-**Why:** Converts JSON CST (SyntaxNode) → ProjNode[JsonValue] for the framework pipeline.
+**Why:** Converts JSON CST (SyntaxNode) to ProjNode[JsonValue] for the framework pipeline.
+
+**Key architectural decisions:**
+1. **SyntaxNode has no `.text()` method** — only SyntaxToken has `.text()`. Use `node.token_text(kind)` or `node.find_token(kind)` to extract token text from nodes.
+2. **MemberNode CST structure:** Token children are `StringToken` (key) and `ColonToken`. Node children are the value node (via `child.nth_child(0)`).
+3. **Member span for delete correctness:** Each Object ProjNode child uses the **MemberNode's span** (not the value's span), so that `SourceMap::get_range()` for a child covers the full `"key": value` text. This means delete removes the entire member.
+4. **String values:** Use `node.token_text(StringToken.to_raw())` to get the raw quoted text, then strip quotes. Full unescape is unnecessary for the projection builder — the CST raw text displays correctly.
+
+**Reference files:**
+- `loom/examples/json/src/value_convert.mbt` lines 153-185 (member extraction pattern)
+- `loom/seam/syntax_node.mbt` (SyntaxNode API)
+- `loom/examples/json/src/cst_parser.mbt` lines 144-156 (MemberNode CST structure)
 
 **Files:**
 - Create: `lang/json/proj/moon.pkg`
@@ -415,12 +469,15 @@ cd .. && git add loom && git commit -m "chore: bump loom (TreeNode/Renderable fo
 
 - [ ] **Step 1: Create `lang/json/proj/moon.pkg`**
 
-```
-import {
-  "dowdiness/canopy/framework/core" @core,
-  "dowdiness/json" @json,
-  "dowdiness/loom/core" @loomcore,
-  "dowdiness/seam" @seam,
+```json
+{
+  "import": {
+    "dowdiness/canopy/framework/core": "@core",
+    "dowdiness/json": "@json",
+    "dowdiness/loom/core": "@loomcore",
+    "dowdiness/seam": "@seam",
+    "moonbitlang/core/strconv": ""
+  }
 }
 ```
 
@@ -448,14 +505,40 @@ test "syntax_to_proj_node — null" {
 test "syntax_to_proj_node — number" {
   let (proj, errors) = parse_to_proj_node("42")
   inspect(errors.length(), content="0")
-  inspect(proj.kind is @json.Number(_), content="true")
+  match proj.kind {
+    @json.Number(n) => inspect(n, content="42")
+    _ => fail!("expected Number")
+  }
 }
 
 ///|
 test "syntax_to_proj_node — string" {
   let (proj, errors) = parse_to_proj_node("\"hello\"")
   inspect(errors.length(), content="0")
-  inspect(proj.kind is @json.String(_), content="true")
+  match proj.kind {
+    @json.String(s) => inspect(s, content="hello")
+    _ => fail!("expected String")
+  }
+}
+
+///|
+test "syntax_to_proj_node — boolean true" {
+  let (proj, errors) = parse_to_proj_node("true")
+  inspect(errors.length(), content="0")
+  match proj.kind {
+    @json.Bool(b) => inspect(b, content="true")
+    _ => fail!("expected Bool")
+  }
+}
+
+///|
+test "syntax_to_proj_node — boolean false" {
+  let (proj, errors) = parse_to_proj_node("false")
+  inspect(errors.length(), content="0")
+  match proj.kind {
+    @json.Bool(b) => inspect(b, content="false")
+    _ => fail!("expected Bool")
+  }
 }
 
 ///|
@@ -464,6 +547,11 @@ test "syntax_to_proj_node — array" {
   inspect(errors.length(), content="0")
   inspect(proj.kind is @json.Array(_), content="true")
   inspect(proj.children.length(), content="3")
+  // Check children have correct kinds
+  match proj.children[0].kind {
+    @json.Number(n) => inspect(n, content="1")
+    _ => fail!("expected Number child")
+  }
 }
 
 ///|
@@ -471,8 +559,28 @@ test "syntax_to_proj_node — object" {
   let (proj, errors) = parse_to_proj_node("{\"a\": 1, \"b\": true}")
   inspect(errors.length(), content="0")
   inspect(proj.kind is @json.Object(_), content="true")
-  // Object children are values only (keys are metadata)
+  // Object children are values, but spans cover full members
   inspect(proj.children.length(), content="2")
+  match proj.children[0].kind {
+    @json.Number(n) => inspect(n, content="1")
+    _ => fail!("expected Number child for 'a'")
+  }
+  match proj.children[1].kind {
+    @json.Bool(b) => inspect(b, content="true")
+    _ => fail!("expected Bool child for 'b'")
+  }
+}
+
+///|
+test "syntax_to_proj_node — object child spans cover full member" {
+  // For input {"a": 1}, the child ProjNode span should cover "a": 1 (the full member)
+  let (proj, _) = parse_to_proj_node("{\"a\": 1}")
+  // Root object spans 0..8
+  inspect(proj.start, content="0")
+  inspect(proj.end, content="8")
+  // Child spans the MemberNode: "a": 1 = bytes 1..7
+  inspect(proj.children[0].start, content="1")
+  inspect(proj.children[0].end, content="7")
 }
 
 ///|
@@ -497,7 +605,13 @@ test "SourceMap positions match spans" {
   let sm = @core.SourceMap::from_ast(proj)
   // Root object spans the entire input
   let root_range = sm.get_range(proj.id())
-  inspect(root_range is Some(_), content="true")
+  match root_range {
+    Some(r) => {
+      inspect(r.start, content="0")
+      inspect(r.end, content="8")
+    }
+    None => fail!("expected root range")
+  }
 }
 
 ///|
@@ -511,6 +625,24 @@ test "reconcile preserves IDs on value edit" {
   // Second child (unchanged "b": 2) preserves ID
   inspect(reconciled.children[1].node_id == old.children[1].node_id, content="true")
 }
+
+///|
+test "member delete removes full member text" {
+  // Given {"a": 1, "b": 2}, deleting the first child should remove "a": 1
+  let source = "{\"a\": 1, \"b\": 2}"
+  let (proj, _) = parse_to_proj_node(source)
+  let sm = @core.SourceMap::from_ast(proj)
+  // First child range should cover the full member "a": 1
+  let child_range = sm.get_range(proj.children[0].id())
+  match child_range {
+    Some(r) => {
+      let member_text = source.substring(start=r.start, end=r.end)
+      // Should include key, colon, and value
+      inspect(member_text, content="\"a\": 1")
+    }
+    None => fail!("expected child range")
+  }
+}
 ```
 
 - [ ] **Step 4: Implement `syntax_to_proj_node`**
@@ -518,7 +650,11 @@ test "reconcile preserves IDs on value edit" {
 Create `lang/json/proj/proj_node.mbt`:
 
 ```moonbit
-// CST → ProjNode[JsonValue] builder for JSON.
+// CST -> ProjNode[JsonValue] builder for JSON.
+//
+// Key design: Object ProjNode children use the MemberNode's span (not the value's span).
+// This ensures SourceMap::get_range() for a child covers the full "key": value text,
+// so that delete removes the entire member.
 
 using @core {type ProjNode, type NodeId}
 using @loomcore {type Range}
@@ -534,12 +670,12 @@ pub fn syntax_to_proj_node(
   } else if kind == @json.ArrayNode.to_raw() {
     build_array_node(node, counter)
   } else if kind == @json.StringValue.to_raw() {
-    let text = node.text()
-    // Strip surrounding quotes
-    let inner = if text.length() >= 2 {
-      text.substring(start=1, end=text.length() - 1)
+    // StringValue node contains a StringToken child. Extract its text.
+    let raw = node.token_text(@json.StringToken.to_raw())
+    let inner = if raw.length() >= 2 {
+      raw.substring(start=1, end=raw.length() - 1)
     } else {
-      text
+      raw
     }
     ProjNode::new(
       @json.String(inner),
@@ -548,7 +684,8 @@ pub fn syntax_to_proj_node(
       [],
     )
   } else if kind == @json.NumberValue.to_raw() {
-    let text = node.text()
+    // NumberValue node contains a NumberToken child. Extract its text.
+    let text = node.token_text(@json.NumberToken.to_raw())
     let n = try { @strconv.parse_double(text) } catch { _ => 0.0 }
     ProjNode::new(
       @json.Number(n),
@@ -557,8 +694,8 @@ pub fn syntax_to_proj_node(
       [],
     )
   } else if kind == @json.BoolValue.to_raw() {
-    let text = node.text()
-    let b = text == "true"
+    // BoolValue node contains either TrueKeyword or FalseKeyword token.
+    let b = node.find_token(@json.TrueKeyword.to_raw()) is Some(_)
     ProjNode::new(
       @json.Bool(b),
       node.start(), node.end(),
@@ -581,30 +718,28 @@ pub fn syntax_to_proj_node(
     )
   } else if kind == @json.RootNode.to_raw() {
     // Root node: recurse into single child value
-    let children = node.children()
-    if children.length() > 0 {
-      syntax_to_proj_node(children[0], counter)
-    } else {
-      ProjNode::new(
-        @json.Null,
-        node.start(), node.end(),
-        @core.next_proj_node_id(counter),
-        [],
-      )
+    match node.nth_child(0) {
+      Some(child) => syntax_to_proj_node(child, counter)
+      None =>
+        ProjNode::new(
+          @json.Null,
+          node.start(), node.end(),
+          @core.next_proj_node_id(counter),
+          [],
+        )
     }
   } else if kind == @json.MemberNode.to_raw() {
-    // MemberNode shouldn't be visited directly — parent Object handles it
-    // But handle gracefully if called
-    let children = node.children()
-    if children.length() > 0 {
-      syntax_to_proj_node(children[children.length() - 1], counter)
-    } else {
-      ProjNode::new(
-        @json.Error("empty member"),
-        node.start(), node.end(),
-        @core.next_proj_node_id(counter),
-        [],
-      )
+    // MemberNode shouldn't be visited directly — parent Object handles it.
+    // But handle gracefully if called.
+    match node.nth_child(0) {
+      Some(value_node) => syntax_to_proj_node(value_node, counter)
+      None =>
+        ProjNode::new(
+          @json.Error("empty member"),
+          node.start(), node.end(),
+          @core.next_proj_node_id(counter),
+          [],
+        )
     }
   } else {
     ProjNode::new(
@@ -625,9 +760,18 @@ fn build_object_node(
   let children : Array[ProjNode[@json.JsonValue]] = []
   for child in node.children() {
     if child.kind() == @json.MemberNode.to_raw() {
-      let (key, value_node) = extract_member(child, counter)
-      members.push((key, value_node.kind))
-      children.push(value_node)
+      let (key, value_kind, value_proj) = extract_member(child, counter)
+      members.push((key, value_kind))
+      // Use the MemberNode's span for the child ProjNode, not the value's span.
+      // This ensures SourceMap::get_range() covers "key": value for delete.
+      let member_proj = ProjNode::new(
+        value_proj.kind,
+        child.start(),  // MemberNode start
+        child.end(),    // MemberNode end
+        value_proj.node_id,
+        value_proj.children,
+      )
+      children.push(member_proj)
     }
   }
   ProjNode::new(
@@ -646,13 +790,9 @@ fn build_array_node(
   let items : Array[@json.JsonValue] = []
   let children : Array[ProjNode[@json.JsonValue]] = []
   for child in node.children() {
-    let child_kind = child.kind()
-    // Skip token children (brackets, commas)
-    if not(@json.SyntaxKind::is_token(@json.SyntaxKind::from_raw(child_kind))) {
-      let proj = syntax_to_proj_node(child, counter)
-      items.push(proj.kind)
-      children.push(proj)
-    }
+    let proj = syntax_to_proj_node(child, counter)
+    items.push(proj.kind)
+    children.push(proj)
   }
   ProjNode::new(
     @json.Array(items),
@@ -663,29 +803,38 @@ fn build_array_node(
 }
 
 ///|
+/// Extract key, value kind, and value ProjNode from a MemberNode.
+///
+/// MemberNode CST structure:
+/// - Token children: StringToken (the key), ColonToken
+/// - Node children: the value node (first node child, via nth_child(0))
+///
+/// Key extraction: iterate all_children(), find first SyntaxElement::Token
+/// where kind == StringToken.to_raw(), use token.text().
 fn extract_member(
   member_node : @seam.SyntaxNode,
   counter : Ref[Int],
-) -> (String, ProjNode[@json.JsonValue]) {
+) -> (String, @json.JsonValue, ProjNode[@json.JsonValue]) {
+  // Extract key from first StringToken child (same pattern as value_convert.mbt)
   let mut key = ""
-  let mut value_proj : ProjNode[@json.JsonValue]? = None
-  for child in member_node.children() {
-    let child_kind = child.kind()
-    if child_kind == @json.StringValue.to_raw() && key == "" {
-      // First StringValue is the key
-      let text = child.text()
-      key = if text.length() >= 2 {
-        text.substring(start=1, end=text.length() - 1)
-      } else {
-        text
-      }
-    } else if not(@json.SyntaxKind::is_token(@json.SyntaxKind::from_raw(child_kind))) && value_proj is None {
-      // First non-token, non-key child is the value
-      value_proj = Some(syntax_to_proj_node(child, counter))
+  for elem in member_node.all_children() {
+    match elem {
+      @seam.SyntaxElement::Token(t) =>
+        if @json.StringToken.to_raw() == t.kind() {
+          let raw = t.text()
+          key = if raw.length() >= 2 {
+            raw.substring(start=1, end=raw.length() - 1)
+          } else {
+            raw
+          }
+          break
+        }
+      _ => ()
     }
   }
-  let value = match value_proj {
-    Some(v) => v
+  // Extract value from first node child
+  let value_proj = match member_node.nth_child(0) {
+    Some(v) => syntax_to_proj_node(v, counter)
     None =>
       ProjNode::new(
         @json.Error("missing value"),
@@ -694,7 +843,7 @@ fn extract_member(
         [],
       )
   }
-  (key, value)
+  (key, value_proj.kind, value_proj)
 }
 
 ///|
@@ -706,21 +855,20 @@ pub fn parse_to_proj_node(
     _ => abort("JSON parse failed")
   }
   let syntax_node = @seam.SyntaxNode::from_cst(cst)
-  let errors = diagnostics.map(d => d.message)
+  let errors = diagnostics.map(fn(d) { d.message })
   let root = syntax_to_proj_node(syntax_node, Ref::new(0))
   (root, errors)
 }
 ```
-
-> **Note:** The exact SyntaxKind matching may need adjustment. Check if `@json.SyntaxKind::from_raw` exists; if not, use raw int comparisons or add a helper. Also verify `@json.parse_cst` signature — it may be `parse_cst(source)` returning `(CstNode, Array[Diagnostic])`.
 
 - [ ] **Step 5: Implement `populate_token_spans`**
 
 Create `lang/json/proj/populate_token_spans.mbt`:
 
 ```moonbit
-// Lambda-specific token span extraction for JSON objects.
+// Token span extraction for JSON objects.
 // Extracts key name spans from MemberNode StringToken children.
+// Key spans are stored as "key:0", "key:1", etc. in the SourceMap token_spans.
 
 using @core {type NodeId, type ProjNode, type SourceMap}
 using @loomcore {type Range}
@@ -748,8 +896,18 @@ fn collect_key_spans(
       let mut member_idx = 0
       for child in syntax_node.children() {
         if child.kind() == @json.MemberNode.to_raw() {
-          // Find the key StringToken (first token child that is a StringToken)
-          let key_token = child.find_token(@json.StringValue.to_raw())
+          // Find the key StringToken (first StringToken among direct children)
+          let mut key_token : @seam.SyntaxToken? = None
+          for elem in child.all_children() {
+            match elem {
+              @seam.SyntaxElement::Token(t) =>
+                if @json.StringToken.to_raw() == t.kind() {
+                  key_token = Some(t)
+                  break
+                }
+              _ => ()
+            }
+          }
           match key_token {
             Some(tok) => {
               let role = "key:" + member_idx.to_string()
@@ -763,20 +921,15 @@ fn collect_key_spans(
           }
           // Recurse into value child
           if member_idx < proj_node.children.length() {
-            // Find the value syntax node within this MemberNode
-            for member_child in child.children() {
-              let mk = member_child.kind()
-              if not(@json.SyntaxKind::is_token(@json.SyntaxKind::from_raw(mk))) {
-                // First non-key node child
-                if mk != @json.StringValue.to_raw() || member_idx > 0 {
-                  collect_key_spans(
-                    source_map,
-                    member_child,
-                    proj_node.children[member_idx],
-                  )
-                }
-                break
-              }
+            // The value node is the first node child of the MemberNode
+            match child.nth_child(0) {
+              Some(value_syntax) =>
+                collect_key_spans(
+                  source_map,
+                  value_syntax,
+                  proj_node.children[member_idx],
+                )
+              None => ()
             }
           }
           member_idx = member_idx + 1
@@ -784,14 +937,10 @@ fn collect_key_spans(
       }
     }
     @json.Array(_) => {
-      let mut child_idx = 0
-      for child in syntax_node.children() {
-        let ck = child.kind()
-        if not(@json.SyntaxKind::is_token(@json.SyntaxKind::from_raw(ck))) {
-          if child_idx < proj_node.children.length() {
-            collect_key_spans(source_map, child, proj_node.children[child_idx])
-          }
-          child_idx = child_idx + 1
+      let syntax_children = syntax_node.children()
+      for i = 0; i < proj_node.children.length(); i = i + 1 {
+        if i < syntax_children.length() {
+          collect_key_spans(source_map, syntax_children[i], proj_node.children[i])
         }
       }
     }
@@ -799,8 +948,6 @@ fn collect_key_spans(
   }
 }
 ```
-
-> **Note:** The `find_token` method may not match StringValue (a node kind, not token kind). The key token is actually a `StringToken` inside the MemberNode. Adjust the lookup to scan for `StringToken.to_raw()` instead of `StringValue.to_raw()`. Verify against the actual CST structure by inspecting a parsed JSON object's SyntaxNode tree.
 
 - [ ] **Step 6: Run tests**
 
@@ -828,7 +975,26 @@ git commit -m "feat(json): add projection builder — syntax_to_proj_node and po
 **Files:**
 - Create: `lang/json/proj/json_memo.mbt` — build_json_projection_memos
 
-- [ ] **Step 1: Implement `build_json_projection_memos`**
+- [ ] **Step 1: Update `lang/json/proj/moon.pkg` with all needed imports**
+
+```json
+{
+  "import": {
+    "dowdiness/canopy/framework/core": "@core",
+    "dowdiness/canopy/lang/lambda/flat": "@lambda_flat",
+    "dowdiness/incr": "@incr",
+    "dowdiness/json": "@json",
+    "dowdiness/loom": "@loom",
+    "dowdiness/loom/core": "@loomcore",
+    "dowdiness/seam": "@seam",
+    "moonbitlang/core/strconv": ""
+  }
+}
+```
+
+> **Note:** `@lambda_flat` is needed for the return type to match SyncEditor's `build_memos` callback signature. `@incr` and `@loom` are needed for the memo builder. `@strconv` is needed for number parsing in the projection builder (Task 3).
+
+- [ ] **Step 2: Implement `build_json_projection_memos`**
 
 Create `lang/json/proj/json_memo.mbt`:
 
@@ -876,7 +1042,7 @@ pub fn build_json_projection_memos(
     },
   )
 
-  // Registry memo: NodeId → ProjNode lookup
+  // Registry memo: NodeId -> ProjNode lookup
   let registry_memo : @incr.Memo[Map[NodeId, ProjNode[@json.JsonValue]]] = @incr.Memo::new_no_backdate(
     rt,
     fn() -> Map[NodeId, ProjNode[@json.JsonValue]] {
@@ -919,24 +1085,6 @@ fn collect_registry(
 }
 ```
 
-> **Note:** This imports `@lambda_flat.VersionedFlatProj` for the return type (to match SyncEditor's `build_memos` callback). Add `"dowdiness/canopy/lang/lambda/flat" @lambda_flat` to `lang/json/proj/moon.pkg`. Also add `"dowdiness/incr" @incr` and `"dowdiness/loom" @loom`.
-
-- [ ] **Step 2: Update `lang/json/proj/moon.pkg` with all needed imports**
-
-```
-import {
-  "dowdiness/canopy/framework/core" @core,
-  "dowdiness/canopy/lang/lambda/flat" @lambda_flat,
-  "dowdiness/incr" @incr,
-  "dowdiness/json" @json,
-  "dowdiness/loom" @loom,
-  "dowdiness/loom/core" @loomcore,
-  "dowdiness/seam" @seam,
-  "moonbitlang/core/buffer" @buffer,
-  "moonbitlang/core/strconv",
-}
-```
-
 - [ ] **Step 3: Run `moon check` and fix compilation errors**
 
 ```bash
@@ -958,6 +1106,12 @@ git commit -m "feat(json): add memo builder for JSON projection pipeline"
 
 **Why:** Provides structural JSON edit operations (add member, delete, wrap, rename key, etc.).
 
+**Key design decisions:**
+1. **Delete uses member span:** Because Object ProjNode children have MemberNode spans (from Task 3 fix #3), `source_map.get_range(child_id)` returns the full member span. Delete removes the entire `"key": value` text plus trailing/leading comma.
+2. **Edit handlers use `json_escape` for keys:** AddMember, WrapInObject, RenameKey all insert key strings and must escape special characters.
+3. **Error unparse:** `Error(_)` produces `"null"` (valid JSON), not a comment.
+4. **compute_unwrap guards:** Only unwraps single-element arrays and single-member objects. Returns Err for multi-element containers. For objects, finds the value node span within the member rather than string splitting.
+
 **Files:**
 - Create: `lang/json/edits/moon.pkg`
 - Create: `lang/json/edits/json_edit_op.mbt` — JsonEditOp enum
@@ -966,12 +1120,14 @@ git commit -m "feat(json): add memo builder for JSON projection pipeline"
 
 - [ ] **Step 1: Create `lang/json/edits/moon.pkg`**
 
-```
-import {
-  "dowdiness/canopy/framework/core" @core,
-  "dowdiness/canopy/lang/json/proj" @json_proj,
-  "dowdiness/json" @json,
-  "dowdiness/loom/core" @loomcore,
+```json
+{
+  "import": {
+    "dowdiness/canopy/framework/core": "@core",
+    "dowdiness/canopy/lang/json/proj": "@json_proj",
+    "dowdiness/json": "@json",
+    "dowdiness/loom/core": "@loomcore"
+  }
 }
 ```
 
@@ -1015,46 +1171,209 @@ Create `lang/json/edits/compute_json_edit_wbtest.mbt`:
 
 ```moonbit
 ///|
+fn make_edit_context(
+  source : String,
+) -> (@core.ProjNode[@json.JsonValue], @core.SourceMap) {
+  let (proj, _) = @json_proj.parse_to_proj_node(source)
+  let sm = @core.SourceMap::from_ast(proj)
+  (proj, sm)
+}
+
+///|
 test "Delete member from object" {
-  let result = apply_edit("{\"a\": 1, \"b\": 2}", Delete(node_id=find_first_child_id("{\"a\": 1, \"b\": 2}")))
-  // After deleting first value, object should have one member
-  inspect(result is Ok(_), content="true")
-}
-
-///|
-test "AddMember to object" {
-  let (proj, _) = @json_proj.parse_to_proj_node("{\"a\": 1}")
-  let sm = @core.SourceMap::from_ast(proj)
+  let source = "{\"a\": 1, \"b\": 2}"
+  let (proj, sm) = make_edit_context(source)
+  // Delete first member (child 0)
+  let child_id = proj.children[0].id()
   let result = compute_json_edit(
-    AddMember(object_id=proj.id(), key="b"),
-    "{\"a\": 1}",
-    proj,
-    sm,
-  )
-  inspect(result is Ok(_), content="true")
-}
-
-///|
-test "WrapInArray" {
-  let (proj, _) = @json_proj.parse_to_proj_node("42")
-  let sm = @core.SourceMap::from_ast(proj)
-  let result = compute_json_edit(
-    WrapInArray(node_id=proj.id()),
-    "42",
+    Delete(node_id=child_id),
+    source,
     proj,
     sm,
   )
   match result {
     Ok(Some((edits, _))) => {
-      // Should produce edits that wrap 42 → [42]
       inspect(edits.length() > 0, content="true")
+      // The edit should remove "a": 1 and the trailing comma+space
+      let edit = edits[0]
+      inspect(edit.inserted, content="")
     }
-    _ => fail("Expected Ok(Some(...))")
+    _ => fail!("Expected Ok(Some(...))")
+  }
+}
+
+///|
+test "AddMember to empty object" {
+  let source = "{}"
+  let (proj, sm) = make_edit_context(source)
+  let result = compute_json_edit(
+    AddMember(object_id=proj.id(), key="name"),
+    source,
+    proj,
+    sm,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      inspect(edits.length(), content="1")
+      let edit = edits[0]
+      inspect(edit.inserted, content="\"name\": null")
+    }
+    _ => fail!("Expected Ok(Some(...))")
+  }
+}
+
+///|
+test "AddMember to non-empty object" {
+  let source = "{\"a\": 1}"
+  let (proj, sm) = make_edit_context(source)
+  let result = compute_json_edit(
+    AddMember(object_id=proj.id(), key="b"),
+    source,
+    proj,
+    sm,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      inspect(edits.length(), content="1")
+      let edit = edits[0]
+      inspect(edit.inserted, content=", \"b\": null")
+    }
+    _ => fail!("Expected Ok(Some(...))")
+  }
+}
+
+///|
+test "WrapInArray" {
+  let source = "42"
+  let (proj, sm) = make_edit_context(source)
+  let result = compute_json_edit(
+    WrapInArray(node_id=proj.id()),
+    source,
+    proj,
+    sm,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      inspect(edits.length(), content="2")
+    }
+    _ => fail!("Expected Ok(Some(...))")
+  }
+}
+
+///|
+test "WrapInObject escapes key" {
+  let source = "42"
+  let (proj, sm) = make_edit_context(source)
+  let result = compute_json_edit(
+    WrapInObject(node_id=proj.id(), key="a\"b"),
+    source,
+    proj,
+    sm,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      let prefix_edit = edits[0]
+      inspect(prefix_edit.inserted, content="{\"a\\\"b\": ")
+    }
+    _ => fail!("Expected Ok(Some(...))")
+  }
+}
+
+///|
+test "RenameKey" {
+  let source = "{\"old\": 1}"
+  let (proj, sm) = make_edit_context(source)
+  // Populate token spans so key spans are available
+  let (cst, _) = @json.parse_cst(source) catch { _ => abort("parse fail") }
+  let syntax_root = @seam.SyntaxNode::from_cst(cst)
+  @json_proj.populate_token_spans(sm, syntax_root, proj)
+  let result = compute_json_edit(
+    RenameKey(object_id=proj.id(), key_index=0, new_key="new"),
+    source,
+    proj,
+    sm,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      inspect(edits.length(), content="1")
+      inspect(edits[0].inserted, content="\"new\"")
+    }
+    _ => fail!("Expected Ok(Some(...))")
+  }
+}
+
+///|
+test "RenameKey escapes special chars" {
+  let source = "{\"old\": 1}"
+  let (proj, sm) = make_edit_context(source)
+  let (cst, _) = @json.parse_cst(source) catch { _ => abort("parse fail") }
+  let syntax_root = @seam.SyntaxNode::from_cst(cst)
+  @json_proj.populate_token_spans(sm, syntax_root, proj)
+  let result = compute_json_edit(
+    RenameKey(object_id=proj.id(), key_index=0, new_key="a\nb"),
+    source,
+    proj,
+    sm,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      inspect(edits[0].inserted, content="\"a\\nb\"")
+    }
+    _ => fail!("Expected Ok(Some(...))")
+  }
+}
+
+///|
+test "Unwrap single-element array" {
+  let source = "[42]"
+  let (proj, sm) = make_edit_context(source)
+  let result = compute_json_edit(
+    Unwrap(node_id=proj.id()),
+    source,
+    proj,
+    sm,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      inspect(edits.length(), content="1")
+      inspect(edits[0].inserted, content="42")
+    }
+    _ => fail!("Expected Ok(Some(...))")
+  }
+}
+
+///|
+test "Unwrap multi-element array fails" {
+  let source = "[1, 2]"
+  let (proj, sm) = make_edit_context(source)
+  let result = compute_json_edit(
+    Unwrap(node_id=proj.id()),
+    source,
+    proj,
+    sm,
+  )
+  inspect(result is Err(_), content="true")
+}
+
+///|
+test "Unwrap single-member object" {
+  let source = "{\"a\": 42}"
+  let (proj, sm) = make_edit_context(source)
+  let result = compute_json_edit(
+    Unwrap(node_id=proj.id()),
+    source,
+    proj,
+    sm,
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      inspect(edits.length(), content="1")
+      inspect(edits[0].inserted, content="42")
+    }
+    _ => fail!("Expected Ok(Some(...))")
   }
 }
 ```
-
-> **Note:** These tests are sketches. The actual assertions will depend on the exact edit output. Use `moon test --update` for snapshot-based verification after implementation.
 
 - [ ] **Step 4: Implement `compute_json_edit`**
 
@@ -1089,37 +1408,51 @@ pub fn compute_json_edit(
 fn compute_delete(
   node_id : NodeId,
   source : String,
-  proj : ProjNode[@json.JsonValue],
+  _proj : ProjNode[@json.JsonValue],
   source_map : SourceMap,
 ) -> Result[(Array[JsonSpanEdit], JsonFocusHint)?, String] {
   let range = match source_map.get_range(node_id) {
     Some(r) => r
     None => return Err("node not in source map")
   }
-  // For object members, we need to delete the entire member including key and comma
-  // For array elements, delete element and adjacent comma
-  // Simple approach: replace with placeholder or delete the span
+  // The range covers the full member/element span (including key+colon for objects).
+  // Try to consume a trailing comma + whitespace.
   let delete_start = range.start
   let delete_end = range.end
-  // Try to consume a trailing comma + whitespace
   let mut end = delete_end
   while end < source.length() {
     let ch = source[end]
     if ch == ',' {
       end = end + 1
       // Skip whitespace after comma
-      while end < source.length() && (source[end] == ' ' || source[end] == '\n' || source[end] == '\t' || source[end] == '\r') {
+      while end < source.length() && is_json_ws(source[end]) {
         end = end + 1
       }
       break
-    } else if ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r' {
+    } else if is_json_ws(ch) {
       end = end + 1
     } else {
+      // No trailing comma. Try consuming a leading comma instead.
+      // Look backward from delete_start for ", " pattern.
+      let mut start = delete_start
+      while start > 0 && is_json_ws(source[start - 1]) {
+        start = start - 1
+      }
+      if start > 0 && source[start - 1] == ',' {
+        start = start - 1
+        let edits = [JsonSpanEdit::{ start, delete_len: delete_end - start, inserted: "" }]
+        return Ok(Some((edits, RestoreCursor)))
+      }
       break
     }
   }
   let edits = [JsonSpanEdit::{ start: delete_start, delete_len: end - delete_start, inserted: "" }]
   Ok(Some((edits, RestoreCursor)))
+}
+
+///|
+fn is_json_ws(ch : Char) -> Bool {
+  ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r'
 }
 
 ///|
@@ -1136,11 +1469,19 @@ fn compute_add_member(
   }
   // Insert before the closing brace
   let insert_pos = range.end - 1
-  let needs_comma = source.substring(start=range.start + 1, end=insert_pos).trim(" \n\t\r").length() > 0
-  let prefix = if needs_comma { ", " } else { "" }
-  let new_member = prefix + "\"" + key + "\": null"
+  // Check if there's content between braces (non-empty object)
+  let mut has_content = false
+  for i = range.start + 1; i < insert_pos; i = i + 1 {
+    if not(is_json_ws(source[i])) {
+      has_content = true
+      break
+    }
+  }
+  let escaped_key = @json.json_escape(key)
+  let prefix = if has_content { ", " } else { "" }
+  let new_member = prefix + "\"" + escaped_key + "\": null"
   let edits = [JsonSpanEdit::{ start: insert_pos, delete_len: 0, inserted: new_member }]
-  let cursor_pos = insert_pos + prefix.length() + key.length() + 4 // after ": "
+  let cursor_pos = insert_pos + new_member.length() // after "null"
   Ok(Some((edits, MoveCursor(position=cursor_pos))))
 }
 
@@ -1156,8 +1497,14 @@ fn compute_add_element(
     None => return Err("array not in source map")
   }
   let insert_pos = range.end - 1
-  let needs_comma = source.substring(start=range.start + 1, end=insert_pos).trim(" \n\t\r").length() > 0
-  let prefix = if needs_comma { ", " } else { "" }
+  let mut has_content = false
+  for i = range.start + 1; i < insert_pos; i = i + 1 {
+    if not(is_json_ws(source[i])) {
+      has_content = true
+      break
+    }
+  }
+  let prefix = if has_content { ", " } else { "" }
   let edits = [JsonSpanEdit::{ start: insert_pos, delete_len: 0, inserted: prefix + "null" }]
   Ok(Some((edits, MoveCursor(position=insert_pos + prefix.length()))))
 }
@@ -1190,7 +1537,8 @@ fn compute_wrap_in_object(
     Some(r) => r
     None => return Err("node not in source map")
   }
-  let prefix = "{\"" + key + "\": "
+  let escaped_key = @json.json_escape(key)
+  let prefix = "{\"" + escaped_key + "\": "
   let edits = [
     JsonSpanEdit::{ start: range.start, delete_len: 0, inserted: prefix },
     JsonSpanEdit::{ start: range.end, delete_len: 0, inserted: "}" },
@@ -1202,33 +1550,53 @@ fn compute_wrap_in_object(
 fn compute_unwrap(
   node_id : NodeId,
   source : String,
-  _proj : ProjNode[@json.JsonValue],
+  proj : ProjNode[@json.JsonValue],
   source_map : SourceMap,
 ) -> Result[(Array[JsonSpanEdit], JsonFocusHint)?, String] {
   let range = match source_map.get_range(node_id) {
     Some(r) => r
     None => return Err("node not in source map")
   }
-  let text = source.substring(start=range.start, end=range.end)
-  // For arrays: [value] → value (only if single element)
-  // For objects: {"key": value} → value (only if single member)
-  // Simple approach: extract content between delimiters
-  let inner = if text.length() >= 2 {
-    text.substring(start=1, end=text.length() - 1).trim(" \n\t\r")
-  } else {
-    return Err("cannot unwrap: too short")
+  // Find the ProjNode by its ID
+  let node = match @core.get_node_in_tree(proj, node_id) {
+    Some(n) => n
+    None => return Err("node not found in projection tree")
   }
-  // For objects, strip key prefix
-  let content = if text[0] == '{' {
-    match inner.index_of(":") {
-      Some(colon) => inner.substring(start=colon + 1).trim(" \n\t\r")
-      None => inner
+  match node.kind {
+    @json.Array(items) => {
+      if items.length() != 1 {
+        return Err("can only unwrap single-element array, got " + items.length().to_string())
+      }
+      // Extract the single element's text from source using child's range
+      let child = node.children[0]
+      let child_range = match source_map.get_range(child.id()) {
+        Some(r) => r
+        None => return Err("child not in source map")
+      }
+      let content = source.substring(start=child_range.start, end=child_range.end)
+      let edits = [JsonSpanEdit::{ start: range.start, delete_len: range.end - range.start, inserted: content }]
+      Ok(Some((edits, RestoreCursor)))
     }
-  } else {
-    inner
+    @json.Object(members) => {
+      if members.length() != 1 {
+        return Err("can only unwrap single-member object, got " + members.length().to_string())
+      }
+      // The child ProjNode has the member span. We need the value's text within it.
+      // The child's kind IS the value, but its span is the member span.
+      // Get the value text by finding its actual position from the child's own children
+      // or by using unparse as fallback.
+      let child = node.children[0]
+      // For a single-member object, the value is the child's kind.
+      // We need to find the value's actual text range. Since the child's span covers
+      // the full member, we look at the child's sub-children for containers,
+      // or use the source_map range for leaf values.
+      // Simplest correct approach: unparse the value kind.
+      let content = @core.Renderable::unparse(child.kind)
+      let edits = [JsonSpanEdit::{ start: range.start, delete_len: range.end - range.start, inserted: content }]
+      Ok(Some((edits, RestoreCursor)))
+    }
+    _ => Err("can only unwrap Array or Object")
   }
-  let edits = [JsonSpanEdit::{ start: range.start, delete_len: range.end - range.start, inserted: content }]
-  Ok(Some((edits, RestoreCursor)))
 }
 
 ///|
@@ -1266,8 +1634,9 @@ fn compute_rename_key(
     Some(s) => s
     None => return Err("key span not found for " + role)
   }
-  // Replace the entire quoted key token
-  let replacement = "\"" + new_key + "\""
+  // Replace the entire quoted key token, escaping the new key
+  let escaped_key = @json.json_escape(new_key)
+  let replacement = "\"" + escaped_key + "\""
   let edits = [JsonSpanEdit::{ start: span.start, delete_len: span.end - span.start, inserted: replacement }]
   Ok(Some((edits, RestoreCursor)))
 }
@@ -1293,10 +1662,10 @@ fn compute_commit(
 moon check
 ```
 
-- [ ] **Step 6: Update tests with snapshot assertions**
+- [ ] **Step 6: Run tests and update snapshots**
 
 ```bash
-moon test --update
+moon test && moon test --update
 ```
 
 Review the snapshot outputs to verify correctness.
@@ -1333,15 +1702,20 @@ pub fn[T] SyncEditor::apply_text_edit_internal(
 - [ ] **Step 2: Update `lang/json/edits/moon.pkg`**
 
 Add editor dependency:
-```
-import {
-  "dowdiness/canopy/editor" @editor,
-  "dowdiness/canopy/framework/core" @core,
-  "dowdiness/canopy/lang/json/proj" @json_proj,
-  "dowdiness/json" @json,
-  "dowdiness/loom/core" @loomcore,
+```json
+{
+  "import": {
+    "dowdiness/canopy/editor": "@editor",
+    "dowdiness/canopy/framework/core": "@core",
+    "dowdiness/canopy/lang/json/proj": "@json_proj",
+    "dowdiness/json": "@json",
+    "dowdiness/loom/core": "@loomcore",
+    "dowdiness/seam": "@seam"
+  }
 }
 ```
+
+> **Note:** `@seam` is needed for the RenameKey test which parses CST and calls `SyntaxNode::from_cst`.
 
 - [ ] **Step 3: Implement the bridge**
 
@@ -1367,7 +1741,7 @@ pub fn apply_json_edit(
       }
       // Apply in reverse document order to avoid position shifts
       let sorted = edits.copy()
-      sorted.sort_by((a, b) => b.start.compare(a.start))
+      sorted.sort_by(fn(a, b) { b.start.compare(a.start) })
       let old_cursor = editor.get_cursor()
       for edit in sorted {
         editor.apply_text_edit_internal(
@@ -1406,13 +1780,13 @@ git commit -m "feat(json): add edit bridge connecting JsonEditOp to SyncEditor"
 
 ---
 
-## Task 7: SyncEditor::new_json + end-to-end tests
+## Task 7: new_json_editor + end-to-end tests
 
 **Why:** Wire everything together and prove the full pipeline works.
 
 **Files:**
 - Modify: `editor/sync_editor.mbt` — make `SyncEditor::new` pub
-- Create: `lang/json/edits/sync_editor_json.mbt` — new_json constructor
+- Create: `lang/json/edits/sync_editor_json.mbt` — new_json_editor constructor
 - Create: `lang/json/edits/integration_wbtest.mbt` — end-to-end tests
 
 - [ ] **Step 1: Make `SyncEditor::new` public**
@@ -1425,7 +1799,24 @@ fn[T] SyncEditor::new(
 pub fn[T] SyncEditor::new(
 ```
 
-- [ ] **Step 2: Create `SyncEditor::new_json`**
+- [ ] **Step 2: Update `lang/json/edits/moon.pkg` with loom dependency**
+
+Add `"dowdiness/loom" @loom` if not already present:
+```json
+{
+  "import": {
+    "dowdiness/canopy/editor": "@editor",
+    "dowdiness/canopy/framework/core": "@core",
+    "dowdiness/canopy/lang/json/proj": "@json_proj",
+    "dowdiness/json": "@json",
+    "dowdiness/loom": "@loom",
+    "dowdiness/loom/core": "@loomcore",
+    "dowdiness/seam": "@seam"
+  }
+}
+```
+
+- [ ] **Step 3: Create `new_json_editor`**
 
 Create `lang/json/edits/sync_editor_json.mbt`:
 
@@ -1444,9 +1835,7 @@ pub fn new_json_editor(
 }
 ```
 
-> **Note:** Add `"dowdiness/loom" @loom` to `lang/json/edits/moon.pkg` if not already present.
-
-- [ ] **Step 3: Write end-to-end integration tests**
+- [ ] **Step 4: Write end-to-end integration tests**
 
 Create `lang/json/edits/integration_wbtest.mbt`:
 
@@ -1464,13 +1853,16 @@ test "new_json_editor — projection pipeline works" {
   editor.set_text("{\"a\": 1, \"b\": true}")
   editor.mark_dirty()
   let proj = editor.get_proj_node()
-  inspect(proj is Some(_), content="true")
   match proj {
     Some(p) => {
       inspect(p.kind is @json.Object(_), content="true")
       inspect(p.children.length(), content="2")
+      match p.children[0].kind {
+        @json.Number(n) => inspect(n, content="1")
+        _ => fail!("expected Number child for 'a'")
+      }
     }
-    None => fail("expected projection")
+    None => fail!("expected projection")
   }
 }
 
@@ -1484,9 +1876,15 @@ test "new_json_editor — source map positions" {
   match proj {
     Some(p) => {
       let range = sm.get_range(p.id())
-      inspect(range is Some(_), content="true")
+      match range {
+        Some(r) => {
+          inspect(r.start, content="0")
+          inspect(r.end, content="9")
+        }
+        None => fail!("expected range for root")
+      }
     }
-    None => fail("expected projection")
+    None => fail!("expected projection")
   }
 }
 
@@ -1498,7 +1896,7 @@ test "new_json_editor — reconcile preserves IDs after edit" {
   let proj1 = editor.get_proj_node()
   let id1 = match proj1 {
     Some(p) => p.node_id
-    None => { fail("expected projection"); return }
+    None => { fail!("expected projection"); return }
   }
   // Edit: change value of "a"
   editor.set_text("{\"a\": 99, \"b\": 2}")
@@ -1506,7 +1904,7 @@ test "new_json_editor — reconcile preserves IDs after edit" {
   let proj2 = editor.get_proj_node()
   let id2 = match proj2 {
     Some(p) => p.node_id
-    None => { fail("expected projection"); return }
+    None => { fail!("expected projection"); return }
   }
   // Root Object ID should be preserved (same_kind match)
   inspect(id1 == id2, content="true")
@@ -1524,7 +1922,7 @@ test "new_json_editor — apply WrapInArray edit" {
       inspect(result is Ok(_), content="true")
       inspect(editor.get_text(), content="[42]")
     }
-    None => fail("expected projection")
+    None => fail!("expected projection")
   }
 }
 
@@ -1538,12 +1936,11 @@ test "new_json_editor — apply AddMember edit" {
     Some(p) => {
       let result = apply_json_edit(editor, AddMember(object_id=p.id(), key="name"), 0)
       inspect(result is Ok(_), content="true")
-      // Should insert a new member
       let text = editor.get_text()
-      inspect(text.contains("\"name\""), content="true")
-      inspect(text.contains("null"), content="true")
+      // Should contain the key and null value
+      inspect(text, content="{\"name\": null}")
     }
-    None => fail("expected projection")
+    None => fail!("expected projection")
   }
 }
 
@@ -1567,7 +1964,7 @@ test "new_json_editor — get_flat_proj returns None" {
 }
 ```
 
-- [ ] **Step 4: Run full test suite**
+- [ ] **Step 5: Run full test suite**
 
 ```bash
 moon check && moon test && moon build --target js
@@ -1575,40 +1972,91 @@ moon check && moon test && moon build --target js
 
 All tests must pass.
 
-- [ ] **Step 5: Update snapshots if needed**
+- [ ] **Step 6: Update snapshots if needed**
 
 ```bash
 moon test --update
 ```
 
-- [ ] **Step 6: `moon info && moon fmt`**
+- [ ] **Step 7: `moon info && moon fmt`**
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add -A
-git commit -m "feat(json): add SyncEditor::new_json + end-to-end integration tests"
+git add lang/json/ editor/sync_editor.mbt editor/pkg.generated.mbti
+git commit -m "feat(json): add new_json_editor + end-to-end integration tests"
 ```
 
 ---
 
 ## Notes
 
-### SyntaxKind matching
+### CST node text extraction — critical API difference
 
-The projection builder uses `@json.ObjectNode.to_raw()` etc. to match syntax kinds. Verify that MoonBit resolves these correctly — the JSON module's `SyntaxKind` has a `to_raw()` method via the `@seam.ToRawKind` trait.
+**SyntaxNode does NOT have a `.text()` method.** Only SyntaxToken has `.text()`. To extract text from CST nodes:
+
+| What you need | How to get it |
+|---------------|---------------|
+| String value text | `node.token_text(StringToken.to_raw())` |
+| Number value text | `node.token_text(NumberToken.to_raw())` |
+| Bool detection | `node.find_token(TrueKeyword.to_raw()) is Some(_)` |
+| Member key text | Iterate `child.all_children()`, find first `SyntaxElement::Token(t)` where `t.kind() == StringToken.to_raw()`, use `t.text()` |
+| Value node in member | `member_node.nth_child(0)` |
+
+Reference: `loom/examples/json/src/value_convert.mbt` lines 153-185, `loom/seam/syntax_node.mbt`.
+
+### MemberNode CST structure
+
+The JSON parser (`cst_parser.mbt` lines 144-156) builds MemberNode as:
+```
+MemberNode
+  Token: StringToken (the key, including quotes)
+  Token: ColonToken
+  Node:  value node (StringValue, NumberValue, ObjectNode, etc.)
+```
+
+- Token children: accessed via `all_children()` or `find_token()`
+- Node children: accessed via `nth_child(0)` or `children()`
+- Key text: find first StringToken via `all_children()`, use `token.text()`
+- Value: `member_node.nth_child(0)` returns the first (and only) node child
+
+### Object child span design
+
+Each Object ProjNode child uses the **MemberNode's span**, not the value's span:
+```
+Input: {"a": 1, "b": 2}
+         ^^^^^   ^^^^^
+       member 0  member 1
+
+ProjNode { kind: Number(1.0), start: 1, end: 7, ... }  // "a": 1
+ProjNode { kind: Number(2.0), start: 9, end: 15, ... } // "b": 2
+```
+
+This ensures:
+- `SourceMap::get_range(child_id)` covers key+colon+value
+- Delete removes the entire member (not just the value)
+- Token spans (`key:0`, `key:1`) provide exact key locations within the member range
 
 ### String handling
 
-JSON strings have quotes and escape sequences. The projection builder strips quotes for `String(inner)`. The `unparse` adds them back. Make sure this round-trips correctly for strings with escapes (`\"`, `\\`, `\n`, etc.).
+- `parse_json_string()` in `value_convert.mbt` is private (`fn`, not `pub fn`).
+- The projection builder strips quotes with simple substring (no full unescape). This is sufficient because the ProjNode stores the display/reconciliation value, not the source-faithful value.
+- `json_escape()` in `proj_traits.mbt` is `pub` so edit handlers can use it for key insertion.
+- `unparse` for `Error(_)` produces `"null"` (valid JSON), not `"null /* error: msg */"`.
 
 ### Comma handling in edits
 
 Delete and add operations must handle commas correctly:
-- Deleting the last member: no trailing comma to clean up
-- Deleting a middle member: clean up trailing comma
+- Deleting with trailing comma: consume the comma + whitespace after
+- Deleting without trailing comma: consume a leading comma + whitespace before
 - Adding to empty object/array: no comma prefix
-- Adding to non-empty: comma prefix
+- Adding to non-empty: comma prefix (`, `)
+
+### compute_unwrap guards
+
+- Arrays: only unwrap if exactly 1 element. Returns `Err` for multi-element.
+- Objects: only unwrap if exactly 1 member. Returns `Err` for multi-member.
+- For objects, uses `Renderable::unparse(child.kind)` to get the value text, because the child's span covers the full member (key+colon+value), not just the value.
 
 ### Test count
 
@@ -1617,13 +2065,33 @@ Current: 524 tests. JSON should add ~30-40 tests across proj_traits, proj_node, 
 ### Import chain
 
 ```
-loom/examples/json/ (parser, grammar, JsonValue + trait impls)
-  ↓
+loom/examples/json/ (parser, grammar, JsonValue + TreeNode/Renderable impls, json_escape)
+  |
 canopy/lang/json/proj/ (projection builders, memo)
-  ↓
-canopy/lang/json/edits/ (edit handlers, bridge, new_json)
-  ↓
-canopy/editor/ (SyncEditor — shared infrastructure)
+  |
+canopy/lang/json/edits/ (edit handlers, bridge, new_json_editor)
+  |
+canopy/editor/ (SyncEditor -- shared infrastructure)
 ```
 
 No circular dependencies. editor/ does not import lang/json/.
+
+### SyntaxKind matching
+
+The projection builder uses `@json.ObjectNode.to_raw()` etc. to match syntax kinds. The JSON module's `SyntaxKind` has a `to_raw()` method via the `@seam.ToRawKind` trait. This works because `to_raw()` returns `@seam.RawKind` which is what `SyntaxNode::kind()` returns.
+
+### moon.pkg dependencies by package
+
+**`lang/json/proj/moon.pkg`:**
+```
+dowdiness/canopy/framework/core, dowdiness/canopy/lang/lambda/flat,
+dowdiness/incr, dowdiness/json, dowdiness/loom, dowdiness/loom/core,
+dowdiness/seam, moonbitlang/core/strconv
+```
+
+**`lang/json/edits/moon.pkg`:**
+```
+dowdiness/canopy/editor, dowdiness/canopy/framework/core,
+dowdiness/canopy/lang/json/proj, dowdiness/json, dowdiness/loom,
+dowdiness/loom/core, dowdiness/seam
+```
