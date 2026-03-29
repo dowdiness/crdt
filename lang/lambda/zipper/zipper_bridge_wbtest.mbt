@@ -2,24 +2,24 @@
 // Uses parse_to_proj_node to build realistic ProjNode fixtures.
 
 ///|
-test "zipper_to_trail: root has empty trail" {
+test "to_path_indices: root has empty trail" {
   let z = from_root(@ast.App(@ast.Var("f"), @ast.Int(1)))
-  inspect(zipper_to_trail(z), content="[]")
+  inspect(to_path_indices(z), content="[]")
 }
 
 ///|
-test "zipper_to_trail: one level down gives [0]" {
+test "to_path_indices: one level down gives [0]" {
   let z = from_root(@ast.App(@ast.Var("f"), @ast.Int(1)))
   let down = go_down(z).unwrap()
-  inspect(zipper_to_trail(down), content="[0]")
+  inspect(to_path_indices(down), content="[0]")
 }
 
 ///|
-test "zipper_to_trail: right sibling gives [1]" {
+test "to_path_indices: right sibling gives [1]" {
   let z = from_root(@ast.App(@ast.Var("f"), @ast.Int(1)))
   let down = go_down(z).unwrap()
   let right = go_right(down).unwrap()
-  inspect(zipper_to_trail(right), content="[1]")
+  inspect(to_path_indices(right), content="[1]")
 }
 
 ///|
@@ -178,40 +178,5 @@ test "navigate Up from root returns None" {
   let (proj_root, _) = @proj.parse_to_proj_node("f 1")
   let root_id = proj_root.id()
   let result = navigate(root_id, Up, proj_root.kind, proj_root)
-  inspect(result, content="None")
-}
-
-///|
-test "node_id_at_offset returns a NodeId for valid offset" {
-  let (proj_root, _) = @proj.parse_to_proj_node("f 1")
-  let source_map = @core.SourceMap::from_ast(proj_root)
-  // offset 0 is within "f" — should find a node
-  let result = node_id_at_offset(source_map, 0)
-  inspect(result is Some(_), content="true")
-}
-
-///|
-test "node_id_at_offset returns None for out-of-range offset" {
-  let (proj_root, _) = @proj.parse_to_proj_node("f 1")
-  let source_map = @core.SourceMap::from_ast(proj_root)
-  let result = node_id_at_offset(source_map, 9999)
-  inspect(result, content="None")
-}
-
-///|
-test "text_range_from_node_id returns range for known node" {
-  let (proj_root, _) = @proj.parse_to_proj_node("f 1")
-  let source_map = @core.SourceMap::from_ast(proj_root)
-  let root_id = proj_root.id()
-  let result = text_range_from_node_id(source_map, root_id)
-  inspect(result is Some(_), content="true")
-}
-
-///|
-test "text_range_from_node_id returns None for unknown node" {
-  let (proj_root, _) = @proj.parse_to_proj_node("f 1")
-  let source_map = @core.SourceMap::from_ast(proj_root)
-  let missing_id = @core.NodeId::from_int(99999)
-  let result = text_range_from_node_id(source_map, missing_id)
   inspect(result, content="None")
 }

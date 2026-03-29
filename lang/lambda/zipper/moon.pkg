@@ -3,7 +3,6 @@ import {
   "dowdiness/canopy/lang/lambda/edits" @edits,
   "dowdiness/canopy/lang/lambda/proj" @proj,
   "dowdiness/lambda/ast" @ast,
-  "dowdiness/loom/core" @loomcore,
   "moonbitlang/core/immut/hashset" @immut/hashset,
   "moonbitlang/core/list" @list,
 }

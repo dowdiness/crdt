@@ -3,21 +3,10 @@
 // used by SourceMap and the tree-edit layer.
 
 ///|
-using @loomcore {type Range}
-
-///|
-/// Extract child indices from a Zipper path (root-to-focus order).
-/// Thin alias over `to_path_indices` — provided for bridge callers who
-/// don't want to import the full zipper API.
-pub fn zipper_to_trail(z : Zipper) -> Array[Int] {
-  to_path_indices(z)
-}
-
-///|
 /// Walk a ProjNode tree by following a sequence of child indices.
 /// Returns the node reached at `trail[depth]`, or None if any step is
 /// out of range.
-pub fn walk_proj(
+fn walk_proj(
   node : @core.ProjNode[@ast.Term],
   trail : Array[Int],
   depth : Int,
@@ -42,7 +31,7 @@ pub fn find_proj_node_for_focus(
   z : Zipper,
   proj_root : @core.ProjNode[@ast.Term],
 ) -> @core.ProjNode[@ast.Term]? {
-  let trail = zipper_to_trail(z)
+  let trail = to_path_indices(z)
   walk_proj(proj_root, trail, 0)
 }
 
@@ -53,20 +42,31 @@ pub fn path_indices_to_node(
   root : @core.ProjNode[@ast.Term],
   target : @core.NodeId,
 ) -> Array[Int]? {
-  if root.id() == target {
-    return Some([])
+  let acc : Array[Int] = []
+  if find_path(root, target, acc) {
+    Some(acc)
+  } else {
+    None
   }
-  for i = 0; i < root.children.length(); i = i + 1 {
-    match path_indices_to_node(root.children[i], target) {
-      Some(suffix) => {
-        let path : Array[Int] = [i]
-        path.append(suffix)
-        return Some(path)
-      }
-      None => continue
+}
+
+///|
+fn find_path(
+  node : @core.ProjNode[@ast.Term],
+  target : @core.NodeId,
+  acc : Array[Int],
+) -> Bool {
+  if node.id() == target {
+    return true
+  }
+  for i in 0..<node.children.length() {
+    acc.push(i)
+    if find_path(node.children[i], target, acc) {
+      return true
     }
+    let _ = acc.pop()
   }
-  None
+  false
 }
 
 ///|
@@ -115,24 +115,4 @@ pub fn navigate(
         None => None
       }
   }
-}
-
-///|
-/// Return the NodeId of the innermost AST node covering `offset`.
-/// Thin wrapper around `SourceMap::innermost_node_at`.
-pub fn node_id_at_offset(
-  source_map : @core.SourceMap,
-  offset : Int,
-) -> @core.NodeId? {
-  source_map.innermost_node_at(offset)
-}
-
-///|
-/// Return the text range recorded for `node_id`.
-/// Thin wrapper around `SourceMap::get_range`.
-pub fn text_range_from_node_id(
-  source_map : @core.SourceMap,
-  node_id : @core.NodeId,
-) -> Range? {
-  source_map.get_range(node_id)
 }

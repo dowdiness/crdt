@@ -40,10 +40,7 @@ fn plug(ctx : TermCtx, child : @ast.Term) -> @ast.Term {
     CtxIfThen(cond, else_) => @ast.If(cond, child, else_)
     CtxIfElse(cond, then_) => @ast.If(cond, then_, child)
     CtxModuleDef(before, name, after, body) => {
-      let defs : Array[(@ast.VarName, @ast.Term)] = []
-      for def in before {
-        defs.push(def)
-      }
+      let defs = before.copy()
       defs.push((name, child))
       for def in after {
         defs.push(def)
@@ -70,10 +67,7 @@ pub fn go_down(z : Zipper) -> Zipper? {
       if defs.length() > 0 {
         let first_name = defs[0].0
         let first_val = defs[0].1
-        let after : Array[(@ast.VarName, @ast.Term)] = []
-        for i in 1..<defs.length() {
-          after.push(defs[i])
-        }
+        let after = defs[1:].iter().collect()
         Some({
           focus: first_val,
           path: @list.cons(CtxModuleDef([], first_name, after, body), z.path),
@@ -108,17 +102,11 @@ pub fn go_right(z : Zipper) -> Zipper? {
       Some({ focus: e, path: @list.cons(CtxIfElse(c, z.focus), rest) })
     More(CtxModuleDef(before, name, after, body), tail=rest) =>
       if after.length() > 0 {
-        let new_before : Array[(@ast.VarName, @ast.Term)] = []
-        for def in before {
-          new_before.push(def)
-        }
+        let new_before = before.copy()
         new_before.push((name, z.focus))
         let next_name = after[0].0
         let next_val = after[0].1
-        let new_after : Array[(@ast.VarName, @ast.Term)] = []
-        for i in 1..<after.length() {
-          new_after.push(after[i])
-        }
+        let new_after = after[1:].iter().collect()
         Some({
           focus: next_val,
           path: @list.cons(
@@ -127,10 +115,7 @@ pub fn go_right(z : Zipper) -> Zipper? {
           ),
         })
       } else {
-        let all_defs : Array[(@ast.VarName, @ast.Term)] = []
-        for def in before {
-          all_defs.push(def)
-        }
+        let all_defs = before.copy()
         all_defs.push((name, z.focus))
         Some({ focus: body, path: @list.cons(CtxModuleBody(all_defs), rest) })
       }
@@ -154,15 +139,9 @@ pub fn go_left(z : Zipper) -> Zipper? {
       if before.length() > 0 {
         let prev_name = before[before.length() - 1].0
         let prev_val = before[before.length() - 1].1
-        let new_before : Array[(@ast.VarName, @ast.Term)] = []
-        for i in 0..<(before.length() - 1) {
-          new_before.push(before[i])
-        }
-        let new_after : Array[(@ast.VarName, @ast.Term)] = []
-        new_after.push((name, z.focus))
-        for def in after {
-          new_after.push(def)
-        }
+        let new_before = before[0:before.length() - 1].iter().collect()
+        let new_after = after.copy()
+        new_after.insert(0, (name, z.focus))
         Some({
           focus: prev_val,
           path: @list.cons(
@@ -177,10 +156,7 @@ pub fn go_left(z : Zipper) -> Zipper? {
       if defs.length() > 0 {
         let last_name = defs[defs.length() - 1].0
         let last_val = defs[defs.length() - 1].1
-        let new_before : Array[(@ast.VarName, @ast.Term)] = []
-        for i in 0..<(defs.length() - 1) {
-          new_before.push(defs[i])
-        }
+        let new_before = defs[0:defs.length() - 1].iter().collect()
         Some({
           focus: last_val,
           path: @list.cons(
@@ -221,22 +197,15 @@ pub fn depth(z : Zipper) -> Int {
 }
 
 ///|
-/// List children of a term.
-fn children_of(term : @ast.Term) -> Array[@ast.Term] {
+/// Count children without allocating.
+fn children_count(term : @ast.Term) -> Int {
   match term {
-    @ast.Lam(_, body) => [body]
-    @ast.App(f, a) => [f, a]
-    @ast.Bop(_, l, r) => [l, r]
-    @ast.If(c, t, e) => [c, t, e]
-    @ast.Module(defs, body) => {
-      let result : Array[@ast.Term] = []
-      for def in defs {
-        result.push(def.1)
-      }
-      result.push(body)
-      result
-    }
-    _ => []
+    @ast.Lam(_, _) => 1
+    @ast.App(_, _) => 2
+    @ast.Bop(_, _, _) => 2
+    @ast.If(_, _, _) => 3
+    @ast.Module(defs, _) => defs.length() + 1
+    _ => 0
   }
 }
 

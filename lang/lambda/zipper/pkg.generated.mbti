@@ -2,6 +2,7 @@
 package "dowdiness/canopy/lang/lambda/zipper"
 
 import {
+  "dowdiness/canopy/framework/core",
   "dowdiness/canopy/lang/lambda/edits",
   "dowdiness/lambda/ast",
   "moonbitlang/core/immut/hashset",
@@ -9,11 +10,11 @@ import {
 }
 
 // Values
-pub fn available_actions_for_zipper(Zipper) -> Array[EditAction]
+pub fn available_actions(Zipper) -> Array[EditAction]
 
 pub fn depth(Zipper) -> Int
 
-pub fn find_proj_node_for_focus(Zipper, @dowdiness/canopy/framework/core.ProjNode[@ast.Term]) -> @dowdiness/canopy/framework/core.ProjNode[@ast.Term]?
+pub fn find_proj_node_for_focus(Zipper, @core.ProjNode[@ast.Term]) -> @core.ProjNode[@ast.Term]?
 
 pub fn focus_at(@ast.Term, Array[Int]) -> Zipper
 
@@ -27,35 +28,27 @@ pub fn go_right(Zipper) -> Zipper?
 
 pub fn go_up(Zipper) -> Zipper?
 
-pub fn navigate(@dowdiness/canopy/framework/core.NodeId, Direction, @ast.Term, @dowdiness/canopy/framework/core.ProjNode[@ast.Term]) -> @dowdiness/canopy/framework/core.NodeId?
+pub fn navigate(@core.NodeId, Direction, @ast.Term, @core.ProjNode[@ast.Term]) -> @core.NodeId?
 
-pub fn node_id_at_offset(@dowdiness/canopy/framework/core.SourceMap, Int) -> @dowdiness/canopy/framework/core.NodeId?
-
-pub fn path_indices_to_node(@dowdiness/canopy/framework/core.ProjNode[@ast.Term], @dowdiness/canopy/framework/core.NodeId) -> Array[Int]?
+pub fn path_indices_to_node(@core.ProjNode[@ast.Term], @core.NodeId) -> Array[Int]?
 
 pub fn position_role(Zipper) -> PositionRole
-
-pub fn text_range_from_node_id(@dowdiness/canopy/framework/core.SourceMap, @dowdiness/canopy/framework/core.NodeId) -> @dowdiness/loom/core.Range?
 
 pub fn to_path_indices(Zipper) -> Array[Int]
 
 pub fn to_root(Zipper) -> @ast.Term
 
-pub fn to_tree_edit_op(@dowdiness/canopy/framework/core.NodeId, EditAction) -> @edits.TreeEditOp
+pub fn to_tree_edit_op(@core.NodeId, EditAction) -> @edits.TreeEditOp
 
-pub fn walk_proj(@dowdiness/canopy/framework/core.ProjNode[@ast.Term], Array[Int], Int) -> @dowdiness/canopy/framework/core.ProjNode[@ast.Term]?
-
-pub fn zipper_from_node_id(@dowdiness/canopy/framework/core.NodeId, @ast.Term, @dowdiness/canopy/framework/core.ProjNode[@ast.Term]) -> Zipper?
-
-pub fn zipper_to_trail(Zipper) -> Array[Int]
+pub fn zipper_from_node_id(@core.NodeId, @ast.Term, @core.ProjNode[@ast.Term]) -> Zipper?
 
 // Errors
 
 // Types and methods
 pub(all) struct ActionRecord {
   action : EditAction
-  cursor_before : @dowdiness/canopy/framework/core.NodeId
-  cursor_after : @dowdiness/canopy/framework/core.NodeId
+  cursor_before : @core.NodeId
+  cursor_after : @core.NodeId
   role : PositionRole
 }
 pub impl Show for ActionRecord
@@ -91,10 +84,10 @@ pub(all) struct HoleRegistry {
   // private fields
 }
 pub fn HoleRegistry::fresh_hole_id(Self) -> Int
-pub fn HoleRegistry::get(Self, @dowdiness/canopy/framework/core.NodeId) -> HoleInfo?
+pub fn HoleRegistry::get(Self, @core.NodeId) -> HoleInfo?
 pub fn HoleRegistry::new() -> Self
-pub fn HoleRegistry::prune(Self, @hashset.HashSet[@dowdiness/canopy/framework/core.NodeId]) -> Unit
-pub fn HoleRegistry::register(Self, @dowdiness/canopy/framework/core.NodeId, HoleInfo) -> Unit
+pub fn HoleRegistry::prune(Self, @hashset.HashSet[@core.NodeId]) -> Unit
+pub fn HoleRegistry::register(Self, @core.NodeId, HoleInfo) -> Unit
 
 pub(all) enum PositionRole {
   Root

@@ -14,7 +14,7 @@ pub(all) enum PositionRole {
 } derive(Show)
 
 ///|
-pub fn available_actions_for_zipper(z : Zipper) -> Array[EditAction] {
+pub fn available_actions(z : Zipper) -> Array[EditAction] {
   let focus = z.focus
   let actions : Array[EditAction] = []
   actions.push(Delete)
@@ -23,7 +23,7 @@ pub fn available_actions_for_zipper(z : Zipper) -> Array[EditAction] {
   actions.push(WrapIf)
   actions.push(WrapBop(@ast.Plus))
   actions.push(WrapBop(@ast.Minus))
-  let n = children_of(focus).length()
+  let n = children_count(focus)
   for i in 0..<n {
     actions.push(Unwrap(i))
   }
