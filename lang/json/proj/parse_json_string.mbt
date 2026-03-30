@@ -5,8 +5,10 @@
 ///|
 /// Parse JSON string escapes from raw token text (includes quotes).
 fn parse_json_string(raw : String) -> String {
-  // Strip surrounding quotes
-  if raw.length() < 2 {
+  // Strip surrounding quotes only when both delimiters are actual double quotes
+  if raw.length() < 2 ||
+    raw.code_unit_at(0).to_int() != 0x22 ||
+    raw.code_unit_at(raw.length() - 1).to_int() != 0x22 {
     return raw
   }
   let inner = raw[1:raw.length() - 1]
@@ -124,13 +126,15 @@ fn parse_json_string(raw : String) -> String {
             let codepoint = (code - 0xD800) * 1024 + (low - 0xDC00) + 0x10000
             match codepoint.to_char() {
               Some(ch) => buf.write_char(ch)
-              None => ()
+              None => buf.write_char('\uFFFD')
             }
             i = i + 2
           } else {
+            buf.write_char('\uFFFD')
             i = i + 1
           }
         } else {
+          buf.write_char('\uFFFD')
           i = i + 1
         }
     }
