@@ -10,6 +10,9 @@ export default defineConfig({
       'valtio-egwalker/stub': path.resolve(__dirname, '../../valtio/src/egwalker_api_stub.ts'),
       'valtio-egwalker/sync': path.resolve(__dirname, '../../valtio/src/egwalker_api_sync.ts'),
       'valtio-egwalker': path.resolve(__dirname, '../../valtio/src/egwalker_api.ts'),
+      // Resolve valtio imports from submodule sources back to demo-react's node_modules
+      'valtio/vanilla': path.resolve(__dirname, 'node_modules/valtio/esm/vanilla.mjs'),
+      'valtio': path.resolve(__dirname, 'node_modules/valtio'),
     },
   },
   server: {
