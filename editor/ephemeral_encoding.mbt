@@ -251,7 +251,7 @@ fn parse_peer_id(key : String) -> UInt64? {
       return None
     }
   }
-  Some(@strconv.parse_uint64(key.view(), base=10)) catch {
+  Some(@string.parse_uint64(key.view(), base=10)) catch {
     _ => None
   }
 }

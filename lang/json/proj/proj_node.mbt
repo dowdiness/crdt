@@ -43,7 +43,7 @@ pub fn syntax_to_proj_node(
     }
     NumberValue => {
       let text = node.token_text(@json.NumberToken.to_raw())
-      let n = @strconv.parse_double(text) catch {
+      let n = @string.parse_double(text) catch {
         _ => {
           let value = @json.JsonValue::Error("invalid number: " + text)
           return ProjNode::new(
