@@ -35,10 +35,16 @@ test "render_string group fits" {
 }
 
 ///|
+test "render_string group fits exactly" {
+  let doc : Layout[Unit] = group(text("a") + line() + text("b"))
+  inspect(render_string(doc, width=3), content="a b")
+}
+
+///|
 test "render_string group breaks" {
   let doc : Layout[Unit] = group(text("a") + line() + text("b"))
   inspect(
-    render_string(doc, width=3),
+    render_string(doc, width=2),
     content=(
       #|a
       #|b
@@ -95,12 +101,10 @@ test "render_string nested brackets" {
     content=(
       #|[
       #|  x,
-      #|  [
-      #|    a,
-      #|    b
-      #|  ],
+      #|  [ a, b ],
       #|  y
       #|]
+
     ),
   )
 }

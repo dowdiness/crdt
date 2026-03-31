@@ -77,9 +77,20 @@ test "resolve group that fits" {
 }
 
 ///|
+test "resolve group that fits exactly" {
+  let doc : Layout[Unit] = group(text("a") + line() + text("b"))
+  // flat_width = 3, width = 3: exact fit, should flatten (Wadler <=)
+  inspect(
+    resolve(3, doc),
+    content="[CText(\"a\"), CText(\" \"), CText(\"b\")]",
+  )
+}
+
+///|
 test "resolve group that breaks" {
   let doc : Layout[Unit] = group(text("a") + line() + text("b"))
-  inspect(resolve(3, doc), content="[CText(\"a\"), CNewline(0), CText(\"b\")]")
+  // flat_width = 3, width = 2: doesn't fit, should break
+  inspect(resolve(2, doc), content="[CText(\"a\"), CNewline(0), CText(\"b\")]")
 }
 
 ///|

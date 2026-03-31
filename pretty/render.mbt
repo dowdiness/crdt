@@ -63,7 +63,8 @@ pub fn[A] resolve(width : Int, layout : Layout[A]) -> Array[Cmd[A]] {
         go(indent, mode, col, r)
       }
       Group(doc) => {
-        let m = if flat_width(doc) < width - column { Flat } else { Break }
+        let fw = flat_width(doc)
+        let m = if fw >= 0 && fw <= width - column { Flat } else { Break }
         go(indent, m, column, doc)
       }
       Annotate(ann, doc) => {

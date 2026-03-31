@@ -53,7 +53,7 @@ test "PrettyLayout: app narrow" {
     @ast.TermSym::var("x"),
   )
   inspect(
-    @pretty.render_string(pl.layout, width=3),
+    @pretty.render_string(pl.layout, width=2),
     content=(
       #|f
       #|  x

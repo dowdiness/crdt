@@ -1,9 +1,22 @@
-// json_to_layout: convert @json.JsonValue to Layout[Ann] for pretty-printing
-// with syntax highlighting annotations.
-
 ///|
 fn json_ann(category : @pretty.SyntaxCategory) -> @pretty.Ann {
   { category, node_id: None }
+}
+
+///|
+fn escape_json_string(s : String) -> String {
+  let buf = StringBuilder::new()
+  for ch in s {
+    match ch {
+      '"' => buf.write_string("\\\"")
+      '\\' => buf.write_string("\\\\")
+      '\n' => buf.write_string("\\n")
+      '\r' => buf.write_string("\\r")
+      '\t' => buf.write_string("\\t")
+      ch => buf.write_char(ch)
+    }
+  }
+  buf.to_string()
 }
 
 ///|
@@ -34,7 +47,7 @@ pub fn json_to_layout(value : @json.JsonValue) -> @pretty.Layout[@pretty.Ann] {
     @json.JsonValue::String(s) =>
       @pretty.annotate(
         json_ann(@pretty.SyntaxCategory::StringLit),
-        @pretty.text("\"") + @pretty.text(s) + @pretty.text("\""),
+        @pretty.text("\"" + escape_json_string(s) + "\""),
       )
     @json.JsonValue::Array([]) => @pretty.text("[]")
     @json.JsonValue::Array(elems) => {
@@ -53,7 +66,7 @@ pub fn json_to_layout(value : @json.JsonValue) -> @pretty.Layout[@pretty.Ann] {
         let (key, val) = pair
         @pretty.annotate(
           json_ann(@pretty.SyntaxCategory::StringLit),
-          @pretty.text("\"" + key + "\""),
+          @pretty.text("\"" + escape_json_string(key) + "\""),
         ) +
         @pretty.text(":") +
         @pretty.text(" ") +
