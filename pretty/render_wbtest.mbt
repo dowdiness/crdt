@@ -80,10 +80,7 @@ test "resolve group that fits" {
 test "resolve group that fits exactly" {
   let doc : Layout[Unit] = group(text("a") + line() + text("b"))
   // flat_width = 3, width = 3: exact fit, should flatten (Wadler <=)
-  inspect(
-    resolve(3, doc),
-    content="[CText(\"a\"), CText(\" \"), CText(\"b\")]",
-  )
+  inspect(resolve(3, doc), content="[CText(\"a\"), CText(\" \"), CText(\"b\")]")
 }
 
 ///|
@@ -99,5 +96,21 @@ test "resolve annotate" {
   inspect(
     resolve(80, doc),
     content="[CAnnStart(\"ann\"), CText(\"x\"), CAnnEnd(\"ann\")]",
+  )
+}
+
+///|
+/// Known limitation of greedy Wadler-Lindig: Group only sees its own content,
+/// not trailing suffix on the same line. The group "a b" (3 chars) fits at
+/// width=4, but after appending "c" the line is 4 chars total — exactly at
+/// the limit. A non-greedy algorithm (Πe) would consider the suffix.
+test "resolve group ignores trailing suffix (greedy)" {
+  let doc : Layout[Unit] = group(text("a") + line() + text("b")) + text("c")
+  // Group flat_width=3, width=4: 3 <= 4 so group flattens.
+  // Result: "a b" + "c" = "a bc" (4 chars on one line).
+  // A suffix-aware algorithm might break the group instead.
+  inspect(
+    resolve(4, doc),
+    content="[CText(\"a\"), CText(\" \"), CText(\"b\"), CText(\"c\")]",
   )
 }

@@ -167,3 +167,71 @@ test "PrettyLayout: hole" {
   let pl : PrettyLayout = @ast.TermSym::hole(0)
   inspect(@pretty.render_string(pl.layout), content="_")
 }
+
+///|
+// Precedence tests: verify that lower-precedence children get parenthesized.
+
+///|
+test "PrettyLayout: app of lam needs parens" {
+  // (λx. x) y — lam has lower precedence than app's function position
+  let pl : PrettyLayout = @ast.TermSym::app(
+    @ast.TermSym::lam("x", @ast.TermSym::var("x")),
+    @ast.TermSym::var("y"),
+  )
+  inspect(@pretty.render_string(pl.layout), content="(λx. x) y")
+}
+
+///|
+test "PrettyLayout: nested bop needs parens for right child" {
+  // a - (b + c) — inner bop has same precedence, right-associative needs parens
+  let pl : PrettyLayout = @ast.TermSym::bop(
+    @ast.Bop::Minus,
+    @ast.TermSym::var("a"),
+    @ast.TermSym::bop(
+      @ast.Bop::Plus,
+      @ast.TermSym::var("b"),
+      @ast.TermSym::var("c"),
+    ),
+  )
+  inspect(@pretty.render_string(pl.layout), content="a - (b + c)")
+}
+
+///|
+test "PrettyLayout: left-nested bop no parens" {
+  // (a + b) - c — left child has same precedence, no parens needed
+  let pl : PrettyLayout = @ast.TermSym::bop(
+    @ast.Bop::Minus,
+    @ast.TermSym::bop(
+      @ast.Bop::Plus,
+      @ast.TermSym::var("a"),
+      @ast.TermSym::var("b"),
+    ),
+    @ast.TermSym::var("c"),
+  )
+  inspect(@pretty.render_string(pl.layout), content="a + b - c")
+}
+
+///|
+test "PrettyLayout: app arg is lam needs parens" {
+  // f (λx. x) — lam in argument position needs parens
+  let pl : PrettyLayout = @ast.TermSym::app(
+    @ast.TermSym::var("f"),
+    @ast.TermSym::lam("x", @ast.TermSym::var("x")),
+  )
+  inspect(@pretty.render_string(pl.layout), content="f (λx. x)")
+}
+
+///|
+test "PrettyLayout: if in bop needs parens" {
+  // (if c then 1 else 2) + 3
+  let pl : PrettyLayout = @ast.TermSym::bop(
+    @ast.Bop::Plus,
+    @ast.TermSym::if_then_else(
+      @ast.TermSym::var("c"),
+      @ast.TermSym::int_lit(1),
+      @ast.TermSym::int_lit(2),
+    ),
+    @ast.TermSym::int_lit(3),
+  )
+  inspect(@pretty.render_string(pl.layout), content="(if c then 1 else 2) + 3")
+}

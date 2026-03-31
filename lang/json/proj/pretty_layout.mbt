@@ -13,7 +13,19 @@ fn escape_json_string(s : String) -> String {
       '\n' => buf.write_string("\\n")
       '\r' => buf.write_string("\\r")
       '\t' => buf.write_string("\\t")
-      ch => buf.write_char(ch)
+      '\b' => buf.write_string("\\b")
+      '\x0C' => buf.write_string("\\f")
+      ch => {
+        let code = ch.to_uint()
+        if code < 0x20 {
+          let hex = b"0123456789abcdef"
+          buf.write_string("\\u00")
+          buf.write_char(Char::from_int(hex[(code >> 4).to_int()].to_int()))
+          buf.write_char(Char::from_int(hex[(code & 0xf).to_int()].to_int()))
+        } else {
+          buf.write_char(ch)
+        }
+      }
     }
   }
   buf.to_string()

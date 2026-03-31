@@ -42,6 +42,7 @@ pub fn FlatProj::to_proj_node_with_prev_module_id(Self, @ref.Ref[Int], Int?) -> 
 
 pub struct PrettyLayout {
   layout : @pretty.Layout[@pretty.Ann]
+  prec : Int
 }
 pub impl @ast.TermSym for PrettyLayout
 

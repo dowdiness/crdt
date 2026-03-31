@@ -104,7 +104,6 @@ test "render_string nested brackets" {
       #|  [ a, b ],
       #|  y
       #|]
-
     ),
   )
 }

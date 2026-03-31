@@ -98,7 +98,11 @@ fn max_token_width(layout : Layout[Unit]) -> Int {
     Concat(l, r) => {
       let lw = max_token_width(l)
       let rw = max_token_width(r)
-      if lw > rw { lw } else { rw }
+      if lw > rw {
+        lw
+      } else {
+        rw
+      }
     }
     Group(doc) => max_token_width(doc)
     Annotate(_, doc) => max_token_width(doc)
@@ -176,7 +180,9 @@ test "property: render_string and render_spans have consistent length" {
     let str_output = render_string(doc, width~)
     let spans = render_spans(doc, width~)
     let str_len = str_output.length()
-    spans.iter().all(fn(pair) {
+    spans
+    .iter()
+    .all(fn(pair) {
       let (span, _) = pair
       span.start >= 0 && span.end <= str_len && span.start <= span.end
     })

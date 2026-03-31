@@ -1,6 +1,39 @@
 ///|
+/// Precedence levels for parenthesization.
+/// Higher number = tighter binding.
+let prec_top : Int = 0 // module, let-body
+
+///|
+let prec_if : Int = 1 // if-then-else
+
+///|
+let prec_lam : Int = 2 // λx. body
+
+///|
+let prec_bop : Int = 3 // binary operators (+, -)
+
+///|
+let prec_app : Int = 4 // function application
+
+///|
+let prec_atom : Int = 5 // literals, variables, parens
+
+///|
 pub struct PrettyLayout {
   layout : @pretty.Layout[@pretty.Ann]
+  prec : Int // precedence of the outermost construct
+}
+
+///|
+fn wrap_if_needed(
+  child : PrettyLayout,
+  ctx_prec : Int,
+) -> @pretty.Layout[@pretty.Ann] {
+  if child.prec < ctx_prec {
+    @pretty.parens(child.layout)
+  } else {
+    child.layout
+  }
 }
 
 ///|
@@ -43,17 +76,17 @@ fn err(s : String) -> @pretty.Layout[@pretty.Ann] {
 
 ///|
 pub impl @ast.TermSym for PrettyLayout with int_lit(n) {
-  { layout: num(n.to_string()) }
+  { layout: num(n.to_string()), prec: prec_atom }
 }
 
 ///|
 pub impl @ast.TermSym for PrettyLayout with var(name) {
-  { layout: ident(name) }
+  { layout: ident(name), prec: prec_atom }
 }
 
 ///|
 pub impl @ast.TermSym for PrettyLayout with unit() {
-  { layout: punc("()") }
+  { layout: punc("()"), prec: prec_atom }
 }
 
 ///|
@@ -65,13 +98,18 @@ pub impl @ast.TermSym for PrettyLayout with lam(x, body) {
       punc(".") +
       @pretty.nest(@pretty.line() + body.layout),
     ),
+    prec: prec_lam,
   }
 }
 
 ///|
 pub impl @ast.TermSym for PrettyLayout with app(f, arg) {
   {
-    layout: @pretty.group(f.layout + @pretty.nest(@pretty.line() + arg.layout)),
+    layout: @pretty.group(
+      wrap_if_needed(f, prec_app) +
+      @pretty.nest(@pretty.line() + wrap_if_needed(arg, prec_atom)),
+    ),
+    prec: prec_app,
   }
 }
 
@@ -83,11 +121,12 @@ pub impl @ast.TermSym for PrettyLayout with bop(b, l, r) {
   }
   {
     layout: @pretty.group(
-      l.layout +
+      wrap_if_needed(l, prec_bop) +
       @pretty.text(" ") +
       op(sym) +
-      @pretty.nest(@pretty.line() + r.layout),
+      @pretty.nest(@pretty.line() + wrap_if_needed(r, prec_bop + 1)),
     ),
+    prec: prec_bop,
   }
 }
 
@@ -109,6 +148,7 @@ pub impl @ast.TermSym for PrettyLayout with if_then_else(cond, then_, else_) {
         else_.layout,
       ),
     ),
+    prec: prec_if,
   }
 }
 
@@ -130,20 +170,20 @@ pub impl @ast.TermSym for PrettyLayout with module(defs, body) {
   } else {
     defs_doc + @pretty.hardline() + body.layout
   }
-  { layout: result }
+  { layout: result, prec: prec_top }
 }
 
 ///|
 pub impl @ast.TermSym for PrettyLayout with unbound(name) {
-  { layout: err("<unbound: " + name + ">") }
+  { layout: err("<unbound: " + name + ">"), prec: prec_atom }
 }
 
 ///|
 pub impl @ast.TermSym for PrettyLayout with error_term(msg) {
-  { layout: err("<error: " + msg + ">") }
+  { layout: err("<error: " + msg + ">"), prec: prec_atom }
 }
 
 ///|
 pub impl @ast.TermSym for PrettyLayout with hole(_n) {
-  { layout: err("_") }
+  { layout: err("_"), prec: prec_atom }
 }

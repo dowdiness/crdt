@@ -7,7 +7,7 @@ test "Ann construction" {
 ///|
 test "Ann with node_id" {
   let ann = { category: Identifier, node_id: Some(@core.NodeId::from_int(42)) }
-  inspect(ann.node_id is None, content="false")
+  inspect(ann.node_id == Some(@core.NodeId::from_int(42)), content="true")
 }
 
 ///|
