@@ -2,7 +2,7 @@
   "name": "dowdiness/canopy",
   "version": "0.1.0",
   "deps": {
-    "moonbitlang/quickcheck": "0.9.9",
+    "moonbitlang/quickcheck": "0.11.2",
     "dowdiness/event-graph-walker": {
       "path": "./event-graph-walker"
     },
