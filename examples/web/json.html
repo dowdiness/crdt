@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{} JSON CRDT Editor</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #4ec9b0;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      color: #858585;
+      margin-bottom: 20px;
+    }
+
+    .examples-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding: 14px;
+      background: #252526;
+      border: 1px solid #3c3c3c;
+      border-radius: 4px;
+      align-items: center;
+    }
+
+    .examples-label,
+    .toolbar-label {
+      color: #858585;
+      font-size: 13px;
+      margin-right: 4px;
+    }
+
+    .example-btn,
+    .toolbar-btn,
+    .inline-submit,
+    .inline-cancel {
+      padding: 7px 12px;
+      background: #3c3c3c;
+      color: #d4d4d4;
+      border: 1px solid #555;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .example-btn:hover,
+    .toolbar-btn:hover,
+    .inline-submit:hover,
+    .inline-cancel:hover {
+      background: #4c4c4c;
+      border-color: #666;
+    }
+
+    .toolbar-btn:disabled,
+    .inline-submit:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      background: #252526;
+      border: 1px solid #3c3c3c;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid #3c3c3c;
+    }
+
+    .panel-header h2 {
+      color: #4ec9b0;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .editor-shell {
+      padding: 16px;
+    }
+
+    #json-input {
+      min-height: 360px;
+      padding: 14px;
+      background: #1e1e1e;
+      border: 1px solid #3c3c3c;
+      border-radius: 4px;
+      outline: none;
+      font-size: 15px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    #json-input:focus {
+      border-color: #4ec9b0;
+    }
+
+    #json-input:empty::before {
+      content: 'Type JSON here...';
+      color: #6a6a6a;
+    }
+
+    .errors-panel {
+      margin-top: 16px;
+      background: #1e1e1e;
+      border: 1px solid #3c3c3c;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .errors-header {
+      padding: 10px 14px;
+      color: #4ec9b0;
+      font-size: 13px;
+      text-transform: uppercase;
+      border-bottom: 1px solid #3c3c3c;
+    }
+
+    .error-list {
+      list-style: none;
+      padding: 12px 14px;
+      min-height: 48px;
+    }
+
+    .error-item {
+      color: #f48771;
+      border-left: 3px solid #f48771;
+      padding-left: 10px;
+    }
+
+    .error-item + .error-item {
+      margin-top: 8px;
+    }
+
+    .error-empty {
+      color: #6a6a6a;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #3c3c3c;
+      align-items: center;
+    }
+
+    .inline-form {
+      display: none;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      width: 100%;
+      padding-top: 8px;
+    }
+
+    .inline-form.visible {
+      display: flex;
+    }
+
+    .inline-input {
+      min-width: 160px;
+      padding: 7px 10px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border: 1px solid #555;
+      border-radius: 3px;
+      font-family: inherit;
+      font-size: 12px;
+      outline: none;
+    }
+
+    .inline-input:focus {
+      border-color: #4ec9b0;
+    }
+
+    .tree-view {
+      padding: 16px;
+      min-height: 420px;
+      max-height: 70vh;
+      overflow: auto;
+      background: #1e1e1e;
+    }
+
+    .tree-empty {
+      color: #6a6a6a;
+    }
+
+    .tree-node {
+      margin-left: 14px;
+      border-left: 1px solid #333;
+      padding-left: 12px;
+    }
+
+    .tree-node.root {
+      margin-left: 0;
+      padding-left: 0;
+      border-left: none;
+    }
+
+    .node-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      margin: 2px 0;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .node-row:hover {
+      background: #2c2c2c;
+    }
+
+    .node-row.selected {
+      background: #4ec9b022;
+      outline: 1px solid #4ec9b0;
+    }
+
+    .node-id {
+      color: #6a6a6a;
+      font-size: 11px;
+    }
+
+    .node-key {
+      color: #82aaff;
+    }
+
+    .node-tag.object,
+    .node-tag.array {
+      color: #4ec9b0;
+    }
+
+    .node-tag.string {
+      color: #ce9178;
+    }
+
+    .node-tag.number {
+      color: #b5cea8;
+    }
+
+    .node-tag.bool,
+    .node-tag.null {
+      color: #569cd6;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .tree-view {
+        max-height: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>{} JSON CRDT Editor</h1>
+    <p class="subtitle">Structural JSON editing with CRDT collaboration</p>
+
+    <div class="examples-bar">
+      <span class="examples-label">Examples:</span>
+      <button class="example-btn" data-example='{"hello": "world"}'>Simple</button>
+      <button class="example-btn" data-example='{"name":"Canopy","enabled":true,"count":3}'>Object</button>
+      <button class="example-btn" data-example='["alpha", 42, false, null]'>Array</button>
+      <button class="example-btn" data-example='{"user":{"name":"Ada","roles":["admin","editor"]},"meta":{"active":true,"visits":12}}'>Nested</button>
+    </div>
+
+    <div class="layout">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>JSON Text</h2>
+        </div>
+        <div class="editor-shell">
+          <div id="json-input" contenteditable="plaintext-only" spellcheck="false"></div>
+
+          <div class="errors-panel">
+            <div class="errors-header">Parse Errors</div>
+            <ul id="parse-errors" class="error-list"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Structure</h2>
+        </div>
+        <div class="toolbar">
+          <span class="toolbar-label">Edit:</span>
+          <button id="add-member-btn" class="toolbar-btn" type="button">+ Member</button>
+          <button id="add-element-btn" class="toolbar-btn" type="button">+ Element</button>
+          <button id="wrap-array-btn" class="toolbar-btn" type="button">[ Wrap ]</button>
+          <button id="wrap-object-btn" class="toolbar-btn" type="button">{ Wrap }</button>
+          <button id="change-type-btn" class="toolbar-btn" type="button">Type...</button>
+          <button id="delete-btn" class="toolbar-btn" type="button">Delete</button>
+          <button id="unwrap-btn" class="toolbar-btn" type="button">Unwrap</button>
+
+          <div id="toolbar-inline-form" class="inline-form">
+            <span id="inline-form-label" class="toolbar-label"></span>
+            <input id="toolbar-inline-input" class="inline-input" type="text" autocomplete="off">
+            <button id="toolbar-inline-submit" class="inline-submit" type="button">Apply</button>
+            <button id="toolbar-inline-cancel" class="inline-cancel" type="button">Cancel</button>
+          </div>
+        </div>
+
+        <div id="tree-view" class="tree-view"></div>
+      </section>
+    </div>
+  </div>
+
+  <script type="module" src="/src/json-editor.ts"></script>
+</body>
+</html>
