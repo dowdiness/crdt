@@ -20,6 +20,13 @@
           {
             "type": "command",
             "command": "moon check 2>&1 | head -20"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/test-focus.sh",
+            "timeout": 60,
+            "async": true,
+            "statusMessage": "Running focused tests..."
           }
         ]
       }
