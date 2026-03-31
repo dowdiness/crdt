@@ -645,7 +645,7 @@ fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       }
       let outline_state = match new_selected {
         Some(s) => {
-          let nid_int = @strconv.parse_int(s) catch { _ => return (none, model) }
+          let nid_int = @string.parse_int(s) catch { _ => return (none, model) }
           let nid = @proj.NodeId::from_int(nid_int)
           model.outline_state.apply_edit(@lambda_edits.Select(node_id=nid))
         }
@@ -668,7 +668,7 @@ fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           let new_selected : String? = match new_model.editor.get_source_map().innermost_node_at(
             new_model.editor.get_cursor(),
           ) {
-            Some(nid) => Some(nid.0.to_string())
+            Some(nid) => Some(node_id_to_string(nid))
             None => None
           }
           let text = new_model.editor.get_text()
@@ -682,37 +682,17 @@ fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         Some(s) => s
         None => return (none, model)
       }
-      let ctx = match detect_action_context(model.editor, node_id_str) {
-        Some(c) => c
-        None => return (none, model)
-      }
-      let proj_ctx = to_proj_context(ctx)
-      let actions = @proj.get_actions_for_node(ctx.kind, proj_ctx)
-      if actions.is_empty() {
-        return (none, model)
-      }
       let rect_json = js_get_outline_selected_rect()
-      let (anchor_top, anchor_left) = parse_anchor_rect(rect_json)
-      js_set_overlay_open(true)
-      let new_model = {
-        ..model,
-        overlay: {
-          visible: true,
-          actions,
-          node_context: Some(ctx),
-          submenu: None,
-          pending_action: None,
-          name_value: "",
-          name_error: "",
-          anchor_top,
-          anchor_left,
-        },
+      let new_model = open_action_overlay(model, node_id_str, rect_json~)
+      if new_model.overlay.visible {
+        let focus_cmd = @rabbita_cmd.raw_effect(
+          fn(_) { js_focus_outline_overlay() },
+          kind=@rabbita_cmd.after_render,
+        )
+        (focus_cmd, new_model)
+      } else {
+        (none, new_model)
       }
-      let focus_cmd = @rabbita_cmd.raw_effect(
-        fn(_) { js_focus_outline_overlay() },
-        kind=@rabbita_cmd.after_render,
-      )
-      (focus_cmd, new_model)
     }
     SyncStatusChanged(status) => {
       let resolved = if status == "" { js_take_sync_status() } else { status }
