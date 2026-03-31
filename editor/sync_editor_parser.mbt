@@ -140,7 +140,9 @@ pub fn SyncEditor::get_ast(self : SyncEditor[@ast.Term]) -> @ast.Term {
 /// Lambda-specific: returns pretty-printed AST.
 pub fn SyncEditor::get_ast_pretty(self : SyncEditor[@ast.Term]) -> String {
   let ast = self.get_ast()
-  "Expression: " + @ast.print_term(ast) + "\n\nAST:\n" + @debug.to_string(ast)
+  let pl : @lambda_proj.PrettyLayout = @ast.replay(ast)
+  let formatted = @pretty.render_string(pl.layout, width=60)
+  "Expression: " + formatted + "\n\nAST:\n" + @debug.to_string(ast)
 }
 
 ///|
