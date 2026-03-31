@@ -15,18 +15,16 @@
 ### Task 1: Package Scaffold and Layout[A] Enum
 
 **Files:**
-- Create: `pretty/moon.pkg.json`
+- Create: `pretty/moon.pkg`
 - Create: `pretty/layout.mbt`
 - Create: `pretty/layout_wbtest.mbt`
 
 - [ ] **Step 1: Create package config**
 
 ```
-// pretty/moon.pkg.json
-{
-  "import": [
-    "dowdiness/canopy/framework/core"
-  ]
+// pretty/moon.pkg
+import {
+  "dowdiness/canopy/framework/core" @core,
 }
 ```
 
@@ -245,8 +243,8 @@ pub fn softline[A]() -> Layout[A] {
 }
 
 ///|
-pub fn nest[A](doc : Layout[A], indent~ : Int = 2) -> Layout[A] {
-  Nest(indent, doc)
+pub fn nest[A](layout : Layout[A], indent~ : Int = 2) -> Layout[A] {
+  Nest(indent, layout)
 }
 
 ///|
@@ -962,9 +960,12 @@ pub impl @ast.TermSym for PrettyLayout with app(f, arg) {
 }
 
 ///|
-pub impl @ast.TermSym for PrettyLayout with bop(op_, l, r) {
-  // Check sym.mbt for Bop::to_string() or match on variants
-  let op_str = op_.to_string()
+pub impl @ast.TermSym for PrettyLayout with bop(b, l, r) {
+  // Bop variants: Plus, Minus (defined in loom/examples/lambda/src/ast/ast.mbt)
+  let op_str = match b {
+    Plus => "+"
+    Minus => "-"
+  }
   { layout:
     @pretty.group(
       l.layout + @pretty.text(" ") + op(op_str) +
@@ -1019,13 +1020,12 @@ pub impl @ast.TermSym for PrettyLayout with hole(id) {
 Run: `moon check`
 
 Fix any type errors. In particular:
-- Check if `Bop` has a `to_string()` method or if you need to match on variants
-- Check if `@ast.TermSym` is the correct path (might be `@ast.TermSym` or just `TermSym`)
-- Verify the import in `lang/lambda/proj/moon.pkg.json` includes `dowdiness/canopy/pretty`
+- `Bop` has variants `Plus` and `Minus` — match on them for operator strings
+- Verify `@ast.TermSym` is the correct trait path
+- Verify `lang/lambda/proj/moon.pkg` includes `dowdiness/canopy/pretty`
 
-If `moon.pkg.json` needs updating:
+Add to `lang/lambda/proj/moon.pkg` imports:
 ```
-// add to lang/lambda/proj/moon.pkg.json imports:
 "dowdiness/canopy/pretty" @pretty,
 ```
 
@@ -1085,7 +1085,7 @@ test "pretty if_then_else narrow" {
 test "pretty module" {
   let pl : PrettyLayout = @ast.TermSym::module(
     [("x", @ast.TermSym::int_lit(1)), ("y", @ast.TermSym::int_lit(2))],
-    @ast.TermSym::bop(@ast.Add, @ast.TermSym::var("x"), @ast.TermSym::var("y")),
+    @ast.TermSym::bop(@ast.Bop::Plus, @ast.TermSym::var("x"), @ast.TermSym::var("y")),
   )
   inspect!(
     @pretty.render_string(pl.layout),
@@ -1116,15 +1116,16 @@ git commit -m "feat(pretty): add PrettyLayout TermSym interpretation for Lambda"
 **Files:**
 - Create: `lang/json/proj/pretty_layout.mbt`
 - Create: `lang/json/proj/pretty_layout_wbtest.mbt`
-- Modify: `lang/json/proj/moon.pkg.json` — add `@pretty` import
+- Modify: `lang/json/proj/moon.pkg` — add `@pretty` import
 
 **Context:** JSON AST is `@json.JsonValue` enum with variants:
 `Null`, `Bool(Bool)`, `Number(Double)`, `String(String)`,
 `Array(Array[JsonValue])`, `Object(Array[(String, JsonValue)])`, `Error(String)`.
+Constructors must be fully qualified: `@json.JsonValue::Null`, etc.
 
-- [ ] **Step 1: Add pretty import to moon.pkg.json**
+- [ ] **Step 1: Add pretty import to moon.pkg**
 
-Add to `lang/json/proj/moon.pkg.json`:
+Add to `lang/json/proj/moon.pkg` imports:
 ```
 "dowdiness/canopy/pretty" @pretty,
 ```
@@ -1135,31 +1136,31 @@ Add to `lang/json/proj/moon.pkg.json`:
 // lang/json/proj/pretty_layout_wbtest.mbt
 
 test "json null" {
-  inspect!(@pretty.render_string(json_to_layout(Null)), content="null")
+  inspect!(@pretty.render_string(json_to_layout(@json.JsonValue::Null)), content="null")
 }
 
 test "json bool" {
-  inspect!(@pretty.render_string(json_to_layout(Bool(true))), content="true")
+  inspect!(@pretty.render_string(json_to_layout(@json.JsonValue::Bool(true))), content="true")
 }
 
 test "json number" {
-  inspect!(@pretty.render_string(json_to_layout(Number(3.14))), content="3.14")
+  inspect!(@pretty.render_string(json_to_layout(@json.JsonValue::Number(3.14))), content="3.14")
 }
 
 test "json string" {
   inspect!(
-    @pretty.render_string(json_to_layout(String("hello"))),
+    @pretty.render_string(json_to_layout(@json.JsonValue::String("hello"))),
     content="\"hello\"",
   )
 }
 
 test "json array wide" {
-  let arr = Array([Number(1.0), Number(2.0), Number(3.0)])
+  let arr = @json.JsonValue::Array([@json.JsonValue::Number(1.0), @json.JsonValue::Number(2.0), @json.JsonValue::Number(3.0)])
   inspect!(@pretty.render_string(json_to_layout(arr)), content="[1, 2, 3]")
 }
 
 test "json array narrow" {
-  let arr = Array([Number(1.0), Number(2.0), Number(3.0)])
+  let arr = @json.JsonValue::Array([@json.JsonValue::Number(1.0), @json.JsonValue::Number(2.0), @json.JsonValue::Number(3.0)])
   inspect!(
     @pretty.render_string(json_to_layout(arr), width=5),
     content=
@@ -1173,7 +1174,7 @@ test "json array narrow" {
 }
 
 test "json object" {
-  let obj = Object([("name", String("Alice")), ("age", Number(30.0))])
+  let obj = @json.JsonValue::Object([("name", @json.JsonValue::String("Alice")), ("age", @json.JsonValue::Number(30.0))])
   inspect!(
     @pretty.render_string(json_to_layout(obj)),
     content="{\"name\": \"Alice\", \"age\": 30}",
@@ -1181,10 +1182,10 @@ test "json object" {
 }
 
 test "json nested" {
-  let obj = Object([
-    ("users", Array([
-      Object([("name", String("A"))]),
-      Object([("name", String("B"))]),
+  let obj = @json.JsonValue::Object([
+    ("users", @json.JsonValue::Array([
+      @json.JsonValue::Object([("name", @json.JsonValue::String("A"))]),
+      @json.JsonValue::Object([("name", @json.JsonValue::String("B"))]),
     ])),
   ])
   inspect!(
@@ -1219,12 +1220,14 @@ fn json_ann(category : @pretty.SyntaxCategory) -> @pretty.Ann {
 ///|
 /// Convert a JsonValue to a pretty-printable Layout with annotations.
 pub fn json_to_layout(value : @json.JsonValue) -> @pretty.Layout[@pretty.Ann] {
+  // Pattern matching on @json.JsonValue — variants are accessible
+  // without full qualification inside match arms
   match value {
-    Null =>
+    @json.JsonValue::Null =>
       @pretty.annotate(json_ann(Keyword), @pretty.text("null"))
-    Bool(b) =>
+    @json.JsonValue::Bool(b) =>
       @pretty.annotate(json_ann(Keyword), @pretty.text(b.to_string()))
-    Number(n) => {
+    @json.JsonValue::Number(n) => {
       // Format: strip trailing ".0" for integers
       let s = n.to_string()
       let display = if s.ends_with(".0") {
@@ -1234,12 +1237,12 @@ pub fn json_to_layout(value : @json.JsonValue) -> @pretty.Layout[@pretty.Ann] {
       }
       @pretty.annotate(json_ann(Number), @pretty.text(display))
     }
-    String(s) =>
+    @json.JsonValue::String(s) =>
       @pretty.annotate(
         json_ann(StringLit),
         @pretty.text("\"") + @pretty.text(s) + @pretty.text("\""),
       )
-    Array(elems) => {
+    @json.JsonValue::Array(elems) => {
       let items = elems.map(json_to_layout)
       let sep = @pretty.text(",") + @pretty.line()
       @pretty.group(
@@ -1249,7 +1252,7 @@ pub fn json_to_layout(value : @json.JsonValue) -> @pretty.Layout[@pretty.Ann] {
         @pretty.text("]")
       )
     }
-    Object(pairs) => {
+    @json.JsonValue::Object(pairs) => {
       let entries = pairs.map(fn(pair) {
         let (key, val) = pair
         @pretty.annotate(json_ann(StringLit), @pretty.text("\"" + key + "\"")) +
@@ -1264,7 +1267,7 @@ pub fn json_to_layout(value : @json.JsonValue) -> @pretty.Layout[@pretty.Ann] {
         @pretty.text("}")
       )
     }
-    Error(msg) =>
+    @json.JsonValue::Error(msg) =>
       @pretty.annotate(json_ann(Error), @pretty.text("<error: " + msg + ">"))
   }
 }
@@ -1279,7 +1282,7 @@ may need adjustment. Verify diffs make sense.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add lang/json/proj/pretty_layout.mbt lang/json/proj/pretty_layout_wbtest.mbt lang/json/proj/moon.pkg.json
+git add lang/json/proj/pretty_layout.mbt lang/json/proj/pretty_layout_wbtest.mbt lang/json/proj/moon.pkg
 git commit -m "feat(pretty): add JSON pretty-printing with json_to_layout"
 ```
 
@@ -1318,7 +1321,8 @@ Run: `moon check && moon test && cd loom/examples/lambda && moon test`
 - [ ] **Step 5: Commit**
 
 ```bash
-git add -A
+git add pretty/*.mbti lang/lambda/proj/*.mbti lang/json/proj/*.mbti
+git add pretty/*.mbt lang/lambda/proj/*.mbt lang/json/proj/*.mbt
 git commit -m "chore: update interfaces and format for pretty-printer"
 ```
 
@@ -1328,7 +1332,7 @@ git commit -m "chore: update interfaces and format for pretty-printer"
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `pretty/moon.pkg.json` | Create | Package config with framework/core dep |
+| `pretty/moon.pkg` | Create | Package config with framework/core dep |
 | `pretty/layout.mbt` | Create | `Layout[A]` enum (8 constructors) |
 | `pretty/ann.mbt` | Create | `Ann`, `SyntaxCategory`, `Span` |
 | `pretty/combinators.mbt` | Create | `text`, `line`, `nest`, `group`, etc. |
@@ -1343,7 +1347,7 @@ git commit -m "chore: update interfaces and format for pretty-printer"
 | `pretty/render_spans_wbtest.mbt` | Create | Span rendering tests |
 | `lang/lambda/proj/pretty_layout.mbt` | Create | `PrettyLayout` + TermSym impls |
 | `lang/lambda/proj/pretty_layout_wbtest.mbt` | Create | Lambda pretty-printing tests |
-| `lang/lambda/proj/moon.pkg.json` | Modify | Add `@pretty` import |
+| `lang/lambda/proj/moon.pkg` | Modify | Add `@pretty` import |
 | `lang/json/proj/pretty_layout.mbt` | Create | `json_to_layout` |
 | `lang/json/proj/pretty_layout_wbtest.mbt` | Create | JSON pretty-printing tests |
-| `lang/json/proj/moon.pkg.json` | Modify | Add `@pretty` import |
+| `lang/json/proj/moon.pkg` | Modify | Add `@pretty` import |
