@@ -1,9 +1,15 @@
 import * as crdt from '@moonbit/crdt';
 
+// MoonBit ProjNode JSON format:
+// { node_id: number, kind: JsonValueJson, children: ProjNode[], start: number, end: number }
+// JsonValue ToJson (derive): "Null" | ["Bool", true] | ["Number", 42] | ["String", "hi"]
+//   | ["Array", [...]] | ["Object", [["key", value], ...]] | ["Error", "msg"]
 type ProjNode = {
-  id: number;
-  tag: string;
-  children: Array<[string, ProjNode]>;
+  node_id: number;
+  kind: unknown; // MoonBit enum JSON
+  children: ProjNode[];
+  start: number;
+  end: number;
 };
 
 type InlineMode = 'add-member' | 'wrap-object' | 'change-type' | null;
@@ -47,14 +53,47 @@ function must<T extends HTMLElement>(id: string): T {
   return element as T;
 }
 
-function getNodeKind(tag: string): 'object' | 'array' | 'string' | 'number' | 'bool' | 'null' | 'other' {
-  if (tag === 'Object') return 'object';
-  if (tag === 'Array') return 'array';
-  if (tag === 'null') return 'null';
-  if (tag === 'true' || tag === 'false') return 'bool';
-  if (tag.startsWith('"') && tag.endsWith('"')) return 'string';
-  if (/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(tag)) return 'number';
-  return 'other';
+// Parse MoonBit enum JSON for JsonValue
+function getKindTag(kind: unknown): string {
+  if (kind === 'Null') return 'Null';
+  if (Array.isArray(kind) && kind.length >= 1) return kind[0] as string;
+  return 'Unknown';
+}
+
+function getNodeKind(kind: unknown): 'object' | 'array' | 'string' | 'number' | 'bool' | 'null' | 'error' | 'other' {
+  const tag = getKindTag(kind);
+  switch (tag) {
+    case 'Object': return 'object';
+    case 'Array': return 'array';
+    case 'String': return 'string';
+    case 'Number': return 'number';
+    case 'Bool': return 'bool';
+    case 'Null': return 'null';
+    case 'Error': return 'error';
+    default: return 'other';
+  }
+}
+
+function getKindDisplayValue(kind: unknown): string {
+  if (kind === 'Null') return 'null';
+  if (!Array.isArray(kind)) return String(kind);
+  const [tag, ...args] = kind;
+  switch (tag) {
+    case 'Bool': return String(args[0]);
+    case 'Number': return String(args[0]);
+    case 'String': return JSON.stringify(args[0]);
+    case 'Array': return `Array`;
+    case 'Object': return `Object`;
+    case 'Error': return `Error: ${args[0]}`;
+    default: return String(kind);
+  }
+}
+
+// Extract object keys from the kind field (for labeling children)
+function getObjectKeys(kind: unknown): string[] | null {
+  if (!Array.isArray(kind) || kind[0] !== 'Object') return null;
+  const members = kind[1] as Array<[string, unknown]>;
+  return members.map(([key]) => key);
 }
 
 function parseProjNode(): ProjNode | null {
@@ -138,13 +177,13 @@ function renderTreeNode(node: ProjNode, edgeLabel: string | null, isRoot: boolea
 
   const row = document.createElement('div');
   row.className = 'node-row';
-  if (node.id === selectedNodeId) {
+  if (node.node_id === selectedNodeId) {
     row.classList.add('selected');
   }
 
   row.addEventListener('click', (event) => {
     event.stopPropagation();
-    selectedNodeId = node.id;
+    selectedNodeId = node.node_id;
     selectedNode = node;
     hideInlineForm();
     renderTree();
@@ -158,20 +197,33 @@ function renderTreeNode(node: ProjNode, edgeLabel: string | null, isRoot: boolea
     row.appendChild(keyEl);
   }
 
+  const kind = getNodeKind(node.kind);
+  const display = getKindDisplayValue(node.kind);
   const tagEl = document.createElement('span');
-  tagEl.className = `node-tag ${getNodeKind(node.tag)}`;
-  tagEl.textContent = node.tag;
+  tagEl.className = `node-tag ${kind}`;
+  tagEl.textContent = display;
   row.appendChild(tagEl);
+
+  const childCount = node.children.length;
+  if (kind === 'object' || kind === 'array') {
+    const countEl = document.createElement('span');
+    countEl.className = 'node-id';
+    countEl.textContent = ` (${childCount})`;
+    row.appendChild(countEl);
+  }
 
   const idEl = document.createElement('span');
   idEl.className = 'node-id';
-  idEl.textContent = `#${node.id}`;
+  idEl.textContent = ` #${node.node_id}`;
   row.appendChild(idEl);
 
   container.appendChild(row);
 
-  for (const [childLabel, childNode] of node.children) {
-    container.appendChild(renderTreeNode(childNode, childLabel, false));
+  // For objects, label children with their keys from the kind field
+  const objectKeys = getObjectKeys(node.kind);
+  for (let i = 0; i < node.children.length; i++) {
+    const childLabel = objectKeys ? objectKeys[i] ?? String(i) : String(i);
+    container.appendChild(renderTreeNode(node.children[i], childLabel, false));
   }
 
   return container;
@@ -193,14 +245,14 @@ function renderTree() {
 
   const selected = findNodeById(root, selectedNodeId);
   selectedNode = selected ?? root;
-  selectedNodeId = selectedNode.id;
+  selectedNodeId = selectedNode.node_id;
   treeEl.appendChild(renderTreeNode(root, null, true));
 }
 
 function findNodeById(node: ProjNode, nodeId: number | null): ProjNode | null {
   if (nodeId === null) return null;
-  if (node.id === nodeId) return node;
-  for (const [, child] of node.children) {
+  if (node.node_id === nodeId) return node;
+  for (const child of node.children) {
     const found = findNodeById(child, nodeId);
     if (found) return found;
   }
@@ -208,9 +260,9 @@ function findNodeById(node: ProjNode, nodeId: number | null): ProjNode | null {
 }
 
 function updateToolbarState() {
-  const kind = selectedNode ? getNodeKind(selectedNode.tag) : 'other';
+  const kind = selectedNode ? getNodeKind(selectedNode.kind) : 'other';
   const hasSelection = selectedNode !== null;
-  const isRoot = hasSelection && selectedNodeId === parseProjNode()?.id;
+  const isRoot = hasSelection && selectedNodeId === parseProjNode()?.node_id;
 
   addMemberBtn.disabled = kind !== 'object';
   addElementBtn.disabled = kind !== 'array';
@@ -278,15 +330,15 @@ function submitInlineAction() {
   }
 
   if (inlineMode === 'add-member') {
-    applyEdit({ op: 'AddMember', object_id: selectedNode.id, key: value });
+    applyEdit({ op: 'AddMember', object_id: selectedNode.node_id, key: value });
   } else if (inlineMode === 'wrap-object') {
-    applyEdit({ op: 'WrapInObject', node_id: selectedNode.id, key: value });
+    applyEdit({ op: 'WrapInObject', node_id: selectedNode.node_id, key: value });
   } else if (inlineMode === 'change-type') {
     if (!VALID_TYPES.has(value)) {
       inlineInputEl.focus();
       return;
     }
-    applyEdit({ op: 'ChangeType', node_id: selectedNode.id, new_type: value });
+    applyEdit({ op: 'ChangeType', node_id: selectedNode.node_id, new_type: value });
   }
 
   hideInlineForm();
@@ -307,14 +359,14 @@ addMemberBtn.addEventListener('click', () => {
 addElementBtn.addEventListener('click', () => {
   if (selectedNode && !addElementBtn.disabled) {
     hideInlineForm();
-    applyEdit({ op: 'AddElement', array_id: selectedNode.id });
+    applyEdit({ op: 'AddElement', array_id: selectedNode.node_id });
   }
 });
 
 wrapArrayBtn.addEventListener('click', () => {
   if (selectedNode && !wrapArrayBtn.disabled) {
     hideInlineForm();
-    applyEdit({ op: 'WrapInArray', node_id: selectedNode.id });
+    applyEdit({ op: 'WrapInArray', node_id: selectedNode.node_id });
   }
 });
 
@@ -329,14 +381,14 @@ changeTypeBtn.addEventListener('click', () => {
 deleteBtn.addEventListener('click', () => {
   if (selectedNode && !deleteBtn.disabled) {
     hideInlineForm();
-    applyEdit({ op: 'Delete', node_id: selectedNode.id });
+    applyEdit({ op: 'Delete', node_id: selectedNode.node_id });
   }
 });
 
 unwrapBtn.addEventListener('click', () => {
   if (selectedNode && !unwrapBtn.disabled) {
     hideInlineForm();
-    applyEdit({ op: 'Unwrap', node_id: selectedNode.id });
+    applyEdit({ op: 'Unwrap', node_id: selectedNode.node_id });
   }
 });
 
