@@ -31,4 +31,4 @@ class MockWebSocket {
   }
 }
 
-global.WebSocket = MockWebSocket as unknown as typeof WebSocket;
+(globalThis as Record<string, unknown>).WebSocket = MockWebSocket as unknown as typeof WebSocket;
