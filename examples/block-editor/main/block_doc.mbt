@@ -1,25 +1,27 @@
 ///|
 /// The block identifier type — a tree node ID.
-pub type BlockId = @tree.TreeNodeId
+pub type BlockId = @container.TreeNodeId
 
 ///|
 /// Sentinel for the document root (parent of all top-level blocks).
-pub let root_block_id : @tree.TreeNodeId = @tree.root_id
+pub let root_block_id : @container.TreeNodeId = @container.root_id
 
 ///|
 /// A collaborative block document.
 ///
-/// Wraps a `TreeState` for block hierarchy and a per-block `TextState` map for
+/// Wraps a `Document` for block hierarchy and a per-block `TextState` map for
 /// text content. Block ordering delegates to the tree CRDT's fractional indexing.
 pub struct BlockDoc {
-  priv tree : @tree.TreeState
+  priv tree : @container.Document
   priv texts : Map[String, @text.TextState]
   priv replica_id : String
 }
 
 ///|
-pub fn BlockDoc::new(replica_id : String) -> BlockDoc raise @tree.TreeError {
-  { tree: @tree.TreeState::new(replica_id), texts: {}, replica_id }
+pub fn BlockDoc::new(
+  replica_id : String,
+) -> BlockDoc raise @container.DocumentError {
+  { tree: @container.Document::new(replica_id), texts: {}, replica_id }
 }
 
 ///|
@@ -27,8 +29,8 @@ pub fn BlockDoc::new(replica_id : String) -> BlockDoc raise @tree.TreeError {
 pub fn BlockDoc::create_block(
   self : BlockDoc,
   block_type : BlockType,
-  parent? : @tree.TreeNodeId = root_block_id,
-) -> @tree.TreeNodeId raise @tree.TreeError {
+  parent? : @container.TreeNodeId = root_block_id,
+) -> @container.TreeNodeId raise @container.DocumentError {
   let id = self.tree.create_node(parent~)
   self.texts[id_key(id)] = @text.TextState::new(self.replica_id)
   self.apply_block_type(id, block_type)
@@ -39,9 +41,9 @@ pub fn BlockDoc::create_block(
 /// Create a block immediately after `after_id` in document order.
 pub fn BlockDoc::create_block_after(
   self : BlockDoc,
-  after_id : @tree.TreeNodeId,
+  after_id : @container.TreeNodeId,
   block_type : BlockType,
-) -> @tree.TreeNodeId raise @tree.TreeError {
+) -> @container.TreeNodeId raise @container.DocumentError {
   let id = self.tree.create_node_after(parent=root_block_id, after=after_id)
   self.texts[id_key(id)] = @text.TextState::new(self.replica_id)
   self.apply_block_type(id, block_type)
@@ -52,8 +54,8 @@ pub fn BlockDoc::create_block_after(
 /// Delete a block: move it to the tree trash.
 pub fn BlockDoc::delete_block(
   self : BlockDoc,
-  id : @tree.TreeNodeId,
-) -> Unit raise @tree.TreeError {
+  id : @container.TreeNodeId,
+) -> Unit raise @container.DocumentError {
   self.tree.delete_node(id)
 }
 
@@ -61,9 +63,9 @@ pub fn BlockDoc::delete_block(
 /// Move a block to a new parent.
 pub fn BlockDoc::move_block(
   self : BlockDoc,
-  id : @tree.TreeNodeId,
-  new_parent~ : @tree.TreeNodeId,
-) -> Unit raise @tree.TreeError {
+  id : @container.TreeNodeId,
+  new_parent~ : @container.TreeNodeId,
+) -> Unit raise @container.DocumentError {
   self.tree.move_node(target=id, new_parent~)
 }
 
@@ -71,18 +73,21 @@ pub fn BlockDoc::move_block(
 /// Return children of `parent` in display order.
 pub fn BlockDoc::children(
   self : BlockDoc,
-  parent : @tree.TreeNodeId,
-) -> Array[@tree.TreeNodeId] {
+  parent : @container.TreeNodeId,
+) -> Array[@container.TreeNodeId] {
   self.tree.children(parent)
 }
 
 ///|
-pub fn BlockDoc::is_alive(self : BlockDoc, id : @tree.TreeNodeId) -> Bool {
+pub fn BlockDoc::is_alive(self : BlockDoc, id : @container.TreeNodeId) -> Bool {
   self.tree.is_alive(id)
 }
 
 ///|
-pub fn BlockDoc::get_type(self : BlockDoc, id : @tree.TreeNodeId) -> BlockType {
+pub fn BlockDoc::get_type(
+  self : BlockDoc,
+  id : @container.TreeNodeId,
+) -> BlockType {
   let type_str = self.tree.get_property(id, "block_type").unwrap_or("paragraph")
   block_type_from_props(type_str, fn(k) { self.tree.get_property(id, k) })
 }
@@ -90,14 +95,17 @@ pub fn BlockDoc::get_type(self : BlockDoc, id : @tree.TreeNodeId) -> BlockType {
 ///|
 pub fn BlockDoc::set_type(
   self : BlockDoc,
-  id : @tree.TreeNodeId,
+  id : @container.TreeNodeId,
   t : BlockType,
 ) -> Unit {
   self.apply_block_type(id, t)
 }
 
 ///|
-pub fn BlockDoc::get_text(self : BlockDoc, id : @tree.TreeNodeId) -> String {
+pub fn BlockDoc::get_text(
+  self : BlockDoc,
+  id : @container.TreeNodeId,
+) -> String {
   match self.texts.get(id_key(id)) {
     Some(tdoc) => tdoc.text()
     None => ""
@@ -108,7 +116,7 @@ pub fn BlockDoc::get_text(self : BlockDoc, id : @tree.TreeNodeId) -> String {
 /// Bulk-replace block text (atomic CRDT replace).
 pub fn BlockDoc::set_text(
   self : BlockDoc,
-  id : @tree.TreeNodeId,
+  id : @container.TreeNodeId,
   text : String,
 ) -> Unit {
   match self.texts.get(id_key(id)) {
@@ -132,7 +140,7 @@ pub fn BlockDoc::set_text(
 /// Insert a single character at `pos` (preferred for typing).
 pub fn BlockDoc::insert_char(
   self : BlockDoc,
-  id : @tree.TreeNodeId,
+  id : @container.TreeNodeId,
   pos : Int,
   ch : String,
 ) -> Unit {
@@ -146,7 +154,7 @@ pub fn BlockDoc::insert_char(
 /// Delete the character at `pos`.
 pub fn BlockDoc::delete_char(
   self : BlockDoc,
-  id : @tree.TreeNodeId,
+  id : @container.TreeNodeId,
   pos : Int,
 ) -> Unit {
   match self.texts.get(id_key(id)) {
@@ -156,14 +164,17 @@ pub fn BlockDoc::delete_char(
 }
 
 ///|
-pub fn BlockDoc::get_checked(self : BlockDoc, id : @tree.TreeNodeId) -> Bool {
+pub fn BlockDoc::get_checked(
+  self : BlockDoc,
+  id : @container.TreeNodeId,
+) -> Bool {
   self.tree.get_property(id, "checked") == Some("true")
 }
 
 ///|
 pub fn BlockDoc::set_checked(
   self : BlockDoc,
-  id : @tree.TreeNodeId,
+  id : @container.TreeNodeId,
   v : Bool,
 ) -> Unit {
   self.tree.set_property(id, "checked", if v { "true" } else { "false" })
@@ -172,19 +183,19 @@ pub fn BlockDoc::set_checked(
 // ── Private helpers ────────────────────────────────────────────────────────
 
 ///|
-fn id_key(id : @tree.TreeNodeId) -> String {
-  @tree.tree_node_id_key(id)
+fn id_key(id : @container.TreeNodeId) -> String {
+  @container.tree_node_id_key(id)
 }
 
 ///|
-fn id_eq(a : @tree.TreeNodeId, b : @tree.TreeNodeId) -> Bool {
-  @tree.tree_node_id_eq(a, b)
+fn id_eq(a : @container.TreeNodeId, b : @container.TreeNodeId) -> Bool {
+  @container.tree_node_id_eq(a, b)
 }
 
 ///|
 fn BlockDoc::apply_block_type(
   self : BlockDoc,
-  id : @tree.TreeNodeId,
+  id : @container.TreeNodeId,
   t : BlockType,
 ) -> Unit {
   let (type_str, props) = block_type_to_string(t)

@@ -14,7 +14,7 @@
 pub fn block_doc_from_markdown(
   md : String,
   replica_id : String,
-) -> BlockDoc raise @tree.TreeError {
+) -> BlockDoc raise @container.DocumentError {
   let doc = BlockDoc::new(replica_id)
   let lines = split_lines(md)
   let len = lines.length()
@@ -28,8 +28,8 @@ pub fn block_doc_from_markdown(
       let code_buf = StringBuilder::new()
       i = i + 1
       let mut first = true
-      while i < len && !(starts_with(lines[i], "```")) {
-        if !(first) {
+      while i < len && !starts_with(lines[i], "```") {
+        if !first {
           code_buf.write_string("\n")
         }
         code_buf.write_string(lines[i])
@@ -68,7 +68,7 @@ pub fn block_doc_from_markdown(
       starts_with(line, "- [x] ") ||
       starts_with(line, "- [X] ") {
       flush_paragraph(doc, para_buf)
-      let checked = !(starts_with(line, "- [ ] "))
+      let checked = !starts_with(line, "- [ ] ")
       let text = line[6:].to_string()
       let id = doc.create_block(ListItem(Todo))
       doc.set_text(id, text)
@@ -116,7 +116,7 @@ pub fn block_doc_from_markdown(
 fn flush_paragraph(
   doc : BlockDoc,
   buf : Array[String],
-) -> Unit raise @tree.TreeError {
+) -> Unit raise @container.DocumentError {
   if buf.length() > 0 {
     let text = buf.join(" ")
     let id = doc.create_block(Paragraph)

@@ -31,9 +31,10 @@ test "parse_block_id round-trips with id_key" {
   let id = doc.create_block(Paragraph)
   let key = id_key(id)
   let parsed = parse_block_id(key)
-  inspect(@tree.tree_node_id_agent(parsed), content="alice")
+  inspect(@container.tree_node_id_agent(parsed), content="alice")
   inspect(
-    @tree.tree_node_id_counter(parsed) == @tree.tree_node_id_counter(id),
+    @container.tree_node_id_counter(parsed) ==
+    @container.tree_node_id_counter(id),
     content="true",
   )
 }

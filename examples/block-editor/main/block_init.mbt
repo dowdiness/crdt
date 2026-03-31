@@ -33,7 +33,7 @@ fn get_replica_id(handle : Int) -> String {
 ///|
 /// Parse "agent:counter" string into a TreeNodeId.
 /// Splits on last ':' so agent IDs without ':' are safe.
-fn parse_block_id(s : String) -> @tree.TreeNodeId {
+fn parse_block_id(s : String) -> @container.TreeNodeId {
   let mut last_colon = -1
   for i = 0; i < s.length(); i = i + 1 {
     if s[i] == ':' {
@@ -41,7 +41,7 @@ fn parse_block_id(s : String) -> @tree.TreeNodeId {
     }
   }
   if last_colon < 0 {
-    return @tree.root_id
+    return @container.root_id
   }
   let agent = s[0:last_colon].to_string()
   let counter_str = s[last_colon + 1:].to_string()
@@ -59,7 +59,7 @@ fn parse_block_id(s : String) -> @tree.TreeNodeId {
   if neg {
     counter = -counter
   }
-  @tree.tree_node_id_new(agent, counter)
+  @container.tree_node_id_new(agent, counter)
 }
 
 ///|
