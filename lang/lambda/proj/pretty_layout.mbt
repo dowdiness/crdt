@@ -1,58 +1,33 @@
-// PrettyLayout: TermSym interpretation that produces Layout[Ann] documents
-// for structured pretty-printing with syntax highlighting.
-
 ///|
 pub struct PrettyLayout {
   layout : @pretty.Layout[@pretty.Ann]
 }
 
 ///|
-fn kw(s : String) -> @pretty.Layout[@pretty.Ann] {
-  @pretty.annotate(
-    { category: @pretty.SyntaxCategory::Keyword, node_id: None },
-    @pretty.text(s),
-  )
+fn tagged(
+  cat : @pretty.SyntaxCategory,
+  s : String,
+) -> @pretty.Layout[@pretty.Ann] {
+  @pretty.annotate({ category: cat, node_id: None }, @pretty.text(s))
 }
 
 ///|
-fn ident(s : String) -> @pretty.Layout[@pretty.Ann] {
-  @pretty.annotate(
-    { category: @pretty.SyntaxCategory::Identifier, node_id: None },
-    @pretty.text(s),
-  )
-}
+fn kw(s : String) -> @pretty.Layout[@pretty.Ann] { tagged(Keyword, s) }
 
 ///|
-fn num(s : String) -> @pretty.Layout[@pretty.Ann] {
-  @pretty.annotate(
-    { category: @pretty.SyntaxCategory::Number, node_id: None },
-    @pretty.text(s),
-  )
-}
+fn ident(s : String) -> @pretty.Layout[@pretty.Ann] { tagged(Identifier, s) }
 
 ///|
-fn op(s : String) -> @pretty.Layout[@pretty.Ann] {
-  @pretty.annotate(
-    { category: @pretty.SyntaxCategory::Operator, node_id: None },
-    @pretty.text(s),
-  )
-}
+fn num(s : String) -> @pretty.Layout[@pretty.Ann] { tagged(Number, s) }
 
 ///|
-fn punc(s : String) -> @pretty.Layout[@pretty.Ann] {
-  @pretty.annotate(
-    { category: @pretty.SyntaxCategory::Punctuation, node_id: None },
-    @pretty.text(s),
-  )
-}
+fn op(s : String) -> @pretty.Layout[@pretty.Ann] { tagged(Operator, s) }
 
 ///|
-fn err(s : String) -> @pretty.Layout[@pretty.Ann] {
-  @pretty.annotate(
-    { category: @pretty.SyntaxCategory::Error, node_id: None },
-    @pretty.text(s),
-  )
-}
+fn punc(s : String) -> @pretty.Layout[@pretty.Ann] { tagged(Punctuation, s) }
+
+///|
+fn err(s : String) -> @pretty.Layout[@pretty.Ann] { tagged(Error, s) }
 
 ///|
 pub impl @ast.TermSym for PrettyLayout with int_lit(n) {
@@ -127,7 +102,7 @@ pub impl @ast.TermSym for PrettyLayout with if_then_else(cond, then_, else_) {
 
 ///|
 pub impl @ast.TermSym for PrettyLayout with module(defs, body) {
-  let def_docs : Array[@pretty.Layout[@pretty.Ann]] = defs.map(fn(d) {
+  let def_layouts : Array[@pretty.Layout[@pretty.Ann]] = defs.map(fn(d) {
     let (name, val) = d
     kw("let") +
     @pretty.text(" ") +
@@ -137,8 +112,13 @@ pub impl @ast.TermSym for PrettyLayout with module(defs, body) {
     @pretty.text(" ") +
     @pretty.nest(val.layout)
   })
-  def_docs.push(body.layout)
-  { layout: @pretty.separate(@pretty.hardline(), def_docs) }
+  let defs_doc = @pretty.separate(@pretty.hardline(), def_layouts)
+  let result = if def_layouts.is_empty() {
+    body.layout
+  } else {
+    defs_doc + @pretty.hardline() + body.layout
+  }
+  { layout: result }
 }
 
 ///|
