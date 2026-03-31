@@ -12,22 +12,34 @@ fn tagged(
 }
 
 ///|
-fn kw(s : String) -> @pretty.Layout[@pretty.Ann] { tagged(Keyword, s) }
+fn kw(s : String) -> @pretty.Layout[@pretty.Ann] {
+  tagged(Keyword, s)
+}
 
 ///|
-fn ident(s : String) -> @pretty.Layout[@pretty.Ann] { tagged(Identifier, s) }
+fn ident(s : String) -> @pretty.Layout[@pretty.Ann] {
+  tagged(Identifier, s)
+}
 
 ///|
-fn num(s : String) -> @pretty.Layout[@pretty.Ann] { tagged(Number, s) }
+fn num(s : String) -> @pretty.Layout[@pretty.Ann] {
+  tagged(Number, s)
+}
 
 ///|
-fn op(s : String) -> @pretty.Layout[@pretty.Ann] { tagged(Operator, s) }
+fn op(s : String) -> @pretty.Layout[@pretty.Ann] {
+  tagged(Operator, s)
+}
 
 ///|
-fn punc(s : String) -> @pretty.Layout[@pretty.Ann] { tagged(Punctuation, s) }
+fn punc(s : String) -> @pretty.Layout[@pretty.Ann] {
+  tagged(Punctuation, s)
+}
 
 ///|
-fn err(s : String) -> @pretty.Layout[@pretty.Ann] { tagged(Error, s) }
+fn err(s : String) -> @pretty.Layout[@pretty.Ann] {
+  tagged(Error, s)
+}
 
 ///|
 pub impl @ast.TermSym for PrettyLayout with int_lit(n) {
