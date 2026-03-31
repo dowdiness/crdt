@@ -142,7 +142,7 @@ test "property: grouped doc with no HardLine flattens at wide width" {
       true
     } else {
       let output = render_string(group(doc), width=1000000)
-      not(output.contains("\n"))
+      !output.contains("\n")
     }
   })
 }

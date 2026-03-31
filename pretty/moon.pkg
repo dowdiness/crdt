@@ -1,4 +1,7 @@
 import {
   "dowdiness/canopy/framework/core" @core,
-  "moonbitlang/quickcheck" @qc,
 }
+
+import {
+  "moonbitlang/quickcheck" @qc,
+} for "wbtest"
