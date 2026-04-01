@@ -262,3 +262,23 @@ pub fn SourceMap::get_token_span(
     None => None
   }
 }
+
+///|
+/// Get all token-level spans for a node as (role, range) pairs sorted by
+/// range start position. Returns an empty array if no spans are recorded.
+pub fn SourceMap::get_all_token_spans(
+  self : SourceMap,
+  node_id : NodeId,
+) -> Array[(String, Range)] {
+  match self.token_spans.get(node_id) {
+    Some(roles) => {
+      let pairs : Array[(String, Range)] = []
+      for role, range in roles {
+        pairs.push((role, range))
+      }
+      pairs.sort_by(fn(a, b) { a.1.start.compare(b.1.start) })
+      pairs
+    }
+    None => []
+  }
+}
