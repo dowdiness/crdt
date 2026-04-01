@@ -11,3 +11,5 @@ export type {
 export type { EditorAdapter } from './adapter';
 
 export { HTMLAdapter } from './html-adapter';
+export { CM6Adapter } from './cm6-adapter';
+export { PMAdapter, pmAdapterSchema } from './pm-adapter';
