@@ -677,10 +677,30 @@ Break into independently testable sub-steps:
 22. Simplify `main.ts` to: create editor → get_view_tree → apply patches
 23. Remove duplicated TS reconciliation logic
 
-### Phase 6: Migrate examples/demo-react (optional)
+### Phase 6: Migrate examples/demo-react
 
 24. Replace Valtio proxy pattern with protocol-based React hook
 25. Hook calls `compute_view_patches()` on each change
+
+### Phase 7: Migrate examples/block-editor + BlockAdapter
+
+26. Implement `BlockAdapter` (~100 lines) — renders ViewNode trees as
+    contentEditable block elements. Each `ViewNode` with `editable=true`
+    becomes a contentEditable div. Block type from `kind_tag`, ARIA roles
+    derived automatically.
+27. Map block model to ViewNode: document root with block children, each
+    block has `kind_tag` (heading/paragraph/list_item/checkbox),
+    `text` for content, `css_class` for level/checked state.
+28. Move autoformat detection (` # ` → heading, `- ` → list, `- [ ]` →
+    checkbox) from TS to MoonBit. TS sends `UserIntent::TextEdit`,
+    MoonBit detects patterns and emits `ReplaceNode` with new `kind_tag`.
+29. Replace block-editor FFI (`get_render_state`, `editor_set_block_text`,
+    `editor_insert_block_after`, `editor_delete_block`,
+    `editor_set_block_type`) with protocol intents.
+30. Keep in TS: focus management between blocks, drag-and-drop gestures,
+    file download/upload.
+31. Enables Markdown editor (TODO §12) as: MoonBit Markdown parser →
+    `proj_to_view_node` → BlockAdapter. No new TS code needed.
 
 ## Acceptance Criteria
 

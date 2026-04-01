@@ -36,6 +36,7 @@ pub fn create_editor(agent_id : String) -> Int {
 /// Destroy an editor instance and free its resources.
 pub fn destroy_editor(handle : Int) -> Unit {
   editors.remove(handle)
+  view_states.remove(handle)
   if last_created_handle.val == Some(handle) {
     last_created_handle.val = None
   }

@@ -22,6 +22,7 @@ pub fn create_json_editor(agent_id : String) -> Int {
 /// Destroy a JSON editor instance and free its resources.
 pub fn destroy_json_editor(handle : Int) -> Unit {
   json_editors.remove(handle)
+  json_view_states.remove(handle)
 }
 
 ///|

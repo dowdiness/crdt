@@ -1,16 +1,6 @@
 import * as crdt from '@moonbit/crdt';
-
-// MoonBit ProjNode JSON format:
-// { node_id: number, kind: JsonValueJson, children: ProjNode[], start: number, end: number }
-// JsonValue ToJson (derive): "Null" | ["Bool", true] | ["Number", 42] | ["String", "hi"]
-//   | ["Array", [...]] | ["Object", [["key", value], ...]] | ["Error", "msg"]
-type ProjNode = {
-  node_id: number;
-  kind: unknown; // MoonBit enum JSON
-  children: ProjNode[];
-  start: number;
-  end: number;
-};
+import { HTMLAdapter } from '../../../lib/editor-adapter/html-adapter';
+import type { ViewPatch, ViewNode } from '../../../lib/editor-adapter/types';
 
 type InlineMode = 'add-member' | 'wrap-object' | 'change-type' | null;
 
@@ -38,8 +28,9 @@ const inlineInputEl = must<HTMLInputElement>('toolbar-inline-input');
 const inlineSubmitEl = must<HTMLButtonElement>('toolbar-inline-submit');
 const inlineCancelEl = must<HTMLButtonElement>('toolbar-inline-cancel');
 
-let selectedNodeId: number | null = null;
-let selectedNode: ProjNode | null = null;
+// Protocol-based tree adapter
+const adapter = new HTMLAdapter(treeEl, errorsEl);
+
 let inlineMode: InlineMode = null;
 let lastText = '';
 let syncScheduled = false;
@@ -53,16 +44,9 @@ function must<T extends HTMLElement>(id: string): T {
   return element as T;
 }
 
-// Parse MoonBit enum JSON for JsonValue
-function getKindTag(kind: unknown): string {
-  if (kind === 'Null') return 'Null';
-  if (Array.isArray(kind) && kind.length >= 1) return kind[0] as string;
-  return 'Unknown';
-}
-
-function getNodeKind(kind: unknown): 'object' | 'array' | 'string' | 'number' | 'bool' | 'null' | 'error' | 'other' {
-  const tag = getKindTag(kind);
-  switch (tag) {
+// Map ViewNode kind_tag to the old toolbar kind categories
+function kindTagToToolbarKind(kindTag: string): string {
+  switch (kindTag) {
     case 'Object': return 'object';
     case 'Array': return 'array';
     case 'String': return 'string';
@@ -71,48 +55,6 @@ function getNodeKind(kind: unknown): 'object' | 'array' | 'string' | 'number' | 
     case 'Null': return 'null';
     case 'Error': return 'error';
     default: return 'other';
-  }
-}
-
-function getKindDisplayValue(kind: unknown): string {
-  if (kind === 'Null') return 'null';
-  if (!Array.isArray(kind)) return String(kind);
-  const [tag, ...args] = kind;
-  switch (tag) {
-    case 'Bool': return String(args[0]);
-    case 'Number': return String(args[0]);
-    case 'String': return JSON.stringify(args[0]);
-    case 'Array': return `Array`;
-    case 'Object': return `Object`;
-    case 'Error': return `Error: ${args[0]}`;
-    default: return String(kind);
-  }
-}
-
-// Extract object keys from the kind field (for labeling children)
-function getObjectKeys(kind: unknown): string[] | null {
-  if (!Array.isArray(kind) || kind[0] !== 'Object') return null;
-  const members = kind[1] as Array<[string, unknown]>;
-  return members.map(([key]) => key);
-}
-
-function parseProjNode(): ProjNode | null {
-  try {
-    const raw = crdt.json_get_proj_node_json(handle);
-    if (!raw.trim()) return null;
-    return JSON.parse(raw) as ProjNode;
-  } catch {
-    return null;
-  }
-}
-
-function parseErrors(): string[] {
-  try {
-    const raw = crdt.json_get_errors(handle);
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
-  } catch (error) {
-    return [`Failed to decode errors: ${String(error)}`];
   }
 }
 
@@ -151,118 +93,32 @@ function syncTextFromModel() {
   }
 }
 
-function refreshErrors() {
-  const errors = parseErrors();
-  errorsEl.replaceChildren();
+/** Compute and apply view patches from the protocol. */
+function refresh() {
+  const patchesJson = crdt.json_compute_view_patches_json(handle);
+  const patches: ViewPatch[] = JSON.parse(patchesJson);
+  adapter.applyPatches(patches);
 
-  if (errors.length === 0) {
-    const item = document.createElement('li');
-    item.className = 'error-empty';
-    item.textContent = 'No parse errors';
-    errorsEl.appendChild(item);
-    return;
+  // Restore selection if it was lost (e.g. after FullTree rebuild)
+  const selectedId = adapter.getSelectedNodeId();
+  if (selectedId !== null && !adapter.findNode(selectedId)) {
+    // Selected node no longer exists — select root instead
+    const root = adapter.getTree();
+    if (root) {
+      adapter.applyPatches([{ type: 'SelectNode', node_id: root.id }]);
+    }
   }
 
-  for (const error of errors) {
-    const item = document.createElement('li');
-    item.className = 'error-item';
-    item.textContent = error;
-    errorsEl.appendChild(item);
-  }
-}
-
-function renderTreeNode(node: ProjNode, edgeLabel: string | null, isRoot: boolean): HTMLDivElement {
-  const container = document.createElement('div');
-  container.className = isRoot ? 'tree-node root' : 'tree-node';
-
-  const row = document.createElement('div');
-  row.className = 'node-row';
-  if (node.node_id === selectedNodeId) {
-    row.classList.add('selected');
-  }
-
-  row.addEventListener('click', (event) => {
-    event.stopPropagation();
-    selectedNodeId = node.node_id;
-    selectedNode = node;
-    hideInlineForm();
-    renderTree();
-    updateToolbarState();
-  });
-
-  if (edgeLabel !== null) {
-    const keyEl = document.createElement('span');
-    keyEl.className = 'node-key';
-    keyEl.textContent = `${edgeLabel}:`;
-    row.appendChild(keyEl);
-  }
-
-  const kind = getNodeKind(node.kind);
-  const display = getKindDisplayValue(node.kind);
-  const tagEl = document.createElement('span');
-  tagEl.className = `node-tag ${kind}`;
-  tagEl.textContent = display;
-  row.appendChild(tagEl);
-
-  const childCount = node.children.length;
-  if (kind === 'object' || kind === 'array') {
-    const countEl = document.createElement('span');
-    countEl.className = 'node-id';
-    countEl.textContent = ` (${childCount})`;
-    row.appendChild(countEl);
-  }
-
-  const idEl = document.createElement('span');
-  idEl.className = 'node-id';
-  idEl.textContent = ` #${node.node_id}`;
-  row.appendChild(idEl);
-
-  container.appendChild(row);
-
-  // For objects, label children with their keys from the kind field
-  const objectKeys = getObjectKeys(node.kind);
-  for (let i = 0; i < node.children.length; i++) {
-    const childLabel = objectKeys ? objectKeys[i] ?? String(i) : String(i);
-    container.appendChild(renderTreeNode(node.children[i], childLabel, false));
-  }
-
-  return container;
-}
-
-function renderTree() {
-  const root = parseProjNode();
-  treeEl.replaceChildren();
-
-  if (!root) {
-    selectedNodeId = null;
-    selectedNode = null;
-    const empty = document.createElement('div');
-    empty.className = 'tree-empty';
-    empty.textContent = 'No structure available';
-    treeEl.appendChild(empty);
-    return;
-  }
-
-  const selected = findNodeById(root, selectedNodeId);
-  selectedNode = selected ?? root;
-  selectedNodeId = selectedNode.node_id;
-  treeEl.appendChild(renderTreeNode(root, null, true));
-}
-
-function findNodeById(node: ProjNode, nodeId: number | null): ProjNode | null {
-  if (nodeId === null) return null;
-  if (node.node_id === nodeId) return node;
-  for (const child of node.children) {
-    const found = findNodeById(child, nodeId);
-    if (found) return found;
-  }
-  return null;
+  updateToolbarState();
 }
 
 function updateToolbarState() {
-  const kind = selectedNode ? getNodeKind(selectedNode.kind) : 'other';
+  const selectedId = adapter.getSelectedNodeId();
+  const selectedNode = selectedId !== null ? adapter.findNode(selectedId) : null;
+  const kind = selectedNode ? kindTagToToolbarKind(selectedNode.kind_tag) : 'other';
   const hasSelection = selectedNode !== null;
-  const isRoot = hasSelection && selectedNodeId === parseProjNode()?.node_id;
+  const root = adapter.getTree();
+  const isRoot = hasSelection && selectedId === root?.id;
 
   addMemberBtn.disabled = kind !== 'object';
   addElementBtn.disabled = kind !== 'array';
@@ -308,20 +164,17 @@ function applyEdit(op: Record<string, unknown>) {
   refresh();
 
   if (result !== 'ok') {
-    const currentErrors = parseErrors();
-    currentErrors.unshift(result);
-    errorsEl.replaceChildren();
-    for (const error of currentErrors) {
-      const item = document.createElement('li');
-      item.className = 'error-item';
-      item.textContent = error;
-      errorsEl.appendChild(item);
-    }
+    // Prepend the error to the diagnostics list
+    const item = document.createElement('li');
+    item.className = 'error-item';
+    item.textContent = result;
+    errorsEl.prepend(item);
   }
 }
 
 function submitInlineAction() {
-  if (!selectedNode || !inlineMode) return;
+  const selectedId = adapter.getSelectedNodeId();
+  if (selectedId === null || !inlineMode) return;
 
   const value = inlineInputEl.value.trim();
   if (!value) {
@@ -330,25 +183,27 @@ function submitInlineAction() {
   }
 
   if (inlineMode === 'add-member') {
-    applyEdit({ op: 'AddMember', object_id: selectedNode.node_id, key: value });
+    applyEdit({ op: 'AddMember', object_id: selectedId, key: value });
   } else if (inlineMode === 'wrap-object') {
-    applyEdit({ op: 'WrapInObject', node_id: selectedNode.node_id, key: value });
+    applyEdit({ op: 'WrapInObject', node_id: selectedId, key: value });
   } else if (inlineMode === 'change-type') {
     if (!VALID_TYPES.has(value)) {
       inlineInputEl.focus();
       return;
     }
-    applyEdit({ op: 'ChangeType', node_id: selectedNode.node_id, new_type: value });
+    applyEdit({ op: 'ChangeType', node_id: selectedId, new_type: value });
   }
 
   hideInlineForm();
 }
 
-function refresh() {
-  refreshErrors();
-  renderTree();
-  updateToolbarState();
-}
+// Wire up intent callback for selection
+adapter.onIntent((intent) => {
+  if (intent.type === 'SelectNode') {
+    hideInlineForm();
+    updateToolbarState();
+  }
+});
 
 editorEl.addEventListener('input', scheduleTextSync);
 
@@ -357,16 +212,18 @@ addMemberBtn.addEventListener('click', () => {
 });
 
 addElementBtn.addEventListener('click', () => {
-  if (selectedNode && !addElementBtn.disabled) {
+  const selectedId = adapter.getSelectedNodeId();
+  if (selectedId !== null && !addElementBtn.disabled) {
     hideInlineForm();
-    applyEdit({ op: 'AddElement', array_id: selectedNode.node_id });
+    applyEdit({ op: 'AddElement', array_id: selectedId });
   }
 });
 
 wrapArrayBtn.addEventListener('click', () => {
-  if (selectedNode && !wrapArrayBtn.disabled) {
+  const selectedId = adapter.getSelectedNodeId();
+  if (selectedId !== null && !wrapArrayBtn.disabled) {
     hideInlineForm();
-    applyEdit({ op: 'WrapInArray', node_id: selectedNode.node_id });
+    applyEdit({ op: 'WrapInArray', node_id: selectedId });
   }
 });
 
@@ -379,16 +236,18 @@ changeTypeBtn.addEventListener('click', () => {
 });
 
 deleteBtn.addEventListener('click', () => {
-  if (selectedNode && !deleteBtn.disabled) {
+  const selectedId = adapter.getSelectedNodeId();
+  if (selectedId !== null && !deleteBtn.disabled) {
     hideInlineForm();
-    applyEdit({ op: 'Delete', node_id: selectedNode.node_id });
+    applyEdit({ op: 'Delete', node_id: selectedId });
   }
 });
 
 unwrapBtn.addEventListener('click', () => {
-  if (selectedNode && !unwrapBtn.disabled) {
+  const selectedId = adapter.getSelectedNodeId();
+  if (selectedId !== null && !unwrapBtn.disabled) {
     hideInlineForm();
-    applyEdit({ op: 'Unwrap', node_id: selectedNode.node_id });
+    applyEdit({ op: 'Unwrap', node_id: selectedId });
   }
 });
 
@@ -415,6 +274,7 @@ document.querySelectorAll<HTMLButtonElement>('.example-btn').forEach((button) =>
 });
 
 window.addEventListener('beforeunload', () => {
+  adapter.destroy();
   crdt.destroy_json_editor(handle);
 });
 
