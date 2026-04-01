@@ -1,8 +1,4 @@
 // CM6Adapter: CodeMirror 6 adapter for the EditorProtocol.
-//
-// Wraps a CM6 EditorView and applies ViewPatch commands (TextChange,
-// SetDecorations, SetSelection). Captures user edits and selection
-// changes as UserIntent.
 
 import {
   EditorView,
@@ -24,17 +20,19 @@ class PeerCursorWidget extends WidgetType {
   constructor(
     readonly label: string,
     readonly cssClass: string,
+    readonly color: string,
   ) {
     super();
   }
 
   eq(other: PeerCursorWidget): boolean {
-    return this.label === other.label && this.cssClass === other.cssClass;
+    return this.label === other.label && this.cssClass === other.cssClass && this.color === other.color;
   }
 
   toDOM(): HTMLElement {
     const wrapper = document.createElement("span");
     wrapper.className = this.cssClass;
+    if (this.color) wrapper.style.setProperty("--color", this.color);
 
     const labelEl = document.createElement("span");
     labelEl.className = `${this.cssClass}-label`;
@@ -61,10 +59,18 @@ function buildDecorationSet(
     const to = Math.min(Math.max(0, d.to), docLength);
 
     if (d.widget) {
+      // Extract color from data field (format: "name|color" or just "name")
+      let label = d.data ?? "";
+      let color = "";
+      if (label.includes("|")) {
+        const parts = label.split("|");
+        label = parts[0];
+        color = parts[1] ?? "";
+      }
       widgets.push({
         pos: from,
         deco: CmDecoration.widget({
-          widget: new PeerCursorWidget(d.data ?? "", d.css_class),
+          widget: new PeerCursorWidget(label, d.css_class, color),
           side: 1,
         }),
       });
@@ -90,21 +96,12 @@ function buildDecorationSet(
     const wPos = wi < widgets.length ? widgets[wi].pos : Infinity;
     const mPos = mi < marks.length ? marks[mi].from : Infinity;
 
-    if (mPos < wPos) {
+    if (mPos <= wPos) {
       builder.add(marks[mi].from, marks[mi].to, marks[mi].deco);
       mi++;
-    } else if (wPos < mPos) {
+    } else {
       builder.add(widgets[wi].pos, widgets[wi].pos, widgets[wi].deco);
       wi++;
-    } else {
-      // Same position: marks before widgets (marks have extent)
-      if (mi < marks.length && marks[mi].from === mPos) {
-        builder.add(marks[mi].from, marks[mi].to, marks[mi].deco);
-        mi++;
-      } else {
-        builder.add(widgets[wi].pos, widgets[wi].pos, widgets[wi].deco);
-        wi++;
-      }
     }
   }
 
@@ -137,11 +134,12 @@ const decorationPlugin = ViewPlugin.fromClass(
     update(update: ViewUpdate) {
       const oldDecos = update.startState.field(decorationField);
       const newDecos = update.state.field(decorationField);
-      if (oldDecos !== newDecos || update.docChanged) {
-        this.decorations = buildDecorationSet(
-          newDecos,
-          update.state.doc.length,
-        );
+      if (oldDecos !== newDecos) {
+        // Decoration array changed — full rebuild
+        this.decorations = buildDecorationSet(newDecos, update.state.doc.length);
+      } else if (update.docChanged) {
+        // Only doc changed, decorations unchanged — remap positions
+        this.decorations = this.decorations.map(update.changes);
       }
     }
   },
@@ -162,20 +160,15 @@ export class CM6Adapter implements EditorAdapter {
   }
 
   /**
-   * CM6 extensions that must be included in the EditorView for this
-   * adapter to function. Add these to the extensions array when
-   * creating the CM6 EditorView.
+   * CM6 extensions required for this adapter. Include in EditorView extensions.
    */
   static extensions(): [typeof decorationField, typeof decorationPlugin] {
     return [decorationField, decorationPlugin];
   }
 
   /**
-   * Create a CM6 updateListener extension that feeds user intents
-   * back to the adapter. Add this to extensions alongside `CM6Adapter.extensions()`.
-   *
-   * The adapter must be constructed first, then this listener added
-   * (or the view reconfigured) so the adapter reference is captured.
+   * Create a CM6 updateListener that feeds user intents to the adapter.
+   * The adapter must be constructed first so the reference is captured.
    */
   createUpdateListener(): ReturnType<typeof EditorView.updateListener.of> {
     return EditorView.updateListener.of((update: ViewUpdate) => {
@@ -212,6 +205,7 @@ export class CM6Adapter implements EditorAdapter {
     this.intentCallback = callback;
   }
 
+  /** Does not destroy the CM6 view (caller owns it). */
   destroy(): void {
     this.intentCallback = null;
   }
@@ -245,15 +239,9 @@ export class CM6Adapter implements EditorAdapter {
       }
 
       case "SelectNode":
-        // SelectNode in CM6 context: no-op unless the host resolves
-        // node_id to a text range and sends SetSelection instead.
-        break;
-
       case "SetDiagnostics":
-        // Could integrate with CM6 lint panel in the future.
         break;
 
-      // Tree patches are PM/HTML specific — ignored by CM6.
       case "FullTree":
       case "ReplaceNode":
       case "InsertChild":

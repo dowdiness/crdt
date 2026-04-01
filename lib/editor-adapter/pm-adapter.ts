@@ -1,16 +1,11 @@
 // PMAdapter: ProseMirror adapter for the EditorProtocol.
 //
-// Wraps a ProseMirror EditorView and applies tree ViewPatch commands
-// (FullTree, ReplaceNode, InsertChild, RemoveChild, UpdateNode,
-// SelectNode). Captures user edits as UserIntent.
-//
-// The schema is GENERIC — it works for any ViewNode tree (Lambda,
-// JSON, future Markdown) using generic `tree_node` and `leaf_node`
-// node types. Language-specific presentation (let_def wrappers, etc.)
-// is handled upstream by `proj_to_view_node` in MoonBit.
+// Generic schema (tree_node/leaf_node) works for any ViewNode tree.
+// Language-specific presentation is handled upstream by proj_to_view_node.
+// The PM view is non-editable — all mutations come through applyPatches.
 
 import { EditorView as PmView } from "prosemirror-view";
-import { EditorState as PmState, Transaction, Plugin, PluginKey, Selection, NodeSelection } from "prosemirror-state";
+import { EditorState as PmState, Transaction, Selection, NodeSelection } from "prosemirror-state";
 import { Schema, Node as PmNode, NodeSpec } from "prosemirror-model";
 import type { EditorAdapter } from './adapter';
 import type { ViewPatch, ViewNode, UserIntent } from './types';
@@ -78,7 +73,6 @@ function viewNodeToPmNode(
   node: ViewNode,
 ): PmNode {
   if (node.children.length === 0) {
-    // Leaf node
     return schema.node("leaf_node", {
       node_id: node.id,
       kind_tag: node.kind_tag,
@@ -88,7 +82,6 @@ function viewNodeToPmNode(
     });
   }
 
-  // Branch node
   const children = node.children.map(child => viewNodeToPmNode(schema, child));
   return schema.node("tree_node", {
     node_id: node.id,
@@ -121,7 +114,7 @@ function buildNodeIndex(doc: PmNode): Map<number, NodeEntry> {
     if (nodeId != null) {
       index.set(nodeId, { pos, node });
     }
-    return true; // continue traversal
+    return true;
   });
 
   return index;
@@ -153,35 +146,21 @@ export class PMAdapter implements EditorAdapter {
       state: PmState.create({
         doc: emptyDoc,
         schema: this.schema,
-        plugins: [this.createIntentPlugin()],
       }),
+      editable: () => false,
       dispatchTransaction: (tr: Transaction) => {
         const newState = this.view.state.apply(tr);
         this.view.updateState(newState);
 
-        // Rebuild node index after every transaction
-        this.nodeIndex = buildNodeIndex(newState.doc);
-
-        // Capture user intents (skip echo from our own patches)
-        if (this.updating || !this.intentCallback) return;
-
-        if (tr.getMeta("fromAdapter")) return;
-
         if (tr.docChanged) {
-          // Emit structural edit intents for doc changes from the user
-          // The host interprets these based on the document context
-          tr.steps.forEach((_step, _i) => {
-            // For now, we don't decompose PM steps into fine-grained
-            // structural intents. The host can detect the change by
-            // comparing its known state with the PM doc. This is refined
-            // in Phase 4/5 integration.
-          });
+          this.nodeIndex = buildNodeIndex(newState.doc);
         }
 
-        // Selection changes
+        if (this.updating || !this.intentCallback) return;
+        if (tr.getMeta("fromAdapter")) return;
+
         if (tr.selectionSet) {
           const sel = newState.selection;
-          // Check if this is a NodeSelection (node at the anchor)
           const $anchor = sel.$anchor;
           const nodeAfter = $anchor.nodeAfter;
           if (nodeAfter && nodeAfter.attrs?.node_id != null) {
@@ -214,23 +193,16 @@ export class PMAdapter implements EditorAdapter {
 
   destroy(): void {
     this.intentCallback = null;
+    this.nodeIndex.clear();
     this.view.destroy();
   }
 
-  /** Access the underlying ProseMirror view (for advanced integration). */
   getView(): PmView {
     return this.view;
   }
 
-  /** Access the schema used by this adapter. */
   getSchema(): Schema {
     return this.schema;
-  }
-
-  private createIntentPlugin(): Plugin {
-    return new Plugin({
-      key: new PluginKey("pm-adapter-intent"),
-    });
   }
 
   private applyPatch(patch: ViewPatch): void {
@@ -259,7 +231,6 @@ export class PMAdapter implements EditorAdapter {
         this.applySelectNode(patch.node_id);
         break;
 
-      // Text/decoration patches are CM6 specific — ignored by PM.
       case "TextChange":
       case "SetDecorations":
       case "SetSelection":
@@ -322,11 +293,9 @@ export class PMAdapter implements EditorAdapter {
       const newChild = viewNodeToPmNode(this.schema, childViewNode);
       const tr = this.view.state.tr;
 
-      // Calculate insertion position: inside the parent, after `index` children
       const parentNode = entry.node;
-      let insertPos = entry.pos + 1; // skip parent's open tag
+      let insertPos = entry.pos + 1;
 
-      // Walk to the index-th child position
       let childIdx = 0;
       parentNode.forEach((child, offset) => {
         if (childIdx < index) {
@@ -334,11 +303,6 @@ export class PMAdapter implements EditorAdapter {
         }
         childIdx++;
       });
-
-      // If index is 0 or parent has no children, insert at start of content
-      if (index === 0) {
-        insertPos = entry.pos + 1;
-      }
 
       tr.insert(insertPos, newChild);
       tr.setMeta("fromAdapter", true);
@@ -348,14 +312,9 @@ export class PMAdapter implements EditorAdapter {
     }
   }
 
-  private applyRemoveChild(parentId: number, childId: number): void {
-    // Find the child node directly by its id
+  private applyRemoveChild(_parentId: number, childId: number): void {
     const childEntry = this.nodeIndex.get(childId);
     if (!childEntry) return;
-
-    // Verify the child is actually under the expected parent
-    const parentEntry = this.nodeIndex.get(parentId);
-    if (!parentEntry) return;
 
     this.updating = true;
     try {
@@ -382,28 +341,13 @@ export class PMAdapter implements EditorAdapter {
     this.updating = true;
     try {
       const tr = this.view.state.tr;
-      const isLeaf = entry.node.type.name === "leaf_node";
-
-      if (isLeaf) {
-        // For leaf nodes, replace with updated attributes (atom nodes
-        // carry all data in attrs)
-        const newAttrs = {
-          ...entry.node.attrs,
-          label,
-          css_class: cssClass,
-          ...(text != null ? { text } : {}),
-        };
-        tr.setNodeMarkup(entry.pos, null, newAttrs);
-      } else {
-        // For branch nodes, just update the attrs
-        const newAttrs = {
-          ...entry.node.attrs,
-          label,
-          css_class: cssClass,
-        };
-        tr.setNodeMarkup(entry.pos, null, newAttrs);
-      }
-
+      const newAttrs = {
+        ...entry.node.attrs,
+        label,
+        css_class: cssClass,
+        ...(text != null ? { text } : {}),
+      };
+      tr.setNodeMarkup(entry.pos, null, newAttrs);
       tr.setMeta("fromAdapter", true);
       this.view.dispatch(tr);
     } finally {
@@ -418,16 +362,14 @@ export class PMAdapter implements EditorAdapter {
     this.updating = true;
     try {
       const tr = this.view.state.tr;
-      // Use NodeSelection for atom nodes (selects the whole node),
-      // Selection.near for non-atom nodes (places cursor nearby).
       const sel = entry.node.isAtom
         ? NodeSelection.create(this.view.state.doc, entry.pos)
         : Selection.near(this.view.state.doc.resolve(entry.pos));
       tr.setSelection(sel);
       tr.setMeta("fromAdapter", true);
       this.view.dispatch(tr);
-    } catch {
-      // Selection at this position may be invalid — ignore
+    } catch (e) {
+      console.warn("[PMAdapter] SelectNode failed for node_id", nodeId, e);
     } finally {
       this.updating = false;
     }
