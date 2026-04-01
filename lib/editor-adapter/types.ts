@@ -5,7 +5,7 @@ export type ViewNode = {
   id: number;
   kind_tag: string;
   label: string;
-  text?: string;
+  text: string | null;
   text_range: [number, number];
   token_spans: { role: string; start: number; end: number }[];
   editable: boolean;
@@ -17,7 +17,7 @@ export type Decoration = {
   from: number;
   to: number;
   css_class: string;
-  data?: string;
+  data: string | null;
   widget: boolean;
 };
 
@@ -33,7 +33,7 @@ export type ViewPatch =
   | { type: "ReplaceNode"; node_id: number; node: ViewNode }
   | { type: "InsertChild"; parent_id: number; index: number; child: ViewNode }
   | { type: "RemoveChild"; parent_id: number; index: number; child_id: number }
-  | { type: "UpdateNode"; node_id: number; label: string; css_class: string; text?: string }
+  | { type: "UpdateNode"; node_id: number; label: string; css_class: string; text: string | null }
   | { type: "SetDecorations"; decorations: Decoration[] }
   | { type: "SetDiagnostics"; diagnostics: Diagnostic[] }
   | { type: "SetSelection"; anchor: number; head: number }

@@ -1,10 +1,8 @@
 // HTMLAdapter: Vanilla DOM renderer for ViewPatch streams.
-// Renders a ViewNode tree as DOM elements using data-node-id attributes.
 
 import type { EditorAdapter } from './adapter';
 import type { ViewNode, ViewPatch, UserIntent, Diagnostic } from './types';
 
-/** Extract object member keys from an Object ViewNode label like "{name, enabled, count}". */
 function parseObjectKeys(label: string): string[] | null {
   if (!label.startsWith('{') || !label.endsWith('}')) return null;
   const inner = label.slice(1, -1).trim();
@@ -12,13 +10,25 @@ function parseObjectKeys(label: string): string[] | null {
   return inner.split(',').map(k => k.trim());
 }
 
-/** Compute edge label for a child of a given parent ViewNode. */
 function edgeLabelFor(parent: ViewNode, childIndex: number): string {
   if (parent.kind_tag === 'Object') {
     const keys = parseObjectKeys(parent.label);
     if (keys && childIndex < keys.length) return keys[childIndex];
   }
   return String(childIndex);
+}
+
+/** Derive edge label for a node being replaced, by finding its index in the parent. */
+function deriveEdgeLabel(container: HTMLElement, el: Element, parentNode: ViewNode | null): string | null {
+  if (!parentNode) return null;
+  const parentEl = container.querySelector(`[data-node-id="${parentNode.id}"]`);
+  if (!parentEl) return null;
+  const childrenContainer = parentEl.querySelector(':scope > .node-children') ?? parentEl;
+  const siblings = childrenContainer.children;
+  for (let i = 0; i < siblings.length; i++) {
+    if (siblings[i] === el) return edgeLabelFor(parentNode, i);
+  }
+  return null;
 }
 
 export class HTMLAdapter implements EditorAdapter {
@@ -54,12 +64,10 @@ export class HTMLAdapter implements EditorAdapter {
     return this.selectedNodeId;
   }
 
-  /** Get the current ViewNode tree root (for querying node kind, etc.). */
   getTree(): ViewNode | null {
     return this.currentTree;
   }
 
-  /** Find a ViewNode by ID in the current tree. */
   findNode(nodeId: number): ViewNode | null {
     if (!this.currentTree) return null;
     return findNodeInTree(this.currentTree, nodeId);
@@ -82,22 +90,35 @@ export class HTMLAdapter implements EditorAdapter {
 
       case 'ReplaceNode': {
         const el = this.container.querySelector(`[data-node-id="${patch.node_id}"]`);
-        if (el) {
-          const parent = el.parentElement;
+        if (el && el.parentElement) {
           const isRoot = el === this.container.firstElementChild;
-          const newEl = this.renderNode(patch.node, null, isRoot);
-          if (parent) parent.replaceChild(newEl, el);
+          // Derive edge label from parent context
+          const parentViewNode = this.currentTree
+            ? findParentInTree(this.currentTree, patch.node_id)
+            : null;
+          const edgeLabel = deriveEdgeLabel(this.container, el, parentViewNode);
+          const newEl = this.renderNode(patch.node, edgeLabel, isRoot);
+          el.parentElement.replaceChild(newEl, el);
+        }
+        // Update currentTree
+        if (this.currentTree) {
+          this.currentTree = replaceNodeInTree(this.currentTree, patch.node_id, patch.node);
         }
         break;
       }
 
       case 'InsertChild': {
-        const parent = this.container.querySelector(`[data-node-id="${patch.parent_id}"]`);
-        if (parent) {
-          const childrenEl = parent.querySelector(':scope > .node-children') ?? parent;
+        const parentEl = this.container.querySelector(`[data-node-id="${patch.parent_id}"]`);
+        if (parentEl) {
+          const childrenEl = parentEl.querySelector(':scope > .node-children') ?? parentEl;
           const newChild = this.renderNode(patch.child, null, false);
+          // .node-children contains only tree-node children (no .node-row offset)
           const refChild = childrenEl.children[patch.index] ?? null;
           childrenEl.insertBefore(newChild, refChild);
+        }
+        // Update currentTree
+        if (this.currentTree) {
+          this.currentTree = insertChildInTree(this.currentTree, patch.parent_id, patch.index, patch.child);
         }
         break;
       }
@@ -105,6 +126,10 @@ export class HTMLAdapter implements EditorAdapter {
       case 'RemoveChild': {
         const el = this.container.querySelector(`[data-node-id="${patch.child_id}"]`);
         if (el) el.remove();
+        // Update currentTree
+        if (this.currentTree) {
+          this.currentTree = removeChildInTree(this.currentTree, patch.parent_id, patch.child_id);
+        }
         break;
       }
 
@@ -120,6 +145,10 @@ export class HTMLAdapter implements EditorAdapter {
             el.className = classes.join(' ');
           }
         }
+        // Update currentTree
+        if (this.currentTree) {
+          this.currentTree = updateNodeInTree(this.currentTree, patch.node_id, patch.label, patch.css_class, patch.text ?? undefined);
+        }
         break;
       }
 
@@ -127,11 +156,13 @@ export class HTMLAdapter implements EditorAdapter {
         if (this.diagnosticsEl) this.renderDiagnostics(patch.diagnostics);
         break;
 
-      // Ignored patch types (CM6/PM specific)
+      case 'SelectNode':
+        this.selectNode(patch.node_id);
+        break;
+
       case 'TextChange':
       case 'SetDecorations':
       case 'SetSelection':
-      case 'SelectNode':
         break;
     }
   }
@@ -143,6 +174,7 @@ export class HTMLAdapter implements EditorAdapter {
     if (!hasChildren) {
       const wrapper = document.createElement('div');
       wrapper.className = isRoot ? 'tree-node root' : 'tree-node';
+      wrapper.setAttribute('data-node-id', String(node.id));
 
       const row = document.createElement('div');
       row.className = 'node-row';
@@ -161,7 +193,6 @@ export class HTMLAdapter implements EditorAdapter {
 
       const tagEl = document.createElement('span');
       tagEl.className = `node-tag ${kindClass}`;
-      tagEl.setAttribute('data-node-id', String(node.id));
       tagEl.textContent = node.label;
       row.appendChild(tagEl);
 
@@ -170,7 +201,6 @@ export class HTMLAdapter implements EditorAdapter {
       idEl.textContent = ` #${node.id}`;
       row.appendChild(idEl);
 
-      wrapper.setAttribute('data-node-id', String(node.id));
       wrapper.appendChild(row);
       return wrapper;
     }
@@ -195,7 +225,6 @@ export class HTMLAdapter implements EditorAdapter {
       row.appendChild(keyEl);
     }
 
-    // For objects/arrays: show the kind tag as the label instead of the full label
     const displayLabel = (node.kind_tag === 'Object' || node.kind_tag === 'Array')
       ? node.kind_tag
       : node.label;
@@ -217,10 +246,14 @@ export class HTMLAdapter implements EditorAdapter {
 
     container.appendChild(row);
 
+    // Wrap children in .node-children so InsertChild indexing works correctly
+    const childrenContainer = document.createElement('div');
+    childrenContainer.className = 'node-children';
     for (let i = 0; i < node.children.length; i++) {
       const childEdge = edgeLabelFor(node, i);
-      container.appendChild(this.renderNode(node.children[i], childEdge, false));
+      childrenContainer.appendChild(this.renderNode(node.children[i], childEdge, false));
     }
+    container.appendChild(childrenContainer);
 
     return container;
   }
@@ -246,13 +279,11 @@ export class HTMLAdapter implements EditorAdapter {
   }
 
   private selectNode(nodeId: number): void {
-    // Deselect previous
     const prev = this.container.querySelector('.node-row.selected');
     if (prev) prev.classList.remove('selected');
 
     this.selectedNodeId = nodeId;
 
-    // Select new
     const el = this.container.querySelector(`[data-node-id="${nodeId}"]`);
     if (el) {
       const row = el.querySelector(':scope > .node-row');
@@ -265,6 +296,8 @@ export class HTMLAdapter implements EditorAdapter {
   }
 }
 
+// --- ViewNode tree mutation helpers (keep currentTree in sync with DOM) ---
+
 function findNodeInTree(node: ViewNode, nodeId: number): ViewNode | null {
   if (node.id === nodeId) return node;
   for (const child of node.children) {
@@ -272,4 +305,53 @@ function findNodeInTree(node: ViewNode, nodeId: number): ViewNode | null {
     if (found) return found;
   }
   return null;
+}
+
+function findParentInTree(node: ViewNode, childId: number): ViewNode | null {
+  for (const child of node.children) {
+    if (child.id === childId) return node;
+    const found = findParentInTree(child, childId);
+    if (found) return found;
+  }
+  return null;
+}
+
+function replaceNodeInTree(tree: ViewNode, nodeId: number, replacement: ViewNode): ViewNode {
+  if (tree.id === nodeId) return replacement;
+  return {
+    ...tree,
+    children: tree.children.map(c => replaceNodeInTree(c, nodeId, replacement)),
+  };
+}
+
+function insertChildInTree(tree: ViewNode, parentId: number, index: number, child: ViewNode): ViewNode {
+  if (tree.id === parentId) {
+    const newChildren = [...tree.children];
+    newChildren.splice(index, 0, child);
+    return { ...tree, children: newChildren };
+  }
+  return {
+    ...tree,
+    children: tree.children.map(c => insertChildInTree(c, parentId, index, child)),
+  };
+}
+
+function removeChildInTree(tree: ViewNode, parentId: number, childId: number): ViewNode {
+  if (tree.id === parentId) {
+    return { ...tree, children: tree.children.filter(c => c.id !== childId) };
+  }
+  return {
+    ...tree,
+    children: tree.children.map(c => removeChildInTree(c, parentId, childId)),
+  };
+}
+
+function updateNodeInTree(tree: ViewNode, nodeId: number, label: string, cssClass: string, text?: string): ViewNode {
+  if (tree.id === nodeId) {
+    return { ...tree, label, css_class: cssClass, ...(text !== undefined ? { text } : {}) };
+  }
+  return {
+    ...tree,
+    children: tree.children.map(c => updateNodeInTree(c, nodeId, label, cssClass, text)),
+  };
 }
