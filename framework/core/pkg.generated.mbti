@@ -48,6 +48,7 @@ pub struct SourceMap {
 } derive(Eq, Show)
 pub fn SourceMap::apply_edit(Self, Int, @dowdiness/loom/core.Range) -> Unit
 pub fn[T] SourceMap::from_ast(ProjNode[T]) -> Self
+pub fn SourceMap::get_all_token_spans(Self, NodeId) -> Array[(String, @dowdiness/loom/core.Range)]
 pub fn SourceMap::get_range(Self, NodeId) -> @dowdiness/loom/core.Range?
 pub fn SourceMap::get_token_span(Self, NodeId, String) -> @dowdiness/loom/core.Range?
 pub fn SourceMap::innermost_node_at(Self, Int) -> NodeId?

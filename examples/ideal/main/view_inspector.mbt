@@ -61,29 +61,74 @@ fn children_count(node : @proj.InteractiveTreeNode[@ast.Term]) -> Int {
 }
 
 ///|
+/// Key-value row for the inspector panel.
+fn inspector_row(key : String, value : String) -> Html {
+  div(class="inspector-row", [
+    span(class="inspector-key", [text(key)]),
+    span(class="inspector-value", [text(value)]),
+  ])
+}
+
+///|
 /// Render the node details section of the inspector.
-fn view_node_details(node : @proj.InteractiveTreeNode[@ast.Term]) -> Html {
+fn view_node_details(
+  node : @proj.InteractiveTreeNode[@ast.Term],
+  model : Model,
+) -> Html {
   let kind = kind_of(node.label)
-  let count = children_count(node)
-  div(class="panel-section", [
+  let items : Array[Html] = [
     span(class="panel-label", [text("NODE")]),
+    // Kind gets a color class, so it can't use the generic helper
     div(class="inspector-row", [
       span(class="inspector-key", [text("Kind")]),
       span(class="inspector-value kind-\{kind}", [text(kind)]),
     ]),
-    div(class="inspector-row", [
-      span(class="inspector-key", [text("Label")]),
-      span(class="inspector-value", [text(node.label)]),
-    ]),
-    div(class="inspector-row", [
-      span(class="inspector-key", [text("Children")]),
-      span(class="inspector-value", [text(count.to_string())]),
-    ]),
-    div(class="inspector-row", [
-      span(class="inspector-key", [text("ID")]),
-      span(class="inspector-value", [text(node_id_to_string(node.id))]),
-    ]),
-  ])
+    inspector_row("Label", node.label),
+    inspector_row("Children", children_count(node).to_string()),
+    inspector_row("ID", node_id_to_string(node.id)),
+  ]
+  let source = model.editor.get_text()
+  let source_len = source.length()
+  let range_start = node.text_range.start
+  let range_end = node.text_range.end
+  // Zero-length ranges come from error recovery or synthetic nodes
+  if range_start != range_end {
+    items.push(inspector_row("Range", "\{range_start}..\{range_end}"))
+    let clamped_end = range_end.min(source_len)
+    if clamped_end > range_start {
+      let slice = source.substring(start=range_start, end=clamped_end)
+      let preview = if slice.length() > 120 {
+        slice.substring(end=120) + "\u{2026}"
+      } else {
+        slice
+      }
+      items.push(div(class="source-preview", [text(preview)]))
+    }
+  }
+  let token_spans = model.editor.get_source_map().get_all_token_spans(node.id)
+  if token_spans.length() > 0 {
+    for pair in token_spans {
+      let role = pair.0
+      let span_range = pair.1
+      let span_start = span_range.start
+      let span_end = span_range.end.min(source_len)
+      let span_text = if span_end > span_start {
+        "\"" + source.substring(start=span_start, end=span_end) + "\""
+      } else {
+        ""
+      }
+      items.push(
+        div(class="token-span-row", [
+          span(class="token-span-role", [text(role)]),
+          span(class="token-span-range", [
+            text("\{span_start}..\{span_end}"),
+          ]),
+          span(class="token-span-text", [text(span_text)]),
+        ]),
+      )
+    }
+  }
+  div(class="panel-section", items)
 }
 
 ///|
@@ -141,7 +186,7 @@ fn view_inspector_content(dispatch : Dispatch[Msg], model : Model) -> Html {
       match found {
         Some(node) =>
           @html.fragment([
-            view_node_details(node),
+            view_node_details(node, model),
             view_actions(dispatch, sel_id),
           ])
         None => p(class="no-tree-note", "No matching node")
