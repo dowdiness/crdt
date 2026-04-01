@@ -532,6 +532,49 @@ canopy-editor {
   color: var(--canopy-error-text);
 }
 
+.source-preview {
+  background: var(--canopy-surface);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  margin-top: var(--space-sm);
+  font-family: var(--canopy-font-mono);
+  font-size: var(--text-caption);
+  line-height: var(--leading-normal);
+  color: var(--canopy-fg);
+  white-space: pre;
+  overflow-x: auto;
+  max-height: 4.5em;
+  overflow-y: auto;
+}
+
+.token-span-row {
+  display: flex;
+  gap: var(--space-sm);
+  padding: 2px 0;
+  line-height: var(--leading-normal);
+  font-size: var(--text-caption);
+}
+
+.token-span-role {
+  color: var(--canopy-muted);
+  font-family: var(--canopy-font-mono);
+  min-width: 52px;
+  flex-shrink: 0;
+}
+
+.token-span-range {
+  color: var(--canopy-text-dim);
+  font-family: var(--canopy-font-mono);
+  min-width: 44px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.token-span-text {
+  color: var(--canopy-identifier);
+  font-family: var(--canopy-font-mono);
+}
+
 /* ── Bottom Panel ───────────────────────────────────────── */
 
 .bottom-panel {
