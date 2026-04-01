@@ -26,13 +26,21 @@ pub impl ToJson for Decoration
 pub(all) struct Diagnostic {
   from : Int
   to : Int
-  severity : String
+  severity : Severity
   message : String
 
-  fn new(from~ : Int, to~ : Int, severity~ : String, message~ : String) -> Diagnostic
+  fn new(from~ : Int, to~ : Int, severity~ : Severity, message~ : String) -> Diagnostic
 } derive(Eq, Show)
-pub fn Diagnostic::new(from~ : Int, to~ : Int, severity~ : String, message~ : String) -> Self
+pub fn Diagnostic::new(from~ : Int, to~ : Int, severity~ : Severity, message~ : String) -> Self
 pub impl ToJson for Diagnostic
+
+pub(all) enum Severity {
+  SevError
+  SevWarning
+  SevInfo
+  SevHint
+} derive(Eq, Show)
+pub impl ToJson for Severity
 
 pub(all) struct TokenSpan {
   role : String

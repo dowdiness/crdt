@@ -11,8 +11,10 @@ pub fn[T : @loomcore.Renderable] proj_to_view_node(
   let node_id = node.id()
   let kind_tag = @loomcore.Renderable::kind_tag(node.kind)
   let label = @loomcore.Renderable::label(node.kind)
-  let text_range = (node.start, node.end)
-  // Collect token spans from the source map
+  let text_range = match source_map.get_range(node_id) {
+    Some(r) => (r.start, r.end)
+    None => (node.start, node.end)
+  }
   let token_spans : Array[TokenSpan] = []
   match source_map.token_spans.get(node_id) {
     Some(roles) =>
@@ -21,7 +23,6 @@ pub fn[T : @loomcore.Renderable] proj_to_view_node(
       }
     None => ()
   }
-  // Recursively convert children
   let children : Array[ViewNode] = []
   for child in node.children {
     children.push(proj_to_view_node(child, source_map))

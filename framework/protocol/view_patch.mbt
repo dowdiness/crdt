@@ -1,5 +1,4 @@
 // ViewPatch: Incremental patches for the editor protocol.
-// Emitted by ViewUpdater to describe what changed between two ViewNode trees.
 
 ///|
 pub(all) struct Decoration {
@@ -30,16 +29,34 @@ pub fn Decoration::new(
 }
 
 ///|
+pub(all) enum Severity {
+  SevError
+  SevWarning
+  SevInfo
+  SevHint
+} derive(Show, Eq)
+
+///|
+pub impl ToJson for Severity with to_json(self) {
+  match self {
+    SevError => "error".to_json()
+    SevWarning => "warning".to_json()
+    SevInfo => "info".to_json()
+    SevHint => "hint".to_json()
+  }
+}
+
+///|
 pub(all) struct Diagnostic {
   from : Int
   to : Int
-  severity : String
+  severity : Severity
   message : String
 
   fn new(
     from~ : Int,
     to~ : Int,
-    severity~ : String,
+    severity~ : Severity,
     message~ : String,
   ) -> Diagnostic
 } derive(Show, Eq)
@@ -48,7 +65,7 @@ pub(all) struct Diagnostic {
 pub fn Diagnostic::new(
   from~ : Int,
   to~ : Int,
-  severity~ : String,
+  severity~ : Severity,
   message~ : String,
 ) -> Diagnostic {
   { from, to, severity, message }
@@ -98,12 +115,6 @@ pub impl ToJson for Diagnostic with to_json(self) {
 }
 
 ///|
-fn node_id_to_json(id : @core.NodeId) -> Json {
-  let NodeId(n) = id
-  n.to_json()
-}
-
-///|
 pub impl ToJson for ViewPatch with to_json(self) {
   let m : Map[String, Json] = {}
   match self {
@@ -115,24 +126,24 @@ pub impl ToJson for ViewPatch with to_json(self) {
     }
     ReplaceNode(node_id~, node~) => {
       m["type"] = "ReplaceNode".to_json()
-      m["node_id"] = node_id_to_json(node_id)
+      m["node_id"] = node_id.to_json()
       m["node"] = node.to_json()
     }
     InsertChild(parent_id~, index~, child~) => {
       m["type"] = "InsertChild".to_json()
-      m["parent_id"] = node_id_to_json(parent_id)
+      m["parent_id"] = parent_id.to_json()
       m["index"] = index.to_json()
       m["child"] = child.to_json()
     }
     RemoveChild(parent_id~, index~, child_id~) => {
       m["type"] = "RemoveChild".to_json()
-      m["parent_id"] = node_id_to_json(parent_id)
+      m["parent_id"] = parent_id.to_json()
       m["index"] = index.to_json()
-      m["child_id"] = node_id_to_json(child_id)
+      m["child_id"] = child_id.to_json()
     }
     UpdateNode(node_id~, label~, css_class~, text~) => {
       m["type"] = "UpdateNode".to_json()
-      m["node_id"] = node_id_to_json(node_id)
+      m["node_id"] = node_id.to_json()
       m["label"] = label.to_json()
       m["css_class"] = css_class.to_json()
       m["text"] = match text {
@@ -155,7 +166,7 @@ pub impl ToJson for ViewPatch with to_json(self) {
     }
     SelectNode(node_id~) => {
       m["type"] = "SelectNode".to_json()
-      m["node_id"] = node_id_to_json(node_id)
+      m["node_id"] = node_id.to_json()
     }
     FullTree(root~) => {
       m["type"] = "FullTree".to_json()

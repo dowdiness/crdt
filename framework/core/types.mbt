@@ -11,6 +11,12 @@ pub fn NodeId::from_int(n : Int) -> NodeId {
 }
 
 ///|
+pub impl ToJson for NodeId with to_json(self) {
+  let NodeId(n) = self
+  n.to_json()
+}
+
+///|
 /// A text span replacement computed by an edit handler.
 pub(all) struct SpanEdit {
   start : Int

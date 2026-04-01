@@ -336,6 +336,7 @@ pub(all) enum SyncMessage {
 
 pub struct ViewUpdateState {
   mut previous : @protocol.ViewNode?
+  mut had_errors : Bool
 
   fn new() -> ViewUpdateState
 } derive(Show)

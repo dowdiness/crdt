@@ -28,6 +28,7 @@ pub struct NodeId(Int) derive(Compare, Eq, Hash, Show)
 pub fn NodeId::from_int(Int) -> Self
 #deprecated
 pub fn NodeId::inner(Self) -> Int
+pub impl ToJson for NodeId
 
 pub struct ProjNode[T] {
   node_id : Int

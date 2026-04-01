@@ -30,7 +30,7 @@ test "Diagnostic to_json produces object-based JSON" {
   let diag = @protocol.Diagnostic(
     from=0,
     to=3,
-    severity="error",
+    severity=@protocol.SevError,
     message="unbound var",
   )
   let s = diag.to_json().stringify()
@@ -145,7 +145,12 @@ test "ViewPatch::SetDecorations to_json" {
 ///|
 test "ViewPatch::SetDiagnostics to_json" {
   let diags = [
-    @protocol.Diagnostic(from=0, to=3, severity="error", message="bad"),
+    @protocol.Diagnostic(
+      from=0,
+      to=3,
+      severity=@protocol.SevError,
+      message="bad",
+    ),
   ]
   let patch = @protocol.ViewPatch::SetDiagnostics(diagnostics=diags)
   let s = patch.to_json().stringify()
