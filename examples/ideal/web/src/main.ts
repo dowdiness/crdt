@@ -155,56 +155,38 @@ function wireEditorEvents(el: CanopyEditor) {
     const crdt = canopyGlobal.__canopy_crdt;
     const handle = canopyGlobal.__canopy_crdt_handle;
     // Apply structural edit via protocol FFI
-    if (crdt.handle_structural_intent) {
-      const result = crdt.handle_structural_intent(handle, op, nodeId, Date.now());
-      if (result !== "ok") {
-        console.error("[protocol] structural edit failed:", result);
-        return;
-      }
-      // Sync CM6 from CRDT after structural edit
-      el.syncAfterExternalChange();
-      el.notifyLocalChange();
-      // Trigger Rabbita refresh
-      canopyGlobal.__canopy_pending_structural_edit = { op, nodeId };
-      clickTrigger('canopy-editor-structural-edit');
-    } else {
-      // Fallback: use old global-state bridge
-      canopyGlobal.__canopy_pending_structural_edit = { op, nodeId };
-      clickTrigger('canopy-structural-edit-trigger');
+    const result = crdt.handle_structural_intent(handle, op, nodeId, Date.now());
+    if (result !== "ok") {
+      console.error("[protocol] structural edit failed:", result);
+      return;
     }
+    // Sync CM6 from CRDT after structural edit
+    el.syncAfterExternalChange();
+    el.notifyLocalChange();
+    // Trigger Rabbita refresh
+    canopyGlobal.__canopy_pending_structural_edit = { op, nodeId };
+    clickTrigger('canopy-editor-structural-edit');
   }) as EventListener, { signal });
   el.addEventListener(CanopyEvents.REQUEST_UNDO, () => {
     if (!canopyGlobal.__canopy_crdt || canopyGlobal.__canopy_crdt_handle == null) return;
     const crdt = canopyGlobal.__canopy_crdt;
     const handle = canopyGlobal.__canopy_crdt_handle;
-    if (crdt.handle_undo) {
-      // Protocol path: undo in MoonBit, sync CM6
-      const didUndo = crdt.handle_undo(handle);
-      if (didUndo) {
-        el.syncAfterExternalChange();
-        el.notifyLocalChange();
-        clickTrigger('canopy-editor-text-changed');
-      }
-    } else {
-      // Fallback
-      clickTrigger('canopy-undo-trigger');
+    const didUndo = crdt.handle_undo(handle);
+    if (didUndo) {
+      el.syncAfterExternalChange();
+      el.notifyLocalChange();
+      clickTrigger('canopy-editor-text-changed');
     }
   }, { signal });
   el.addEventListener(CanopyEvents.REQUEST_REDO, () => {
     if (!canopyGlobal.__canopy_crdt || canopyGlobal.__canopy_crdt_handle == null) return;
     const crdt = canopyGlobal.__canopy_crdt;
     const handle = canopyGlobal.__canopy_crdt_handle;
-    if (crdt.handle_redo) {
-      // Protocol path: redo in MoonBit, sync CM6
-      const didRedo = crdt.handle_redo(handle);
-      if (didRedo) {
-        el.syncAfterExternalChange();
-        el.notifyLocalChange();
-        clickTrigger('canopy-editor-text-changed');
-      }
-    } else {
-      // Fallback
-      clickTrigger('canopy-redo-trigger');
+    const didRedo = crdt.handle_redo(handle);
+    if (didRedo) {
+      el.syncAfterExternalChange();
+      el.notifyLocalChange();
+      clickTrigger('canopy-editor-text-changed');
     }
   }, { signal });
   el.addEventListener(CanopyEvents.ACTION_OVERLAY_OPEN, ((event: Event) => {

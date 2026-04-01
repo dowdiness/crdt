@@ -29,14 +29,6 @@ fn view_editor(
     node("canopy-editor", attrs, [@html.text("")]),
     // Hidden buttons clicked by JS when the Web Component forwards events
     // back into Rabbita. aria-hidden + tabindex=-1 keeps them out of a11y flow.
-    // Legacy triggers (kept for fallback paths):
-    hidden_trigger(
-      dispatch,
-      StructuralEditRequested(op="", node_id=""),
-      "canopy-structural-edit-trigger",
-    ),
-    hidden_trigger(dispatch, Undo, "canopy-undo-trigger"),
-    hidden_trigger(dispatch, Redo, "canopy-redo-trigger"),
     hidden_trigger(
       dispatch,
       SyncStatusChanged(""),

@@ -86,9 +86,6 @@ extern "js" fn js_take_structural_edit_node_id() -> String =
   #|   return typeof pending.nodeId === 'string' ? pending.nodeId : '';
   #| }
 
-// js_undo_and_sync and js_redo_and_sync removed in Phase 4.
-// Undo/redo now handled directly in MoonBit via editor.undo()/editor.redo().
-
 ///|
 /// Read and consume the pending sync status set by JS.
 extern "js" fn js_take_sync_status() -> String =

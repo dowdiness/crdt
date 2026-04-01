@@ -4,8 +4,7 @@ pub enum Msg {
   SetMode(EditorMode)
   TogglePanel(PanelId)
   SelectBottomTab(BottomTab)
-  // From Web Component events
-  NodeSelected(String)
+  // From Web Component events (inspector panel dispatch)
   StructuralEditRequested(op~ : String, node_id~ : String)
   // Undo/redo
   Undo

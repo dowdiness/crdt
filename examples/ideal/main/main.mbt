@@ -424,18 +424,6 @@ fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       let new_model = { ..model, bottom_tab: tab }
       (graphviz_render_cmd(new_model), new_model)
     }
-    NodeSelected(node_id) => {
-      let resolved_node_id = if node_id == "" {
-        js_take_selected_node_id()
-      } else {
-        node_id
-      }
-      if resolved_node_id == "" {
-        (none, model)
-      } else {
-        (none, { ..model, selected_node: Some(resolved_node_id) })
-      }
-    }
     StructuralEditRequested(op~, node_id~) => {
       let resolved_op = if op == "" { js_take_structural_edit_op() } else { op }
       let resolved_node_id = if node_id == "" {
