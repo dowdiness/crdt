@@ -59,8 +59,6 @@ pub fn rebuild_kind(@ast.Term, Array[@dowdiness/canopy/core.ProjNode[@ast.Term]]
 
 pub fn[T : @dowdiness/loom/core.TreeNode] reconcile(@dowdiness/canopy/core.ProjNode[T], @dowdiness/canopy/core.ProjNode[T], @ref.Ref[Int]) -> @dowdiness/canopy/core.ProjNode[T]
 
-pub fn reconcile_ast(@dowdiness/canopy/core.ProjNode[@ast.Term], @dowdiness/canopy/core.ProjNode[@ast.Term], @ref.Ref[Int]) -> @dowdiness/canopy/core.ProjNode[@ast.Term]
-
 pub fn reconcile_flat_proj(@proj.FlatProj, @proj.FlatProj, @ref.Ref[Int]) -> @proj.FlatProj
 
 pub fn resolve_binder(@dowdiness/canopy/core.NodeId, String, @proj.FlatProj, Map[@dowdiness/canopy/core.NodeId, @dowdiness/canopy/core.ProjNode[@ast.Term]], @dowdiness/canopy/core.SourceMap) -> @edits.BindingSite?
@@ -115,8 +113,6 @@ pub using @zipper {type HoleRegistry}
 pub using @edits {type NodeContext}
 
 pub using @zipper {type PositionRole}
-
-pub using @dowdiness/canopy/core {type SpanEdit}
 
 pub using @zipper {type TermCtx}
 

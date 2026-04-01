@@ -18,7 +18,6 @@ pub using @lambda_proj {
 pub using @lambda_edits {
   type TreeEditOp,
   type EditContext,
-  type SpanEdit,
   type EditResult,
   type FocusHint,
   type DropPosition,
