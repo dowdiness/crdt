@@ -68,7 +68,7 @@ pub fn get_view_tree_json(Int) -> String
 
 pub fn handle_redo(Int) -> Bool
 
-pub fn handle_structural_intent(Int, String, String, Int) -> String
+pub fn handle_structural_intent(Int, String, String, Int, String) -> String
 
 pub fn handle_text_intent(Int, Int, Int, String, Int) -> Unit
 

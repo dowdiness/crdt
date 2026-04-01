@@ -155,7 +155,7 @@ function wireEditorEvents(el: CanopyEditor) {
     const crdt = canopyGlobal.__canopy_crdt;
     const handle = canopyGlobal.__canopy_crdt_handle;
     // Apply structural edit via protocol FFI
-    const result = crdt.handle_structural_intent(handle, op, nodeId, Date.now());
+    const result = crdt.handle_structural_intent(handle, op, nodeId, Date.now(), "");
     if (result !== "ok") {
       console.error("[protocol] structural edit failed:", result);
       return;

@@ -1,13 +1,7 @@
 // Canopy ProseMirror example — structural editor powered by EditorProtocol.
-//
-// Architecture:
-//   MoonBit CRDT ──ViewPatch──→ PMAdapter ──renders──→ ProseMirror
-//   ProseMirror ──UserIntent──→ MoonBit CRDT (via FFI)
-//
-// No local convert.ts, reconciler.ts, bridge.ts, or schema.ts needed.
-// All tree conversion and diffing happens in MoonBit; PMAdapter renders.
 
 import * as crdt from "@moonbit/canopy";
+import { EditorState as PmState } from "prosemirror-state";
 import { PMAdapter } from "../../../lib/editor-adapter";
 import type { ViewPatch, ViewNode, UserIntent } from "../../../lib/editor-adapter";
 import { connectWebSocket } from "./ws-glue";
@@ -37,34 +31,42 @@ function handleIntent(intent: UserIntent): void {
     }
 
     case "StructuralEdit": {
-      crdt.handle_structural_intent(
+      const paramsJson = Object.keys(intent.params).length > 0
+        ? JSON.stringify(intent.params)
+        : "";
+      const result = crdt.handle_structural_intent(
         handle,
         intent.op,
         String(intent.node_id),
         ts,
+        paramsJson,
       );
+      if (result !== "ok") {
+        console.error("[protocol] structural edit failed:", result);
+        return;
+      }
       break;
     }
 
-    case "Undo":
-      crdt.handle_undo(handle);
+    case "Undo": {
+      const didUndo = crdt.handle_undo(handle);
+      if (!didUndo) return;
       break;
+    }
 
-    case "Redo":
-      crdt.handle_redo(handle);
+    case "Redo": {
+      const didRedo = crdt.handle_redo(handle);
+      if (!didRedo) return;
       break;
+    }
 
     case "SelectNode":
     case "SetCursor":
     case "CommitEdit":
-      // Selection/cursor intents — no CRDT mutation needed
       return;
   }
 
-  // After any CRDT mutation, compute patches and apply
   reconcile();
-
-  // Broadcast to peers
   if (broadcastEdit) broadcastEdit();
 }
 
@@ -90,12 +92,19 @@ updateDebug();
 
 // ── Structural keymap ───────────────────────────────────────
 
-// Install the structural keymap plugin on the PM view
+// Install structural keymap by creating a new PM state with the plugin.
+// PMAdapter's view is non-editable but needs tabindex for keyboard focus.
 const pmView = adapter.getView();
-const newState = pmView.state.reconfigure({
-  plugins: [...pmView.state.plugins, structuralKeymap(handleIntent)],
+const oldState = pmView.state;
+const newState = PmState.create({
+  doc: oldState.doc,
+  selection: oldState.selection,
+  plugins: [...oldState.plugins, structuralKeymap(handleIntent)],
 });
 pmView.updateState(newState);
+
+// Allow keyboard focus on the non-editable PM view
+pmView.dom.setAttribute("tabindex", "0");
 
 // ── Debug panel ─────────────────────────────────────────────
 
@@ -121,7 +130,6 @@ const sync = connectWebSocket(
   crdt as any,
   WS_URL,
   () => {
-    // After remote ops arrive, recompute patches and apply
     reconcile();
   },
 );

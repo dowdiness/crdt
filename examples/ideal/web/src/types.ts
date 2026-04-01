@@ -59,6 +59,6 @@ export interface CrdtModule {
   handle_text_intent(handle: number, from: number, deletedLen: number, insert: string, timestampMs: number): void;
   handle_undo(handle: number): boolean;
   handle_redo(handle: number): boolean;
-  handle_structural_intent(handle: number, op: string, nodeId: string, timestampMs: number): string;
+  handle_structural_intent(handle: number, op: string, nodeId: string, timestampMs: number, paramsJson: string): string;
   [key: string]: any;
 }
