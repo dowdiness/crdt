@@ -1,0 +1,4 @@
+import {
+  "dowdiness/canopy/lang/json/proj" @json_proj,
+  "dowdiness/canopy/lang/json/edits" @json_edits,
+}
