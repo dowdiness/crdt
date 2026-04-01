@@ -1,0 +1,421 @@
+// Lambda editor FFI — lifecycle, text, undo, projection, intent
+
+// Handle-based editor registry (supports multiple concurrent editors)
+
+///|
+let editors : Map[Int, @editor.SyncEditor[@ast.Term]] = Map::new()
+
+///|
+let next_handle : Ref[Int] = { val: 1 }
+
+///|
+let last_created_handle : Ref[Int?] = { val: None }
+
+///|
+/// Get the most recently created editor for legacy MoonBit consumers.
+pub fn get_sync_editor() -> @editor.SyncEditor[@ast.Term]? {
+  match last_created_handle.val {
+    Some(handle) => editors.get(handle)
+    None => None
+  }
+}
+
+///|
+/// Create a new SyncEditor instance.
+/// Returns a unique handle for this editor.
+pub fn create_editor(agent_id : String) -> Int {
+  let handle = next_handle.val
+  next_handle.val = handle + 1
+  editors[handle] = @editor.SyncEditor::new_lambda(agent_id)
+  last_created_handle.val = Some(handle)
+  handle
+}
+
+///|
+/// Destroy an editor instance and free its resources.
+pub fn destroy_editor(handle : Int) -> Unit {
+  editors.remove(handle)
+  view_states.remove(handle)
+  if last_created_handle.val == Some(handle) {
+    last_created_handle.val = None
+  }
+}
+
+///|
+/// Get current text content
+pub fn get_text(handle : Int) -> String {
+  match editors.get(handle) {
+    Some(ed) => ed.get_text()
+    None => ""
+  }
+}
+
+///|
+/// Set text content directly (replaces entire document)
+pub fn set_text(handle : Int, new_text : String) -> Unit {
+  match editors.get(handle) {
+    Some(ed) => ed.set_text(new_text)
+    None => ()
+  }
+}
+
+///|
+/// Get AST as DOT format with name resolution coloring
+pub fn get_ast_dot_resolved(handle : Int) -> String {
+  match editors.get(handle) {
+    Some(ed) => ed.get_dot_resolved()
+    None => "digraph { }"
+  }
+}
+
+///|
+/// Get AST as pretty-printed string (expression + debug tree)
+pub fn get_ast_pretty(handle : Int) -> String {
+  match editors.get(handle) {
+    Some(ed) => ed.get_ast_pretty()
+    None => ""
+  }
+}
+
+///|
+/// Get parse errors as JSON array
+pub fn get_errors_json(handle : Int) -> String {
+  match editors.get(handle) {
+    Some(ed) => ed.get_errors().to_json().stringify()
+    None => "[]"
+  }
+}
+
+///|
+/// Export all operations as a SyncMessage JSON string.
+pub fn export_all_json(handle : Int) -> String {
+  match editors.get(handle) {
+    Some(ed) =>
+      ed.export_all().to_json_string() catch {
+        _ => "{\"ops\":[],\"heads\":[]}"
+      }
+    None => "{\"ops\":[],\"heads\":[]}"
+  }
+}
+
+///|
+/// Export operations since a peer's version as a SyncMessage JSON string.
+pub fn export_since_json(handle : Int, peer_version_json : String) -> String {
+  match editors.get(handle) {
+    Some(ed) =>
+      try {
+        let ver = @text.Version::from_json_string(peer_version_json)
+        ed.export_since(ver).to_json_string()
+      } catch {
+        _ => "{\"ops\":[],\"heads\":[]}"
+      }
+    None => "{\"ops\":[],\"heads\":[]}"
+  }
+}
+
+///|
+/// Apply a SyncMessage received from a peer.
+pub fn apply_sync_json(handle : Int, sync_json : String) -> String {
+  match editors.get(handle) {
+    Some(ed) =>
+      try {
+        let msg = @text.SyncMessage::from_json_string(sync_json)
+        ed.apply_sync(msg)
+        "ok"
+      } catch {
+        err => "{\"error\":\"\{err}\"}"
+      }
+    None => "{\"error\":\"invalid handle\"}"
+  }
+}
+
+///|
+/// Get the current version as a JSON string.
+pub fn get_version_json(handle : Int) -> String {
+  match editors.get(handle) {
+    Some(ed) => ed.get_version().to_json_string()
+    None => "\"\""
+  }
+}
+
+// --- Undo ---
+
+///|
+/// Create a new SyncEditor with undo support.
+/// Returns a unique handle for this editor.
+pub fn create_editor_with_undo(
+  agent_id : String,
+  capture_timeout_ms : Int,
+) -> Int {
+  let handle = next_handle.val
+  next_handle.val = handle + 1
+  editors[handle] = @editor.SyncEditor::new_lambda(
+    agent_id,
+    capture_timeout_ms~,
+  )
+  last_created_handle.val = Some(handle)
+  handle
+}
+
+///|
+/// Insert text at cursor position and record for undo
+pub fn insert_and_record(
+  handle : Int,
+  text : String,
+  timestamp_ms : Int,
+) -> Unit {
+  match editors.get(handle) {
+    Some(ed) => try! ed.insert_and_record(text, timestamp_ms)
+    None => ()
+  }
+}
+
+///|
+/// Delete character at cursor (forward delete) and record for undo
+pub fn delete_and_record(handle : Int, timestamp_ms : Int) -> Bool {
+  match editors.get(handle) {
+    Some(ed) => ed.delete_and_record(timestamp_ms)
+    None => false
+  }
+}
+
+///|
+/// Delete character before cursor (backspace) and record for undo
+pub fn backspace_and_record(handle : Int, timestamp_ms : Int) -> Bool {
+  match editors.get(handle) {
+    Some(ed) => ed.backspace_and_record(timestamp_ms)
+    None => false
+  }
+}
+
+///|
+/// Insert text at a specific position without moving the cursor.
+/// Records the operation for undo. Used by ProseMirror bridge.
+pub fn insert_at(
+  handle : Int,
+  position : Int,
+  text : String,
+  timestamp_ms : Int,
+) -> Unit {
+  match editors.get(handle) {
+    Some(ed) => ed.insert_at(position, text, timestamp_ms)
+    None => ()
+  }
+}
+
+///|
+/// Delete the character at a specific position without moving the cursor.
+/// Records the operation for undo. Returns false if position is out of bounds.
+/// Used by ProseMirror bridge.
+pub fn delete_at(handle : Int, position : Int, timestamp_ms : Int) -> Bool {
+  match editors.get(handle) {
+    Some(ed) => ed.delete_at(position, timestamp_ms)
+    None => false
+  }
+}
+
+///|
+/// Set text content directly and record changes for undo
+pub fn set_text_and_record(
+  handle : Int,
+  new_text : String,
+  timestamp_ms : Int,
+) -> Unit {
+  match editors.get(handle) {
+    Some(ed) => ed.set_text_and_record(new_text, timestamp_ms)
+    None => ()
+  }
+}
+
+///|
+/// Undo the last operation group.
+pub fn undo_manager_undo(handle : Int) -> Bool {
+  match editors.get(handle) {
+    Some(ed) => ed.undo()
+    None => false
+  }
+}
+
+///|
+/// Redo the last undone operation group.
+pub fn undo_manager_redo(handle : Int) -> Bool {
+  match editors.get(handle) {
+    Some(ed) => ed.redo()
+    None => false
+  }
+}
+
+///|
+/// Undo and return sync ops as JSON for peer broadcast.
+/// Returns empty string if undo stack is empty.
+pub fn undo_and_export_json(handle : Int) -> String {
+  match editors.get(handle) {
+    Some(ed) =>
+      match ed.undo_and_export() {
+        Some(msg) => msg.to_json_string()
+        None => ""
+      }
+    None => ""
+  }
+}
+
+///|
+/// Redo and return sync ops as JSON for peer broadcast.
+/// Returns empty string if redo stack is empty.
+pub fn redo_and_export_json(handle : Int) -> String {
+  match editors.get(handle) {
+    Some(ed) =>
+      match ed.redo_and_export() {
+        Some(msg) => msg.to_json_string()
+        None => ""
+      }
+    None => ""
+  }
+}
+
+///|
+/// Check if undo is possible
+pub fn undo_manager_can_undo(handle : Int) -> Bool {
+  match editors.get(handle) {
+    Some(ed) => ed.can_undo()
+    None => false
+  }
+}
+
+///|
+/// Check if redo is possible
+pub fn undo_manager_can_redo(handle : Int) -> Bool {
+  match editors.get(handle) {
+    Some(ed) => ed.can_redo()
+    None => false
+  }
+}
+
+///|
+/// Enable or disable undo tracking
+pub fn undo_manager_set_tracking(handle : Int, enabled : Bool) -> Unit {
+  match editors.get(handle) {
+    Some(ed) => ed.set_tracking(enabled)
+    None => ()
+  }
+}
+
+///|
+/// Clear both undo and redo stacks
+pub fn undo_manager_clear(handle : Int) -> Unit {
+  match editors.get(handle) {
+    Some(ed) => ed.clear_undo()
+    None => ()
+  }
+}
+
+// --- Projection ---
+
+///|
+/// Get the ProjNode tree as JSON string.
+/// Returns "null" if no projection is available.
+pub fn get_proj_node_json(handle : Int) -> String {
+  match editors.get(handle) {
+    Some(ed) =>
+      match ed.get_proj_node() {
+        Some(proj) => proj.to_json().stringify()
+        None => "null"
+      }
+    None => "null"
+  }
+}
+
+///|
+/// Get the SourceMap as JSON string.
+/// Returns an array of {node_id, start, end} entries.
+pub fn get_source_map_json(handle : Int) -> String {
+  match editors.get(handle) {
+    Some(ed) => ed.get_source_map().to_json().stringify()
+    None => "[]"
+  }
+}
+
+///|
+/// Apply a structural tree edit from a JSON-encoded TreeEditOp.
+/// Returns "ok" on success, or "error: <message>" on failure.
+pub fn apply_tree_edit_json(
+  handle : Int,
+  op_json : String,
+  timestamp_ms : Int,
+) -> String {
+  match editors.get(handle) {
+    Some(ed) => {
+      let json = @json.parse(op_json) catch {
+        _ => return "error: invalid JSON"
+      }
+      match @editor.parse_tree_edit_op(json) {
+        Ok(op) =>
+          match ed.apply_tree_edit(op, timestamp_ms) {
+            Ok(_) => "ok"
+            Err(err) => "error: " + err.message()
+          }
+        Err(err) => "error: " + err.message()
+      }
+    }
+    None => "error: no editor"
+  }
+}
+
+// --- Intent ---
+
+///|
+pub fn handle_text_intent(
+  handle : Int,
+  from : Int,
+  deleted_len : Int,
+  insert : String,
+  timestamp_ms : Int,
+) -> Unit {
+  match editors.get(handle) {
+    Some(ed) => ed.apply_text_edit(from, deleted_len, insert, timestamp_ms)
+    None => ()
+  }
+}
+
+///|
+pub fn handle_undo(handle : Int) -> Bool {
+  undo_manager_undo(handle)
+}
+
+///|
+pub fn handle_redo(handle : Int) -> Bool {
+  undo_manager_redo(handle)
+}
+
+///|
+/// Apply a structural edit intent with optional params.
+/// params_json is a JSON object string like '{"var_name":"x"}' or ''.
+pub fn handle_structural_intent(
+  handle : Int,
+  op : String,
+  node_id_str : String,
+  timestamp_ms : Int,
+  params_json : String,
+) -> String {
+  let m : Map[String, Json] = {}
+  m["type"] = op.to_json()
+  let node_id_int = @string.parse_int(node_id_str) catch {
+    _ => return "error: invalid node_id"
+  }
+  m["node_id"] = node_id_int.to_json()
+  // Merge extra params (var_name, new_name, op, etc.)
+  if params_json != "" {
+    try {
+      match @json.parse(params_json) {
+        Json::Object(pm) =>
+          for k, v in pm {
+            m[k] = v
+          }
+        _ => ()
+      }
+    } catch {
+      _ => ()
+    }
+  }
+  apply_tree_edit_json(handle, Json::object(m).stringify(), timestamp_ms)
+}

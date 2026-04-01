@@ -1,6 +1,4 @@
-// Protocol API: ViewNode tree and ViewPatch streams via JSON.
-// Exposes get_view_tree_json and compute_view_patches_json for both
-// lambda and JSON editors.
+// View FFI — ViewNode tree and ViewPatch streams for both lambda and JSON editors
 
 ///|
 let view_states : Map[Int, @editor.ViewUpdateState] = Map::new()
