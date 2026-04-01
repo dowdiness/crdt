@@ -76,41 +76,8 @@ extern "js" fn js_take_structural_edit_node_id() -> String =
   #|   return typeof pending.nodeId === 'string' ? pending.nodeId : '';
   #| }
 
-///|
-/// Undo on the JS-side CRDT editor, sync CM6, and trigger MoonBit text sync.
-extern "js" fn js_undo_and_sync() -> Unit =
-  #| function() {
-  #|   var crdt = globalThis.__canopy_crdt;
-  #|   var handle = globalThis.__canopy_crdt_handle;
-  #|   if (!crdt || handle == null) return;
-  #|   if (!crdt.undo_manager_can_undo(handle)) return;
-  #|   crdt.undo_manager_undo(handle);
-  #|   var el = document.querySelector('canopy-editor');
-  #|   if (el && typeof el.notifyLocalChange === 'function') {
-  #|     el.notifyLocalChange();
-  #|   }
-  #|   if (el) el.projNode = '';
-  #|   var btn = document.getElementById('canopy-text-sync-trigger');
-  #|   if (btn) btn.click();
-  #| }
-
-///|
-/// Redo on the JS-side CRDT editor, sync CM6, and trigger MoonBit text sync.
-extern "js" fn js_redo_and_sync() -> Unit =
-  #| function() {
-  #|   var crdt = globalThis.__canopy_crdt;
-  #|   var handle = globalThis.__canopy_crdt_handle;
-  #|   if (!crdt || handle == null) return;
-  #|   if (!crdt.undo_manager_can_redo(handle)) return;
-  #|   crdt.undo_manager_redo(handle);
-  #|   var el = document.querySelector('canopy-editor');
-  #|   if (el && typeof el.notifyLocalChange === 'function') {
-  #|     el.notifyLocalChange();
-  #|   }
-  #|   if (el) el.projNode = '';
-  #|   var btn = document.getElementById('canopy-text-sync-trigger');
-  #|   if (btn) btn.click();
-  #| }
+// js_undo_and_sync and js_redo_and_sync removed in Phase 4.
+// Undo/redo now handled directly in MoonBit via editor.undo()/editor.redo().
 
 ///|
 /// Read and consume the pending sync status set by JS.

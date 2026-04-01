@@ -224,18 +224,31 @@ export class CanopyEditor extends HTMLElement {
           lambda(),
           syntaxHighlighting(lambdaHighlightStyle),
           ...peerCursors(),
-          // Forward text changes to CRDT
+          // Forward text changes to CRDT via protocol
           CmView.updateListener.of(update => {
             if (this.updating || !update.docChanged || !this.crdt || this.crdtHandle === null) return;
-            // Get old and new text, compute diff, apply to CRDT
-            const newText = update.state.doc.toString();
-            // Use set_text_and_record so changes go into undo stack
-            if (this.crdt.set_text_and_record) {
-              this.crdt.set_text_and_record(this.crdtHandle, newText, Date.now());
+            const ts = Date.now();
+            // Apply each change incrementally via handle_text_intent
+            if (this.crdt.handle_text_intent) {
+              update.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+                this.crdt!.handle_text_intent(
+                  this.crdtHandle!,
+                  fromA,
+                  toA - fromA,
+                  inserted.toString(),
+                  ts,
+                );
+              });
             } else {
-              this.crdt.set_text(this.crdtHandle, newText);
+              // Fallback for older CRDT modules without handle_text_intent
+              const newText = update.state.doc.toString();
+              if (this.crdt.set_text_and_record) {
+                this.crdt.set_text_and_record(this.crdtHandle, newText, ts);
+              } else {
+                this.crdt.set_text(this.crdtHandle, newText);
+              }
             }
-            // Notify Rabbita
+            // Notify peers + Rabbita
             this.notifyLocalChange();
             this.dispatchEvent(new CustomEvent(CanopyEvents.TEXT_CHANGE, {
               bubbles: true, composed: true,
@@ -439,6 +452,15 @@ export class CanopyEditor extends HTMLElement {
   setAgentIdentity(name: string, color: string): void {
     this.agentName = name;
     this.agentColor = color;
+  }
+
+  /** Sync CM6 content from CRDT after an external change (undo, redo, structural edit). */
+  syncAfterExternalChange(): void {
+    if (this.mode === 'text') {
+      this.syncCmFromCrdt();
+    } else if (this.structureSession) {
+      this.structureSession.reconcile();
+    }
   }
 
   updatePeerCursorsFromCrdt(): void {

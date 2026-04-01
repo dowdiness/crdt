@@ -473,13 +473,27 @@ fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         _ => (none, model)
       }
     Undo => {
-      // Undo on JS-side CRDT, sync CM6, then trigger text sync back
-      let cmd = @rabbita.effect(fn() { js_undo_and_sync() })
-      (cmd, model)
+      // Protocol path: undo directly on MoonBit editor
+      let did_undo = model.editor.undo()
+      if did_undo {
+        let new_model = refresh(model)
+        let text = new_model.editor.get_text()
+        let cmd = @rabbita.effect(fn() { js_reconcile_editor_with_text(text) })
+        (cmd, new_model)
+      } else {
+        (none, model)
+      }
     }
     Redo => {
-      let cmd = @rabbita.effect(fn() { js_redo_and_sync() })
-      (cmd, model)
+      let did_redo = model.editor.redo()
+      if did_redo {
+        let new_model = refresh(model)
+        let text = new_model.editor.get_text()
+        let cmd = @rabbita.effect(fn() { js_reconcile_editor_with_text(text) })
+        (cmd, new_model)
+      } else {
+        (none, model)
+      }
     }
     LoadExample(example_text) => {
       model.editor.set_text(example_text)
@@ -699,6 +713,48 @@ fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     NamePromptCancel => {
       js_set_overlay_open(false)
       (none, { ..model, overlay: closed_overlay() })
+    }
+    // ── Protocol-based editor communication (Phase 4) ──────
+    EditorTextChanged => {
+      // Text was already applied by TS calling handle_text_intent FFI.
+      // Just refresh the outline.
+      let new_model = refresh(model)
+      (graphviz_render_cmd(new_model), new_model)
+    }
+    EditorNodeSelected(node_id) => {
+      let resolved_node_id = if node_id == "" {
+        js_take_selected_node_id()
+      } else {
+        node_id
+      }
+      if resolved_node_id == "" {
+        (none, model)
+      } else {
+        (none, { ..model, selected_node: Some(resolved_node_id) })
+      }
+    }
+    EditorStructuralEdit(op~, node_id~) => {
+      let resolved_op = if op == "" {
+        js_take_structural_edit_op()
+      } else {
+        op
+      }
+      let resolved_node_id = if node_id == "" {
+        js_take_structural_edit_node_id()
+      } else {
+        node_id
+      }
+      if resolved_op == "" || resolved_node_id == "" {
+        (none, model)
+      } else {
+        // The edit was already applied by TS calling handle_structural_intent FFI.
+        // Just refresh the model.
+        let new_model = refresh({
+          ..model,
+          next_timestamp: model.next_timestamp + 1,
+        })
+        (none, new_model)
+      }
     }
   }
 }

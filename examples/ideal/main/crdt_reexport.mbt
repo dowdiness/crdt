@@ -143,3 +143,44 @@ pub fn ephemeral_get_peer_cursors_json(handle : Int) -> String {
 pub fn ephemeral_remove_outdated(handle : Int) -> Unit {
   @crdt.ephemeral_remove_outdated(handle)
 }
+
+// ── Protocol-based intent handlers ────────────────────────
+// These replace the global-state bridge for Phase 4.
+// TS calls these directly instead of setting globals + clicking hidden buttons.
+
+///|
+/// Apply a text edit intent. Called from CM6 updateListener.
+/// Applies the edit to the CRDT with undo recording.
+/// Returns the current text after the edit (for sync verification).
+pub fn handle_text_intent(
+  handle : Int,
+  from : Int,
+  deleted_len : Int,
+  insert : String,
+  timestamp_ms : Int,
+) -> Unit {
+  @crdt.handle_text_intent(handle, from, deleted_len, insert, timestamp_ms)
+}
+
+///|
+/// Undo on the MoonBit editor directly and return whether it succeeded.
+pub fn handle_undo(handle : Int) -> Bool {
+  @crdt.handle_undo(handle)
+}
+
+///|
+/// Redo on the MoonBit editor directly and return whether it succeeded.
+pub fn handle_redo(handle : Int) -> Bool {
+  @crdt.handle_redo(handle)
+}
+
+///|
+/// Apply a structural edit intent. Returns "ok" on success, error message on failure.
+pub fn handle_structural_intent(
+  handle : Int,
+  op : String,
+  node_id : String,
+  timestamp_ms : Int,
+) -> String {
+  @crdt.handle_structural_intent(handle, op, node_id, timestamp_ms)
+}

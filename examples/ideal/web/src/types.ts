@@ -55,5 +55,10 @@ export interface CrdtModule {
   ephemeral_delete_presence(handle: number): void;
   ephemeral_get_peer_cursors_json(handle: number): string;
   ephemeral_remove_outdated(handle: number): void;
+  // Protocol-based intent handlers (Phase 4)
+  handle_text_intent(handle: number, from: number, deletedLen: number, insert: string, timestampMs: number): void;
+  handle_undo(handle: number): boolean;
+  handle_redo(handle: number): boolean;
+  handle_structural_intent(handle: number, op: string, nodeId: string, timestampMs: number): string;
   [key: string]: any;
 }
