@@ -303,10 +303,12 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 
 **Impact:** High | **Effort:** High
 
-- [ ] Framework-agnostic integration layer to eliminate duplicated TS logic
-  Why: examples/ apps duplicate ProjNode conversion, reconciliation, and SourceMap caching in TS. MoonBit already knows what changed but exports full snapshots.
+- [x] Framework-agnostic integration layer to eliminate duplicated TS logic — ✅ Done (Phases 0-6). Protocol types (`ViewPatch`, `ViewNode`, `UserIntent`), ViewUpdater, 3 adapters (HTML, CM6, PM). `examples/web`, `examples/ideal`, `examples/prosemirror`, `examples/demo-react` all migrated.
   Plan: `docs/plans/2026-04-01-editor-protocol-design.md`
-  Exit: `examples/ideal` and `examples/prosemirror` use EditorProtocol with thin TS adapters; no duplicated conversion/reconciliation code.
+- [ ] BlockAdapter + `examples/block-editor` migration (Phase 7)
+  Why: block-editor has its own parallel FFI surface; migrating to protocol enables Markdown editing with zero new TS code.
+  Plan: `docs/plans/2026-04-01-editor-protocol-design.md` §Phase 7
+  Exit: block-editor uses BlockAdapter with ViewNode tree; autoformat detection moved to MoonBit.
 
 ---
 
