@@ -299,6 +299,17 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 
 ---
 
+## 14. EditorProtocol — Framework-Agnostic Integration Layer
+
+**Impact:** High | **Effort:** High
+
+- [ ] Framework-agnostic integration layer to eliminate duplicated TS logic
+  Why: examples/ apps duplicate ProjNode conversion, reconciliation, and SourceMap caching in TS. MoonBit already knows what changed but exports full snapshots.
+  Plan: `docs/plans/2026-04-01-editor-protocol-design.md`
+  Exit: `examples/ideal` and `examples/prosemirror` use EditorProtocol with thin TS adapters; no duplicated conversion/reconciliation code.
+
+---
+
 ## Priority Ranking
 
 | # | Proposal | Effort | Impact |
@@ -315,3 +326,4 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 | 10 | Memory optimization (lazy loading, B-tree indexing) | High | Medium |
 | 11 | `zipper-gen` code generation for tree zippers | Medium | Medium | Trigger: next tree type |
 | 12 | Code cleanup | Medium | Medium | Mostly done |
+| 14 | EditorProtocol integration layer | High | High |

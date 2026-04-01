@@ -1,0 +1,55 @@
+// ViewNode serialization benchmark — Phase 0 spike.
+// Validates that JSON serialization of a realistic ViewNode tree
+// (100 lambda defs, ~1000 nodes) round-trips under 1ms.
+
+///|
+fn bench_source(let_count : Int) -> String {
+  let segments : Array[String] = []
+  for i = 0; i < let_count; i = i + 1 {
+    segments.push("let f\{i} = \\x.x + \{i}")
+  }
+  segments.push("f0")
+  segments.join("\n")
+}
+
+///|
+fn bench_setup(let_count : Int) -> ViewNode {
+  let editor = @editor.SyncEditor::new_lambda("bench")
+  editor.set_text(bench_source(let_count))
+  let proj_node = editor.get_proj_node().unwrap()
+  let source_map = editor.get_source_map()
+  proj_to_view_node(proj_node, source_map)
+}
+
+///|
+test "viewnode serialization (100 defs)" (b : @bench.T) {
+  let view_node = bench_setup(100)
+  let node_count = view_node.node_count()
+  println("node count: \{node_count}")
+  b.bench(fn() {
+    let json = view_node.to_json()
+    b.keep(json.stringify())
+  })
+}
+
+///|
+test "viewnode serialization (200 defs)" (b : @bench.T) {
+  let view_node = bench_setup(200)
+  let node_count = view_node.node_count()
+  println("node count: \{node_count}")
+  b.bench(fn() {
+    let json = view_node.to_json()
+    b.keep(json.stringify())
+  })
+}
+
+///|
+test "viewnode serialization (500 defs)" (b : @bench.T) {
+  let view_node = bench_setup(500)
+  let node_count = view_node.node_count()
+  println("node count: \{node_count}")
+  b.bench(fn() {
+    let json = view_node.to_json()
+    b.keep(json.stringify())
+  })
+}

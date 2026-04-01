@@ -1,0 +1,40 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/canopy/framework/protocol"
+
+// Values
+pub fn[T : @dowdiness/loom/core.Renderable] proj_to_view_node(@dowdiness/canopy/framework/core.ProjNode[T], @dowdiness/canopy/framework/core.SourceMap) -> ViewNode
+
+// Errors
+
+// Types and methods
+pub(all) struct TokenSpan {
+  role : String
+  start : Int
+  end : Int
+
+  fn new(role~ : String, start~ : Int, end~ : Int) -> TokenSpan
+} derive(Eq, Show)
+pub fn TokenSpan::new(role~ : String, start~ : Int, end~ : Int) -> Self
+pub impl ToJson for TokenSpan
+
+pub(all) struct ViewNode {
+  id : @dowdiness/canopy/framework/core.NodeId
+  kind_tag : String
+  label : String
+  text : String?
+  text_range : (Int, Int)
+  token_spans : Array[TokenSpan]
+  editable : Bool
+  css_class : String
+  children : Array[ViewNode]
+
+  fn new(id~ : @dowdiness/canopy/framework/core.NodeId, kind_tag~ : String, label~ : String, text? : String, text_range~ : (Int, Int), token_spans? : Array[TokenSpan], editable? : Bool, css_class? : String, children? : Array[ViewNode]) -> ViewNode
+} derive(Eq, Show)
+pub fn ViewNode::new(id~ : @dowdiness/canopy/framework/core.NodeId, kind_tag~ : String, label~ : String, text? : String, text_range~ : (Int, Int), token_spans? : Array[TokenSpan], editable? : Bool, css_class? : String, children? : Array[Self]) -> Self
+pub fn ViewNode::node_count(Self) -> Int
+pub impl ToJson for ViewNode
+
+// Type aliases
+
+// Traits
+
