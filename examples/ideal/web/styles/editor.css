@@ -552,19 +552,18 @@ canopy-editor {
   gap: var(--space-sm);
   padding: 2px 0;
   line-height: var(--leading-normal);
+  font-family: var(--canopy-font-mono);
   font-size: var(--text-caption);
 }
 
 .token-span-role {
   color: var(--canopy-muted);
-  font-family: var(--canopy-font-mono);
   min-width: 52px;
   flex-shrink: 0;
 }
 
 .token-span-range {
   color: var(--canopy-text-dim);
-  font-family: var(--canopy-font-mono);
   min-width: 44px;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
@@ -572,7 +571,6 @@ canopy-editor {
 
 .token-span-text {
   color: var(--canopy-identifier);
-  font-family: var(--canopy-font-mono);
 }
 
 /* ── Bottom Panel ───────────────────────────────────────── */
