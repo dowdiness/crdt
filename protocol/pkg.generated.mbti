@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "dowdiness/canopy/framework/protocol"
+package "dowdiness/canopy/protocol"
 
 import {
   "moonbitlang/core/json",
