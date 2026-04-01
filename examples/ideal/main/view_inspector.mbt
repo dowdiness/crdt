@@ -62,10 +62,14 @@ fn children_count(node : @proj.InteractiveTreeNode[@ast.Term]) -> Int {
 
 ///|
 /// Render the node details section of the inspector.
-fn view_node_details(node : @proj.InteractiveTreeNode[@ast.Term]) -> Html {
+/// Includes source range, source text preview, and token spans.
+fn view_node_details(
+  node : @proj.InteractiveTreeNode[@ast.Term],
+  model : Model,
+) -> Html {
   let kind = kind_of(node.label)
   let count = children_count(node)
-  div(class="panel-section", [
+  let items : Array[Html] = [
     span(class="panel-label", [text("NODE")]),
     div(class="inspector-row", [
       span(class="inspector-key", [text("Kind")]),
@@ -83,7 +87,66 @@ fn view_node_details(node : @proj.InteractiveTreeNode[@ast.Term]) -> Html {
       span(class="inspector-key", [text("ID")]),
       span(class="inspector-value", [text(node_id_to_string(node.id))]),
     ]),
-  ])
+  ]
+  // Range row + source preview (omitted for zero-length ranges)
+  let range_start = node.text_range.start
+  let range_end = node.text_range.end
+  if range_start != range_end {
+    items.push(
+      div(class="inspector-row", [
+        span(class="inspector-key", [text("Range")]),
+        span(class="inspector-value", [
+          text("\{range_start}..\{range_end}"),
+        ]),
+      ]),
+    )
+    // Source text preview, clamped and truncated
+    let source = model.editor.get_text()
+    let clamped_end = if range_end > source.length() {
+      source.length()
+    } else {
+      range_end
+    }
+    if clamped_end > range_start {
+      let slice = source.substring(start=range_start, end=clamped_end)
+      let preview = if slice.length() > 120 {
+        slice.substring(end=120) + "\u{2026}"
+      } else {
+        slice
+      }
+      items.push(div(class="source-preview", [text(preview)]))
+    }
+  }
+  // Token spans (omitted when none exist)
+  let token_spans = model.editor.get_source_map().get_all_token_spans(node.id)
+  if token_spans.length() > 0 {
+    let source = model.editor.get_text()
+    for pair in token_spans {
+      let role = pair.0
+      let span_range = pair.1
+      let span_start = span_range.start
+      let span_end = if span_range.end > source.length() {
+        source.length()
+      } else {
+        span_range.end
+      }
+      let span_text = if span_end > span_start {
+        "\"" + source.substring(start=span_start, end=span_end) + "\""
+      } else {
+        ""
+      }
+      items.push(
+        div(class="token-span-row", [
+          span(class="token-span-role", [text(role)]),
+          span(class="token-span-range", [
+            text("\{span_start}..\{span_end}"),
+          ]),
+          span(class="token-span-text", [text(span_text)]),
+        ]),
+      )
+    }
+  }
+  div(class="panel-section", items)
 }
 
 ///|
@@ -141,7 +204,7 @@ fn view_inspector_content(dispatch : Dispatch[Msg], model : Model) -> Html {
       match found {
         Some(node) =>
           @html.fragment([
-            view_node_details(node),
+            view_node_details(node, model),
             view_actions(dispatch, sel_id),
           ])
         None => p(class="no-tree-note", "No matching node")
