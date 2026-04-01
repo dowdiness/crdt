@@ -1,18 +1,25 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
+
+// Check if the MoonBit build output exists
+const moonbitBuildPath = path.resolve(__dirname, '../../_build/js/release/build/canopy.js');
+const hasMoonbitBuild = fs.existsSync(moonbitBuildPath);
+
+if (!hasMoonbitBuild) {
+  console.info('[vite] MoonBit build not found at', moonbitBuildPath);
+  console.info('[vite] Will use stub CRDT module. Run `moon build --target js` for real CRDT.');
+}
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      // Alias to the valtio-egwalker module's TypeScript sources
-      'valtio-egwalker/stub': path.resolve(__dirname, '../../valtio/src/egwalker_api_stub.ts'),
-      'valtio-egwalker/sync': path.resolve(__dirname, '../../valtio/src/egwalker_api_sync.ts'),
-      'valtio-egwalker': path.resolve(__dirname, '../../valtio/src/egwalker_api.ts'),
-      // Resolve valtio imports from submodule sources back to demo-react's node_modules
-      'valtio/vanilla': path.resolve(__dirname, 'node_modules/valtio/esm/vanilla.mjs'),
-      'valtio': path.resolve(__dirname, 'node_modules/valtio'),
+      // Point to real MoonBit build if available, otherwise stub
+      '@moonbit/crdt': hasMoonbitBuild
+        ? moonbitBuildPath
+        : path.resolve(__dirname, 'src/features/editor/crdt-stub-module.ts'),
     },
   },
   server: {

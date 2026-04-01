@@ -1,10 +1,19 @@
 // EditorPanel — a single agent's editor within the collaborative demo.
+//
+// Uses the protocol-based CRDT editor instead of Valtio proxy.
+// Local sync: reads/writes shared text store.
+// WebSocket sync: uses CRDT export/apply for real sync (when available).
 
-import { useEffect, useCallback, useRef } from 'react';
-import { useSnapshot } from 'valtio';
-import { subscribe } from 'valtio/vanilla';
-import { useEgWalker } from '../editor';
-import { sharedDoc, logOperation, WS_URL, ROOM_ID } from './store';
+import { useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
+import { useProtocolEditor } from '../editor';
+import {
+  getSharedText,
+  setSharedText,
+  subscribeSharedText,
+  logOperation,
+  WS_URL,
+  ROOM_ID,
+} from './store';
 
 interface EditorPanelProps {
   agentId: string;
@@ -13,65 +22,85 @@ interface EditorPanelProps {
 }
 
 export function EditorPanel({ agentId, color, useWebSocket = false }: EditorPanelProps) {
-  const { snap, proxy: editorProxy, canUndo, canRedo, undo, redo, withoutUndo } = useEgWalker({
-    agentId,
-    ...(useWebSocket ? { websocketUrl: WS_URL, roomId: ROOM_ID } : {}),
-  });
+  const {
+    state,
+    editor,
+    setText,
+    setCursor,
+    setTextWithoutUndo,
+    undo,
+    redo,
+    syncFromCrdt,
+  } = useProtocolEditor({ agentId });
 
-  const sharedSnap = useSnapshot(sharedDoc);
+  const sharedText = useSyncExternalStore(subscribeSharedText, getSharedText, getSharedText);
 
-  // Use a counter instead of boolean flag to handle nested/concurrent updates
-  const syncDepth = useRef(0);
-  // Track the last text we synced to avoid redundant updates
-  const lastSyncedText = useRef(editorProxy.text);
+  // Track sync state to prevent echo loops
+  const syncingRef = useRef(false);
+  const lastSyncedTextRef = useRef('');
 
-  // Sync shared doc -> local proxy (when other agent changes)
+  // --- Local sync: shared text -> local editor ---
   useEffect(() => {
     if (useWebSocket) return;
+    if (syncingRef.current) return;
+    if (!editor) return;
 
-    // Skip if we're in the middle of a sync operation
-    if (syncDepth.current > 0) return;
-
-    const remoteText = sharedSnap.text;
-    // Only sync if text actually differs and isn't our last synced value
-    if (remoteText !== editorProxy.text && remoteText !== lastSyncedText.current) {
-      syncDepth.current++;
-      try {
-        withoutUndo(() => {
-          editorProxy.text = remoteText;
-        });
-        lastSyncedText.current = remoteText;
-      } finally {
-        // Use queueMicrotask for more reliable async reset than setTimeout
-        queueMicrotask(() => {
-          syncDepth.current = Math.max(0, syncDepth.current - 1);
-        });
-      }
+    if (sharedText !== state.text && sharedText !== lastSyncedTextRef.current) {
+      syncingRef.current = true;
+      lastSyncedTextRef.current = sharedText;
+      setTextWithoutUndo(sharedText);
+      // Reset sync flag on next microtask
+      queueMicrotask(() => {
+        syncingRef.current = false;
+      });
     }
-  }, [sharedSnap.text, editorProxy, withoutUndo, useWebSocket]);
+  }, [sharedText, state.text, editor, setTextWithoutUndo, useWebSocket]);
 
-  // Sync local proxy -> shared doc (when this agent changes)
+  // --- Local sync: local editor -> shared text ---
+  // We do this in handleChange rather than an effect to avoid loops.
+
+  // --- WebSocket sync ---
+  const wsRef = useRef<WebSocket | null>(null);
+  const wsProcessingRemoteRef = useRef(false);
+
   useEffect(() => {
-    if (useWebSocket) return;
+    if (!useWebSocket || !editor) return;
 
-    const unsubscribe = subscribe(editorProxy, () => {
-      // Only propagate if not syncing and text actually changed
-      if (syncDepth.current === 0 && editorProxy.text !== sharedDoc.text) {
-        lastSyncedText.current = editorProxy.text;
-        sharedDoc.text = editorProxy.text;
+    const ws = new WebSocket(WS_URL);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'join', room: ROOM_ID }));
+      // Send current state on join
+      const syncMsg = editor.exportAllJson();
+      ws.send(JSON.stringify({ type: 'sync', room: ROOM_ID, data: syncMsg }));
+    };
+
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === 'sync' && message.data) {
+        wsProcessingRemoteRef.current = true;
+        editor.applySyncJson(message.data);
+        syncFromCrdt();
+        wsProcessingRemoteRef.current = false;
       }
-    });
-    return unsubscribe;
-  }, [editorProxy, useWebSocket]);
+    };
+
+    return () => {
+      ws.close();
+      wsRef.current = null;
+    };
+  }, [useWebSocket, editor, syncFromCrdt]);
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const newText = e.target.value;
-      const oldText = editorProxy.text;
+      const oldText = state.text;
 
-      editorProxy.text = newText;
-      editorProxy.cursor = e.target.selectionStart || 0;
+      setText(newText);
+      setCursor(e.target.selectionStart || 0);
 
+      // Log operation
       if (newText.length > oldText.length) {
         const diff = newText.length - oldText.length;
         logOperation({
@@ -88,26 +117,48 @@ export function EditorPanel({ agentId, color, useWebSocket = false }: EditorPane
           timestamp: Date.now(),
         });
       }
+
+      // Propagate to shared state (local sync)
+      if (!useWebSocket && !syncingRef.current) {
+        lastSyncedTextRef.current = newText;
+        setSharedText(newText);
+      }
+
+      // Propagate via WebSocket sync
+      if (useWebSocket && editor && wsRef.current?.readyState === WebSocket.OPEN && !wsProcessingRemoteRef.current) {
+        const syncMsg = editor.exportAllJson();
+        wsRef.current.send(JSON.stringify({ type: 'sync', room: ROOM_ID, data: syncMsg }));
+      }
     },
-    [agentId, editorProxy]
+    [agentId, state.text, setText, setCursor, useWebSocket, editor]
   );
 
   const handleSelect = useCallback(
     (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-      editorProxy.cursor = e.currentTarget.selectionStart || 0;
+      setCursor(e.currentTarget.selectionStart || 0);
     },
-    [editorProxy]
+    [setCursor]
   );
 
   const handleUndo = useCallback(() => {
     undo();
     logOperation({ agentId, type: 'undo', timestamp: Date.now() });
-  }, [agentId, undo]);
+    if (!useWebSocket && !syncingRef.current && editor) {
+      const text = editor.getText();
+      lastSyncedTextRef.current = text;
+      setSharedText(text);
+    }
+  }, [agentId, undo, useWebSocket, editor]);
 
   const handleRedo = useCallback(() => {
     redo();
     logOperation({ agentId, type: 'redo', timestamp: Date.now() });
-  }, [agentId, redo]);
+    if (!useWebSocket && !syncingRef.current && editor) {
+      const text = editor.getText();
+      lastSyncedTextRef.current = text;
+      setSharedText(text);
+    }
+  }, [agentId, redo, useWebSocket, editor]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -130,11 +181,11 @@ export function EditorPanel({ agentId, color, useWebSocket = false }: EditorPane
     <div className="editor-panel" style={{ borderColor: color }}>
       <div className="panel-header" style={{ backgroundColor: color }}>
         <span className="panel-title">{agentId}</span>
-        <span className="panel-cursor">Cursor: {snap.cursor}</span>
+        <span className="panel-cursor">Cursor: {state.cursor}</span>
       </div>
       <textarea
         className="panel-textarea"
-        value={snap.text}
+        value={state.text}
         onChange={handleChange}
         onSelect={handleSelect}
         onKeyDown={handleKeyDown}
@@ -145,12 +196,12 @@ export function EditorPanel({ agentId, color, useWebSocket = false }: EditorPane
         autoCapitalize="off"
       />
       <div className="panel-status">
-        <span>Chars: {snap.text.length}</span>
+        <span>Chars: {state.text.length}</span>
         <div className="panel-undo-controls">
           <button
             className="panel-undo-btn"
             onClick={handleUndo}
-            disabled={!canUndo}
+            disabled={!state.canUndo}
             title={`Undo ${agentId}'s changes`}
           >
             Undo
@@ -158,7 +209,7 @@ export function EditorPanel({ agentId, color, useWebSocket = false }: EditorPane
           <button
             className="panel-undo-btn"
             onClick={handleRedo}
-            disabled={!canRedo}
+            disabled={!state.canRedo}
             title={`Redo ${agentId}'s changes`}
           >
             Redo

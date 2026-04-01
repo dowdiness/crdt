@@ -6,7 +6,7 @@ test.describe('Single Editor Mode', () => {
   });
 
   test('should load the page with correct title', async ({ page }) => {
-    await expect(page).toHaveTitle('Lambda CRDT Editor - React + Valtio Demo');
+    await expect(page).toHaveTitle('Lambda CRDT Editor - React + EditorProtocol Demo');
   });
 
   test('should display Single Editor mode by default', async ({ page }) => {

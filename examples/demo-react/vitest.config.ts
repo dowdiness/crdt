@@ -1,6 +1,11 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
+
+// Check if the MoonBit build output exists
+const moonbitBuildPath = path.resolve(__dirname, '../../_build/js/release/build/canopy.js');
+const hasMoonbitBuild = fs.existsSync(moonbitBuildPath);
 
 export default defineConfig({
   plugins: [react()],
@@ -12,7 +17,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      'valtio-egwalker/stub': path.resolve(__dirname, '../../valtio/src/egwalker_api_stub.ts'),
+      '@moonbit/crdt': hasMoonbitBuild
+        ? moonbitBuildPath
+        : path.resolve(__dirname, 'src/features/editor/crdt-stub-module.ts'),
     },
   },
 });

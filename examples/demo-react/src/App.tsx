@@ -11,7 +11,7 @@ function App() {
     <div className="app">
       <header className="header">
         <h1>Lambda CRDT Editor</h1>
-        <p className="subtitle">React + Valtio + eg-walker Integration Demo</p>
+        <p className="subtitle">React + EditorProtocol + eg-walker Integration Demo</p>
       </header>
 
       <nav className="nav">
@@ -42,9 +42,8 @@ function App() {
           Built with{' '}
           <a href="https://react.dev" target="_blank" rel="noreferrer">React</a>
           {' + '}
-          <a href="https://github.com/pmndrs/valtio" target="_blank" rel="noreferrer">Valtio</a>
-          {' + '}
           <a href="https://www.moonbitlang.com" target="_blank" rel="noreferrer">MoonBit</a>
+          {' (EditorProtocol)'}
         </p>
       </footer>
     </div>

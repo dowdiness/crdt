@@ -1,10 +1,10 @@
 // LambdaEditor Component
 //
-// A React component that uses the MoonBit Valtio FFI module (valtio-egwalker).
-// Uses useSnapshot for reactive updates from the Valtio proxy state.
+// A React component that uses the MoonBit CRDT via the EditorProtocol.
+// Replaces the Valtio proxy pattern with direct CRDT calls.
 
-import { useEffect, useCallback, useRef } from 'react';
-import { useEgWalker, Toolbar, StatusBar } from '../editor';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useProtocolEditor, Toolbar, StatusBar } from '../editor';
 
 // Example lambda expressions
 const EXAMPLES = [
@@ -29,8 +29,10 @@ export function LambdaEditor({
   onTextChange,
   agentId,
 }: LambdaEditorProps) {
-  const id = agentId || `user-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-  const { snap, proxy, canUndo, canRedo, undo, redo, withoutUndo } = useEgWalker({
+  // Stable agent ID — generated once and memoized to avoid re-creating
+  // the CRDT editor on every render (critical for React StrictMode).
+  const [id] = useState(() => agentId || `user-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+  const { state, setText, setCursor, setTextWithoutUndo, undo, redo } = useProtocolEditor({
     agentId: id,
     initialText,
   });
@@ -39,22 +41,22 @@ export function LambdaEditor({
 
   // Notify parent of text changes
   useEffect(() => {
-    onTextChange?.(snap.text);
-  }, [snap.text, onTextChange]);
+    onTextChange?.(state.text);
+  }, [state.text, onTextChange]);
 
   const handleTextChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      proxy.text = e.target.value;
-      proxy.cursor = e.target.selectionStart || 0;
+      setText(e.target.value);
+      setCursor(e.target.selectionStart || 0);
     },
-    [proxy]
+    [setText, setCursor]
   );
 
   const handleSelect = useCallback(
     (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-      proxy.cursor = e.currentTarget.selectionStart || 0;
+      setCursor(e.currentTarget.selectionStart || 0);
     },
-    [proxy]
+    [setCursor]
   );
 
   const handleKeyDown = useCallback(
@@ -76,22 +78,18 @@ export function LambdaEditor({
 
   const handleLoadExample = useCallback(
     (code: string) => {
-      withoutUndo(() => {
-        proxy.text = code;
-        proxy.cursor = code.length;
-      });
+      setTextWithoutUndo(code);
+      setCursor(code.length);
       editorRef.current?.focus();
     },
-    [proxy, withoutUndo]
+    [setTextWithoutUndo, setCursor]
   );
 
   const handleClear = useCallback(() => {
-    withoutUndo(() => {
-      proxy.text = '';
-      proxy.cursor = 0;
-    });
+    setTextWithoutUndo('');
+    setCursor(0);
     editorRef.current?.focus();
-  }, [proxy, withoutUndo]);
+  }, [setTextWithoutUndo, setCursor]);
 
   const displayAgentId = agentId || 'local';
 
@@ -101,8 +99,8 @@ export function LambdaEditor({
         onUndo={undo}
         onRedo={redo}
         onClear={handleClear}
-        canUndo={canUndo}
-        canRedo={canRedo}
+        canUndo={state.canUndo}
+        canRedo={state.canRedo}
       />
 
       <div className="examples-bar">
@@ -122,7 +120,7 @@ export function LambdaEditor({
         <textarea
           ref={editorRef}
           className="editor-textarea"
-          value={snap.text}
+          value={state.text}
           onChange={handleTextChange}
           onSelect={handleSelect}
           onKeyDown={handleKeyDown}
@@ -135,10 +133,10 @@ export function LambdaEditor({
       </div>
 
       <StatusBar
-        charCount={snap.text.length}
-        cursorPosition={snap.cursor}
+        charCount={state.text.length}
+        cursorPosition={state.cursor}
         agentId={displayAgentId}
-        syncing={snap.syncing}
+        syncing={false}
       />
     </div>
   );

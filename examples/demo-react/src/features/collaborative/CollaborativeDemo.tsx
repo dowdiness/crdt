@@ -1,15 +1,26 @@
 // CollaborativeDemo — orchestrates the per-agent undo/redo demo.
+//
+// Uses protocol-based CRDT editors instead of Valtio proxies.
 
-import { useState, useEffect, useCallback } from 'react';
-import { useSnapshot } from 'valtio';
-import { opsLog, sharedDoc, WS_URL } from './store';
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
+import {
+  getOperations,
+  subscribeOperations,
+  getSharedText,
+  subscribeSharedText,
+  setSharedText,
+  clearOperations,
+  resetSharedState,
+  WS_URL,
+} from './store';
 import { EditorPanel } from './EditorPanel';
 
 export function CollaborativeDemo() {
   const [useWebSocket, setUseWebSocket] = useState(false);
   const [wsStatus, setWsStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown');
-  const logSnap = useSnapshot(opsLog);
-  const sharedSnap = useSnapshot(sharedDoc);
+
+  const operations = useSyncExternalStore(subscribeOperations, getOperations, getOperations);
+  const sharedText = useSyncExternalStore(subscribeSharedText, getSharedText, getSharedText);
 
   // Check WebSocket server availability with timeout
   useEffect(() => {
@@ -47,13 +58,12 @@ export function CollaborativeDemo() {
   }, []);
 
   const handleReset = useCallback(() => {
-    sharedDoc.text = '';
-    opsLog.operations = [];
+    resetSharedState();
   }, []);
 
   const handleLoadExample = useCallback(() => {
-    sharedDoc.text = '(\\x.\\y.x + y) 10 5';
-    opsLog.operations = [];
+    setSharedText('(\\x.\\y.x + y) 10 5');
+    clearOperations();
   }, []);
 
   return (
@@ -91,10 +101,10 @@ export function CollaborativeDemo() {
 
       <div className="shared-doc-info">
         <span className="shared-label">
-          {useWebSocket ? 'Sync Mode: WebSocket' : 'Sync Mode: Local Valtio'}
+          {useWebSocket ? 'Sync Mode: WebSocket' : 'Sync Mode: Local'}
         </span>
         <code className="shared-text">
-          {sharedSnap.text || '(empty)'}
+          {sharedText || '(empty)'}
         </code>
       </div>
 
@@ -106,11 +116,11 @@ export function CollaborativeDemo() {
       <div className="operations-log">
         <h3>Operations Log</h3>
         <div className="log-container">
-          {logSnap.operations.length === 0 ? (
+          {operations.length === 0 ? (
             <p className="log-empty">No operations yet. Start typing!</p>
           ) : (
             <ul className="log-list">
-              {logSnap.operations.slice(-10).map((op, i) => (
+              {operations.slice(-10).map((op, i) => (
                 <li key={i} className={`log-item log-${op.type}`}>
                   <span className="log-agent">{op.agentId}</span>
                   <span className="log-type">{op.type}</span>
@@ -135,7 +145,7 @@ export function CollaborativeDemo() {
         <p className="demo-note">
           {useWebSocket
             ? 'WebSocket mode: Operations sync via ws://localhost:8787 relay server.'
-            : 'Local mode: Operations sync via shared Valtio proxy (same browser tab only).'}
+            : 'Local mode: Operations sync via shared store (same browser tab only).'}
         </p>
       </div>
     </div>

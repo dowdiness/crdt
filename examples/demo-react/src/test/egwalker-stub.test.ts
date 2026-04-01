@@ -1,160 +1,128 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createEgWalkerProxy, type TextState } from 'valtio-egwalker/stub';
+import { stubCrdtModule } from '../features/editor/crdt-stub';
+import { EditorHandle } from '../features/editor/crdt-api';
 
-describe('createEgWalkerProxy', () => {
-  let proxy: ReturnType<typeof createEgWalkerProxy<TextState>>;
+describe('EditorHandle with stub module', () => {
+  let editor: EditorHandle;
 
   beforeEach(() => {
-    proxy = createEgWalkerProxy<TextState>({
-      agentId: 'test-agent',
-      undoManager: true,
-    });
+    editor = new EditorHandle(stubCrdtModule, 'test-agent', true);
   });
 
   afterEach(() => {
-    proxy.dispose();
+    editor.destroy();
   });
 
   describe('basic operations', () => {
-    it('should create a proxy with initial empty state', () => {
-      expect(proxy.proxy.text).toBe('');
-      expect(proxy.proxy.cursor).toBe(0);
-      expect(proxy.proxy.syncing).toBe(false);
+    it('should create an editor with initial empty state', () => {
+      expect(editor.getText()).toBe('');
     });
 
-    it('should update text when mutating proxy', () => {
-      proxy.proxy.text = 'Hello';
-      expect(proxy.proxy.text).toBe('Hello');
+    it('should update text when setting text', () => {
+      editor.setText('Hello');
+      expect(editor.getText()).toBe('Hello');
     });
 
-    it('should update cursor when mutating proxy', () => {
-      proxy.proxy.cursor = 5;
-      expect(proxy.proxy.cursor).toBe(5);
+    it('should set text and record for undo', () => {
+      editor.setTextAndRecord('Hello');
+      expect(editor.getText()).toBe('Hello');
     });
   });
 
   describe('undo/redo', () => {
-    it('should track changes in undo stack', async () => {
-      expect(proxy.canUndo()).toBe(false);
+    it('should track changes in undo stack', () => {
+      expect(editor.canUndo()).toBe(false);
 
-      proxy.proxy.text = 'a';
-      // Wait for subscription to fire
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      expect(proxy.canUndo()).toBe(true);
+      editor.setTextAndRecord('a');
+      expect(editor.canUndo()).toBe(true);
     });
 
-    it('should undo changes', async () => {
-      proxy.proxy.text = 'Hello';
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      proxy.undo();
-      expect(proxy.proxy.text).toBe('');
+    it('should undo changes', () => {
+      editor.setTextAndRecord('Hello');
+      editor.undo();
+      expect(editor.getText()).toBe('');
     });
 
-    it('should redo undone changes', async () => {
-      proxy.proxy.text = 'Hello';
-      await new Promise(resolve => setTimeout(resolve, 10));
+    it('should redo undone changes', () => {
+      editor.setTextAndRecord('Hello');
+      editor.undo();
+      expect(editor.getText()).toBe('');
 
-      proxy.undo();
-      expect(proxy.proxy.text).toBe('');
-
-      proxy.redo();
-      expect(proxy.proxy.text).toBe('Hello');
+      editor.redo();
+      expect(editor.getText()).toBe('Hello');
     });
 
-    it('should clear redo stack on new changes', async () => {
-      proxy.proxy.text = 'Hello';
-      await new Promise(resolve => setTimeout(resolve, 10));
+    it('should clear redo stack on new changes', () => {
+      editor.setTextAndRecord('Hello');
+      editor.undo();
+      expect(editor.canRedo()).toBe(true);
 
-      proxy.undo();
-      expect(proxy.canRedo()).toBe(true);
-
-      proxy.proxy.text = 'World';
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      expect(proxy.canRedo()).toBe(false);
+      editor.setTextAndRecord('World');
+      expect(editor.canRedo()).toBe(false);
     });
 
-    it('should not track changes when suppressed', async () => {
-      proxy.suppressUndoTracking?.(true);
-      proxy.proxy.text = 'Hello';
-      proxy.suppressUndoTracking?.(false);
+    it('should not track changes when tracking is disabled', () => {
+      editor.setTracking(false);
+      editor.setText('Hello');
+      editor.setTracking(true);
 
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      expect(proxy.canUndo()).toBe(false);
+      expect(editor.canUndo()).toBe(false);
     });
   });
 
   describe('multiple undo/redo', () => {
-    it('should handle multiple undos', async () => {
-      proxy.proxy.text = 'a';
-      await new Promise(resolve => setTimeout(resolve, 10));
+    it('should handle multiple undos', () => {
+      editor.setTextAndRecord('a');
+      editor.setTextAndRecord('ab');
+      editor.setTextAndRecord('abc');
 
-      proxy.proxy.text = 'ab';
-      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(editor.canUndo()).toBe(true);
 
-      proxy.proxy.text = 'abc';
-      await new Promise(resolve => setTimeout(resolve, 10));
+      editor.undo();
+      expect(editor.getText()).toBe('ab');
 
-      expect(proxy.canUndo()).toBe(true);
+      editor.undo();
+      expect(editor.getText()).toBe('a');
 
-      proxy.undo();
-      expect(proxy.proxy.text).toBe('ab');
-
-      proxy.undo();
-      expect(proxy.proxy.text).toBe('a');
-
-      proxy.undo();
-      expect(proxy.proxy.text).toBe('');
+      editor.undo();
+      expect(editor.getText()).toBe('');
     });
   });
 });
 
-describe('createEgWalkerProxy without undo manager', () => {
-  it('should not track undo when disabled', async () => {
-    const proxy = createEgWalkerProxy<TextState>({
-      agentId: 'test-agent',
-      undoManager: false,
-    });
+describe('EditorHandle without undo manager', () => {
+  it('should not track undo when disabled', () => {
+    const editor = new EditorHandle(stubCrdtModule, 'test-agent', false);
 
-    proxy.proxy.text = 'Hello';
-    await new Promise(resolve => setTimeout(resolve, 10));
-
+    editor.setText('Hello');
     // Undo should be a no-op
-    proxy.undo();
-    expect(proxy.proxy.text).toBe('Hello');
+    editor.undo();
+    expect(editor.getText()).toBe('Hello');
 
-    proxy.dispose();
+    editor.destroy();
   });
 });
 
-describe('connection state', () => {
-  it('should report offline when no WebSocket configured', () => {
-    const proxy = createEgWalkerProxy<TextState>({
-      agentId: 'test-agent',
-    });
+describe('sync operations', () => {
+  it('should export and apply sync messages', () => {
+    const editor1 = new EditorHandle(stubCrdtModule, 'agent-1', true);
+    const editor2 = new EditorHandle(stubCrdtModule, 'agent-2', true);
 
-    expect(proxy.getConnectionState?.()).toBe('offline');
-    proxy.dispose();
+    editor1.setTextAndRecord('Hello');
+    const syncMsg = editor1.exportAllJson();
+
+    const result = editor2.applySyncJson(syncMsg);
+    expect(result).toBe('ok');
+    expect(editor2.getText()).toBe('Hello');
+
+    editor1.destroy();
+    editor2.destroy();
   });
 
-  it('should start connecting when WebSocket configured', async () => {
-    const proxy = createEgWalkerProxy<TextState>({
-      agentId: 'test-agent',
-      websocketUrl: 'ws://localhost:8787',
-      roomId: 'test-room',
-    });
-
-    // Initial state should be connecting
-    expect(proxy.getConnectionState?.()).toBe('connecting');
-
-    // Wait for mock WebSocket to connect
-    await new Promise(resolve => setTimeout(resolve, 50));
-
-    expect(proxy.getConnectionState?.()).toBe('connected');
-
-    proxy.dispose();
+  it('should return version json', () => {
+    const editor = new EditorHandle(stubCrdtModule, 'test-agent', true);
+    const version = editor.getVersionJson();
+    expect(version).toBeTruthy();
+    editor.destroy();
   });
 });

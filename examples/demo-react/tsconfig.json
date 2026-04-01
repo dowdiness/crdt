@@ -19,12 +19,8 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
-      "valtio-egwalker/stub": ["../../valtio/src/egwalker_api_stub.ts"],
-      "valtio-egwalker/sync": ["../../valtio/src/egwalker_api_sync.ts"],
-      "valtio-egwalker": ["../../valtio/src/egwalker_api.ts"],
-      "@moonbit/crdt/*": ["../../_build/js/release/build/*"]
+      "@moonbit/crdt": ["../../_build/js/release/build/canopy.js"]
     }
   },
-  "include": ["src"],
-  "exclude": ["../../valtio/src/egwalker_api.ts", "../../valtio/src/egwalker_api_sync.ts"]
+  "include": ["src"]
 }
