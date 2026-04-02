@@ -341,6 +341,22 @@ From SuperOOP analysis and handler chain refactor (PR #54):
   Research: Trees That Grow (Najd 2017), Cofree comonads, Attributed Grammars, MLIR dialects — each addresses a fragment of this. The semantic model approach (egglog) subsumes them.
   Prerequisite: evaluator Phase 1 (egglog relational evaluation) validates the semantic model approach.
   Exit: at least one structure-format projection (DOT or typed view) queries the semantic model instead of threading ad-hoc data.
+
+### Concrete semantic projection candidates
+
+- [ ] **Scope-colored tree view** — Color variables by binding status (bound/free/shadowed) in the structural tree view. Resolution already exists and is used for DOT; this flows it through the ViewNode protocol instead of an ad-hoc path. First projection that delivers semantic data through the framework.
+  Why: lowest effort, proves the semantic-data-through-protocol pattern. If Resolution flows through ViewNode cleanly, types and eval results follow the same path.
+  Semantic data: Resolution (available now)
+  Exit: tree view shows bound variables colored by binder, free variables highlighted as warnings.
+- [ ] **Live inline evaluation** — Show evaluation results next to definitions in the pretty-print view. The evaluator (Phase 2) is done; this connects it to the user's eyes.
+  Why: highest user-visible impact. "See the values" experience (Bret Victor). Closes the syntax→semantics gap directly.
+  Semantic data: eval results (available now via `loom/examples/lambda/src/eval/`)
+  Exit: pretty-print view shows `→ 10` or `→ ‹closure›` next to each evaluated definition.
+- [ ] **Type annotations overlay** — Show inferred types next to bindings and expressions. Egglog typing rules already exist in `loom/egglog/examples/lambda/`.
+  Why: types are the canonical "explicit semantics" — they make invisible meaning visible. First projection requiring the egglog semantic model.
+  Semantic data: type inference (needs egglog Phase 1)
+  Prerequisite: evaluator Phase 1 (egglog relational evaluation)
+  Exit: bindings show inferred types (e.g., `double : Int → Int`).
 - [ ] **Πe extension** — Add `Choice` constructor and cost-factory resolver for more expressive layout decisions.
   Exit: layout engine supports user-defined cost functions per "A Pretty Expressive Printer" (OOPSLA 2023).
 
