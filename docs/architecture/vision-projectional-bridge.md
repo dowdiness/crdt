@@ -4,13 +4,22 @@ Why Canopy exists and what projectional editing is for.
 
 ## The Gap
 
-When users edit programs, they have something in mind — not always a
-concrete plan or goal, but a wish, a thirst to alleviate a pain. They
-are good at judging bad products but terrible at articulating what they
-actually want in explicit words or images.
+You write `let double = λx. x + x`. You know what it means — a
+function that doubles its input. But the editor sees 23 characters.
+It has no idea what `double` is, where `x` is bound, or what
+`double 5` evaluates to. You hold the meaning; the tool holds text.
 
-Syntax-level editing forces users to translate their intention down
-through multiple abstraction layers before it reaches the machine:
+Every time you refactor, debug, or explain code, you are translating
+between your understanding and the tool's flat character buffer. This
+translation is the tax you pay for using a text editor.
+
+The gap is wider than it appears. Users have something in mind when
+they write — not always a concrete plan, but a wish, a thirst to
+alleviate a pain. They are good at judging bad products but terrible
+at articulating what they actually want in explicit words or images.
+
+Syntax-level editing forces this intention down through multiple
+abstraction layers before it reaches the machine:
 
 ```
 Mental Model  →  Intent  →  Semantics  →  Syntax

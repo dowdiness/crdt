@@ -3,6 +3,15 @@
 How structure-format rendering relates to the projectional bridge vision,
 what PL research offers, and how Canopy should approach this incrementally.
 
+**TL;DR:** We surveyed six PL research approaches (Trees That Grow,
+Cofree comonads, Finally Tagless, MLIR dialects, Attributed Grammars,
+Ornaments). None is sufficient alone — each addresses a fragment of the
+problem. The core difficulty is not "how to annotate trees" but "how to
+represent program meaning so projections render from it." The direction:
+build concrete projections bottom-up (scope-colored view, live evaluation,
+type annotations), let the semantic model emerge from real needs, formalize
+the structure-format layer only after the pattern is clear.
+
 ## The Problem
 
 The text-format family is solved: `Layout[SyntaxCategory]` is a universal

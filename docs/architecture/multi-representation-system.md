@@ -3,6 +3,8 @@
 How the `Printable` trait family solves the expression problem for output
 formats, and why most new formats are renderers, not traits.
 
+*For contributors adding new output formats or languages to Canopy.*
+
 ## The Four Core Representations
 
 Every language in Canopy implements four text-output traits, bundled as

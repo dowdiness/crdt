@@ -90,51 +90,6 @@ post is revisited, its importance increases, and related posts rise
 with it. Revisit frequency becomes a signal that feeds automatic
 structuring.
 
-## Technical Foundations
-
-Each layer of this system maps to Canopy's existing infrastructure.
-
-### Incremental Computation (incr)
-
-Recomputing all clusters and links on every new post is prohibitive.
-Updates must be incremental — only recalculating affected relationships
-when new data arrives. This is fundamentally an incremental computation
-problem, directly served by the reactive signal graph in `loom/incr`.
-
-### CRDT Synchronization (event-graph-walker)
-
-The "stream of posts + automatic linking" model aligns with CRDT
-architecture. The event graph provides multi-device synchronization
-with no central server. Write on your phone, links update on your
-laptop.
-
-### Semantic Model (egglog)
-
-Automatic linking, clustering, and retrieval are **relational queries
-over meaning**. Egglog's Datalog engine can express:
-- `SimilarTo(post_a, post_b)` — semantic similarity
-- `ReferencesUrl(post, url)` — shared references
-- `InCluster(post, cluster)` — dynamic grouping
-- `StaleReview(post, days)` — pattern detection triggers
-
-### Projectional Editing
-
-Multiple views of the same post stream — timeline, clusters, relevance
-view, search results — are projections. The ViewNode → ViewPatch →
-Adapter pipeline renders whichever view fits the user's current need.
-
-### The Projectional Bridge
-
-This product IS the projectional bridge at full scale. Not just for
-code, but for all structured thought:
-
-```
-Raw post (syntax)        →  text in the input field
-Linked post (semantics)  →  connections, clusters, types discovered
-Surfaced post (intent)   →  right info at the right time
-Understood (mental model) →  the system fits how you think
-```
-
 ## The Cold Pitch
 
 > **Canopy**
@@ -170,3 +125,37 @@ piece of the product vision is validated first in the editor context:
 
 Each row is a step from editor to product. The editor isn't a
 detour — it's the vertical slice that proves every layer works.
+
+## Appendix: Technical Foundations
+
+How each product layer maps to Canopy's existing infrastructure.
+
+**Incremental computation (incr)** — Recomputing all clusters and links
+on every new post is prohibitive. Updates must be incremental — only
+recalculating affected relationships when new data arrives. Directly
+served by the reactive signal graph in `loom/incr`.
+
+**CRDT synchronization (event-graph-walker)** — The "stream of posts +
+automatic linking" model aligns with CRDT architecture. The event graph
+provides multi-device sync with no central server. Write on your phone,
+links update on your laptop.
+
+**Semantic model (egglog)** — Automatic linking, clustering, and
+retrieval are relational queries over meaning. Egglog's Datalog engine
+can express: `SimilarTo(post_a, post_b)`, `ReferencesUrl(post, url)`,
+`InCluster(post, cluster)`, `StaleReview(post, days)`.
+
+**Projectional editing** — Multiple views of the same post stream
+(timeline, clusters, relevance, search) are projections. The ViewNode →
+ViewPatch → Adapter pipeline renders whichever view fits the current
+need.
+
+**The projectional bridge at full scale** — not just for code, but for
+all structured thought:
+
+```
+Raw post (syntax)        →  text in the input field
+Linked post (semantics)  →  connections, clusters, types discovered
+Surfaced post (intent)   →  right info at the right time
+Understood (mental model) →  the system fits how you think
+```
