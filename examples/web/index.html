@@ -411,6 +411,29 @@
       }
     }
 
+    /* Pretty-printer syntax highlighting */
+    .formatted-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      padding: 1rem;
+      margin: 0;
+      overflow-x: auto;
+      background: transparent;
+    }
+    .formatted-text .line {
+      white-space: pre;
+      min-height: 1.5em;
+    }
+    .keyword { color: #c792ea; }
+    .identifier { color: #82aaff; }
+    .number { color: #f78c6c; }
+    .string { color: #c3e88d; }
+    .operator { color: #ff5370; }
+    .punctuation { color: #89ddff; }
+    .comment { color: #546e7a; font-style: italic; }
+    .error { color: #ff5370; text-decoration: underline wavy; }
+
     /* Extra small screens (phones in portrait) */
     @media (max-width: 480px) {
       body {
