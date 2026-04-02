@@ -73,6 +73,7 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
 - [ ] Implement `SyncRequest`/`SyncResponse` recovery so malformed/incompatible `CrdtOps` does not leave peers diverged silently
   Why: recovery semantics should be finalized after the container implementation defines the next sync boundary, not against the current pre-container transport assumptions.
   Plan: `docs/plans/2026-03-29-sync-recovery-followup.md`
+  Blocked by: container implementation (`docs/plans/2026-03-29-container-design.md`, `docs/plans/2026-03-29-container-phase1-tree.md`)
   Exit: revisit after container implementation; then align retry, buffering, and failure behavior with the new sync boundary.
 - [ ] Reject duplicate/invalid relay peer IDs in `RelayRoom`
   Why: `RelayRoom` still trusts caller uniqueness and membership correctness, but hardening this boundary should wait until the container implementation defines the next sync boundary clearly.
@@ -235,6 +236,9 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 
 - [x] **Term enum extensibility** — ✅ Done. (a) `TermSym` Finally Tagless trait + `replay` in loom submodule. (b) Framework extraction complete (Phases 1–4): `framework/core/` has generic types (NodeId, ProjNode, SourceMap, reconcile); `TreeNode`/`Renderable` traits in `loom/core` with impls in `lambda/ast`; lambda-specific code in `lang/lambda/proj/` and `lang/lambda/edits/`; `projection/` is a re-export facade. Acid test: `framework/core/` has zero `@ast` imports. See PRs #60, #62, #66, #69.
 - [ ] **AST transform pipeline** — The `EditMiddleware` trait is ready for composable AST-to-AST transforms (constant folding, dead code elimination, simplification). Each pass becomes a middleware impl that intercepts before `core_dispatch`.
+- [ ] **Zipper keyboard integration** — Wire zipper navigation into ideal editor keyboard handling.
+  Plan: `docs/plans/2026-03-29-zipper-keyboard-integration.md`, `docs/plans/2026-03-30-zipper-keyboard-impl.md`
+  Exit: arrow keys navigate the outline tree via zipper in ideal editor.
 - [x] **Coordinate arithmetic audit** — ✅ Done. Audited all 9 `MoveCursor` sites across handler files. The two bugs (unwrap cursor, inline_definition cursor) were already fixed in PR #54. Remaining sites are correct: single-edit cases have no shift issues, multi-edit cases have cursor before or at the other edit's position.
 - [x] **Parent lookup index** — ✅ Done. Extracted `find_parent` helper to `text_edit_utils.mbt` with early return. Replaces inline O(n) loop in `compute_delete` that didn't break on match. Reusable by other handlers.
 
@@ -289,6 +293,8 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 - [ ] **JSON FlatProj optimization** — 1000-member objects at 28ms exceed 16ms budget. Add incremental per-member derivation when needed.
 - [ ] **loomgen design update** — Update `docs/design/07-loomgen-design.md` with learnings from lambda + JSON. Two real examples now inform the generator.
 - [ ] **Markdown editor** — Third language for the block editor. Depends on loomgen or manual implementation.
+  Plan: `docs/plans/2026-04-01-markdown-parser-design.md`, `docs/plans/2026-04-01-markdown-parser-impl.md`
+  Prereq: lex modes (`docs/plans/2026-04-01-loom-lex-modes-design.md`, `docs/plans/2026-04-01-loom-lex-modes-impl.md`)
 
 ---
 
@@ -303,8 +309,14 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 - [x] **JSON pretty-printing** — ✅ Done. `json_to_layout` with string escaping in `lang/json/proj/pretty_layout.mbt`.
 - [ ] **Wire into REPL** — Use `render_string` in `cmd/main/` for formatted AST output.
   Exit: REPL displays width-aware formatted expressions.
-- [ ] **Wire into web editor** — Use `render_spans` to feed annotated output to the projectional editor UI.
-  Exit: editor renders syntax-highlighted, width-aware formatted code.
+- [ ] **Wire into web editor via ViewNode bridge** — `layout_to_view_tree` in `protocol/` converts `Layout[SyntaxCategory]` → per-line ViewNode tree with token_spans. Delivered through ViewPatch → Adapter pipeline. Framework-level: any `T : Pretty` gets formatted display for free.
+  Why: replaces ad-hoc `get_ast_pretty` → `<pre>` with framework-consistent syntax-highlighted display.
+  Architecture: `docs/architecture/multi-representation-system.md`
+  Exit: web editor renders syntax-highlighted, width-aware formatted code through the protocol layer.
+- [ ] **Structure-format renderer family** — Generalize DOT/JSON/S-expr output as traversal functions over `TreeNode + Debug`, mirroring how text-format renderers consume `Layout[SyntaxCategory]`. Currently `term_to_dot_resolved` is ad-hoc and needs `Resolution` (semantic info beyond Printable).
+  Why: the multi-representation system identifies two renderer families (text-format and structure-format). Text-format is well-served by `Layout[A]`; structure-format lacks a common intermediate representation.
+  Architecture: `docs/architecture/multi-representation-system.md`
+  Exit: design doc defining the structure-format IR and how semantic extensions (scope arrows, type annotations) plug in.
 - [ ] **Πe extension** — Add `Choice` constructor and cost-factory resolver for more expressive layout decisions.
   Exit: layout engine supports user-defined cost functions per "A Pretty Expressive Printer" (OOPSLA 2023).
 
@@ -320,6 +332,34 @@ From SuperOOP analysis and handler chain refactor (PR #54):
   Why: block-editor has its own parallel FFI surface; migrating to protocol enables Markdown editing with zero new TS code.
   Plan: `docs/plans/2026-04-01-editor-protocol-design.md` §Phase 7
   Exit: block-editor uses BlockAdapter with ViewNode tree; autoformat detection moved to MoonBit.
+
+---
+
+## 15. Lambda Evaluator
+
+**Impact:** Medium | **Effort:** Medium
+
+- [x] **Phase 2: Direct evaluator** — ✅ Done (PR loom#69). Tree-walking `eval` in `loom/examples/lambda/src/eval/`. 31 tests, all Term variants, fuel-limited divergence. Educational comments.
+  Plan: `docs/plans/2026-04-02-lambda-evaluator-phase2-impl.md`
+- [ ] **Phase 0: Egglog API extensions** — Add `Database::scan` and `Database::row_count` to egglog public API.
+  Plan: `docs/plans/2026-04-02-lambda-evaluator-design.md` §Phase 0
+  Exit: bridge function can iterate trigger tables and check fact count limits.
+- [ ] **Phase 1: Egglog relational evaluator** — Datalog + Bridge hybrid evaluation with demand-driven rules.
+  Plan: `docs/plans/2026-04-02-lambda-evaluator-design.md` §Phase 1
+  Exit: egglog example with partial evaluation, composition with typing, 20+ tests.
+- [ ] **Phase 3: Editor integration** — Wire Tier 1 + Tier 2 into incr reactive graph with batch escalation.
+  Plan: `docs/plans/2026-04-02-lambda-evaluator-design.md` §Phase 3
+  Exit: Memo[EvalResult] per definition, Tier 2 batch escalation for incomplete programs.
+
+---
+
+## 16. Incremental Parsing — Convergence Relex
+
+**Impact:** Medium | **Effort:** Low-Medium
+
+- [ ] **Convergence relex** — Ensure incremental relex converges with batch lex.
+  Plan: `docs/plans/2026-04-02-convergence-relex-impl.md`
+  Exit: property test confirms incremental relex always produces same tokens as full lex.
 
 ---
 
