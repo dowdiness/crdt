@@ -210,6 +210,20 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
 
 - [x] **`apply_projection_edits` used insert-first ordering** — `text_lens_diff` produces edits with insert-before-delete and adjusted positions. FugueMax's position semantics require delete-first ordering; insert-first caused position drift producing corrupted text. **Fixed:** replaced with `set_text(new_text)` which uses proven delete-all + insert approach.
 
+### SourceMap bugs (from GitHub issues)
+
+- [ ] `SourceMap::apply_edit` leaves `token_spans` stale (GitHub #70)
+  Exit: token_spans updated when source ranges shift.
+- [ ] `SourceMap::apply_edit` overlap branch doesn't clamp start positions (GitHub #71)
+  Exit: overlapping edits clamp correctly, no negative or out-of-bounds ranges.
+
+### FlatProj / ProjNode bugs (from GitHub issues)
+
+- [ ] FlatProj ↔ ProjNode round-trip drops binding IDs (GitHub #72)
+  Exit: round-trip preserves all binding IDs.
+- [ ] FlatProj `key_match` should use stable identity, not just name (GitHub #73)
+  Exit: key matching uses stable identity to avoid false positives on name collisions.
+
 ---
 
 ## 8. Code Cleanup
@@ -222,6 +236,12 @@ Known concerns from the `editor/tree_edit_bridge.mbt` roundtrip implementation (
   Exit: `editor/` uses explicit boundary error types and root FFI remains the primary error-flattening edge.
   Note: tree-edit, ephemeral, and websocket/protocol slices are implemented; contributor and API docs now describe the current boundary strategy. A future wrapper-type decision can be tracked separately if needed.
 - [x] Convert `abort()` calls in test files to proper assertions — ✅ Done. Verified 2026-04-02: zero `abort()` in any .mbt file across entire repo. Plan archived.
+- [ ] Parse recovery should produce `Error` nodes, not coerce to `Int(0)`/`Plus` (GitHub #74)
+  Exit: malformed expressions produce `Error(...)` nodes in the AST.
+- [ ] `parse_to_proj_node` should return `Result` instead of aborting (GitHub #75)
+  Exit: projection pipeline returns errors instead of calling `abort()`.
+- [ ] Tighten `ActionRecord` visibility (GitHub #97)
+  Exit: `ActionRecord` fields use appropriate visibility modifiers.
 - [x] Replace singleton JS FFI export state in `crdt.mbt` with a handle → `SyncEditor` map plus explicit destroy/dispose API
 - [x] Split `projection/tree_editor.mbt` into focused files (render model, refresh/reuse logic, UI/edit operations, tree indexes) — ✅ Done. `tree_editor.mbt` (edit ops), `tree_editor_model.mbt` (types + state + constructors), `tree_editor_refresh.mbt` (refresh/reuse/indexes)
 - [x] Split `crdt.mbt` into focused FFI files (editor core, undo, presence, relay, websocket) — ✅ Done. Split into 6 files: `crdt.mbt` (core), `crdt_undo.mbt`, `crdt_ephemeral.mbt`, `crdt_relay.mbt`, `crdt_websocket.mbt`, `crdt_projection.mbt`
@@ -242,6 +262,8 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 - [ ] **Zipper keyboard integration** — Wire zipper navigation into ideal editor keyboard handling.
   Plan: `docs/plans/2026-03-29-zipper-keyboard-integration.md`, `docs/plans/2026-03-30-zipper-keyboard-impl.md`
   Exit: arrow keys navigate the outline tree via zipper in ideal editor.
+- [ ] **Cache Zipper between keystrokes** to avoid double DFS (GitHub #91)
+  Exit: zipper is cached and reused across consecutive keystrokes.
 - [x] **Coordinate arithmetic audit** — ✅ Done. Audited all 9 `MoveCursor` sites across handler files. The two bugs (unwrap cursor, inline_definition cursor) were already fixed in PR #54. Remaining sites are correct: single-edit cases have no shift issues, multi-edit cases have cursor before or at the other edit's position.
 - [x] **Parent lookup index** — ✅ Done. Extracted `find_parent` helper to `text_edit_utils.mbt` with early return. Replaces inline O(n) loop in `compute_delete` that didn't break on match. Reusable by other handlers.
 
