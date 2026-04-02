@@ -12,6 +12,21 @@ Items requiring human judgment. Populated by `/moonbit-housekeeping triage`, res
 
 ## Pending
 
+### lexer-accumulator-o-n2: drop O(n²) string building in read_identifier
+**Source:** TODO.md §3
+**Context:** The lexer uses an O(n²) string-accumulator pattern in `read_identifier`. Still present at `loom/examples/lambda/src/lexer/lexer.mbt:24-31` (`acc + ch.to_string()` in recursive call). Low priority (1.3µs total). A fix plan already exists in loom: `loom/docs/plans/2026-04-02-remove-cst-token-matches-impl.md` rewrites `read_identifier` to return end position only.
+**Blocks:** Nothing directly — code cleanup
+**Evidence:** Verified 2026-04-02: `read_identifier` still accumulates strings. Plan exists in loom submodule.
+**Decision needed:** No — plan exists, just needs execution. Remove from decisions-needed when done.
+**Added:** 2026-04-02
+
+### test-abort-cleanup: convert abort() calls in test files to proper assertions
+**Source:** TODO.md §8a / docs/plans/2026-03-29-test-abort-cleanup.md
+**Context:** A plan exists to replace `abort()` calls in test files with proper assertion helpers. Triage found 0 occurrences of `abort()` in loom/ MoonBit files, suggesting this may already be complete — but the TODO item remains unchecked and no archive record was found.
+**Blocks:** Nothing directly — test quality
+**Evidence:** Plan file exists at docs/plans/2026-03-29-test-abort-cleanup.md; grep for abort() in loom/ MoonBit files: 0 occurrences; completion state unverified
+**Added:** 2026-04-02
+
 ### flat-tiny-node: batch vs amortized threshold for small nodes
 **Source:** TODO.md §3
 **Context:** JSON 20-member flat edit is 2x slower than batch mode. Three options documented:
