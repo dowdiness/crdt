@@ -335,10 +335,12 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 - [x] **Wire into web editor via ViewNode bridge** — ✅ Done (PR #109). `layout_to_view_tree` in `protocol/` converts `Layout[SyntaxCategory]` → per-line ViewNode tree with token_spans. HTMLAdapter renders syntax-highlighted lines. Property tests validate roundtrip and span coverage.
   Architecture: `docs/architecture/multi-representation-system.md`
   Design: `docs/plans/2026-04-02-pretty-printer-viewnode-bridge-design.md`
-- [ ] **Structure-format renderer family** — Generalize DOT/JSON/S-expr output as traversal functions over `TreeNode + Debug`, mirroring how text-format renderers consume `Layout[SyntaxCategory]`. Currently `term_to_dot_resolved` is ad-hoc and needs `Resolution` (semantic info beyond Printable).
-  Why: the multi-representation system identifies two renderer families (text-format and structure-format). Text-format is well-served by `Layout[A]`; structure-format lacks a common intermediate representation.
-  Architecture: `docs/architecture/multi-representation-system.md`
-  Exit: design doc defining the structure-format IR and how semantic extensions (scope arrows, type annotations) plug in.
+- [ ] **Structure-format projections from semantic model** — Rather than generalizing DOT/JSON/S-expr as tree-annotation IRs, build projections that query the semantic model (egglog knowledge base + incr reactive graph). Current DOT rendering needs `Resolution` (a semantic fact about scope), not a tree annotation. The right answer is richer semantics, not a better annotation mechanism.
+  Why: the structure-format problem is "how to represent program meaning so projections render from it," not "how to annotate trees." See vision doc.
+  Architecture: `docs/architecture/vision-projectional-bridge.md`, `docs/architecture/multi-representation-system.md`
+  Research: Trees That Grow (Najd 2017), Cofree comonads, Attributed Grammars, MLIR dialects — each addresses a fragment of this. The semantic model approach (egglog) subsumes them.
+  Prerequisite: evaluator Phase 1 (egglog relational evaluation) validates the semantic model approach.
+  Exit: at least one structure-format projection (DOT or typed view) queries the semantic model instead of threading ad-hoc data.
 - [ ] **Πe extension** — Add `Choice` constructor and cost-factory resolver for more expressive layout decisions.
   Exit: layout engine supports user-defined cost functions per "A Pretty Expressive Printer" (OOPSLA 2023).
 

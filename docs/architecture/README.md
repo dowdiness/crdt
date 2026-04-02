@@ -9,6 +9,7 @@ Documentation for the CRDT collaborative editor architecture.
 - **[Incremental Hylomorphism](Incremental-Hylomorphism.md)** - Theoretical foundations: cata/ana asymmetry, structural independence principles, memoized algebras, hylomorphism chains
 - **[Anamorphism Discipline](anamorphism-discipline.md)** - Actionable design guide: four properties, boundary audit, anti-patterns
 - **[Multi-Representation System](multi-representation-system.md)** - How the Printable trait family (Show, Debug, Source, Pretty) solves the expression problem for output formats; two families of renderers; ViewMode framework concept
+- **[Vision: The Projectional Bridge](vision-projectional-bridge.md)** - Why Canopy exists: bridging the gap from syntax through semantics and intent to the user's mental model; the unity of computer
 
 ## Quick Overview
 
