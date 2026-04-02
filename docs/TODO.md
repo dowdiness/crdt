@@ -119,9 +119,11 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
 - [ ] **`TokenBuffer::get_view` helper**
   Why: the `get_text` closure for `ReuseCursor::new` is duplicated across 3 production callsites (factories.mbt, lambda/cst_parser.mbt, json/cst_parser.mbt). Worth extracting when a 4th language is added (loomgen).
   Exit: `TokenBuffer::get_view(source, i) -> StringView` replaces inline closures.
-- [ ] **Token::to_raw ↔ SyntaxKind::to_raw round-trip test**
-  Why: lambda and JSON Token::to_raw use hardcoded integers that must match SyntaxKind::to_raw. No compile-time or test-time enforcement. If someone adds a SyntaxKind variant without updating Token::to_raw, incremental reuse silently breaks (kind mismatch → no reuse).
-  Exit: a test per language that verifies `Token::to_raw(X) == SyntaxKind::to_raw(corresponding_kind)` for all token variants.
+- [x] **Token::to_raw ↔ SyntaxKind::to_raw round-trip test** — ✅ Done. `token_rawkind_test.mbt` in both lambda and json verifies all Token/SyntaxKind pairs match.
+- [ ] **Unify Token and SyntaxKind into single enum (rowan style)**
+  Why: Token and SyntaxKind overlap — every Token variant has a corresponding SyntaxKind variant. Two independent to_raw() impls with hardcoded integers can desynchronize. The payload removal (PR #70) made Token pure tags, identical in structure to SyntaxKind's token subset. Merging eliminates the synchronization problem entirely — the lexer produces SyntaxKind directly, no conversion needed.
+  Prerequisite: payload-free Token enums (done). Practical trigger: loomgen, which can generate the single enum from a grammar definition.
+  Exit: `ParserContext[SyntaxKind, SyntaxKind]` — one type for both T and K. IsTrivia/IsEof impls on SyntaxKind. Lexer produces SyntaxKind.
 
 ---
 
