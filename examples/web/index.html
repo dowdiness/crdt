@@ -434,6 +434,29 @@
     .formatted-text .comment { color: #546e7a; font-style: italic; }
     .formatted-text .error { color: #ff5370; text-decoration: underline wavy; }
 
+    /* Eval annotation styling (pretty-print view) */
+    .formatted-text .eval-annotation {
+      color: #89ddff;
+      opacity: 0.7;
+      font-style: italic;
+    }
+    .formatted-text .eval-error {
+      color: #ff5370;
+      opacity: 0.7;
+      font-style: italic;
+    }
+
+    /* Eval annotation styling (structural tree view) */
+    .annotation-eval {
+      color: #89ddff;
+      opacity: 0.7;
+      font-style: italic;
+      margin-left: 0.5em;
+    }
+    .annotation-eval.severity-warning {
+      color: #ff5370;
+    }
+
     /* Extra small screens (phones in portrait) */
     @media (max-width: 480px) {
       body {
