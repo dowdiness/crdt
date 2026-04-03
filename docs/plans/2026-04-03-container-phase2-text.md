@@ -313,29 +313,41 @@ pub fn TextBlock::new() -> TextBlock {
 }
 
 ///|
-/// Insert a character into this block's text.
+/// Insert a character at a visible position in this block's text.
+///
+/// Resolves Fugue origins (origin_left, origin_right) internally from
+/// the visible item at `pos`. The caller only provides the position —
+/// no origin translation needed.
 ///
 /// Parameters:
+/// - `pos`: 0-based visible character position (insert before this index)
 /// - `lv`: global LV from the shared CausalGraph
-/// - `origin_left_lv`: global LV of the left origin (None = document start)
-/// - `origin_right_lv`: global LV of the right origin (None = document end)
 /// - `content`: the character to insert
 /// - `timestamp`: Lamport timestamp for ordering
 /// - `agent`: replica ID for tiebreaking
-pub fn TextBlock::insert(
+pub fn TextBlock::insert_at(
   self : TextBlock,
+  pos : Int,
   lv : Int,
-  origin_left_lv : Int?,
-  origin_right_lv : Int?,
   content : String,
   timestamp : Int,
   agent : String,
-) -> Unit raise DocumentError {
+) -> Unit {
+  // 1. Resolve origins from position using own visible items
+  let items = self.tree.get_visible_items()
+  let origin_left : @fugue.ItemId? = if pos == 0 {
+    None
+  } else {
+    Some(items[pos - 1].0)
+  }
+  let origin_right : @fugue.ItemId? = if pos >= items.length() {
+    None
+  } else {
+    Some(items[pos].0)
+  }
+  // 2. Register global LV → dense ItemId
   let item_id = self.lv_table.register(lv)
-  let origin_left = self.lv_table.to_item_id_opt(origin_left_lv)
-  let origin_right = self.lv_table.to_item_id_opt(origin_right_lv)
-  // FugueTree::insert takes InsertOp with origin_left/origin_right.
-  // It calls find_parent_and_side internally — caller does NOT compute parent/side.
+  // 3. Insert — FugueTree::insert calls find_parent_and_side internally
   self.tree.insert(
     {
       id: item_id,
@@ -350,20 +362,26 @@ pub fn TextBlock::insert(
 }
 
 ///|
-/// Delete a character in this block's text by its global LV.
-pub fn TextBlock::delete(
+/// Delete the character at a visible position in this block's text.
+///
+/// Finds the item at `pos` from the visible items and deletes it.
+pub fn TextBlock::delete_at(
   self : TextBlock,
-  item_lv : Int,
+  pos : Int,
   del_timestamp : Int,
   del_agent : String,
 ) -> Unit raise DocumentError {
-  let item_id = match self.lv_table.to_item_id(item_lv) {
-    Some(id) => id
-    None =>
-      raise DocumentError::Internal(
-        detail="TextBlock delete: unknown LV " + item_lv.to_string(),
-      )
+  let items = self.tree.get_visible_items()
+  if pos >= items.length() {
+    raise DocumentError::Internal(
+      detail="TextBlock delete_at: position " +
+        pos.to_string() +
+        " out of bounds (len=" +
+        items.length().to_string() +
+        ")",
+    )
   }
+  let (item_id, _) = items[pos]
   try {
     self.tree.delete_with_ts(item_id, del_timestamp, del_agent)
   } catch {
@@ -393,15 +411,9 @@ pub fn TextBlock::text(self : TextBlock) -> String {
 pub fn TextBlock::len(self : TextBlock) -> Int {
   self.tree.visible_count()
 }
-
-///|
-/// Get the LvTable for external translation queries.
-pub fn TextBlock::lv_table(self : TextBlock) -> LvTable {
-  self.lv_table
-}
 ```
 
-Note: `FugueTree::insert` takes an `InsertOp` with `origin_left`/`origin_right` and calls `find_parent_and_side` internally. The caller does NOT compute parent/side — just pass the translated ItemId origins. This matches how `internal/document/document.mbt:201-216` constructs its InsertOp.
+Note: `FugueTree::insert` takes an `InsertOp` with `origin_left`/`origin_right` and calls `find_parent_and_side` internally. Origins are resolved from the per-block visible items — the caller (Document) never touches origins. For Phase 3 (remote ops), add `insert_remote(lv, origin_left_lv, origin_right_lv, ...)` that translates global LV origins via LvTable.
 
 - [ ] **Step 3: Run moon check**
 
@@ -463,6 +475,7 @@ fn Document::get_or_create_text(
 
 ///|
 /// Insert text at the given character position in a block's text content.
+/// Uses StringView array pattern for idiomatic character iteration.
 pub fn Document::insert_text(
   self : Document,
   id : @mt.TreeNodeId,
@@ -473,21 +486,19 @@ pub fn Document::insert_text(
     raise DocumentError::TargetNotFound
   }
   let block = self.get_or_create_text(id)
-  for i = 0; i < text.length(); i = i + 1 {
-    let ch = text[i:i + 1].to_string()
-    let insert_pos = pos + i
-    // Determine Fugue origins from current document position
-    let (origin_left, origin_right) = block_position_to_origins(
-      block, insert_pos,
-    )
-    // Allocate global LV
-    let lv = self.graph.add_local_op(self.agent_id, self.next_counter)
-    self.next_counter = self.next_counter + 1
-    self.lamport_clock = self.lamport_clock + 1
-    // Insert into the block
-    block.insert(
-      lv, origin_left, origin_right, ch, self.lamport_clock, self.agent_id,
-    )!
+  // StringView array pattern: direct Char access, no index arithmetic
+  loop text.view(), 0 {
+    [], _ => ()
+    [ch, ..rest], i => {
+      let lv = self.graph.add_local_op(self.agent_id, self.next_counter)
+      self.next_counter = self.next_counter + 1
+      self.lamport_clock = self.lamport_clock + 1
+      // TextBlock::insert_at resolves origins internally from position
+      block.insert_at(
+        pos + i, lv, ch.to_string(), self.lamport_clock, self.agent_id,
+      )
+      continue rest, i + 1
+    }
   }
 }
 
@@ -505,19 +516,9 @@ pub fn Document::delete_text(
     Some(b) => b
     None => raise DocumentError::TextBlockNotFound(id~)
   }
-  if pos >= block.len() {
-    raise DocumentError::Internal(
-      detail="delete_text: position " +
-        pos.to_string() +
-        " out of bounds (len=" +
-        block.len().to_string() +
-        ")",
-    )
-  }
-  // Find the ItemId at this visible position, translate to global LV
-  let item_lv = block_position_to_item_lv(block, pos)
   self.lamport_clock = self.lamport_clock + 1
-  block.delete(item_lv, self.lamport_clock, self.agent_id)!
+  // TextBlock::delete_at finds the item at pos internally
+  block.delete_at(pos, self.lamport_clock, self.agent_id)!
 }
 
 ///|
@@ -545,7 +546,7 @@ pub fn Document::text_len(
 }
 ```
 
-Note: `block_position_to_origins` and `block_position_to_item_lv` are helper functions that map a visible character position to the Fugue tree's origin references. **Read how `internal/document/document.mbt` implements `position_to_origins` (the `find_at_position` / `position_to_lv` pattern) and replicate the same logic using the FugueTree's traversal API.** These helpers need to walk the FugueTree's visible items to find the item at a given position.
+Note: No `block_position_to_origins` or `block_position_to_item_lv` helpers are needed — `TextBlock::insert_at` and `TextBlock::delete_at` resolve positions internally using `FugueTree::get_visible_items()`. The Document layer never touches Fugue origins.
 
 - [ ] **Step 3: Run moon check**
 
@@ -574,22 +575,31 @@ git commit -m "feat(container): add Document text ops (insert_text, delete_text,
 
 ```moonbit
 ///|
-test "text_block: insert and read" {
+test "text_block: insert_at and read" {
   let block = TextBlock::new()
-  block.insert(0, None, None, "H", 1, "alice")!
-  block.insert(1, Some(0), None, "i", 2, "alice")!
+  block.insert_at(0, 0, "H", 1, "alice")  // pos=0, lv=0
+  block.insert_at(1, 1, "i", 2, "alice")  // pos=1, lv=1
   inspect(block.text(), content="Hi")
   inspect(block.len(), content="2")
 }
 
 ///|
-test "text_block: delete" {
+test "text_block: insert_at middle" {
   let block = TextBlock::new()
-  block.insert(0, None, None, "A", 1, "alice")!
-  block.insert(1, Some(0), None, "B", 2, "alice")!
-  block.insert(2, Some(1), None, "C", 3, "alice")!
+  block.insert_at(0, 0, "A", 1, "alice")
+  block.insert_at(1, 1, "C", 2, "alice")
+  block.insert_at(1, 2, "B", 3, "alice")  // insert "B" between A and C
   inspect(block.text(), content="ABC")
-  block.delete(1, 4, "alice")! // delete "B" (LV=1)
+}
+
+///|
+test "text_block: delete_at" {
+  let block = TextBlock::new()
+  block.insert_at(0, 0, "A", 1, "alice")
+  block.insert_at(1, 1, "B", 2, "alice")
+  block.insert_at(2, 2, "C", 3, "alice")
+  inspect(block.text(), content="ABC")
+  block.delete_at(1, 4, "alice")!  // delete "B" at visible pos 1
   inspect(block.text(), content="AC")
   inspect(block.len(), content="2")
 }
@@ -790,7 +800,7 @@ cd examples/block-editor && moon check && moon test
 
 ## Risks
 
-- **Position-to-origins mapping**: Converting a visible character position to Fugue origin LVs requires walking the FugueTree's visible items. The existing `internal/document/document.mbt` uses `position_to_lv` (get LV of item before cursor) and `lv_at_position` (get LV of item at cursor) via an OrderTree position cache. TextBlock needs the same logic — either replicate the position cache or use `FugueTree::get_visible_items()` directly (simpler, O(n) per insert instead of O(log n), acceptable for Phase 2).
+- **Position-to-origins mapping**: `TextBlock::insert_at` resolves origins via `FugueTree::get_visible_items()` — O(n) per insert. Acceptable for Phase 2 (per-block text is typically small). If performance matters later, add an OrderTree position cache like `internal/document/document.mbt` uses (O(log n) lookup). The API doesn't change — this is internal to TextBlock.
 - **CausalGraph interaction**: This plan covers local ops only. `Document::insert_text` allocates LVs from the shared CausalGraph via `graph.add_local_op`. Verify this method exists on CausalGraph and returns an Int (global LV). If the API differs, adapt the call.
 - **Standalone TextState**: Verify TextState still works after the fugue rename by running `cd event-graph-walker && moon test -p dowdiness/event-graph-walker/text`.
 
