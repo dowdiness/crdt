@@ -405,17 +405,14 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 - [x] **Phase 0: Rename** — ✅ Done. TreeDoc→TreeState, TreeDocError→TreeError.
 - [x] **Phase 1: Container + tree ops** — ✅ Done. `container/` package with `Document` struct. Block editor switched from `@tree.TreeState` to `@container.Document`. 25 tests.
   Plan: `docs/archive/completed-phases/2026-03-29-container-phase1-tree.md`
-- [ ] **Phase 2: Per-block text** — Add text ops to container Document. Two approaches under consideration:
-  - **Path A (simple):** Use shared global LVs in per-block FugueTree (sparse, no LvTable, no internal refactoring). Ship fast, accept O(total_ops) space per block.
-  - **Path B (dense):** LvTable + dense per-block ItemIds. Requires internal pipeline refactoring or container-level merge. Better space, more work.
-  Decision: TBD — depends on whether sparse overhead matters for real workloads.
-  Plan: `docs/plans/2026-04-03-container-phase2-text.md` (currently describes Path B, needs update for chosen path)
+- [ ] **Phase 2: Per-block text (Path A — shared global LVs)** — Add text ops to container Document. Per-block FugueTree uses shared global LVs (same as standalone TextState). No LvTable, no fugue rename, no internal pipeline refactoring. Accepts O(total_ops) sparse overhead per block.
+  Plan: `docs/plans/2026-04-03-container-phase2-text.md` (needs rewrite for Path A)
   Design: `docs/plans/2026-03-29-container-design.md`
   Exit: `Document::insert_text/delete_text/get_text` work. Block editor uses Document for both tree and text.
 - [ ] **Internal text pipeline refactoring** — Separate Lv (global causal version) from ItemId (per-container Fugue identity) in oplog/, branch/, fugue/. Enables dense per-block storage and clean per-block Branch/merge.
   Why: FugueTree uses sparse arrays indexed by global LV. With shared LV space, per-block arrays are O(total_ops) instead of O(block_size). Branch/MergeContext/DeleteIndex hardcode LV=ItemId.
   Packages: fugue/ (rename Lv→ItemId), oplog/ (decouple storage index from LV), branch/ (accept LvTable, translate at boundaries), delete_index/ (per-block with ItemIds).
-  When: When sparse overhead is measured as a real bottleneck, or when Phase 3 remote sync forces the issue. Not before.
+  When: When sparse overhead is measured as a real bottleneck. Phase 3 remote sync works without it (Branch uses global LVs per block, same as standalone TextState). Pure performance optimization.
   Exit: Branch accepts external CausalGraph + LvTable. Per-block FugueTree uses dense ItemIds. Standalone TextState still works (identity mapping).
 - [ ] **Phase 3: Unified sync** — Two peers converge on a block document. SyncMessage schema.
   Design: `docs/plans/2026-03-29-container-design.md` §Phase 3
