@@ -15,7 +15,7 @@ fn init_model() -> Model {
   // JS (main.ts) will reuse handle=1 instead of creating a second editor.
   let _handle = @ffi.create_editor_with_undo(agent_id, 500)
   let editor = @ffi.get_sync_editor().unwrap()
-  let init_text = "let id = \\x. x\nlet apply = \\f. \\x. f x\napply id 42"
+  let init_text = "let id = \\x. { x }\nlet apply = \\f. \\x. { f x }\napply id 42"
   editor.set_text(init_text)
   let outline_state : @proj.TreeEditorState[@ast.Term] = @proj.TreeEditorState::from_projection(
     editor.get_proj_node(),
@@ -50,18 +50,18 @@ fn refresh(model : Model) -> Model {
 
 ///|
 let examples : Array[(String, String)] = [
-  ("Basics", "let double = \\x. x + x\nlet result = double 5\nresult"),
+  ("Basics", "let double = \\x. {\n  x + x\n}\nlet result = double 5\nresult"),
   (
-    "Composition", "let inc = \\n. n + 1\nlet twice = \\f. \\x. f (f x)\nlet result = twice inc 0\nresult",
+    "Composition", "let inc = \\n. { n + 1 }\nlet twice = \\f. \\x. {\n  f (f x)\n}\nlet result = twice inc 0\nresult",
   ),
   (
-    "Currying", "let add = \\x. \\y. x + y\nlet add5 = add 5\nlet sum = add5 10\nsum",
+    "Currying", "let add = \\x. \\y. { x + y }\nlet add5 = add 5\nlet sum = add5 10\nsum",
   ),
   (
-    "Conditional", "let choose = \\x. if x then x + 1 else 42\nlet a = choose 0\nlet b = choose 5\na + b",
+    "Conditional", "let choose = \\x. if x then {\n  x + 1\n} else {\n  42\n}\nlet a = choose 0\nlet b = choose 5\na + b",
   ),
   (
-    "Pipeline", "let compose = \\f. \\g. \\x. f (g x)\nlet double = \\x. x + x\nlet inc = \\x. x + 1\nlet f = compose inc double\nf 5",
+    "Pipeline", "let compose = \\f. \\g. \\x. {\n  f (g x)\n}\nlet double = \\x. { x + x }\nlet inc = \\x. { x + 1 }\nlet f = compose inc double\nf 5",
   ),
 ]
 
