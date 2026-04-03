@@ -1,5 +1,6 @@
 import {
   "dowdiness/canopy/echo/tokenizer" @tokenizer,
+  "moonbitlang/core/math" @math,
 }
 
 options(
