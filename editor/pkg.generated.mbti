@@ -295,6 +295,7 @@ pub fn SyncEditor::get_ast_pretty(Self[@ast.Term]) -> String
 pub fn[T] SyncEditor::get_cursor(Self[T]) -> Int
 pub fn SyncEditor::get_dot_resolved(Self[@ast.Term]) -> String
 pub fn[T] SyncEditor::get_errors(Self[T]) -> Array[String]
+pub fn SyncEditor::get_eval_annotations(Self[@ast.Term]) -> Map[@dowdiness/canopy/core.NodeId, Array[@protocol.ViewAnnotation]]
 pub fn SyncEditor::get_eval_results(Self[@ast.Term]) -> Array[EvalResult]
 pub fn[T] SyncEditor::get_flat_proj(Self[T]) -> @proj.FlatProj?
 pub fn[T] SyncEditor::get_hub(Self[T]) -> EphemeralHub
@@ -309,6 +310,7 @@ pub fn[T] SyncEditor::get_source_map(Self[T]) -> @dowdiness/canopy/core.SourceMa
 pub fn[T] SyncEditor::get_text(Self[T]) -> String
 pub fn[T] SyncEditor::get_version(Self[T]) -> @text.Version
 pub fn[T : @dowdiness/loom/core.Renderable] SyncEditor::get_view_tree(Self[T]) -> @protocol.ViewNode?
+pub fn SyncEditor::get_view_tree_with_eval(Self[@ast.Term]) -> @protocol.ViewNode?
 pub fn[T] SyncEditor::insert(Self[T], String) -> Unit raise
 pub fn[T] SyncEditor::insert_and_record(Self[T], String, Int) -> Unit raise
 pub fn[T] SyncEditor::insert_at(Self[T], Int, String, Int) -> Unit

@@ -27,6 +27,21 @@ pub fn[T : @proj.Renderable] SyncEditor::get_view_tree(
 }
 
 ///|
+/// Lambda-specific: returns ViewNode tree with eval annotations.
+pub fn SyncEditor::get_view_tree_with_eval(
+  self : SyncEditor[@ast.Term],
+) -> @protocol.ViewNode? {
+  match self.get_proj_node() {
+    Some(proj_node) => {
+      let source_map = self.get_source_map()
+      let annotations = self.get_eval_annotations()
+      Some(@protocol.proj_to_view_node(proj_node, source_map, annotations~))
+    }
+    None => None
+  }
+}
+
+///|
 pub fn[T : @proj.Renderable] compute_view_patches(
   state : ViewUpdateState,
   editor : SyncEditor[T],
@@ -75,6 +90,11 @@ fn diff_view_nodes(
   }
   // token_spans changes require ReplaceNode because UpdateNode doesn't carry spans
   if prev.token_spans != curr.token_spans {
+    patches.push(@protocol.ViewPatch::ReplaceNode(node_id=curr.id, node=curr))
+    return
+  }
+  // annotation changes require ReplaceNode because UpdateNode doesn't carry annotations
+  if prev.annotations != curr.annotations {
     patches.push(@protocol.ViewPatch::ReplaceNode(node_id=curr.id, node=curr))
     return
   }

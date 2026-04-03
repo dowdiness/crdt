@@ -7,6 +7,7 @@
 pub fn[T : @loomcore.Renderable] proj_to_view_node(
   node : @core.ProjNode[T],
   source_map : @core.SourceMap,
+  annotations? : Map[@core.NodeId, Array[ViewAnnotation]] = {},
 ) -> ViewNode {
   let node_id = node.id()
   let kind_tag = @loomcore.Renderable::kind_tag(node.kind)
@@ -25,7 +26,11 @@ pub fn[T : @loomcore.Renderable] proj_to_view_node(
   }
   let children : Array[ViewNode] = []
   for child in node.children {
-    children.push(proj_to_view_node(child, source_map))
+    children.push(proj_to_view_node(child, source_map, annotations~))
+  }
+  let node_annotations = match annotations.get(node_id) {
+    Some(anns) => anns
+    None => []
   }
   ViewNode(
     id=node_id,
@@ -35,6 +40,7 @@ pub fn[T : @loomcore.Renderable] proj_to_view_node(
     token_spans~,
     css_class=kind_tag,
     children~,
+    annotations=node_annotations,
   )
 }
 
