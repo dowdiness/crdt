@@ -2,7 +2,7 @@
 
 **Write. It structures itself.**
 
-<!-- TODO: Replace with a GIF showing: type code → tree updates → scope colors → evaluation result appears inline → second peer edits simultaneously -->
+![Demo: type code, see evaluation results update live](docs/demo.gif)
 
 Canopy is an editor that understands your program, not just your characters. As you type, it parses incrementally, shows you scope and types, evaluates expressions live, and formats your code — all without leaving the flow. Two people can edit the same document simultaneously, with no server. Edits merge automatically.
 
