@@ -58,12 +58,19 @@ fn cosine_similarity(a : SparseVec, b : SparseVec) -> Double {
 }
 
 ///|
-/// Sort by score descending, return top-N as new array.
+/// Sort by score descending, break ties by ascending post ID for determinism.
 fn top_n_by_score(
   scores : Array[(Int, Double)],
   top_n : Int,
 ) -> Array[(Int, Double)] {
-  scores.sort_by(fn(a, b) { b.1.compare(a.1) })
+  scores.sort_by(fn(a, b) {
+    let cmp = b.1.compare(a.1)
+    if cmp != 0 {
+      cmp
+    } else {
+      a.0.compare(b.0)
+    }
+  })
   let n = if top_n < scores.length() { top_n } else { scores.length() }
   Array::makei(n, fn(i) { scores[i] })
 }

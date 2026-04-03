@@ -22,6 +22,8 @@ fn precision_at_k(
   if k <= 0 || results.is_empty() {
     return 0.0
   }
+  // Standard P@K divides by K, not by actual result count.
+  // Fewer than K results means missing results count as irrelevant.
   let n = if k < results.length() { k } else { results.length() }
   let query_cluster = cluster_of(query_id)
   let mut relevant = 0
@@ -30,7 +32,7 @@ fn precision_at_k(
       relevant = relevant + 1
     }
   }
-  relevant.to_double() / n.to_double()
+  relevant.to_double() / k.to_double()
 }
 
 ///|
@@ -108,6 +110,11 @@ test "evaluation - precision@K and MRR report" {
   )
   println(buf.to_string())
   // Snapshot overall metrics for regression detection
-  inspect(fmt2(overall_p), content="0.45")
+  inspect(
+    fmt2(overall_p),
+    content=(
+      #|0.44
+    ),
+  )
   inspect(fmt2(overall_mrr), content="0.81")
 }

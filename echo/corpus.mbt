@@ -7,10 +7,10 @@ struct Post {
 }
 
 ///|
-pub struct Corpus {
-  mut next_id : Int
-  doc_freq : Map[String, Int]
-  posts : Array[Post]
+pub(all) struct Corpus {
+  priv mut next_id : Int
+  priv doc_freq : Map[String, Int]
+  priv posts : Array[Post]
 }
 
 ///|

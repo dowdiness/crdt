@@ -6,10 +6,8 @@ package "dowdiness/canopy/echo"
 // Errors
 
 // Types and methods
-pub struct Corpus {
-  mut next_id : Int
-  doc_freq : Map[String, Int]
-  posts : Array[Post]
+pub(all) struct Corpus {
+  // private fields
 }
 pub fn Corpus::add_post(Self, String) -> Int
 pub fn Corpus::get_post_text(Self, Int) -> String?
