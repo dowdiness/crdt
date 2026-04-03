@@ -132,7 +132,7 @@ All functions are total (no errors, no panics):
 Post 0: "MoonBitでインクリメンタル計算のライブラリを作っている"
 Post 1: "増分計算の論文を読んだ。Salsaの設計が参考になる"
 Post 2: "今日の晩ご飯はカレーにした"
-Post 3: "Rustのroeywanスタイルのgreen treeをMoonBitに移植したい"
+Post 3: "Rustのrowanスタイルのgreen treeをMoonBitに移植したい"
 Post 4: "CRDTの実装でFugueMaxアルゴリズムを使う"
 Post 5: "カレーのスパイスを新しく買った。クミンとコリアンダー"
 Post 6: "incr libraryにMemoプリミティブを追加した"
