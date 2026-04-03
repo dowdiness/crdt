@@ -342,7 +342,7 @@ From SuperOOP analysis and handler chain refactor (PR #54):
   Why: the structure-format problem is "how to represent program meaning so projections render from it," not "how to annotate trees." See vision doc.
   Architecture: `docs/architecture/vision-projectional-bridge.md`, `docs/architecture/multi-representation-system.md`
   Research: Trees That Grow (Najd 2017), Cofree comonads, Attributed Grammars, MLIR dialects — each addresses a fragment of this. The semantic model approach (egglog) subsumes them.
-  Prerequisite: evaluator Phase 1 (egglog relational evaluation) validates the semantic model approach.
+  Prerequisite: evaluator Phase 1 (egglog relational evaluation) ✅ Done.
   Exit: at least one structure-format projection (DOT or typed view) queries the semantic model instead of threading ad-hoc data.
 
 ### Concrete semantic projection candidates
@@ -357,8 +357,8 @@ From SuperOOP analysis and handler chain refactor (PR #54):
   Exit: pretty-print view shows `→ 10` or `→ ‹closure›` next to each evaluated definition.
 - [ ] **Type annotations overlay** — Show inferred types next to bindings and expressions. Egglog typing rules already exist in `loom/egglog/examples/lambda/`.
   Why: types are the canonical "explicit semantics" — they make invisible meaning visible. First projection requiring the egglog semantic model.
-  Semantic data: type inference (needs egglog Phase 1)
-  Prerequisite: evaluator Phase 1 (egglog relational evaluation)
+  Semantic data: type inference (egglog Phase 1 ✅ Done)
+  Prerequisite: evaluator Phase 1 ✅ Done
   Exit: bindings show inferred types (e.g., `double : Int → Int`).
 - [ ] **Πe extension** — Add `Choice` constructor and cost-factory resolver for more expressive layout decisions.
   Exit: layout engine supports user-defined cost functions per "A Pretty Expressive Printer" (OOPSLA 2023).
@@ -386,9 +386,8 @@ From SuperOOP analysis and handler chain refactor (PR #54):
   Plan: `docs/plans/2026-04-02-lambda-evaluator-phase2-impl.md`
 - [x] **Phase 0: Egglog API extensions** — ✅ Done (egglog PR #5). Added `Database::scan` and `Database::row_count`. 5 tests.
   Plan: `docs/plans/2026-04-02-lambda-evaluator-design.md` §Phase 0
-- [ ] **Phase 1: Egglog relational evaluator** — Datalog + Bridge hybrid evaluation with demand-driven rules.
-  Plan: `docs/plans/2026-04-02-lambda-evaluator-design.md` §Phase 1
-  Exit: egglog example with partial evaluation, composition with typing, 20+ tests.
+- [x] **Phase 1: Egglog relational evaluator** — ✅ Done (egglog PR #6). 17 Datalog rules + MoonBit bridge in `loom/egglog/examples/lambda-eval/`. Demand-driven evaluation, partial evaluation (holes), InEnv→TypeEnv rename, composition with typing. 25 tests.
+  Plan: `docs/plans/2026-04-02-lambda-evaluator-phase1-impl.md`
 - [ ] **Phase 3: Editor integration** — Wire Tier 1 + Tier 2 into incr reactive graph with batch escalation.
   Plan: `docs/plans/2026-04-02-lambda-evaluator-design.md` §Phase 3
   Exit: Memo[EvalResult] per definition, Tier 2 batch escalation for incomplete programs.
@@ -403,9 +402,8 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 
 **Impact:** Medium | **Effort:** Low-Medium
 
-- [ ] **Convergence relex** — Ensure incremental relex converges with batch lex.
+- [x] **Convergence relex** — ✅ Done. Mode-aware incremental re-lex with convergence checking in `loom/loom/src/core/mode_lexer.mbt`. Incremental now faster than full parse at all scales (0.85-0.91x). 4 convergence tests in `mode_relex_wbtest.mbt`.
   Plan: `docs/plans/2026-04-02-convergence-relex-impl.md`
-  Exit: property test confirms incremental relex always produces same tokens as full lex.
 
 ---
 
