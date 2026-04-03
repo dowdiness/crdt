@@ -98,12 +98,30 @@ test "segment - single character" {
 
 ///|
 test "segment - katakana" {
-  let result = segment("カレーライス")
-  inspect(result.length() > 0, content="true")
+  inspect(
+    segment("カレーライス"),
+    content=(
+      #|["カレーライス"]
+    ),
+  )
 }
 
 ///|
 test "segment - mixed Japanese and ASCII" {
-  let result = segment("MoonBitで開発する")
-  inspect(result.length() > 0, content="true")
+  inspect(
+    segment("MoonBitで開発する"),
+    content=(
+      #|["MoonBit", "で", "開発", "する"]
+    ),
+  )
+}
+
+///|
+test "segment - longer sentence" {
+  inspect(
+    segment("共同編集にはCRDTかOTが必要"),
+    content=(
+      #|["共同", "編集", "に", "は", "CRDT", "か", "OT", "が", "必要"]
+    ),
+  )
 }

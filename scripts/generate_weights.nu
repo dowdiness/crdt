@@ -3,7 +3,9 @@
 # Source: TinySegmenter by Taku Kudo (BSD 3-Clause)
 # Usage: nu scripts/generate_weights.nu
 
-let url = "https://raw.githubusercontent.com/code4fukui/TinySegmenter/main/TinySegmenter.js"
+# Pinned to a specific commit for reproducibility.
+# To update: change the hash, rerun, verify moon test still passes.
+let url = "https://raw.githubusercontent.com/code4fukui/TinySegmenter/4674468465043414e9b0785e88e48e4e79bdbf9d/TinySegmenter.js"
 let out_path = ([$env.FILE_PWD, "..", "echo", "tokenizer", "weights.mbt"] | path join | path expand)
 
 let js = (http get $url)
