@@ -33,3 +33,70 @@ test "corpus - vectors recomputed on add" {
   // Norms should differ because IDF changed
   inspect(norm_before != norm_after, content="true")
 }
+
+test "query_text - finds similar posts" {
+  let corpus = Corpus::new()
+  let _ = corpus.add_post("カレーを作った")
+  let _ = corpus.add_post("プログラミングの勉強")
+  let _ = corpus.add_post("カレーのスパイス")
+  let results = corpus.query_text("カレーが好き")
+  // Posts 0 and 2 share "カレ" bigram with query
+  inspect(results.length() > 0, content="true")
+  let first_id = results[0].0
+  inspect(first_id == 0 || first_id == 2, content="true")
+}
+
+test "query_text - empty query returns empty" {
+  let corpus = Corpus::new()
+  let _ = corpus.add_post("hello")
+  inspect(corpus.query_text(""), content="[]")
+}
+
+test "query_text - single char query returns empty" {
+  let corpus = Corpus::new()
+  let _ = corpus.add_post("hello world")
+  inspect(corpus.query_text("h"), content="[]")
+}
+
+test "query_text - top_n limits results" {
+  let corpus = Corpus::new()
+  // Use distinct bigrams so TF-IDF is non-zero
+  let _ = corpus.add_post("カレーを作った")
+  let _ = corpus.add_post("カレーのスパイス")
+  let _ = corpus.add_post("プログラミングの勉強")
+  // "カレー" bigrams appear in only 2 docs, so IDF > 0
+  let results = corpus.query_text("カレーが好き", top_n=1)
+  inspect(results.length(), content="1")
+}
+
+test "query_text - top_n zero returns empty" {
+  let corpus = Corpus::new()
+  let _ = corpus.add_post("hello")
+  inspect(corpus.query_text("hello", top_n=0), content="[]")
+}
+
+test "query_similar - basic" {
+  let corpus = Corpus::new()
+  let _ = corpus.add_post("カレーを作った")
+  let _ = corpus.add_post("プログラミングの勉強")
+  let id2 = corpus.add_post("カレーのスパイス")
+  let results = corpus.query_similar(id2)
+  inspect(results.length() > 0, content="true")
+  // Post 0 shares "カレ" bigram
+  inspect(results[0].0, content="0")
+}
+
+test "query_similar - invalid id returns empty" {
+  let corpus = Corpus::new()
+  inspect(corpus.query_similar(999), content="[]")
+}
+
+test "query_similar - excludes self" {
+  let corpus = Corpus::new()
+  let id = corpus.add_post("hello world")
+  let _ = corpus.add_post("hello moon")
+  let results = corpus.query_similar(id)
+  for result in results {
+    inspect(result.0 != id, content="true")
+  }
+}
