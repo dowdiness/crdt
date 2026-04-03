@@ -1,5 +1,3 @@
-// echo/sparse_vec.mbt
-
 ///|
 priv struct SparseVec {
   entries : Map[String, Double]
@@ -7,13 +5,22 @@ priv struct SparseVec {
 }
 
 ///|
+fn SparseVec::zero() -> SparseVec {
+  { entries: Map::new(), norm: 0.0 }
+}
+
+///|
+/// Converts term frequencies into a TF-IDF weighted sparse vector.
+/// Uses standard TF-IDF: weight = (count/total) * ln(doc_count/df).
+/// Terms with zero or negative weight (df >= doc_count) are excluded
+/// to maintain sparsity — they carry no discriminative signal.
 fn to_sparse_vec(
   tf : TermFreq,
   doc_count : Int,
   doc_freq : Map[String, Int],
 ) -> SparseVec {
   if tf.total == 0 {
-    return { entries: Map::new(), norm: 0.0 }
+    return SparseVec::zero()
   }
   let entries : Map[String, Double] = Map::new()
   let mut sum_sq = 0.0
@@ -34,6 +41,8 @@ fn to_sparse_vec(
 }
 
 ///|
+/// Cosine similarity: dot(a,b) / (‖a‖ × ‖b‖).
+/// Returns 0.0 when either vector has zero norm (no shared signal).
 fn cosine_similarity(a : SparseVec, b : SparseVec) -> Double {
   if a.norm == 0.0 || b.norm == 0.0 {
     return 0.0
@@ -46,4 +55,15 @@ fn cosine_similarity(a : SparseVec, b : SparseVec) -> Double {
     }
   })
   dot / (a.norm * b.norm)
+}
+
+///|
+/// Sort by score descending, return top-N as new array.
+fn top_n_by_score(
+  scores : Array[(Int, Double)],
+  top_n : Int,
+) -> Array[(Int, Double)] {
+  scores.sort_by(fn(a, b) { b.1.compare(a.1) })
+  let n = if top_n < scores.length() { top_n } else { scores.length() }
+  Array::makei(n, fn(i) { scores[i] })
 }
