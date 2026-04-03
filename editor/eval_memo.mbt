@@ -102,3 +102,89 @@ pub fn SyncEditor::get_eval_results(
     None => []
   }
 }
+
+///|
+/// Split a Layout at top-level HardLine boundaries.
+/// Only descends into Concat nodes — Nest, Group, Annotate are opaque.
+fn split_at_hardlines(
+  layout : @pretty.Layout[@pretty.SyntaxCategory],
+) -> Array[@pretty.Layout[@pretty.SyntaxCategory]] {
+  let segments : Array[@pretty.Layout[@pretty.SyntaxCategory]] = []
+  let parts : Array[@pretty.Layout[@pretty.SyntaxCategory]] = []
+  fn flush() -> Unit {
+    if parts.is_empty() {
+      return
+    }
+    let mut combined = parts[0]
+    for i = 1; i < parts.length(); i = i + 1 {
+      combined = combined + parts[i]
+    }
+    segments.push(combined)
+    parts.clear()
+  }
+
+  fn walk(l : @pretty.Layout[@pretty.SyntaxCategory]) -> Unit {
+    match l {
+      HardLine => flush()
+      Concat(left, right) => {
+        walk(left)
+        walk(right)
+      }
+      Empty => ()
+      other => parts.push(other)
+    }
+  }
+
+  walk(layout)
+  flush()
+  segments
+}
+
+///|
+fn eval_annotation_layout(
+  result : EvalResult,
+) -> @pretty.Layout[@pretty.SyntaxCategory]? {
+  match result {
+    Value(s) =>
+      Some(
+        @pretty.annotate(
+          @pretty.SyntaxCategory::EvalAnnotation,
+          @pretty.text("  \u{2192} " + s),
+        ),
+      )
+    Stuck(s) =>
+      Some(
+        @pretty.annotate(
+          @pretty.SyntaxCategory::EvalError,
+          @pretty.text("  \u{2192} " + s),
+        ),
+      )
+    Suppressed => None
+  }
+}
+
+///|
+/// Post-process a Layout to inject eval annotations after each segment.
+/// Splits the canonical Layout at HardLine boundaries, appends annotation
+/// to each segment, and rejoins with HardLine.
+fn inject_eval_annotations(
+  layout : @pretty.Layout[@pretty.SyntaxCategory],
+  eval_results : Array[EvalResult],
+) -> @pretty.Layout[@pretty.SyntaxCategory] {
+  if eval_results.is_empty() {
+    return layout
+  }
+  let segments = split_at_hardlines(layout)
+  let annotated : Array[@pretty.Layout[@pretty.SyntaxCategory]] = []
+  for i, seg in segments {
+    match eval_results.get(i) {
+      Some(result) =>
+        match eval_annotation_layout(result) {
+          Some(ann) => annotated.push(seg + ann)
+          None => annotated.push(seg)
+        }
+      None => annotated.push(seg)
+    }
+  }
+  @pretty.separate(@pretty.hardline(), annotated)
+}
