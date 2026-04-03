@@ -73,12 +73,12 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
 - [ ] Implement `SyncRequest`/`SyncResponse` recovery so malformed/incompatible `CrdtOps` does not leave peers diverged silently
   Why: recovery semantics should be finalized after the container implementation defines the next sync boundary, not against the current pre-container transport assumptions.
   Plan: `docs/plans/2026-03-29-sync-recovery-followup.md`
-  Blocked by: container implementation (`docs/plans/2026-03-29-container-design.md`, `docs/plans/2026-03-29-container-phase1-tree.md`)
-  Exit: revisit after container implementation; then align retry, buffering, and failure behavior with the new sync boundary.
+  Blocked by: container Phase 2 (unified oplog with text ops). Phase 1 (tree ops) ✅ Done — `container/` package with `Document` struct, block editor switched.
+  Exit: revisit after container Phase 2; then align retry, buffering, and failure behavior with the new sync boundary.
 - [ ] Reject duplicate/invalid relay peer IDs in `RelayRoom`
-  Why: `RelayRoom` still trusts caller uniqueness and membership correctness, but hardening this boundary should wait until the container implementation defines the next sync boundary clearly.
+  Why: `RelayRoom` still trusts caller uniqueness and membership correctness, but hardening this boundary should wait until the container Phase 2 defines the next sync boundary clearly.
   Plan: `docs/plans/2026-03-29-relay-peer-validation.md`
-  Exit: revisit after container implementation; then define and test duplicate peer IDs and invalid membership behavior against the new sync boundary.
+  Exit: revisit after container Phase 2; then define and test duplicate peer IDs and invalid membership behavior against the new sync boundary.
 - [x] Fix P2-1: Remote sync pollutes undo history — `UndoManager.set_tracking()` implemented; valtio TS layer suppresses tracking during remote op application (see `event-graph-walker/docs/UNDO_MANAGER_DESIGN.md`)
 - [x] Fix P2-2: Position-based undo replays stale positions after concurrent edits — replaced with LV-based UndoManager; tombstone revival restores characters at exact CRDT position regardless of concurrent edits (Phase 1+2 complete, see `event-graph-walker/docs/UNDO_MANAGER_DESIGN.md`)
 - [x] Wire `apply_sync` to suppress undo tracking — `SyncEditor::apply_sync` now disables tracking before applying remote ops
@@ -403,7 +403,7 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 **Impact:** Medium | **Effort:** Low-Medium
 
 - [x] **Convergence relex** — ✅ Done. Mode-aware incremental re-lex with convergence checking in `loom/loom/src/core/mode_lexer.mbt`. Incremental now faster than full parse at all scales (0.85-0.91x). 4 convergence tests in `mode_relex_wbtest.mbt`.
-  Plan: `docs/plans/2026-04-02-convergence-relex-impl.md`
+  Plan: `docs/archive/completed-phases/2026-04-02-convergence-relex-impl.md`
 
 ---
 
