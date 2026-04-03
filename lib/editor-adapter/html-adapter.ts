@@ -10,6 +10,17 @@ function parseObjectKeys(label: string): string[] | null {
   return inner.split(',').map(k => k.trim());
 }
 
+/** Append annotation badges to a node row */
+function renderAnnotations(row: HTMLElement, node: ViewNode): void {
+  if (!node.annotations || node.annotations.length === 0) return;
+  for (const ann of node.annotations) {
+    const badge = document.createElement('span');
+    badge.className = `annotation-${ann.kind} severity-${ann.severity}`;
+    badge.textContent = ann.label;
+    row.appendChild(badge);
+  }
+}
+
 function edgeLabelFor(parent: ViewNode, childIndex: number): string {
   if (parent.kind_tag === 'Object') {
     const keys = parseObjectKeys(parent.label);
@@ -209,6 +220,8 @@ export class HTMLAdapter implements EditorAdapter {
       idEl.textContent = ` #${node.id}`;
       row.appendChild(idEl);
 
+      renderAnnotations(row, node);
+
       wrapper.appendChild(row);
       return wrapper;
     }
@@ -251,6 +264,8 @@ export class HTMLAdapter implements EditorAdapter {
     idEl.className = 'node-id';
     idEl.textContent = ` #${node.id}`;
     row.appendChild(idEl);
+
+    renderAnnotations(row, node);
 
     container.appendChild(row);
 

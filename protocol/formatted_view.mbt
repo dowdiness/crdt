@@ -14,6 +14,8 @@ fn category_to_role(cat : @pretty.SyntaxCategory) -> String {
     Punctuation => "punctuation"
     Comment => "comment"
     Error => "error"
+    EvalAnnotation => "eval-annotation"
+    EvalError => "eval-error"
   }
 }
 

@@ -153,6 +153,59 @@ pub fn syntax_to_proj_node(
       }
       None => error_node_for_syntax("empty parentheses", node, counter)
     }
+  } else if @syntax.SyntaxKind::from_raw(node.kind()) == @syntax.BlockExpr {
+    // Block expression: { LetDef* Expression? } — same structure as SourceFile.
+    // Collect defs + body, produce Module node (or unwrap single expression).
+    let defs : Array[(String, ProjNode[@ast.Term], Int)] = []
+    let mut final_proj : ProjNode[@ast.Term]? = None
+    for child in node.children() {
+      if @parser.LetDefView::cast(child) is Some(v) {
+        let init = match v.init() {
+          Some(n) => syntax_to_proj_node(n, counter)
+          None =>
+            error_node_for_syntax("missing let binding value", child, counter)
+        }
+        defs.push((v.name(), init, child.start()))
+      } else if final_proj is None &&
+        @syntax.SyntaxKind::from_raw(child.kind()) != @syntax.LBraceToken &&
+        @syntax.SyntaxKind::from_raw(child.kind()) != @syntax.RBraceToken {
+        final_proj = Some(syntax_to_proj_node(child, counter))
+      }
+    }
+    let result = match final_proj {
+      Some(p) => p
+      None =>
+        ProjNode::new(
+          Unit,
+          node.end(),
+          node.end(),
+          @core.next_proj_node_id(counter),
+          [],
+        )
+    }
+    if defs.length() > 0 {
+      let children : Array[ProjNode[@ast.Term]] = defs.map(fn(d) { d.1 })
+      children.push(result)
+      let term_defs : Array[(@ast.VarName, @ast.Term)] = defs.map(fn(d) {
+        (d.0, d.1.kind)
+      })
+      ProjNode::new(
+        Module(term_defs, result.kind),
+        node.start(),
+        node.end(),
+        @core.next_proj_node_id(counter),
+        children,
+      )
+    } else {
+      // Single expression block: unwrap like ParenExpr
+      ProjNode::new(
+        result.kind,
+        node.start(),
+        node.end(),
+        result.node_id,
+        result.children,
+      )
+    }
   } else if @syntax.SyntaxKind::from_raw(node.kind()) == @syntax.HoleLiteral {
     ProjNode::new(
       Hole(0),

@@ -3,14 +3,16 @@
 // formatted display through the ViewPatch → Adapter pipeline.
 
 ///|
-/// Lambda-specific: returns the pretty-printed ViewNode tree.
+/// Lambda-specific: returns the pretty-printed ViewNode tree with eval annotations.
 /// Each line becomes a child ViewNode with text + token_spans.
 pub fn SyncEditor::get_pretty_view(
   self : SyncEditor[@ast.Term],
 ) -> @protocol.ViewNode {
   let ast = self.get_ast()
   let layout = @pretty.Pretty::to_layout(ast)
-  @protocol.layout_to_view_tree(layout, width=80)
+  let eval_results = self.get_eval_results()
+  let annotated = inject_eval_annotations(layout, eval_results)
+  @protocol.layout_to_view_tree(annotated, width=80)
 }
 
 ///|
