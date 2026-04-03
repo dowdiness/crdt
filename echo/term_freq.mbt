@@ -1,5 +1,5 @@
 ///|
-struct TermFreq {
+priv struct TermFreq {
   counts : Map[String, Int]
   total : Int
 }

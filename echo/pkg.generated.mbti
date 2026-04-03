@@ -18,10 +18,6 @@ pub fn Corpus::query_text(Self, String, top_n? : Int) -> Array[(Int, Double)]
 
 type Post
 
-type SparseVec
-
-type TermFreq
-
 // Type aliases
 
 // Traits

@@ -1,7 +1,7 @@
 // echo/sparse_vec.mbt
 
 ///|
-struct SparseVec {
+priv struct SparseVec {
   entries : Map[String, Double]
   norm : Double
 }
