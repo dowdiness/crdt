@@ -11,7 +11,7 @@ fn make_fixture_corpus() -> Corpus {
   ) // 1
   let _ = corpus.add_post("今日の晩ご飯はカレーにした") // 2
   let _ = corpus.add_post(
-    "Rustのroeywanスタイルのgreen treeをMoonBitに移植したい",
+    "Rustのrowanスタイルのgreen treeをMoonBitに移植したい",
   ) // 3
   let _ = corpus.add_post("CRDTの実装でFugueMaxアルゴリズムを使う") // 4
   let _ = corpus.add_post(
