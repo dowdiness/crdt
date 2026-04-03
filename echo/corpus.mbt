@@ -7,6 +7,16 @@ struct Post {
 }
 
 ///|
+pub fn Corpus::get_post_text(self : Corpus, post_id : Int) -> String? {
+  for post in self.posts {
+    if post.id == post_id {
+      return Some(post.text)
+    }
+  }
+  None
+}
+
+///|
 pub struct Corpus {
   mut next_id : Int
   doc_freq : Map[String, Int]

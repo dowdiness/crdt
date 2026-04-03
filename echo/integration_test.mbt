@@ -1,26 +1,32 @@
 // echo/integration_test.mbt
 
 ///|
-test "integration - curry cluster" {
+fn make_fixture_corpus() -> Corpus {
   let corpus = Corpus::new()
   let _ = corpus.add_post(
     "MoonBitでインクリメンタル計算のライブラリを作っている",
-  )
+  ) // 0
   let _ = corpus.add_post(
     "増分計算の論文を読んだ。Salsaの設計が参考になる",
-  )
-  let _ = corpus.add_post("今日の晩ご飯はカレーにした")
+  ) // 1
+  let _ = corpus.add_post("今日の晩ご飯はカレーにした") // 2
   let _ = corpus.add_post(
     "Rustのroeywanスタイルのgreen treeをMoonBitに移植したい",
-  )
-  let _ = corpus.add_post("CRDTの実装でFugueMaxアルゴリズムを使う")
+  ) // 3
+  let _ = corpus.add_post("CRDTの実装でFugueMaxアルゴリズムを使う") // 4
   let _ = corpus.add_post(
     "カレーのスパイスを新しく買った。クミンとコリアンダー",
-  )
+  ) // 5
   let _ = corpus.add_post(
     "incr libraryにMemoプリミティブを追加した",
-  )
-  let _ = corpus.add_post("共同編集にはCRDTかOTが必要")
+  ) // 6
+  let _ = corpus.add_post("共同編集にはCRDTかOTが必要") // 7
+  corpus
+}
+
+///|
+test "integration - curry cluster" {
+  let corpus = make_fixture_corpus()
   // Post 2 (curry dinner) → top-1 should be Post 5 (curry spices)
   let results_2 = corpus.query_similar(2, top_n=3)
   inspect(results_2[0].0, content="5")
@@ -31,25 +37,7 @@ test "integration - curry cluster" {
 
 ///|
 test "integration - CRDT cluster" {
-  let corpus = Corpus::new()
-  let _ = corpus.add_post(
-    "MoonBitでインクリメンタル計算のライブラリを作っている",
-  )
-  let _ = corpus.add_post(
-    "増分計算の論文を読んだ。Salsaの設計が参考になる",
-  )
-  let _ = corpus.add_post("今日の晩ご飯はカレーにした")
-  let _ = corpus.add_post(
-    "Rustのroeywanスタイルのgreen treeをMoonBitに移植したい",
-  )
-  let _ = corpus.add_post("CRDTの実装でFugueMaxアルゴリズムを使う")
-  let _ = corpus.add_post(
-    "カレーのスパイスを新しく買った。クミンとコリアンダー",
-  )
-  let _ = corpus.add_post(
-    "incr libraryにMemoプリミティブを追加した",
-  )
-  let _ = corpus.add_post("共同編集にはCRDTかOTが必要")
+  let corpus = make_fixture_corpus()
   // Post 4 (CRDT FugueMax) → top-1 should be Post 7 (CRDT/OT)
   let results_4 = corpus.query_similar(4, top_n=3)
   inspect(results_4[0].0, content="7")
@@ -60,25 +48,7 @@ test "integration - CRDT cluster" {
 
 ///|
 test "integration - query_text finds curry posts" {
-  let corpus = Corpus::new()
-  let _ = corpus.add_post(
-    "MoonBitでインクリメンタル計算のライブラリを作っている",
-  )
-  let _ = corpus.add_post(
-    "増分計算の論文を読んだ。Salsaの設計が参考になる",
-  )
-  let _ = corpus.add_post("今日の晩ご飯はカレーにした")
-  let _ = corpus.add_post(
-    "Rustのroeywanスタイルのgreen treeをMoonBitに移植したい",
-  )
-  let _ = corpus.add_post("CRDTの実装でFugueMaxアルゴリズムを使う")
-  let _ = corpus.add_post(
-    "カレーのスパイスを新しく買った。クミンとコリアンダー",
-  )
-  let _ = corpus.add_post(
-    "incr libraryにMemoプリミティブを追加した",
-  )
-  let _ = corpus.add_post("共同編集にはCRDTかOTが必要")
+  let corpus = make_fixture_corpus()
   let results = corpus.query_text("カレーライスが食べたい", top_n=3)
   let ids = results.map(fn(pair) { pair.0 })
   // Post 2 or 5 (curry cluster) should appear in results
@@ -87,25 +57,7 @@ test "integration - query_text finds curry posts" {
 
 ///|
 test "integration - query_text finds CRDT posts" {
-  let corpus = Corpus::new()
-  let _ = corpus.add_post(
-    "MoonBitでインクリメンタル計算のライブラリを作っている",
-  )
-  let _ = corpus.add_post(
-    "増分計算の論文を読んだ。Salsaの設計が参考になる",
-  )
-  let _ = corpus.add_post("今日の晩ご飯はカレーにした")
-  let _ = corpus.add_post(
-    "Rustのroeywanスタイルのgreen treeをMoonBitに移植したい",
-  )
-  let _ = corpus.add_post("CRDTの実装でFugueMaxアルゴリズムを使う")
-  let _ = corpus.add_post(
-    "カレーのスパイスを新しく買った。クミンとコリアンダー",
-  )
-  let _ = corpus.add_post(
-    "incr libraryにMemoプリミティブを追加した",
-  )
-  let _ = corpus.add_post("共同編集にはCRDTかOTが必要")
+  let corpus = make_fixture_corpus()
   let results = corpus.query_text("CRDTで共同編集", top_n=3)
   let ids = results.map(fn(pair) { pair.0 })
   inspect(ids.contains(4) || ids.contains(7), content="true")
