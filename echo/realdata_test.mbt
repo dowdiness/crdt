@@ -166,6 +166,12 @@ test "realdata - commit messages three-way comparison" {
     ),
   )
   inspect(
+    fmt2(sp),
+    content=(
+      #|0.43
+    ),
+  )
+  inspect(
     fmt2(lp),
     content=(
       #|0.43
