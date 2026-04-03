@@ -91,13 +91,13 @@ Read more: [Product Vision](docs/architecture/product-vision.md) · [The Project
 
 **Examples:**
 
-| Example | Description |
-|---------|-------------|
-| [web](examples/web/) | Canonical demo — lambda + JSON editors with syntax-highlighted pretty-print |
-| [ideal](examples/ideal/) | Full-featured editor with inspector, benchmarks |
-| [prosemirror](examples/prosemirror/) | ProseMirror structural editing integration |
-| [canvas](examples/canvas/) | Infinite canvas (experimental) |
-| [block-editor](examples/block-editor/) | Block-based structural editing |
+| Example | Description | Live Demo |
+|---------|-------------|-----------|
+| [web](examples/web/) | Canonical demo — lambda + JSON editors with syntax-highlighted pretty-print | [canopy-lambda-editor.pages.dev](https://canopy-lambda-editor.pages.dev) |
+| [ideal](examples/ideal/) | Full-featured editor with inspector, benchmarks | [canopy-ideal.pages.dev](https://canopy-ideal.pages.dev) |
+| [prosemirror](examples/prosemirror/) | ProseMirror structural editing integration | [canopy-prosemirror.pages.dev](https://canopy-prosemirror.pages.dev) |
+| [canvas](examples/canvas/) | Infinite canvas (experimental) | [canopy-canvas.pages.dev](https://canopy-canvas.pages.dev) |
+| [block-editor](examples/block-editor/) | Block-based structural editing | [canopy-block-editor.pages.dev](https://canopy-block-editor.pages.dev) |
 
 ## Quick Start
 
