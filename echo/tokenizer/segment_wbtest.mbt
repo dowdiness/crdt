@@ -50,3 +50,46 @@ test "char_type - M before H priority" {
   inspect(char_type('一'), content="M")
   inspect(char_type('三'), content="M")
 }
+
+///|
+test "segment - basic Japanese sentence" {
+  let result = segment("今日はいい天気です")
+  inspect(result, content=(
+    #|["今日", "は", "いい", "天気", "です"]
+  ))
+}
+
+///|
+test "segment - name sentence" {
+  let result = segment("私の名前は田中です")
+  inspect(result, content=(
+    #|["私", "の", "名前", "は", "田中", "です"]
+  ))
+}
+
+///|
+test "segment - empty string" {
+  inspect(segment(""), content="[]")
+}
+
+///|
+test "segment - single character" {
+  inspect(
+    segment("あ"),
+    content=(
+      #|["あ"]
+    ),
+  )
+}
+
+///|
+test "segment - katakana" {
+  let result = segment("カレーライス")
+  inspect(result.length() > 0, content="true")
+}
+
+///|
+test "segment - mixed Japanese and ASCII" {
+  let result = segment("MoonBitで開発する")
+  inspect(result.length() > 0, content="true")
+}
