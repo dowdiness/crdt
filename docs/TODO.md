@@ -398,7 +398,25 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 
 ---
 
-## 16. Incremental Parsing — Convergence Relex
+## 16. Unified Container (CRDT)
+
+**Impact:** High | **Effort:** High
+
+- [x] **Phase 0: Rename** — ✅ Done. TreeDoc→TreeState, TreeDocError→TreeError.
+- [x] **Phase 1: Container + tree ops** — ✅ Done. `container/` package with `Document` struct. Block editor switched from `@tree.TreeState` to `@container.Document`. 25 tests.
+  Plan: `docs/archive/completed-phases/2026-03-29-container-phase1-tree.md`
+- [ ] **Phase 2: Per-block text** — Rename `fugue::Lv` → `fugue::ItemId`, LvTable, TextBlock with dense per-block IDs, Document text API. Block editor drops independent TextState map.
+  Plan: `docs/plans/2026-04-03-container-phase2-text.md`
+  Design: `docs/plans/2026-03-29-container-design.md`
+  Exit: `Document::insert_text/delete_text/get_text` work with dense per-block ItemIds. Block editor uses Document for both tree and text.
+- [ ] **Phase 3: Unified sync** — Two peers converge on a block document. SyncMessage schema.
+  Design: `docs/plans/2026-03-29-container-design.md` §Phase 3
+- [ ] **Phase 4: Document-level undo** — Undo spans tree + text. Transaction boundaries.
+  Design: `docs/plans/2026-03-29-container-design.md` §Phase 4
+
+---
+
+## 17. Incremental Parsing — Convergence Relex
 
 **Impact:** Medium | **Effort:** Low-Medium
 
@@ -407,7 +425,7 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 
 ---
 
-## 17. Example App Consolidation
+## 18. Example App Consolidation
 
 **Impact:** Medium | **Effort:** High
 
@@ -437,7 +455,7 @@ Post-consolidation app inventory:
 
 ---
 
-## 18. Documentation & Demo Polish
+## 19. Documentation & Demo Polish
 
 **Impact:** High (first impressions) | **Effort:** Low-High
 
