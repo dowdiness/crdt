@@ -31,6 +31,7 @@ export default defineConfig({
       input: {
         main: 'index.html',
         json: 'json.html',
+        memo: 'memo.html',
       },
     },
   },
