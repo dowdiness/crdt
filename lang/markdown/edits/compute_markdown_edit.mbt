@@ -273,8 +273,11 @@ fn compute_merge_with_previous(
 ) -> Result[(Array[SpanEdit], FocusHint)?, String] {
   // Find the parent that contains this node, then find sibling index
   let (siblings, idx) = find_sibling_context(proj, node_id)
-  // First block — no-op
-  if idx <= 0 {
+  if idx < 0 {
+    return Err("node not found in projection tree: " + node_id.to_string())
+  }
+  // First sibling — no-op
+  if idx == 0 {
     return Ok(None)
   }
   let prev_node = siblings[idx - 1]

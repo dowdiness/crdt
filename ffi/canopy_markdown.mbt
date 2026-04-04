@@ -1,4 +1,5 @@
 ///| FFI exports for the Markdown editor.
+/// Handles start at 20000 to avoid collisions with lambda (0+) and JSON (10000+).
 
 ///|
 let markdown_editors : Map[Int, @editor.SyncEditor[@markdown.Block]] = Map::new()
@@ -88,15 +89,24 @@ pub fn markdown_apply_edit(
         "merge_with_previous" =>
           @md_edits.MarkdownEditOp::MergeWithPrevious(node_id=nid)
         _ =>
-          return "{\"status\":\"error\",\"message\":\"unknown op: " +
-            op_type +
-            "\"}"
+          return Json::object({
+            "status": Json::string("error"),
+            "message": Json::string("unknown op: " + op_type),
+          }).stringify()
       }
       match @md_edits.apply_markdown_edit(ed, op, timestamp_ms) {
-        Ok(_) => "{\"status\":\"ok\"}"
-        Err(msg) => "{\"status\":\"error\",\"message\":\"" + msg + "\"}"
+        Ok(_) => Json::object({ "status": Json::string("ok") }).stringify()
+        Err(msg) =>
+          Json::object({
+            "status": Json::string("error"),
+            "message": Json::string(msg),
+          }).stringify()
       }
     }
-    None => "{\"status\":\"error\",\"message\":\"invalid handle\"}"
+    None =>
+      Json::object({
+        "status": Json::string("error"),
+        "message": Json::string("invalid handle"),
+      }).stringify()
   }
 }

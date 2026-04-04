@@ -117,3 +117,54 @@ test "round-trip: new_markdown_editor + apply_markdown_edit" {
   inspect(result is Ok(_), content="true")
   inspect(ed.get_text().contains("### Hello"), content="true")
 }
+
+///|
+test "split_block: middle of paragraph" {
+  let ed = new_markdown_editor("test")
+  ed.set_text("Hello World\n")
+  let state = @editor.ViewUpdateState::new()
+  let _ = @editor.compute_view_patches(state, ed)
+  let proj = ed.get_proj_node().unwrap()
+  let para_id = proj.children[0].id()
+  let result = apply_markdown_edit(ed, SplitBlock(node_id=para_id, offset=5), 0)
+  inspect(result is Ok(_), content="true")
+  // "Hello" and "World" should be in separate blocks
+  let text = ed.get_text()
+  inspect(text.contains("Hello"), content="true")
+  inspect(text.contains("World"), content="true")
+}
+
+///|
+test "split_block: offset 0 inserts before" {
+  let ed = new_markdown_editor("test")
+  ed.set_text("# Title\n")
+  let state = @editor.ViewUpdateState::new()
+  let _ = @editor.compute_view_patches(state, ed)
+  let proj = ed.get_proj_node().unwrap()
+  let heading_id = proj.children[0].id()
+  let result = apply_markdown_edit(
+    ed,
+    SplitBlock(node_id=heading_id, offset=0),
+    0,
+  )
+  inspect(result is Ok(_), content="true")
+  // Heading should still exist after the inserted blank
+  inspect(ed.get_text().contains("# Title"), content="true")
+}
+
+///|
+test "split_block: end of block inserts after" {
+  let ed = new_markdown_editor("test")
+  ed.set_text("Hello\n")
+  let state = @editor.ViewUpdateState::new()
+  let _ = @editor.compute_view_patches(state, ed)
+  let proj = ed.get_proj_node().unwrap()
+  let para_id = proj.children[0].id()
+  let result = apply_markdown_edit(
+    ed,
+    SplitBlock(node_id=para_id, offset=100),
+    0,
+  )
+  inspect(result is Ok(_), content="true")
+  inspect(ed.get_text().length() > 6, content="true")
+}
