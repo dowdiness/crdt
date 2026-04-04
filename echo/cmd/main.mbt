@@ -4,16 +4,16 @@ fn parse_uint(s : String) -> Int {
   if s.length() == 0 {
     return -1
   }
-  let mut acc = 0
-  for i in 0..<s.length() {
+  for i in 0..<s.length(); acc = 0 {
     let c = s[i]
     if c >= '0' && c <= '9' {
-      acc = acc * 10 + (c.to_int() - '0'.to_int())
+      continue acc * 10 + (c.to_int() - '0'.to_int())
     } else {
-      return -1
+      break -1
     }
+  } nobreak {
+    acc
   }
-  acc
 }
 
 ///|
