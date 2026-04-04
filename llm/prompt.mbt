@@ -17,7 +17,7 @@ let structured_edit_system_prompt : String =
   #|Do not explain. Do not add any text outside the JSON array.
 
 ///|
-pub fn format_edit_user_message(text : String, instruction : String) -> String {
+fn format_edit_user_message(text : String, instruction : String) -> String {
   let buf = StringBuilder::new()
   buf.write_string("=== TEXT ===\n")
   let lines = split_lines(text)
