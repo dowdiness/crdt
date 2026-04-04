@@ -98,3 +98,22 @@ test "merge_with_previous: first block is no-op" {
   let result = apply_edit(source, MergeWithPrevious(node_id=para_id))
   inspect(result, content="Hello\n")
 }
+
+///|
+test "round-trip: new_markdown_editor + apply_markdown_edit" {
+  let ed = new_markdown_editor("test")
+  ed.set_text("# Hello\n\nWorld\n")
+  // Force a reparse/projection cycle
+  let state = @editor.ViewUpdateState::new()
+  let _ = @editor.compute_view_patches(state, ed)
+  // Apply heading level change
+  let proj = ed.get_proj_node().unwrap()
+  let heading_id = proj.children[0].id()
+  let result = apply_markdown_edit(
+    ed,
+    ChangeHeadingLevel(node_id=heading_id, level=3),
+    0,
+  )
+  inspect(result is Ok(_), content="true")
+  inspect(ed.get_text().contains("### Hello"), content="true")
+}
