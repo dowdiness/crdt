@@ -33,6 +33,8 @@ fn format_edit_user_message(text : String, instruction : String) -> String {
 }
 
 ///|
+/// Split text into lines. Preserves trailing empty segment for newline-terminated
+/// input so line numbers stay correct (e.g. "a\n" → ["a", ""], not ["a"]).
 fn split_lines(text : String) -> Array[String] {
   let result : Array[String] = []
   let buf = StringBuilder::new()
@@ -46,7 +48,9 @@ fn split_lines(text : String) -> Array[String] {
     }
   }
   let last = buf.to_string()
-  if !last.is_empty() || result.is_empty() {
+  // Always push if: non-empty tail, empty input (guarantee ≥1 line),
+  // or input ends with '\n' (preserve trailing empty segment)
+  if !last.is_empty() || result.is_empty() || text.has_suffix("\n") {
     result.push(last)
   }
   result

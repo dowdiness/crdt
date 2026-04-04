@@ -17,6 +17,12 @@ pub fn parse_edit_actions(json_str : String) -> Array[EditAction] {
 }
 
 ///|
+/// Guard: reject fractional line numbers (e.g. 3.5) that to_int() would silently truncate.
+fn is_integer(n : Double) -> Bool {
+  n == n.to_int().to_double()
+}
+
+///|
 fn parse_single_action(obj : Map[String, Json]) -> EditAction? {
   // Shorthand: {"original": "...", "fixed": "..."} without "action" field
   match (obj.get("original"), obj.get("fixed")) {
@@ -37,18 +43,31 @@ fn parse_single_action(obj : Map[String, Json]) -> EditAction? {
     "replace" =>
       match (obj.get("line"), obj.get("old"), obj.get("new")) {
         (Some(Number(line, ..)), Some(String(old)), Some(String(new_text))) =>
-          Some(Replace(line=line.to_int(), old~, new=new_text))
+          if is_integer(line) {
+            Some(Replace(line=line.to_int(), old~, new=new_text))
+          } else {
+            None
+          }
         _ => None
       }
     "insert" =>
       match (obj.get("line"), obj.get("text")) {
         (Some(Number(line, ..)), Some(String(text))) =>
-          Some(Insert(line=line.to_int(), text~))
+          if is_integer(line) {
+            Some(Insert(line=line.to_int(), text~))
+          } else {
+            None
+          }
         _ => None
       }
     "delete" =>
       match obj.get("line") {
-        Some(Number(line, ..)) => Some(Delete(line=line.to_int()))
+        Some(Number(line, ..)) =>
+          if is_integer(line) {
+            Some(Delete(line=line.to_int()))
+          } else {
+            None
+          }
         _ => None
       }
     _ => None

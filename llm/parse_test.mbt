@@ -61,6 +61,26 @@ test "parse_malformed json" {
 }
 
 ///|
+test "parse_markdown_fenced_json returns empty" {
+  // LLMs sometimes wrap JSON in markdown fences despite responseMimeType
+  let json_str =
+    #|```json
+    #|[{"action": "delete", "line": 1}]
+    #|```
+  let actions = @llm.parse_edit_actions(json_str)
+  inspect(actions.length(), content="0")
+}
+
+///|
+test "parse_fractional_line_rejected" {
+  // Line numbers must be integers; 3.5 should not silently truncate to 3
+  let json_str =
+    #|[{"action": "delete", "line": 3.5}]
+  let actions = @llm.parse_edit_actions(json_str)
+  inspect(actions.length(), content="0")
+}
+
+///|
 test "parse_fix_typos with action field" {
   let json_str =
     #|{"action": "fix_typos", "original": "teh", "fixed": "the"}

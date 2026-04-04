@@ -2,6 +2,8 @@
 let content_type_json : String = "{\"Content-Type\":\"application/json\"}"
 
 ///|
+/// Call Gemini to fix typos. Empty array = no corrections needed (valid).
+/// Raises LlmError only on HTTP/API/parse failures.
 pub async fn fix_typos(
   config : GeminiConfig,
   text : String,
@@ -16,14 +18,12 @@ pub async fn fix_typos(
     err => raise LlmError(err.to_string())
   }
   let content = extract_gemini_text(response)
-  let actions = parse_edit_actions(content)
-  if actions.is_empty() {
-    raise LlmError("No edit actions parsed from Gemini response")
-  }
-  actions
+  parse_edit_actions(content)
 }
 
 ///|
+/// Call Gemini to apply a natural language edit instruction. Empty array = no changes.
+/// Raises LlmError only on HTTP/API/parse failures.
 pub async fn edit_text(
   config : GeminiConfig,
   text : String,
@@ -40,9 +40,5 @@ pub async fn edit_text(
     err => raise LlmError(err.to_string())
   }
   let content = extract_gemini_text(response)
-  let actions = parse_edit_actions(content)
-  if actions.is_empty() {
-    raise LlmError("No edit actions parsed from Gemini response")
-  }
-  actions
+  parse_edit_actions(content)
 }
