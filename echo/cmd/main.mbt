@@ -1,5 +1,3 @@
-// echo/cmd/main.mbt
-
 ///|
 fn print_usage() -> Unit {
   println("Usage:")
@@ -7,6 +5,15 @@ fn print_usage() -> Unit {
   println("  echo similar <text>    — Find posts similar to text")
   println("  echo similar-to <id>   — Find posts similar to post #id")
   println("  echo list              — List all posts")
+}
+
+///|
+fn truncate(text : String, max_len : Int) -> String {
+  if text.length() > max_len {
+    text[0:max_len].to_string() + "..."
+  } else {
+    text
+  }
 }
 
 ///|
@@ -20,7 +27,6 @@ fn build_corpus(posts : Array[StoredPost]) -> @echo.Corpus {
 }
 
 ///|
-/// Format and print similarity results.
 fn print_results(
   results : Array[(Int, Double)],
   posts : Array[StoredPost],
@@ -33,13 +39,15 @@ fn print_results(
     let id = result.0
     let score = result.1
     let text = if id < posts.length() { posts[id].text } else { "???" }
-    let display = if text.length() > 60 {
-      text[0:60].to_string() + "..."
-    } else {
-      text
-    }
+    let display = truncate(text, 60)
+    // Zero-pad so 0.05 displays as "0.05" not "0.5"
     let score_pct = (score * 100.0 + 0.5).to_int()
-    println("  #\{id} (0.\{score_pct}) \{display}")
+    let score_str = if score_pct < 10 {
+      "0.0\{score_pct}"
+    } else {
+      "0.\{score_pct}"
+    }
+    println("  #\{id} (\{score_str}) \{display}")
   }
 }
 
@@ -126,11 +134,6 @@ fn cmd_list() -> Unit {
   }
   for i in 0..<posts.length() {
     let post = posts[i]
-    let display = if post.text.length() > 60 {
-      post.text[0:60].to_string() + "..."
-    } else {
-      post.text
-    }
-    println("#\{i} \{post.ts} \{display}")
+    println("#\{i} \{post.ts} \{truncate(post.text, 60)}")
   }
 }
