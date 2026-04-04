@@ -69,3 +69,29 @@ test "projection: IDs are unique" {
   }
   inspect(all_unique, content="true")
 }
+
+///|
+test "projection: incremental reparse preserves IDs" {
+  let source = "# Hello\n\nWorld"
+  let parser = @loom.new_imperative_parser(source, @markdown.markdown_grammar)
+  let counter : Ref[Int] = Ref::new(0)
+  // Initial parse
+  let _ = parser.parse()
+  // First projection
+  let syntax1 = parser.get_syntax_tree().unwrap()
+  let proj1 = syntax_to_proj_node(syntax1, counter)
+  let heading_id = proj1.children[0].node_id
+  let para_id = proj1.children[1].node_id
+  // Incremental edit: change "World" to "World!"
+  // Edit::new(start, old_len, new_len) — "World" starts at offset 9, 5 chars → 6 chars
+  let edit = @loomcore.Edit::new(9, 5, 6)
+  let _ = parser.edit(edit, "# Hello\n\nWorld!")
+  // Second projection with reconciliation
+  let syntax2 = parser.get_syntax_tree().unwrap()
+  let proj2_raw = syntax_to_proj_node(syntax2, counter)
+  let proj2 = @core.reconcile(proj1, proj2_raw, counter)
+  // IDs should be preserved for unchanged structure
+  inspect(proj2.children[0].node_id == heading_id, content="true")
+  // Paragraph content changed, but structure is same — ID preserved
+  inspect(proj2.children[1].node_id == para_id, content="true")
+}
