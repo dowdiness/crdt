@@ -89,6 +89,7 @@ function activateBlock(blockId) {
 }
 
 function positionTextarea() {
+  if (!textarea) return;
   const block = blocks.find(b => b.id === activeBlockId);
   const div = editor.querySelector(`[data-id="${activeBlockId}"]`);
   if (!block || !div) return;

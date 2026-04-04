@@ -70,28 +70,3 @@ fn populate_block(
     Error(_) => ()
   }
 }
-
-///|
-fn collect_block_children(node : @seam.SyntaxNode) -> Array[@seam.SyntaxNode] {
-  let result : Array[@seam.SyntaxNode] = []
-  for child in node.children() {
-    if is_block_node(@markdown.SyntaxKind::from_raw(child.kind())) {
-      result.push(child)
-    }
-  }
-  result
-}
-
-///|
-fn collect_syntax_children(
-  node : @seam.SyntaxNode,
-  kind : @markdown.SyntaxKind,
-) -> Array[@seam.SyntaxNode] {
-  let result : Array[@seam.SyntaxNode] = []
-  for child in node.children() {
-    if @markdown.SyntaxKind::from_raw(child.kind()) == kind {
-      result.push(child)
-    }
-  }
-  result
-}
