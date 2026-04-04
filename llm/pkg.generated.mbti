@@ -2,6 +2,10 @@
 package "dowdiness/canopy/llm"
 
 // Values
+pub async fn edit_text(GeminiConfig, String, String) -> Array[EditAction] raise LlmError
+
+pub async fn fix_typos(GeminiConfig, String) -> Array[EditAction] raise LlmError
+
 pub fn format_edit_user_message(String, String) -> String
 
 pub fn parse_edit_actions(String) -> Array[EditAction]

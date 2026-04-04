@@ -5,6 +5,7 @@ import {
   "dowdiness/canopy/editor",
   "dowdiness/canopy/lang/json/edits",
   "dowdiness/lambda/ast",
+  "moonbitlang/async/js_async",
 }
 
 // Values
@@ -13,6 +14,10 @@ pub fn apply_sync_json(Int, String) -> String
 pub fn apply_tree_edit_json(Int, String, Int) -> String
 
 pub fn backspace_and_record(Int, Int) -> Bool
+
+pub fn canopy_llm_edit(String, String, String) -> @js_async.Promise[String]
+
+pub fn canopy_llm_fix_typos(String, String) -> @js_async.Promise[String]
 
 pub fn compute_pretty_patches_json(Int) -> String
 
