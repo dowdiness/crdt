@@ -29,6 +29,9 @@
     },
     "dowdiness/pretty": {
       "path": "./loom/pretty"
+    },
+    "dowdiness/markdown": {
+      "path": "./loom/examples/markdown"
     }
   },
   "readme": "README.mbt.md",
