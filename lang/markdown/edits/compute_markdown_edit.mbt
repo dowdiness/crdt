@@ -63,7 +63,6 @@ fn compute_change_heading_level(
     Some(r) => r
     None => return Err("node not found in source map")
   }
-  // Get block content (text span)
   let content = match source_map.get_token_span(node_id, "text") {
     Some(text_range) => source[text_range.start:text_range.end].to_string()
     None => {
@@ -76,7 +75,6 @@ fn compute_change_heading_level(
       block_text[:end].to_string()
     }
   }
-  // Build new block text
   let new_prefix = if level > 0 {
     "#".repeat(level) + " "
   } else {
@@ -113,13 +111,11 @@ fn compute_toggle_list_item(
     Some(r) => r
     None => return Err("node not found in source map")
   }
-  // Get block content (text span)
   let content = match source_map.get_token_span(node_id, "text") {
     Some(text_range) => source[text_range.start:text_range.end].to_string()
     None => source[range.start:range.end].to_string()
   }
-  // Check if this node is already a list item
-  let is_list_item = match find_node(proj, node_id) {
+  let is_list_item = match @core.get_node_in_tree(proj, node_id) {
     Some(node) => node.kind is @markdown.ListItem(_)
     None => false
   }
@@ -223,8 +219,7 @@ fn compute_split_block(
   }
   // Split point in source coordinates
   let split_pos = text_range.start + offset
-  // Check if this is a list item — second half gets "- " prefix
-  let is_list_item = match find_node(proj, node_id) {
+  let is_list_item = match @core.get_node_in_tree(proj, node_id) {
     Some(node) => node.kind is @markdown.ListItem(_)
     None => false
   }
@@ -276,27 +271,24 @@ fn compute_merge_with_previous(
     return Ok(None)
   }
   let prev_node = siblings[idx - 1]
-  let prev_range = match source_map.get_range(prev_node.id()) {
-    Some(r) => r
-    None => return Err("previous node not in source map")
-  }
   let curr_range = match source_map.get_range(node_id) {
     Some(r) => r
     None => return Err("current node not in source map")
   }
-  // Get current block's text content
   let curr_text = match source_map.get_token_span(node_id, "text") {
     Some(r) => source[r.start:r.end].to_string()
     None => ""
   }
-  // Merge: delete from end of previous block's text to end of current block,
-  // then insert the current block's text
+  // End of previous block's text content — merge point
   let prev_text_end = match source_map.get_token_span(prev_node.id(), "text") {
     Some(r) => r.end
-    None => prev_range.end
+    None =>
+      // No text span — use full block range end as fallback
+      match source_map.get_range(prev_node.id()) {
+        Some(r) => r.end
+        None => return Err("previous node not in source map")
+      }
   }
-  let cursor_pos = prev_text_end
-  ignore(prev_range)
   Ok(
     Some(
       (
@@ -307,26 +299,8 @@ fn compute_merge_with_previous(
             inserted: curr_text,
           },
         ],
-        FocusHint::MoveCursor(position=cursor_pos),
+        FocusHint::MoveCursor(position=prev_text_end),
       ),
     ),
   )
-}
-
-///|
-/// Find a ProjNode by NodeId in the tree.
-fn find_node(
-  root : ProjNode[@markdown.Block],
-  target : NodeId,
-) -> ProjNode[@markdown.Block]? {
-  if root.id() == target {
-    return Some(root)
-  }
-  for child in root.children {
-    match find_node(child, target) {
-      Some(found) => return Some(found)
-      None => continue
-    }
-  }
-  None
 }
