@@ -31,24 +31,29 @@ fn compute_commit_edit(
   node_id : NodeId,
   new_text : String,
 ) -> Result[(Array[SpanEdit], FocusHint)?, String] {
-  match source_map.get_token_span(node_id, "text") {
-    Some(range) =>
-      Ok(
-        Some(
-          (
-            [
-              SpanEdit::{
-                start: range.start,
-                delete_len: range.end - range.start,
-                inserted: new_text,
-              },
-            ],
-            FocusHint::MoveCursor(position=range.start + new_text.length()),
-          ),
-        ),
-      )
-    None => Err("no text span for node " + node_id.to_string())
+  // Try "text" role first, fall back to "code" for code blocks
+  let range = match source_map.get_token_span(node_id, "text") {
+    Some(r) => r
+    None =>
+      match source_map.get_token_span(node_id, "code") {
+        Some(r) => r
+        None => return Err("no editable span for node " + node_id.to_string())
+      }
   }
+  Ok(
+    Some(
+      (
+        [
+          SpanEdit::{
+            start: range.start,
+            delete_len: range.end - range.start,
+            inserted: new_text,
+          },
+        ],
+        FocusHint::MoveCursor(position=range.start + new_text.length()),
+      ),
+    ),
+  )
 }
 
 ///|
@@ -75,10 +80,11 @@ fn compute_change_heading_level(
       block_text[:end].to_string()
     }
   }
-  let new_prefix = if level > 0 {
-    "#".repeat(level) + " "
+  let clamped = level.max(0).min(6)
+  let new_prefix = if clamped > 0 {
+    "#".repeat(clamped) + " "
   } else {
-    "" // level 0 means convert to paragraph (no prefix)
+    "" // level 0 = paragraph (no prefix)
   }
   let new_block = new_prefix + content + "\n"
   Ok(
@@ -208,9 +214,17 @@ fn compute_split_block(
     Some(r) => r
     None => return Err("node not found")
   }
-  // Split at offset 0 -> insert empty paragraph before
+  // Split at offset 0 → insert empty paragraph before this block
   if offset <= 0 {
-    return compute_insert_block_after(source_map, node_id)
+    let insert_pos = range.start
+    return Ok(
+      Some(
+        (
+          [SpanEdit::{ start: insert_pos, delete_len: 0, inserted: "\n" }],
+          FocusHint::MoveCursor(position=insert_pos),
+        ),
+      ),
+    )
   }
   // Split at end -> insert empty paragraph after
   let text_len = text_range.end - text_range.start
@@ -257,15 +271,8 @@ fn compute_merge_with_previous(
   source_map : SourceMap,
   node_id : NodeId,
 ) -> Result[(Array[SpanEdit], FocusHint)?, String] {
-  // Find this node's index among siblings
-  let siblings = proj.children
-  let mut idx = -1
-  for i in 0..<siblings.length() {
-    if siblings[i].id() == node_id {
-      idx = i
-      break
-    }
-  }
+  // Find the parent that contains this node, then find sibling index
+  let (siblings, idx) = find_sibling_context(proj, node_id)
   // First block — no-op
   if idx <= 0 {
     return Ok(None)
@@ -303,4 +310,25 @@ fn compute_merge_with_previous(
       ),
     ),
   )
+}
+
+///|
+/// Find a node's siblings and its index among them.
+/// Searches the tree for the parent containing `target`, handling nested
+/// structures like list items inside UnorderedList.
+fn find_sibling_context(
+  root : ProjNode[@markdown.Block],
+  target : NodeId,
+) -> (Array[ProjNode[@markdown.Block]], Int) {
+  for i in 0..<root.children.length() {
+    if root.children[i].id() == target {
+      return (root.children, i)
+    }
+    // Search nested children (e.g., list items inside UnorderedList)
+    let (siblings, idx) = find_sibling_context(root.children[i], target)
+    if idx >= 0 {
+      return (siblings, idx)
+    }
+  }
+  ([], -1)
 }
