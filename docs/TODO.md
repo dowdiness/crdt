@@ -126,6 +126,15 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
 - [ ] **`SyntaxNode::tokens()` method**
   Why: `children()` returns child nodes only. Getting tokens requires `find_token()` (one at a time) or `all_children()` (mixed nodes + tokens). A `tokens()` method returns all direct child tokens in order.
   Exit: `pub fn SyntaxNode::tokens(self) -> Array[SyntaxToken]` in seam.
+- [ ] **`SyntaxNode::content_range` method**
+  Why: every language projection computes "content range after prefix token" — heading text after `# `, list item text after `- `, code after fence. Each reimplements the same logic (find prefix token end, trim trailing newline, return Range). Markdown's `set_content_span`, lambda's heading span, JSON's member span all do this.
+  Exit: `pub fn SyntaxNode::content_range(self, skip_prefix~ : RawKind?, skip_suffix~ : RawKind?) -> Range` in seam. Languages call `node.content_range(skip_prefix=HeadingMarkerToken.to_raw())`.
+- [ ] **`SourceMap::set_span_from_node` convenience method**
+  Why: every `populate_token_spans` does `find_token(kind) → match Some → set_token_span(id, role, Range::new(tok.start(), tok.end()))`. Five lines repeated per token per language.
+  Exit: `pub fn SourceMap::set_span_from_node(self, proj_id, role, syntax_node, token_kind : RawKind)` in core. One call replaces the find + match + set pattern.
+- [ ] **Generic parallel tree walk for `populate_token_spans`**
+  Why: every language's `populate_token_spans` walks syntax nodes + proj nodes in parallel with `min(len_a, len_b)` + index loop. Document, UnorderedList (markdown), Object, Array (JSON), Module (lambda) all use the same pattern.
+  Exit: `pub fn core.walk_parallel(syntax_children, proj_children, fn(SyntaxNode, ProjNode[T]))` or similar. Eliminates the collect + min + loop boilerplate.
 - [ ] **Unify Token and SyntaxKind into single enum (rowan style)**
   Why: Token and SyntaxKind overlap — every Token variant has a corresponding SyntaxKind variant. Two independent to_raw() impls with hardcoded integers can desynchronize. The payload removal (PR #70) made Token pure tags, identical in structure to SyntaxKind's token subset. Merging eliminates the synchronization problem entirely — the lexer produces SyntaxKind directly, no conversion needed.
   Prerequisite: payload-free Token enums (done). Practical trigger: loomgen, which can generate the single enum from a grammar definition.
@@ -171,7 +180,13 @@ Tracked by:
 - [x] **Memo Eq backdating cost** — ✅ Done. `BackdateEq` trait added to `loom/incr`; `Memo::new_memo` (uses `BackdateEq`, O(1) revision stamp) and `Memo::new_no_backdate` constructors added. `editor/projection_memo.mbt`: `proj_memo` uses `new_memo` with `VersionedFlatProj : BackdateEq`; `registry_memo` and `source_map_memo` use `new_no_backdate`. Per-benchmark: ~0.5–1ms savings at 1000 defs — real but modest.
 - [ ] Implement lazy loading for 100k+ operation documents (load causal graph skeleton, hydrate on demand)
 - [ ] Add B-tree indexing for FugueTree (O(n) → O(log n) random-access character lookup)
-- [ ] **`zipper-gen` — code generation for tree zippers** — Build a morm-style pre-build code generator (`zipper-gen`) that reads MoonBit enum definitions annotated with `#zipper.derive` and generates zipper types (Frame, Zipper) + navigation functions (descend, ascend, to_root, modify, sibling navigation). Uses `@moonbitlang/parser` for AST extraction and `moon.pkg` `pre-build` for build integration, following the same pattern as [oboard/morm](https://github.com/oboard/morm)'s `mormgen`. Applicable tree types: `OrderNode[T]` (order-tree), `CstNode` (loom/seam). The generated mechanical layer (frame types, navigation, plug/reconstruct) eliminates boilerplate like `block_reparse.splice_tree` path-copy code, while domain-specific hooks (Walker's prepare/propagate, ReuseCursor's reuse checks) remain hand-written on top. Based on the Huet Zipper / "derivative of a type = one-hole context" theory (McBride 2001). Trigger: build when adding the next tree type (e.g., `EulerTourNode` for incremental LCA) so it pays for itself immediately. Ref: [Parsing with Zippers](https://github.com/stereobooster/powderizer) for the zipper-as-parser-cursor pattern.
+- [ ] **Generic zipper libraries** — Extract two reusable zipper libraries from existing code.
+  Why: ProjNode is a rose tree, OrderTree is a B-tree. Both already have generic zippers parameterized by `T` without codegen. Supersedes the `zipper-gen` codegen plan — uniform tree structures (rose tree, B-tree) have fixed derivatives regardless of `T`, so no per-type code generation is needed (McBride 2001). The language-specific Term-level zipper (`lang/lambda/zipper/`) is also superseded — `ProjNode[T]` carries `kind: T` at every node, so edit operations can pattern-match on `focus.kind` without a separate AST zipper.
+  Libraries:
+  - `rose-zipper[T]` — `RoseNode[T] { data: T, children: Array[RoseNode[T]] }`, generic navigation, plug, path indices. Consumer: `ProjNode[T]` (projectional editors, AST tools, DOM-like trees).
+  - `btree-zipper[T]` — `BTreeNode[T] { Leaf(T, Int) | Internal(Array, Array) }`, counted navigation, range operations. Consumer: `OrderTree[T]` (CRDT positioning).
+  ProjNode becomes `RoseNode[(NodeId, T, Int, Int)]` or wraps `RoseNode[T]` — zipper works directly without conversion. Language-specific traits (`ScopeProvider[T]`, edit actions) layer on top.
+  Exit: Two standalone MoonBit packages publishable to mooncakes, existing `lang/lambda/zipper/` and `order-tree/src/walker_types.mbt` refactored to use them.
 
 ---
 
@@ -507,6 +522,6 @@ Post-consolidation app inventory:
 | 8 | Complete WebSocket collaboration + recovery | High | High |
 | 9 | Rabbita projection editor performance | High | High | Mostly done |
 | 10 | Memory optimization (lazy loading, B-tree indexing) | High | Medium |
-| 11 | `zipper-gen` code generation for tree zippers | Medium | Medium | Trigger: next tree type |
+| 11 | Generic zipper libraries (`rose-zipper[T]`, `btree-zipper[T]`) | Medium | Medium | Supersedes zipper-gen — ProjNode is a rose tree, OrderTree is a B-tree, both have generic zippers without codegen |
 | 12 | Code cleanup | Medium | Medium | Mostly done |
 | 14 | EditorProtocol integration layer | High | High |
