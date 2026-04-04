@@ -1,7 +1,17 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "dowdiness/canopy/lang/markdown/proj"
 
+import {
+  "dowdiness/canopy/core",
+  "dowdiness/markdown",
+  "dowdiness/seam",
+  "moonbitlang/core/ref",
+}
+
 // Values
+pub fn parse_to_proj_node(String) -> (@core.ProjNode[@markdown.Block], Array[String])
+
+pub fn syntax_to_proj_node(@seam.SyntaxNode, @ref.Ref[Int]) -> @core.ProjNode[@markdown.Block]
 
 // Errors
 
