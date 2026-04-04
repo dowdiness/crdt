@@ -14,3 +14,4 @@ export { HTMLAdapter } from './html-adapter';
 export { CM6Adapter } from './cm6-adapter';
 export { PMAdapter, pmAdapterSchema } from './pm-adapter';
 export { MarkdownPreview } from './markdown-preview';
+export { BlockInput } from './block-input';

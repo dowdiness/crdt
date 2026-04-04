@@ -1,0 +1,82 @@
+/* BlockInput — thin block-mode input layer with textarea overlay */
+
+.block-editor {
+  position: relative;
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.6;
+}
+
+/* --- Block base --------------------------------------------------------- */
+
+.block {
+  position: relative;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: text;
+  min-height: 1.5em;
+  transition: background 0.1s ease;
+}
+
+.block:hover {
+  background: rgba(130, 80, 223, 0.04);
+}
+
+.block.active {
+  outline: 2px solid #8250df;
+  outline-offset: -1px;
+}
+
+/* --- Block kinds -------------------------------------------------------- */
+
+.block[data-kind="heading"] {
+  font-size: 1.5em;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.block[data-kind="list_item"] {
+  padding-left: 24px;
+}
+
+.block[data-kind="list_item"]::before {
+  content: "\2022 ";
+  position: absolute;
+  left: 8px;
+  color: #666;
+}
+
+.block[data-kind="code_block"] {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.9em;
+  background: rgba(130, 80, 223, 0.04);
+  border-radius: 4px;
+}
+
+/* --- Textarea overlay --------------------------------------------------- */
+
+.block-textarea {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: inherit;
+  margin: 0;
+  border: none;
+  outline: none;
+  resize: none;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  overflow: hidden;
+  box-sizing: border-box;
+  z-index: 1;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* --- Text span ---------------------------------------------------------- */
+
+.block-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
