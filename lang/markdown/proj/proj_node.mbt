@@ -147,9 +147,7 @@ fn build_code_block(
       match tok.text().view() {
         [.. "```", .. rest] =>
           rest
-          .to_string()
           .trim_end(chars="\n".view())
-          .to_string()
           .trim_end(chars=" ".view())
           .to_string()
         _ => ""
