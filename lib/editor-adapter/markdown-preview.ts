@@ -148,9 +148,14 @@ export class MarkdownPreview implements EditorAdapter {
                 break;
               }
             }
-            // Tag unchanged — update in place
-            if (el.children.length === 0) {
-              el.textContent = patch.text ?? patch.label;
+            // Tag unchanged — update text in place
+            const text = patch.text ?? patch.label;
+            if (el.tagName === 'PRE') {
+              // Code block: update the <code> child, not the <pre> wrapper
+              const code = el.querySelector('code');
+              if (code) code.textContent = text;
+            } else if (el.children.length === 0) {
+              el.textContent = text;
             }
             if (patch.css_class) el.className = patch.css_class;
           }
