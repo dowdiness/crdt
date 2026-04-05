@@ -35,6 +35,7 @@ function semanticTag(node: ViewNode): HTMLElement {
 function renderNode(node: ViewNode): HTMLElement {
   const el = semanticTag(node);
   el.setAttribute('data-node-id', String(node.id));
+  if (node.css_class) el.className = node.css_class;
 
   // For code_block, text goes inside the <code> child
   const textTarget = node.kind_tag === 'code_block'
@@ -119,8 +120,12 @@ export class MarkdownPreview implements EditorAdapter {
         case 'InsertChild': {
           const parentEl = this.container.querySelector(`[data-node-id="${patch.parent_id}"]`);
           if (parentEl) {
-            const ref = parentEl.children[patch.index] ?? null;
-            parentEl.insertBefore(renderNode(patch.child), ref);
+            // Code blocks: insert into <code> child, not <pre> wrapper
+            const target = parentEl.tagName === 'PRE'
+              ? (parentEl.querySelector('code') ?? parentEl)
+              : parentEl;
+            const ref = target.children[patch.index] ?? null;
+            target.insertBefore(renderNode(patch.child), ref);
           }
           if (this.currentTree) this.currentTree = insertInTree(this.currentTree, patch.parent_id, patch.index, patch.child);
           break;
@@ -157,7 +162,7 @@ export class MarkdownPreview implements EditorAdapter {
             } else if (el.children.length === 0) {
               el.textContent = text;
             }
-            if (patch.css_class) el.className = patch.css_class;
+            el.className = patch.css_class;
           }
           break;
         }
