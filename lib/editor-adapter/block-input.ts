@@ -46,6 +46,9 @@ export class BlockInput implements EditorAdapter {
         case 'UpdateNode':
           this.updateNode(p.node_id, p.label, p.css_class, p.text);
           break;
+        case 'SelectNode':
+          this.activateBlock(p.node_id);
+          break;
         // TextChange, SetDecorations, etc. are not applicable to block mode
       }
     }
