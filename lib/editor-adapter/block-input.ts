@@ -71,11 +71,24 @@ export class BlockInput implements EditorAdapter {
   private renderAll(): void {
     this.container.innerHTML = '';
     if (!this.currentTree) return;
-    for (const child of this.currentTree.children) {
-      if (!child.editable) continue;
-      this.container.appendChild(this.createBlockDiv(child));
+    for (const block of this.collectEditableBlocks(this.currentTree)) {
+      this.container.appendChild(this.createBlockDiv(block));
     }
     if (this.activeBlockId !== null) this.positionTextarea();
+  }
+
+  /** Recursively collect editable leaf blocks (flattens containers like UnorderedList) */
+  private collectEditableBlocks(node: ViewNode): ViewNode[] {
+    const result: ViewNode[] = [];
+    for (const child of node.children) {
+      if (child.editable) {
+        result.push(child);
+      } else if (child.children.length > 0) {
+        // Container (e.g., UnorderedList) — descend into children
+        result.push(...this.collectEditableBlocks(child));
+      }
+    }
+    return result;
   }
 
   private createBlockDiv(node: ViewNode): HTMLDivElement {
@@ -106,7 +119,7 @@ export class BlockInput implements EditorAdapter {
   }
 
   private headingLevel(cssClass: string): number {
-    const m = cssClass.match(/h(\d)/);
+    const m = cssClass.match(/heading-(\d)/);
     return m ? parseInt(m[1], 10) : 1;
   }
 
@@ -217,13 +230,15 @@ export class BlockInput implements EditorAdapter {
 
     ta.focus();
 
-    // Deferred blur: bind onblur only after pointerup (Excalidraw pattern)
+    // Deferred blur: bind onblur only after pointerup, skip if target is toolbar
     if (!this.blurBound) {
-      const handler = () => {
+      const handler = (e: PointerEvent) => {
+        // Don't bind blur if click was on toolbar/menu — keeps textarea active
+        if ((e.target as Element)?.closest?.('[data-no-blur]')) return;
         if (ta) ta.onblur = () => this.deactivate();
         this.blurBound = true;
       };
-      document.addEventListener('pointerup', handler, { once: true });
+      document.addEventListener('pointerup', handler as EventListener, { once: true });
     }
   }
 
@@ -325,7 +340,7 @@ export class BlockInput implements EditorAdapter {
 
   private moveFocus(direction: -1 | 1): void {
     if (this.activeBlockId === null || !this.currentTree) return;
-    const siblings = this.currentTree.children.filter(c => c.editable);
+    const siblings = this.collectEditableBlocks(this.currentTree);
     const idx = siblings.findIndex(c => c.id === this.activeBlockId);
     const next = siblings[idx + direction];
     if (next) this.activateBlock(next.id);

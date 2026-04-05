@@ -76,9 +76,9 @@ function removeFromTree(tree: ViewNode, parentId: number, childId: number): View
   return { ...tree, children: tree.children.map(c => removeFromTree(c, parentId, childId)) };
 }
 
-function updateInTree(tree: ViewNode, id: number, label: string, cssClass: string, text?: string): ViewNode {
+function updateInTree(tree: ViewNode, id: number, label: string, cssClass: string, text: string | null): ViewNode {
   if (tree.id === id) {
-    return { ...tree, label, css_class: cssClass, ...(text !== undefined ? { text } : {}) };
+    return { ...tree, label, css_class: cssClass, text };
   }
   return { ...tree, children: tree.children.map(c => updateInTree(c, id, label, cssClass, text)) };
 }
@@ -134,7 +134,7 @@ export class MarkdownPreview implements EditorAdapter {
         }
 
         case 'UpdateNode': {
-          if (this.currentTree) this.currentTree = updateInTree(this.currentTree, patch.node_id, patch.label, patch.css_class, patch.text ?? undefined);
+          if (this.currentTree) this.currentTree = updateInTree(this.currentTree, patch.node_id, patch.label, patch.css_class, patch.text);
           const el = this.container.querySelector(`[data-node-id="${patch.node_id}"]`);
           if (el) {
             // Check if the semantic tag needs to change (e.g., h1 → h2 on heading level change)

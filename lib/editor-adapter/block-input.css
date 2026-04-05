@@ -65,7 +65,8 @@
   outline: none;
   resize: none;
   font: inherit;
-  color: inherit;
+  color: transparent;
+  caret-color: currentColor;
   background: transparent;
   overflow: hidden;
   box-sizing: border-box;
