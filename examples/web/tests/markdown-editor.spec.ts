@@ -138,6 +138,23 @@ test.describe('Markdown Block Editor', () => {
     }
   });
 
+  test('code block has no leading/trailing newlines', async ({ page }) => {
+    await loadExample(page, 'Code');
+
+    // Block mode: code block text should not start or end with newline
+    const texts = await blockTexts(page);
+    const codeText = texts.find(t => t.includes('npm'));
+    expect(codeText).toBeDefined();
+    expect(codeText!.startsWith('\n')).toBe(false);
+    expect(codeText!.endsWith('\n')).toBe(false);
+
+    // Preview mode: <code> content should match
+    await switchMode(page, 'Preview');
+    const previewCode = await page.locator('#preview-container pre code').textContent();
+    expect(previewCode!.startsWith('\n')).toBe(false);
+    expect(previewCode!.endsWith('\n')).toBe(false);
+  });
+
   test('preview produces semantic HTML', async ({ page }) => {
     // Load Code example — has heading, paragraphs, code block, and list
     await loadExample(page, 'Code');
