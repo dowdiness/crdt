@@ -35,7 +35,7 @@ fn resolve_selected_node(
   match loaded {
     Some(node) => Some(node)
     None => {
-      let node_id_int = @strconv.parse_int(target_id) catch { _ => return None }
+      let node_id_int = @string.parse_int(target_id) catch { _ => return None }
       let node_id = @proj.NodeId::from_int(node_id_int)
       match model.editor.get_node(node_id) {
         Some(node) => {
@@ -96,9 +96,9 @@ fn view_node_details(
     items.push(inspector_row("Range", "\{range_start}..\{range_end}"))
     let clamped_end = range_end.min(source_len)
     if clamped_end > range_start {
-      let slice = source.substring(start=range_start, end=clamped_end)
+      let slice = source[range_start:clamped_end].to_string()
       let preview = if slice.length() > 120 {
-        slice.substring(end=120) + "\u{2026}"
+        slice[0:120].to_string() + "\u{2026}"
       } else {
         slice
       }
@@ -113,7 +113,7 @@ fn view_node_details(
       let span_start = span_range.start
       let span_end = span_range.end.min(source_len)
       let span_text = if span_end > span_start {
-        "\"" + source.substring(start=span_start, end=span_end) + "\""
+        "\"" + source[span_start:span_end].to_string() + "\""
       } else {
         ""
       }
