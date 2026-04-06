@@ -268,6 +268,26 @@ pub fn SourceMap::set_token_span(
 }
 
 ///|
+/// Find a token within a syntax node and record its span for a specific role.
+pub fn SourceMap::set_span_from_token(
+  self : SourceMap,
+  node_id : NodeId,
+  role : String,
+  syntax_node : @seam.SyntaxNode,
+  token_kind : @seam.RawKind,
+) -> Unit {
+  match syntax_node.find_token(token_kind) {
+    Some(tok) =>
+      self.set_token_span(
+        node_id,
+        role,
+        @loomcore.Range::new(tok.start(), tok.end()),
+      )
+    None => ()
+  }
+}
+
+///|
 /// Get the token-level span for a specific role within a node.
 /// Returns None if no token span is recorded for that node/role.
 pub fn SourceMap::get_token_span(

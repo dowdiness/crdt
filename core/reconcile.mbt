@@ -1,9 +1,6 @@
 // AST reconciliation: preserve ProjNode identities across reparses.
 
 ///|
-using @loomcore {trait TreeNode}
-
-///|
 /// Generic reconciliation: Preserve node IDs where possible when AST changes.
 pub fn[T : TreeNode] reconcile(
   old : ProjNode[T],

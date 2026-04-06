@@ -5,9 +5,6 @@
 using @core {type SourceMap}
 
 ///|
-using @loomcore {type Range}
-
-///|
 /// Populate token-level spans by walking a SyntaxNode tree in parallel
 /// with a ProjNode tree.
 pub fn populate_token_spans(
@@ -43,19 +40,14 @@ fn collect_token_spans_source_file(
             // LetDef nodes don't have their own ProjNode — the Module node
             // owns the defs array. So we store the name span on the Module
             // node with a role like "name:0", "name:1", etc.
-            let ident_token = syn_child.find_token(@syntax.IdentToken.to_raw())
-            match ident_token {
-              Some(tok) => {
-                // Use index-based key for stability across renames
-                let role = "name:" + def_idx.to_string()
-                source_map.set_token_span(
-                  proj_root.id(),
-                  role,
-                  Range::new(tok.start(), tok.end()),
-                )
-              }
-              None => ()
-            }
+            // Use index-based key for stability across renames
+            let role = "name:" + def_idx.to_string()
+            source_map.set_span_from_token(
+              proj_root.id(),
+              role,
+              syn_child,
+              @syntax.IdentToken.to_raw(),
+            )
             // Recurse into the init expression
             match v.init() {
               Some(init_syn) =>
@@ -106,16 +98,12 @@ fn collect_token_spans_expr(
 ) -> Unit {
   if @parser.LambdaExprView::cast(syntax_node) is Some(v) {
     // Extract param token span
-    let ident_token = syntax_node.find_token(@syntax.IdentToken.to_raw())
-    match ident_token {
-      Some(tok) =>
-        source_map.set_token_span(
-          proj_node.id(),
-          "param",
-          Range::new(tok.start(), tok.end()),
-        )
-      None => ()
-    }
+    source_map.set_span_from_token(
+      proj_node.id(),
+      "param",
+      syntax_node,
+      @syntax.IdentToken.to_raw(),
+    )
     // Recurse into body
     match v.body() {
       Some(body_syn) =>

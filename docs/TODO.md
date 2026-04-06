@@ -129,12 +129,16 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
 - [ ] **`SyntaxNode::content_range` method**
   Why: every language projection computes "content range after prefix token" — heading text after `# `, list item text after `- `, code after fence. Each reimplements the same logic (find prefix token end, trim trailing newline, return Range). Markdown's `set_content_span`, lambda's heading span, JSON's member span all do this.
   Exit: `pub fn SyntaxNode::content_range(self, skip_prefix~ : RawKind?, skip_suffix~ : RawKind?) -> Range` in seam. Languages call `node.content_range(skip_prefix=HeadingMarkerToken.to_raw())`.
-- [ ] **`SourceMap::set_span_from_node` convenience method**
-  Why: every `populate_token_spans` does `find_token(kind) → match Some → set_token_span(id, role, Range::new(tok.start(), tok.end()))`. Five lines repeated per token per language.
-  Exit: `pub fn SourceMap::set_span_from_node(self, proj_id, role, syntax_node, token_kind : RawKind)` in core. One call replaces the find + match + set pattern.
+- [x] **`SourceMap::set_span_from_token` convenience method** — ✅ Done. `core/source_map.mbt`. Lambda and Markdown migrated.
 - [ ] **Generic parallel tree walk for `populate_token_spans`**
   Why: every language's `populate_token_spans` walks syntax nodes + proj nodes in parallel with `min(len_a, len_b)` + index loop. Document, UnorderedList (markdown), Object, Array (JSON), Module (lambda) all use the same pattern.
   Exit: `pub fn core.walk_parallel(syntax_children, proj_children, fn(SyntaxNode, ProjNode[T]))` or similar. Eliminates the collect + min + loop boilerplate.
+- [x] **Generic 3-memo projection builder** — ✅ Done. `core/projection_memo.mbt` provides `build_projection_memos[T]`. JSON and Markdown migrated.
+- [x] **`SourceMap::set_span_from_token` convenience method** — ✅ Done. `core/source_map.mbt`. Lambda and Markdown migrated.
+- [ ] **`lib/range` foundational package**
+  Why: Range (`{ start: Int, end: Int }`) is defined twice (loom/core, event-graph-walker/text) and represented implicitly in seam (SyntaxToken/SyntaxNode have `.start()`/`.end()` but no `.range()`). A shared `lib/range` package at the bottom of the dependency graph would: (a) unify the duplicate definitions, (b) enable `SyntaxToken::range()` and `SyntaxNode::range()` in seam, (c) retire rle's `FromRange` trait (a workaround for the missing type), (d) use MoonBit custom constructor `Range(start~, end~)`.
+  Touches: lib/range (new), seam, loom/core, rle, canopy/core, event-graph-walker/text. Cross-submodule refactoring.
+  Exit: one Range type used by all layers. `SyntaxToken::range()` and `SyntaxNode::range()` exist in seam.
 - [ ] **Unify Token and SyntaxKind into single enum (rowan style)**
   Why: Token and SyntaxKind overlap — every Token variant has a corresponding SyntaxKind variant. Two independent to_raw() impls with hardcoded integers can desynchronize. The payload removal (PR #70) made Token pure tags, identical in structure to SyntaxKind's token subset. Merging eliminates the synchronization problem entirely — the lexer produces SyntaxKind directly, no conversion needed.
   Prerequisite: payload-free Token enums (done). Practical trigger: loomgen, which can generate the single enum from a grammar definition.
@@ -433,9 +437,8 @@ From SuperOOP analysis and handler chain refactor (PR #54):
   Plan: `docs/plans/2026-04-03-container-phase2-text.md`
 - [ ] **Internal text pipeline refactoring** — Separate Lv (global causal version) from ItemId (per-container Fugue identity) in oplog/, branch/, fugue/. Enables dense per-block storage and clean per-block Branch/merge.
   Why: FugueTree uses sparse arrays indexed by global LV. With shared LV space, per-block arrays are O(total_ops) instead of O(block_size). Branch/MergeContext/DeleteIndex hardcode LV=ItemId.
-  Packages: fugue/ (rename Lv→ItemId), oplog/ (decouple storage index from LV), branch/ (accept LvTable, translate at boundaries), delete_index/ (per-block with ItemIds).
-  When: When sparse overhead is measured as a real bottleneck. Phase 3 remote sync works without it (Branch uses global LVs per block, same as standalone TextState). Pure performance optimization.
-  Exit: Branch accepts external CausalGraph + LvTable. Per-block FugueTree uses dense ItemIds. Standalone TextState still works (identity mapping).
+  Plan: `docs/plans/2026-04-06-container-text-sync-refactor.md`
+  Exit: container text has a Phase 3-ready sync substrate; the plan records whether that requires a true Lv/ItemId split or a narrower adapter over existing text sync internals.
 - [ ] **Phase 3: Unified sync** — Two peers converge on a block document. SyncMessage schema.
   Design: `docs/plans/2026-03-29-container-design.md` §Phase 3
 - [ ] **Phase 4: Document-level undo** — Undo spans tree + text. Transaction boundaries.

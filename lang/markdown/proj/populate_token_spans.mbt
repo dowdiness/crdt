@@ -18,15 +18,7 @@ fn set_token_span(
   role : String,
   kind : @markdown.SyntaxKind,
 ) -> Unit {
-  match syntax_node.find_token(kind.to_raw()) {
-    Some(tok) =>
-      source_map.set_token_span(
-        proj_id,
-        role,
-        @loomcore.Range::new(tok.start(), tok.end()),
-      )
-    None => ()
-  }
+  source_map.set_span_from_token(proj_id, role, syntax_node, kind.to_raw())
 }
 
 ///|

@@ -1,5 +1,7 @@
 import {
+  "dowdiness/incr" @incr,
   "dowdiness/loom/core" @loomcore,
+  "dowdiness/seam" @seam,
   "moonbitlang/core/cmp",
 }
 

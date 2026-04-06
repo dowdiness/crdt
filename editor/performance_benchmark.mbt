@@ -250,4 +250,3 @@ test "parser benchmark - imperative incremental large" (b : @bench.T) {
     use_edited = !use_edited
   })
 }
-

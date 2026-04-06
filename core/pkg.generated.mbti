@@ -2,11 +2,15 @@
 package "dowdiness/canopy/core"
 
 import {
+  "dowdiness/incr/cells",
+  "dowdiness/seam",
   "moonbitlang/core/ref",
 }
 
 // Values
 pub fn[T] assign_fresh_ids(ProjNode[T], @ref.Ref[Int]) -> ProjNode[T]
+
+pub fn[T : @dowdiness/loom/core.TreeNode] build_projection_memos(@cells.Runtime, @cells.Signal[@seam.SyntaxNode?], (@seam.SyntaxNode, @ref.Ref[Int]) -> ProjNode[T], (SourceMap, @seam.SyntaxNode, ProjNode[T]) -> Unit, label? : String) -> (@cells.Memo[ProjNode[T]?], @cells.Memo[Map[NodeId, ProjNode[T]]], @cells.Memo[SourceMap])
 
 pub fn[T] collect_registry(ProjNode[T], Map[NodeId, ProjNode[T]]) -> Unit
 
@@ -60,6 +64,7 @@ pub fn[T] SourceMap::patch_subtree(Self, ProjNode[T]) -> Unit
 pub fn[T] SourceMap::rebuild(Self, ProjNode[T]) -> Unit
 pub fn SourceMap::rebuild_ranges(Self) -> Unit
 pub fn[T] SourceMap::remove_subtree(Self, ProjNode[T]) -> Unit
+pub fn SourceMap::set_span_from_token(Self, NodeId, String, @seam.SyntaxNode, @seam.RawKind) -> Unit
 pub fn SourceMap::set_token_span(Self, NodeId, String, @dowdiness/loom/core.Range) -> Unit
 pub impl ToJson for SourceMap
 
