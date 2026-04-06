@@ -332,22 +332,30 @@ export class BlockInput implements EditorAdapter {
 
     if (e.key === 'Backspace' && ta.selectionStart === 0 && ta.selectionEnd === 0) {
       e.preventDefault();
-      this.emit({
-        type: 'StructuralEdit',
-        node_id: this.activeBlockId,
-        op: 'merge_with_previous',
-        params: {},
-      });
+      if (ta.value.length === 0) {
+        // Empty block: delete it and move to previous
+        this.emit({
+          type: 'StructuralEdit',
+          node_id: this.activeBlockId,
+          op: 'merge_with_previous',
+          params: {},
+        });
+      } else {
+        // Non-empty block: just move cursor to end of previous block
+        this.moveFocus(-1);
+      }
       return;
     }
 
-    if (e.key === 'ArrowUp' && ta.selectionStart === 0) {
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') &&
+      ta.selectionStart === 0 && ta.selectionStart === ta.selectionEnd) {
       e.preventDefault();
       this.moveFocus(-1);
       return;
     }
 
-    if (e.key === 'ArrowDown' && ta.selectionStart === ta.value.length) {
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowRight') &&
+      ta.selectionStart === ta.value.length && ta.selectionStart === ta.selectionEnd) {
       e.preventDefault();
       this.moveFocus(1);
       return;
@@ -361,7 +369,15 @@ export class BlockInput implements EditorAdapter {
     const siblings = this.collectEditableBlocks(this.currentTree);
     const idx = siblings.findIndex(c => c.id === this.activeBlockId);
     const next = siblings[idx + direction];
-    if (next) this.activateBlock(next.id);
+    if (next) {
+      this.activateBlock(next.id);
+      // Place cursor at end when moving backward, start when moving forward
+      if (this.textarea) {
+        const pos = direction === -1 ? this.textarea.value.length : 0;
+        this.textarea.selectionStart = pos;
+        this.textarea.selectionEnd = pos;
+      }
+    }
   }
 
   // --- Helpers -------------------------------------------------------------
