@@ -138,7 +138,7 @@ test.describe('Markdown Block Editor', () => {
     }
   });
 
-  test('multiple Enter presses create blocks with unique IDs', async ({ page }) => {
+  test('multiple Enter presses create blocks with unique IDs and typing works', async ({ page }) => {
     await loadExample(page, 'Hello');
     await page.locator('#block-container .block').first().click();
     await page.waitForTimeout(300);
@@ -157,6 +157,13 @@ test.describe('Markdown Block Editor', () => {
     );
     const unique = new Set(ids).size;
     expect(unique).toBe(ids.length);
+
+    // Typing in the last new block should work and round-trip through raw
+    await textarea.type('Typed here');
+    await page.waitForTimeout(300);
+    await switchMode(page, 'Raw');
+    const raw = await page.locator('#raw-editor').inputValue();
+    expect(raw).toContain('Typed here');
   });
 
   test('Backspace on non-empty block moves focus without merging', async ({ page }) => {

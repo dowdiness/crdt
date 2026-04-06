@@ -347,13 +347,15 @@ export class BlockInput implements EditorAdapter {
       return;
     }
 
-    if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') && ta.selectionStart === 0) {
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') &&
+      ta.selectionStart === 0 && ta.selectionStart === ta.selectionEnd) {
       e.preventDefault();
       this.moveFocus(-1);
       return;
     }
 
-    if ((e.key === 'ArrowDown' || e.key === 'ArrowRight') && ta.selectionStart === ta.value.length) {
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowRight') &&
+      ta.selectionStart === ta.value.length && ta.selectionStart === ta.selectionEnd) {
       e.preventDefault();
       this.moveFocus(1);
       return;
