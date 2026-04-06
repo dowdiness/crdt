@@ -185,6 +185,16 @@ Note: The JSON editor predates `CstFold` and hand-builds `JsonValue` from tokens
 
 ## Development Workflow
 
+### UI / Visual Feature Rule
+
+**CRITICAL:** Before writing a design spec or implementation plan for any UI or visual feature, build the **smallest working prototype** that touches the real system and test it manually in the browser. If you can't see the change working in 10 minutes, stop and re-evaluate.
+
+1. **Prototype first (10 min):** Add one CSS class to one element, open the browser, verify it renders. Don't write plans.
+2. **Spike unknowns (30 min):** Before building, answer platform questions with small experiments (DOM focus behavior, web component internals, framework re-render semantics). Don't assume — verify.
+3. **Incremental manual testing:** After each integration point (not just `moon check`), open the browser and click. Especially for focus, keyboard events, and visual state.
+4. **Don't batch-build UI features via subagents.** Tightly-coupled UI work (focus management, DOM events, visual feedback) needs human-in-the-loop feedback cycles, not parallel isolated implementation.
+5. **Listen to user signals.** When the user questions the value of what you're building, stop and validate before continuing. User testing feedback > design spec > implementation plan.
+
 ### Performance Optimization Rule
 
 **CRITICAL:** Before designing any performance optimization, write a microbenchmark that **reproduces the claimed bottleneck** in isolation. If the benchmark can't demonstrate the problem, stop and re-evaluate. Stale profiling data (from before prior optimizations) and O(bad) asymptotic complexity are not proof of a real problem. Check if existing mitigations (batch modes, caching, lazy eval) already neutralize the issue.
