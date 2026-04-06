@@ -59,21 +59,24 @@ test "projection pipeline - incremental keystroke (1000 defs)" (b : @bench.T) {
 // proj_changed_at_ref stays stable → BackdateEq fires, skipping
 // cached_proj_node, registry_memo, and source_map_memo recomputation.
 //
-// Measured (2026-03-28, --release):
-//   20 defs:   ~678 µs vs ~715 µs  (noise band — no meaningful difference)
-//   80 defs:   ~875 µs vs ~941 µs  (~7% faster)
-//   320 defs:  ~3.0 ms vs ~3.2 ms  (~6% faster)
-//   500 defs:  ~4.7 ms vs ~5.0 ms  (~6% faster)
-//   1000 defs: ~10.1 ms vs ~11.0 ms (~8% faster)
+// Measured (whitespace vs incremental, --release):
+//                2026-03-28                  2026-04-06
+//   20 defs:   ~678 µs vs ~715 µs        ~550 µs vs ~507 µs
+//   80 defs:   ~875 µs vs ~941 µs        ~630 µs vs ~635 µs
+//   320 defs:  ~3.0 ms vs ~3.2 ms        ~2.0 ms vs ~2.1 ms
+//   500 defs:  ~4.7 ms vs ~5.0 ms        ~3.4 ms vs ~3.7 ms
+//   1000 defs: ~10.1 ms vs ~11.0 ms      ~8.0 ms vs ~8.5 ms
 //
 // The dominant cost at all scales is the incremental parse + O(N)
 // to_flat_proj_incremental scan, not the downstream projection memos.
-// The BackdateEq savings (~0.5–1ms at 1000 defs) are real but modest
+// The BackdateEq savings (~0.4–0.5ms at 1000 defs) are real but modest
 // with the current lightweight consumers. Wins compound when heavier
 // downstream work (type checking, rendering) is added.
 //
 // Compare to "incremental keystroke" above which changes a definition value
 // (no backdate, full downstream recomputation on every keystroke).
+//
+// Full historical comparison: docs/performance/2026-04-06-pipeline-decomposition.md
 
 ///|
 fn run_whitespace_keystroke_bench(b : @bench.T, let_count : Int) -> Unit {
@@ -247,3 +250,4 @@ test "parser benchmark - imperative incremental large" (b : @bench.T) {
     use_edited = !use_edited
   })
 }
+

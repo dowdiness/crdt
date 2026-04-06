@@ -12,6 +12,7 @@ Documentation for the CRDT collaborative editor architecture.
 - **[Vision: The Projectional Bridge](vision-projectional-bridge.md)** - Why Canopy exists: bridging the gap from syntax through semantics and intent to the user's mental model; the unity of computer
 - **[Structure-Format Research](structure-format-research.md)** - PL research survey (Trees That Grow, Cofree, Finally Tagless, MLIR, Attributed Grammars, Ornaments), the semantic model approach, and bottom-up execution strategy with top-down vision
 - **[Product Vision](product-vision.md)** - The full product: write, auto-structure, surface. One input, three storage layers (linking, clustering, pattern detection), three output models (while writing, when asked, proactively). How the code editor is the vertical slice proving every layer
+- **[Incremental Evaluation](incremental-evaluation.md)** - Reusable framework for evaluating the query-based incremental architecture: 15 criteria, structural findings, when to re-evaluate. Grounded by benchmarks in `docs/performance/2026-04-06-pipeline-decomposition.md`
 
 ## Quick Overview
 
