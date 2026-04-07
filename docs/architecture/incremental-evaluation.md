@@ -86,8 +86,9 @@ The pipeline is linear today, but the reactive framework becomes *necessary*
 - **Multi-file**: Each file gets its own SyncEditor. Cross-file dependencies
   (imports) would be a new Signal connecting editors.
 
-Document how to add a new memo consumer in `editor/projection_memo.mbt` when
-the first branch is added.
+Document how to add a new memo consumer when the first branch is added.
+Lambda-specific memo setup lives in `lang/lambda/flat/projection_memo.mbt`
+and `lang/lambda/eval/eval_memo.mbt`; generic memo helpers are in `core/projection_memo.mbt`.
 
 ### Platform & Responsiveness
 

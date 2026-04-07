@@ -437,11 +437,9 @@ From SuperOOP analysis and handler chain refactor (PR #54):
   Plan: `docs/archive/completed-phases/2026-03-29-container-phase1-tree.md`
 - [x] **Phase 2: Per-block text (Path A — shared global LVs)** — ✅ Done (PR #112, event-graph-walker PR #18). `TextBlock` wraps per-block `FugueTree[String]` with shared global LVs. `Document::insert_text/delete_text/replace_text/get_text/text_len`. Block editor migrated from `TextState` map to Document text ops. 20 new tests, `next_version()` refactoring. Codex-reviewed.
   Plan: `docs/plans/2026-04-03-container-phase2-text.md`
-- [x] **Internal text pipeline refactoring** — ✅ Done. Split the container text sync substrate away from `Lv == ItemId`: Fugue storage is `ItemId`-backed, merge/delete tracking is keyed by canonical versions, container text now has replayable text ops, buffering, causal-parent-preserving sync export/import, and the block editor exposes the new sync surface as the first real consumer.
-  Why: FugueTree used sparse arrays indexed by global LV. With shared LV space, per-block arrays were O(total_ops) instead of O(block_size). Branch/MergeContext/DeleteIndex also hardcoded LV=ItemId.
+- [x] **Internal text pipeline refactoring** — ✅ Done (PR #134, event-graph-walker PR #21). Split Lv (replica-local causal handle) from ItemId (per-block Fugue identity), moved fugue storage to dense ItemId indexing, and cleaned merge/delete bookkeeping to target canonical versions instead of assuming LV=ItemId.
   Plan: `docs/plans/2026-04-06-container-text-sync-refactor.md`
-  Exit: met. Container text now has a Phase 3-ready sync substrate built on the split-identity path.
-- [ ] **Phase 3: Unified sync** — Two peers converge on a block document. SyncMessage schema.
+- [x] **Phase 3: Unified sync** — ✅ Done (PR #134, event-graph-walker PR #21). Two peers converge on a block document with document-level sync export/import, causal-parent preservation, out-of-order buffering, incremental diff export, and BlockDoc integration.
   Design: `docs/plans/2026-03-29-container-design.md` §Phase 3
 - [ ] **Phase 4: Document-level undo** — Undo spans tree + text. Transaction boundaries.
   Design: `docs/plans/2026-03-29-container-design.md` §Phase 4
@@ -515,7 +513,25 @@ Post-consolidation app inventory:
 
 ---
 
-## 20. Generic Zipper Library
+## 20. Editor Framework Decoupling
+
+**Impact:** Medium | **Effort:** Medium | **Status:** Phase 1 Done
+
+- [x] **Phase 1: Extract lambda standalone functions** — ✅ Done (PR #135). Moved `build_lambda_projection_memos` to `lang/lambda/flat/`, created `lang/lambda/eval/` package with `EvalResult`, `eval_term`, `build_eval_memo`, annotation helpers. Removed `dowdiness/lambda/eval` from editor imports.
+- [ ] **Phase 2: LanguageCapabilities[T]** — Remove all lambda types from SyncEditor struct. Introduce `LanguageCapabilities[T]` function record (annotation callback + pretty post-process callback). Create `LambdaCompanion` + `new_lambda_editor()` factory in `lang/lambda/edits/`. Update FFI with `LambdaHandle`.
+  Why: SyncEditor struct still has `proj_memo : Memo[VersionedFlatProj]?` and `eval_memo : Memo[Array[EvalResult]]?` — lambda-typed fields that force editor to import lambda packages.
+  Plan: `docs/plans/2026-04-07-language-capabilities-design.md`
+  Exit: `editor/moon.pkg` has zero lambda imports; `SyncEditor[T]` struct has zero lambda-typed fields.
+- [ ] **Extract ephemeral subsystem** — Move ~9 files / ~1500 lines (EphemeralStore, EphemeralHub, EphemeralValue, presence types, cursor view, encoding) from `editor/` to its own package.
+  Why: Zero dependency on editor concepts. Self-contained collaboration primitive with own binary protocol, encoding, and timeout logic.
+  Exit: `editor/` imports ephemeral as a dependency; ephemeral has its own test suite.
+- [ ] **Unify sync protocol** — `editor/sync_protocol.mbt` and `relay/wire.mbt` independently encode/decode the same binary wire protocol (version 0x02, same message types).
+  Why: Duplication risks protocol drift between client and server.
+  Exit: Shared protocol definition used by both editor and relay.
+
+---
+
+## 22. Generic Zipper Library
 
 **Impact:** Medium | **Effort:** Medium | **Status:** Phase 1 Done
 
@@ -545,3 +561,4 @@ Post-consolidation app inventory:
 | 11 | Generic zipper libraries (`rose-zipper[T]`, `btree-zipper[T]`) | Medium | Medium | Supersedes zipper-gen — ProjNode is a rose tree, OrderTree is a B-tree, both have generic zippers without codegen |
 | 12 | Code cleanup | Medium | Medium | Mostly done |
 | 14 | EditorProtocol integration layer | High | High |
+| 20 | Editor framework decoupling (LanguageCapabilities[T]) | Medium | Medium | Phase 1 done (PR #135), Phase 2 planned |

@@ -98,7 +98,7 @@ See [docs/development/ADDING_A_LANGUAGE.md](docs/development/ADDING_A_LANGUAGE.m
 | Package | Path | Purpose |
 |---------|------|---------|
 | `dowdiness/canopy` | `./` | Public MoonBit API (`top.mbt`), re-exports key types |
-| `dowdiness/canopy/ffi` | `ffi/` | JS FFI entry point, 58 link exports |
+| `dowdiness/canopy/ffi` | `ffi/` | JS FFI entry point, 76 link exports |
 | `dowdiness/canopy/core` | `core/` | Generic types: NodeId, ProjNode[T], SourceMap, reconcile, helpers |
 | `dowdiness/canopy/protocol` | `protocol/` | EditorProtocol: ViewPatch, ViewNode, UserIntent |
 | `dowdiness/canopy/editor` | `editor/` | SyncEditor, EphemeralHub, cursor/presence tracking, undo |
@@ -106,7 +106,8 @@ See [docs/development/ADDING_A_LANGUAGE.md](docs/development/ADDING_A_LANGUAGE.m
 | `dowdiness/canopy/relay` | `relay/` | Relay room, wire protocol (multi-peer sync) |
 | `dowdiness/canopy/lang/lambda` | `lang/lambda/` | Lambda language facade (re-exports from sub-packages) |
 | `dowdiness/canopy/lang/lambda/proj` | `lang/lambda/proj/` | FlatProj, syntax_to_proj_node, populate_token_spans |
-| `dowdiness/canopy/lang/lambda/flat` | `lang/lambda/flat/` | VersionedFlatProj (incr memo wrapper) |
+| `dowdiness/canopy/lang/lambda/flat` | `lang/lambda/flat/` | VersionedFlatProj, build_lambda_projection_memos |
+| `dowdiness/canopy/lang/lambda/eval` | `lang/lambda/eval/` | EvalResult, eval_term, build_eval_memo, inject_eval_annotations |
 | `dowdiness/canopy/lang/lambda/edits` | `lang/lambda/edits/` | TreeEditOp, text edit handlers, scope, free_vars, actions |
 | `dowdiness/canopy/lang/json` | `lang/json/` | JSON language facade (re-exports from sub-packages) |
 | `dowdiness/canopy/lang/json/proj` | `lang/json/proj/` | JSON syntax_to_proj_node, populate_token_spans, memo builder |
