@@ -6,7 +6,7 @@ pub(all) struct TextChange {
   start : Int
   delete_len : Int
   inserted : String
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 ///|
 /// Compute the minimal contiguous text change between two strings.

@@ -5,6 +5,7 @@ import {
   "dowdiness/canopy/core",
   "dowdiness/canopy/lang/lambda/edits",
   "dowdiness/lambda/ast",
+  "moonbitlang/core/debug",
   "moonbitlang/core/immut/hashset",
   "moonbitlang/core/list",
 }
@@ -50,14 +51,14 @@ pub(all) struct ActionRecord {
   cursor_before : @core.NodeId
   cursor_after : @core.NodeId
   role : PositionRole
-} derive(Show)
+} derive(@debug.Debug)
 
 pub(all) enum Direction {
   Up
   Down
   Left
   Right
-} derive(Show)
+} derive(@debug.Debug)
 
 pub(all) enum EditAction {
   Delete
@@ -69,12 +70,12 @@ pub(all) enum EditAction {
   SwapChildren
   ChangeOperator(@ast.Bop)
   CommitEdit(String)
-} derive(Show)
+} derive(@debug.Debug)
 
 pub(all) struct HoleInfo {
   created_by : EditAction
   role : PositionRole
-} derive(Show)
+} derive(@debug.Debug)
 
 pub(all) struct HoleRegistry {
   // private fields
@@ -97,7 +98,8 @@ pub(all) enum PositionRole {
   OperandRight(@ast.Bop)
   LetDefinition(String)
   LetBody
-} derive(Show)
+} derive(@debug.Debug)
+pub impl Show for PositionRole
 
 pub(all) enum TermCtx {
   CtxLamBody(String)
@@ -110,12 +112,13 @@ pub(all) enum TermCtx {
   CtxIfElse(@ast.Term, @ast.Term)
   CtxModuleDef(Array[(String, @ast.Term)], String, Array[(String, @ast.Term)], @ast.Term)
   CtxModuleBody(Array[(String, @ast.Term)])
-} derive(Show)
+} derive(@debug.Debug)
 
 pub(all) struct Zipper {
   focus : @ast.Term
   path : @list.List[TermCtx]
-} derive(Show)
+} derive(@debug.Debug)
+pub impl Show for Zipper
 
 // Type aliases
 

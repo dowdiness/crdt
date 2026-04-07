@@ -14,7 +14,12 @@ pub(all) enum SyncMessage {
   PeerJoined(String)
   PeerLeft(String)
   RelayedCrdtOps(sender~ : String, payload~ : Bytes)
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for SyncMessage with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 let protocol_version : Byte = b'\x02'

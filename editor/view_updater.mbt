@@ -6,7 +6,7 @@ pub struct ViewUpdateState {
   mut had_errors : Bool
 
   fn new() -> ViewUpdateState
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub fn ViewUpdateState::new() -> ViewUpdateState {

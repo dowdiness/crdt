@@ -7,7 +7,7 @@
 pub struct Editor {
   doc : @text.TextState
   mut cursor : Int // Current cursor position (0-based)
-} derive(Show)
+} derive(Debug)
 
 ///|
 /// Create a new editor for an agent

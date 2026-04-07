@@ -3,7 +3,12 @@ pub enum ListStyle {
   Bullet
   Numbered
   Todo
-} derive(Eq, Show)
+} derive(Eq, Debug)
+
+///|
+pub impl Show for ListStyle with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub enum BlockType {
@@ -14,7 +19,12 @@ pub enum BlockType {
   Code(String) // language, empty = plain
   Divider // no text content
   Raw // verbatim, no parsing
-} derive(Eq, Show)
+} derive(Eq, Debug)
+
+///|
+pub impl Show for BlockType with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 /// Returns (type_str, extra_props) for JSON serialisation.

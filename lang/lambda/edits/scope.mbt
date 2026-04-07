@@ -3,7 +3,7 @@
 pub(all) enum BindingSite {
   LamBinder(lam_id~ : NodeId)
   ModuleBinder(binding_node_id~ : NodeId, def_index~ : Int)
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 /// Resolve which binding site a Var node refers to.

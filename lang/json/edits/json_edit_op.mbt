@@ -11,7 +11,7 @@ pub(all) enum JsonType {
   JString
   JArray
   JObject
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub(all) enum JsonEditOp {
@@ -24,4 +24,9 @@ pub(all) enum JsonEditOp {
   ChangeType(node_id~ : NodeId, new_type~ : JsonType)
   RenameKey(object_id~ : NodeId, key_index~ : Int, new_key~ : String)
   CommitEdit(node_id~ : NodeId, new_value~ : String)
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for JsonEditOp with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}

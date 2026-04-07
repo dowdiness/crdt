@@ -127,7 +127,12 @@ test "ephemeral value roundtrip: all variants" {
   // Map
   let map : Map[String, EphemeralValue] = { "key": EphemeralValue::Bool(true) }
   let map_val = try! roundtrip(EphemeralValue::Map(map))
-  inspect(map_val, content="Map({\"key\": Bool(true)})")
+  inspect(
+    map_val,
+    content=(
+      #|Map({ "key": Bool(true) })
+    ),
+  )
 }
 
 ///|

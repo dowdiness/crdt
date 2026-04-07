@@ -14,7 +14,12 @@ using @loomcore {trait Renderable}
 priv enum TestExpr {
   Leaf(String)
   Branch(String, Array[TestExpr])
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+impl Show for TestExpr with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 impl @loomcore.TreeNode for TestExpr with children(self) {

@@ -236,7 +236,7 @@ Before starting medium or large work:
     y : Int
 
     fn new(x~ : Int, y? : Int) -> MyStruct  // declaration inside struct
-  } derive(Show)
+  } derive(Debug)
 
   fn MyStruct::new(x~ : Int, y? : Int = x) -> MyStruct {  // implementation
     { x, y }

@@ -5,7 +5,12 @@ pub(all) struct PeerCursor {
   mut display_name : String
   mut color : String
   mut selection : (Int, Int)?
-} derive(Show)
+} derive(Debug)
+
+///|
+pub impl Show for PeerCursor with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub struct PeerCursorView {

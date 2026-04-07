@@ -2,7 +2,7 @@
 struct StoredPost {
   text : String
   ts : String
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
 
 ///|
 fn posts_to_json(posts : Array[StoredPost]) -> String {

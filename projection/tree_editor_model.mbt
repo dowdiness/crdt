@@ -8,7 +8,7 @@ using @lambda_edits {type DropPosition}
 pub enum InteractiveChildren[T] {
   Loaded(Array[InteractiveTreeNode[T]])
   Elided(Int)
-} derive(Show)
+} derive(Debug)
 
 ///|
 /// Interactive tree node with editing state
@@ -27,7 +27,7 @@ pub struct InteractiveTreeNode[T] {
   drop_target : Bool
   /// Corresponding text range
   text_range : Range
-} derive(Show)
+} derive(Debug)
 
 ///|
 /// Create an interactive tree node from a ProjNode

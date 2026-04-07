@@ -1,26 +1,41 @@
 ///|
 pub(all) struct EditModeState {
   node_id : String
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for EditModeState with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub(all) enum DragPosition {
   Before
   After
   Inside
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub(all) struct DragState {
   source_id : String
   target : (String, DragPosition)?
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for DragState with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub(all) enum PresenceStatus {
   Active
   Idle
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for PresenceStatus with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub(all) struct PeerPresence {
@@ -28,7 +43,12 @@ pub(all) struct PeerPresence {
   display_name : String
   color : String
   status : PresenceStatus
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for PeerPresence with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub fn EditModeState::to_ephemeral(self : EditModeState) -> EphemeralValue {

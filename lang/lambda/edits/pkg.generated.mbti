@@ -5,6 +5,7 @@ import {
   "dowdiness/canopy/core",
   "dowdiness/canopy/lang/lambda/proj",
   "dowdiness/lambda/ast",
+  "moonbitlang/core/debug",
   "moonbitlang/core/immut/hashset",
 }
 
@@ -32,25 +33,25 @@ pub(all) struct Action {
   mnemonic : String
   group : ActionGroup
   needs_input : Bool
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum ActionGroup {
   Core
   Wrap
   Binding
   Module
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum BindingSite {
   LamBinder(lam_id~ : @core.NodeId)
   ModuleBinder(binding_node_id~ : @core.NodeId, def_index~ : Int)
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum DropPosition {
   Before
   After
   Inside
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct EditContext[T] {
   source_text : String
@@ -64,7 +65,7 @@ pub(all) struct NodeContext {
   binding_node_id : @core.NodeId?
   binding_def_index : Int?
   module_node_id : @core.NodeId?
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 pub fn NodeContext::new() -> Self
 pub fn NodeContext::new_binding(binding_node_id~ : @core.NodeId, binding_def_index~ : Int, module_node_id~ : @core.NodeId) -> Self
 
@@ -97,7 +98,8 @@ pub(all) enum TreeEditOp {
   InlineDefinition(node_id~ : @core.NodeId)
   InlineAllUsages(binding_node_id~ : @core.NodeId)
   Rename(node_id~ : @core.NodeId, new_name~ : String)
-} derive(Show)
+} derive(@debug.Debug)
+pub impl Show for TreeEditOp
 
 // Type aliases
 pub type EditResult = Result[(Array[@core.SpanEdit], @core.FocusHint)?, String]

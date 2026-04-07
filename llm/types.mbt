@@ -4,7 +4,12 @@ pub(all) enum EditAction {
   Insert(line~ : Int, text~ : String)
   Delete(line~ : Int)
   FixTypos(original~ : String, fixed~ : String)
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for EditAction with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 /// Manual ToJson: uses object-based wire format matching Gemini API response format.
@@ -40,7 +45,12 @@ pub(all) enum Role {
   System
   User
   Assistant
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for Role with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub(all) struct Message {
@@ -48,7 +58,7 @@ pub(all) struct Message {
   content : String
 
   fn new(role~ : Role, content~ : String) -> Message
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub fn Message::new(role~ : Role, content~ : String) -> Message {
@@ -68,7 +78,7 @@ pub(all) struct GeminiConfig {
     temperature? : Double,
     max_output_tokens? : Int,
   ) -> GeminiConfig
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub fn GeminiConfig::new(
@@ -84,4 +94,9 @@ pub fn GeminiConfig::new(
 /// Error type for LLM operations (HTTP errors, parse errors, API errors).
 pub suberror LlmError {
   LlmError(String)
-} derive(Show)
+} derive(Debug)
+
+///|
+pub impl Show for LlmError with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}

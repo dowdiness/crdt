@@ -4,7 +4,9 @@ test "EditModeState roundtrip" {
   let ephemeral = state.to_ephemeral()
   inspect(
     EditModeState::from_ephemeral(ephemeral),
-    content="Some({node_id: \"node-42\"})",
+    content=(
+      #|Some({ node_id: "node-42" })
+    ),
   )
 }
 
@@ -19,7 +21,9 @@ test "DragState roundtrip with target" {
   let result = DragState::from_ephemeral(state.to_ephemeral())
   inspect(
     result,
-    content="Some({source_id: \"src\", target: Some((\"tgt\", Before))})",
+    content=(
+      #|Some({ source_id: "src", target: Some(("tgt", Before)) })
+    ),
   )
 }
 
@@ -27,7 +31,12 @@ test "DragState roundtrip with target" {
 test "DragState roundtrip without target" {
   let state : DragState = { source_id: "src", target: None }
   let result = DragState::from_ephemeral(state.to_ephemeral())
-  inspect(result, content="Some({source_id: \"src\", target: None})")
+  inspect(
+    result,
+    content=(
+      #|Some({ source_id: "src", target: None })
+    ),
+  )
 }
 
 ///|
@@ -41,7 +50,14 @@ test "PeerPresence roundtrip" {
   let result = PeerPresence::from_ephemeral(p.to_ephemeral())
   inspect(
     result,
-    content="Some({peer_id: \"alice\", display_name: \"Alice\", color: \"#ff0000\", status: Active})",
+    content=(
+      #|Some({
+      #|  peer_id: "alice",
+      #|  display_name: "Alice",
+      #|  color: "#ff0000",
+      #|  status: Active,
+      #|})
+    ),
   )
 }
 

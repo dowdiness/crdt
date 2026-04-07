@@ -19,13 +19,18 @@ pub(all) enum TermCtx {
     @ast.Term
   )
   CtxModuleBody(Array[(@ast.VarName, @ast.Term)])
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub(all) struct Zipper {
   focus : @ast.Term
   path : @list.List[TermCtx]
-} derive(Show)
+} derive(Debug)
+
+///|
+pub impl Show for Zipper with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 /// Reconstruct parent from context + child.

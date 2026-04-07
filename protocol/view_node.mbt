@@ -9,7 +9,7 @@ pub(all) struct TokenSpan {
   end : Int
 
   fn new(role~ : String, start~ : Int, end~ : Int) -> TokenSpan
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub fn TokenSpan::new(role~ : String, start~ : Int, end~ : Int) -> TokenSpan {
@@ -23,7 +23,7 @@ pub(all) struct ViewAnnotation {
   severity : String
 
   fn new(kind~ : String, label~ : String, severity? : String) -> ViewAnnotation
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub fn ViewAnnotation::new(
@@ -68,7 +68,7 @@ pub(all) struct ViewNode {
     children? : Array[ViewNode],
     annotations? : Array[ViewAnnotation],
   ) -> ViewNode
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub fn ViewNode::new(

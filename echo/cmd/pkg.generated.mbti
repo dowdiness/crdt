@@ -2,6 +2,7 @@
 package "dowdiness/canopy/echo/cmd"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 
@@ -10,7 +11,7 @@ import {
 // Errors
 
 // Types and methods
-type StoredPost derive(Show, ToJson, @json.FromJson)
+type StoredPost derive(ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
 
