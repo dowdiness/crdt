@@ -1,6 +1,11 @@
 import {
+  "dowdiness/canopy/core" @core,
   "dowdiness/canopy/lang/lambda/proj" @lambda_proj,
   "dowdiness/incr" @incr,
+  "dowdiness/lambda/ast" @ast,
+  "dowdiness/loom" @loom,
+  "dowdiness/loom/core" @loom_core,
+  "dowdiness/seam" @seam,
 }
 
 options(

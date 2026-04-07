@@ -3,18 +3,28 @@ package "dowdiness/canopy/lang/lambda"
 
 import {
   "dowdiness/canopy/lang/lambda/edits",
+  "dowdiness/canopy/lang/lambda/eval",
   "dowdiness/canopy/lang/lambda/flat",
   "dowdiness/canopy/lang/lambda/proj",
+  "dowdiness/incr/cells",
   "dowdiness/lambda/ast",
+  "dowdiness/loom/incremental",
+  "dowdiness/pretty",
   "dowdiness/seam",
   "moonbitlang/core/immut/hashset",
   "moonbitlang/core/ref",
 }
 
 // Values
+pub fn build_eval_memo(@cells.Runtime, @cells.Signal[@seam.SyntaxNode?], @incremental.ImperativeParser[@ast.Term]) -> @cells.Memo[Array[@eval.EvalResult]]
+
+pub fn build_lambda_projection_memos(@cells.Runtime, @cells.Signal[String], @cells.Signal[@seam.SyntaxNode?], @incremental.ImperativeParser[@ast.Term]) -> (@cells.Memo[@flat.VersionedFlatProj], @cells.Memo[@dowdiness/canopy/core.ProjNode[@ast.Term]?], @cells.Memo[Map[@dowdiness/canopy/core.NodeId, @dowdiness/canopy/core.ProjNode[@ast.Term]]], @cells.Memo[@dowdiness/canopy/core.SourceMap])
+
 pub fn collect_lam_env(@dowdiness/canopy/core.NodeId, Map[@dowdiness/canopy/core.NodeId, @dowdiness/canopy/core.ProjNode[@ast.Term]]) -> @hashset.HashSet[String]
 
 pub fn compute_text_edit(@edits.TreeEditOp, @edits.EditContext[@ast.Term]) -> Result[(Array[@dowdiness/canopy/core.SpanEdit], @dowdiness/canopy/core.FocusHint)?, String]
+
+pub fn eval_term(@ast.Term) -> Array[@eval.EvalResult]
 
 pub fn find_binding_for_init(@dowdiness/canopy/core.NodeId, @proj.FlatProj) -> (@dowdiness/canopy/core.NodeId, Int)?
 
@@ -23,6 +33,8 @@ pub fn find_usages(String, Int, @proj.FlatProj, Map[@dowdiness/canopy/core.NodeI
 pub fn free_vars(@ast.Term, @hashset.HashSet[String]) -> @hashset.HashSet[String]
 
 pub fn get_actions_for_node(@ast.Term, @edits.NodeContext) -> Array[@edits.Action]
+
+pub fn inject_eval_annotations(@pretty.Layout[@pretty.SyntaxCategory], Array[@eval.EvalResult]) -> @pretty.Layout[@pretty.SyntaxCategory]
 
 pub fn parse_to_proj_node(String) -> (@dowdiness/canopy/core.ProjNode[@ast.Term], Array[String])
 
@@ -62,6 +74,8 @@ pub using @edits {type DropPosition}
 pub using @edits {type EditContext}
 
 pub type EditResult = Result[(Array[@dowdiness/canopy/core.SpanEdit], @dowdiness/canopy/core.FocusHint)?, String]
+
+pub using @eval {type EvalResult}
 
 pub using @proj {type FlatProj}
 

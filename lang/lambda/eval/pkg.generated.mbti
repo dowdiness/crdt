@@ -1,0 +1,37 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/canopy/lang/lambda/eval"
+
+import {
+  "dowdiness/incr/cells",
+  "dowdiness/lambda/ast",
+  "dowdiness/loom/incremental",
+  "dowdiness/pretty",
+  "dowdiness/seam",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn build_eval_memo(@cells.Runtime, @cells.Signal[@seam.SyntaxNode?], @incremental.ImperativeParser[@ast.Term]) -> @cells.Memo[Array[EvalResult]]
+
+pub fn eval_annotation_layout(EvalResult) -> @pretty.Layout[@pretty.SyntaxCategory]?
+
+pub fn eval_term(@ast.Term) -> Array[EvalResult]
+
+pub fn inject_eval_annotations(@pretty.Layout[@pretty.SyntaxCategory], Array[EvalResult]) -> @pretty.Layout[@pretty.SyntaxCategory]
+
+pub fn split_at_hardlines(@pretty.Layout[@pretty.SyntaxCategory]) -> Array[@pretty.Layout[@pretty.SyntaxCategory]]
+
+// Errors
+
+// Types and methods
+pub(all) enum EvalResult {
+  Value(String)
+  Stuck(String)
+  Suppressed
+} derive(Eq, @debug.Debug)
+pub impl Show for EvalResult
+
+// Type aliases
+
+// Traits
+

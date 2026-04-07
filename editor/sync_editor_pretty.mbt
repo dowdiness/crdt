@@ -11,7 +11,7 @@ pub fn SyncEditor::get_pretty_view(
   let ast = self.get_ast()
   let layout = @pretty.Pretty::to_layout(ast)
   let eval_results = self.get_eval_results()
-  let annotated = inject_eval_annotations(layout, eval_results)
+  let annotated = @lambda.inject_eval_annotations(layout, eval_results)
   @protocol.layout_to_view_tree(annotated, width=80)
 }
 
