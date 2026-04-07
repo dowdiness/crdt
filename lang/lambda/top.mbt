@@ -35,4 +35,12 @@ pub using @lambda_edits {
 }
 
 ///|
-pub using @lambda_flat {type VersionedFlatProj}
+pub using @lambda_flat {type VersionedFlatProj, build_lambda_projection_memos}
+
+///|
+pub using @lambda_eval {
+  type EvalResult,
+  eval_term,
+  build_eval_memo,
+  inject_eval_annotations,
+}

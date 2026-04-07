@@ -3,6 +3,7 @@ package "dowdiness/canopy/editor"
 
 import {
   "dowdiness/canopy/lang/lambda/edits",
+  "dowdiness/canopy/lang/lambda/eval",
   "dowdiness/canopy/lang/lambda/proj",
   "dowdiness/canopy/protocol",
   "dowdiness/event-graph-walker/text",
@@ -16,8 +17,6 @@ import {
 
 // Values
 pub fn adjust_position(Int, Int, Int, Int) -> Int
-
-pub fn build_eval_memo(@cells.Runtime, @cells.Signal[@seam.SyntaxNode?], @incremental.ImperativeParser[@ast.Term]) -> @cells.Memo[Array[EvalResult]]
 
 pub fn compute_edit(String, String) -> @dowdiness/loom/core.Edit
 
@@ -38,8 +37,6 @@ pub fn encode_relayed_crdt_ops(String, Bytes) -> Bytes
 pub fn encode_sync_request(target~ : String, request_id~ : String, version_json~ : String) -> Bytes
 
 pub fn encode_sync_response(target~ : String, request_id~ : String, sync_json~ : String) -> Bytes
-
-pub fn eval_term(@ast.Term) -> Array[EvalResult]
 
 pub fn merge_to_edits(String, String) -> Array[@dowdiness/loom/core.Edit]
 
@@ -215,13 +212,6 @@ pub(all) enum EphemeralValue {
 } derive(Eq, @debug.Debug)
 pub impl Show for EphemeralValue
 
-pub(all) enum EvalResult {
-  Value(String)
-  Stuck(String)
-  Suppressed
-} derive(Eq, @debug.Debug)
-pub impl Show for EvalResult
-
 pub struct InMemoryRoom {
   peers : Map[String, Array[(Bytes) -> Unit]]
 }
@@ -308,7 +298,7 @@ pub fn[T] SyncEditor::get_cursor(Self[T]) -> Int
 pub fn SyncEditor::get_dot_resolved(Self[@ast.Term]) -> String
 pub fn[T] SyncEditor::get_errors(Self[T]) -> Array[String]
 pub fn SyncEditor::get_eval_annotations(Self[@ast.Term]) -> Map[@dowdiness/canopy/core.NodeId, Array[@protocol.ViewAnnotation]]
-pub fn SyncEditor::get_eval_results(Self[@ast.Term]) -> Array[EvalResult]
+pub fn SyncEditor::get_eval_results(Self[@ast.Term]) -> Array[@eval.EvalResult]
 pub fn[T] SyncEditor::get_flat_proj(Self[T]) -> @proj.FlatProj?
 pub fn[T] SyncEditor::get_hub(Self[T]) -> EphemeralHub
 pub fn[T] SyncEditor::get_node(Self[T], @dowdiness/canopy/core.NodeId) -> @dowdiness/canopy/core.ProjNode[T]?

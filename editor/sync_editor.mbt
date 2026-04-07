@@ -14,7 +14,7 @@ pub struct SyncEditor[T] {
   priv cached_proj_node : @incr.Memo[@proj.ProjNode[T]?]
   priv registry_memo : @incr.Memo[Map[@proj.NodeId, @proj.ProjNode[T]]]
   priv source_map_memo : @incr.Memo[@proj.SourceMap]
-  priv mut eval_memo : @incr.Memo[Array[EvalResult]]?
+  priv mut eval_memo : @incr.Memo[Array[@lambda.EvalResult]]?
   priv hub : EphemeralHub
   priv cursor_view : PeerCursorView
   priv peer_id : String
@@ -85,11 +85,11 @@ pub fn SyncEditor::new_lambda(
   let editor = SyncEditor::new(
     agent_id,
     fn(s) { @loom.new_imperative_parser(s, @parser.lambda_grammar) },
-    build_lambda_projection_memos,
+    @lambda.build_lambda_projection_memos,
     capture_timeout_ms~,
   )
   editor.eval_memo = Some(
-    build_eval_memo(editor.parser_rt, editor.syntax_tree, editor.parser),
+    @lambda.build_eval_memo(editor.parser_rt, editor.syntax_tree, editor.parser),
   )
   editor
 }

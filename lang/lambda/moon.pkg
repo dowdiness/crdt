@@ -2,5 +2,6 @@ import {
   "dowdiness/canopy/core" @core,
   "dowdiness/canopy/lang/lambda/proj" @lambda_proj,
   "dowdiness/canopy/lang/lambda/edits" @lambda_edits,
+  "dowdiness/canopy/lang/lambda/eval" @lambda_eval,
   "dowdiness/canopy/lang/lambda/flat" @lambda_flat,
 }
