@@ -437,10 +437,10 @@ From SuperOOP analysis and handler chain refactor (PR #54):
   Plan: `docs/archive/completed-phases/2026-03-29-container-phase1-tree.md`
 - [x] **Phase 2: Per-block text (Path A — shared global LVs)** — ✅ Done (PR #112, event-graph-walker PR #18). `TextBlock` wraps per-block `FugueTree[String]` with shared global LVs. `Document::insert_text/delete_text/replace_text/get_text/text_len`. Block editor migrated from `TextState` map to Document text ops. 20 new tests, `next_version()` refactoring. Codex-reviewed.
   Plan: `docs/plans/2026-04-03-container-phase2-text.md`
-- [ ] **Internal text pipeline refactoring** — Separate Lv (global causal version) from ItemId (per-container Fugue identity) in oplog/, branch/, fugue/. Enables dense per-block storage and clean per-block Branch/merge.
-  Why: FugueTree uses sparse arrays indexed by global LV. With shared LV space, per-block arrays are O(total_ops) instead of O(block_size). Branch/MergeContext/DeleteIndex hardcode LV=ItemId.
+- [x] **Internal text pipeline refactoring** — ✅ Done. Split the container text sync substrate away from `Lv == ItemId`: Fugue storage is `ItemId`-backed, merge/delete tracking is keyed by canonical versions, container text now has replayable text ops, buffering, causal-parent-preserving sync export/import, and the block editor exposes the new sync surface as the first real consumer.
+  Why: FugueTree used sparse arrays indexed by global LV. With shared LV space, per-block arrays were O(total_ops) instead of O(block_size). Branch/MergeContext/DeleteIndex also hardcoded LV=ItemId.
   Plan: `docs/plans/2026-04-06-container-text-sync-refactor.md`
-  Exit: container text has a Phase 3-ready sync substrate; the plan records whether that requires a true Lv/ItemId split or a narrower adapter over existing text sync internals.
+  Exit: met. Container text now has a Phase 3-ready sync substrate built on the split-identity path.
 - [ ] **Phase 3: Unified sync** — Two peers converge on a block document. SyncMessage schema.
   Design: `docs/plans/2026-03-29-container-design.md` §Phase 3
 - [ ] **Phase 4: Document-level undo** — Undo spans tree + text. Transaction boundaries.

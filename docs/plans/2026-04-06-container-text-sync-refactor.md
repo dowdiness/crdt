@@ -1,5 +1,24 @@
 # Container Text Sync Refactor
 
+**Status:** Complete
+
+## Completion
+
+This plan is complete.
+
+Delivered:
+- `Lv` and per-block `ItemId` are separated along the container text path.
+- `container.Document` now has replayable text-op history, remote apply,
+  dependency buffering, causal-parent-preserving sync export/import, and
+  incremental export by version vector.
+- The block editor now exposes this sync surface as the first real canopy-side
+  consumer, with convergence coverage at the `BlockDoc` layer.
+
+Follow-on work:
+- Treat Phase 3 unified sync as a separate task.
+- Keep relay/browser/WebSocket integration on the later integration plans,
+  rather than extending this refactor plan further.
+
 ## Why
 
 `event-graph-walker/container/` currently has tree-level remote sync primitives,

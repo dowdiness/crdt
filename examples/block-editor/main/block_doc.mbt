@@ -106,7 +106,11 @@ pub fn BlockDoc::get_text(
 }
 
 ///|
-/// Bulk-replace block text (atomic CRDT replace).
+/// Bulk-replace block text via a deterministic delete-then-insert sequence.
+///
+/// This is a convenience helper, not a transaction boundary: peers syncing
+/// mid-sequence may observe intermediate partial states until all generated ops
+/// have arrived and been applied.
 pub fn BlockDoc::set_text(
   self : BlockDoc,
   id : @container.TreeNodeId,
@@ -140,6 +144,32 @@ pub fn BlockDoc::delete_char(
   self.tree.delete_text(id, pos) catch {
     _ => ()
   }
+}
+
+///|
+pub fn BlockDoc::export_sync_message(self : BlockDoc) -> @container.SyncMessage {
+  self.tree.export_sync_message()
+}
+
+///|
+pub fn BlockDoc::export_sync_message_since(
+  self : BlockDoc,
+  vv : @container.VersionVector,
+) -> @container.SyncMessage {
+  self.tree.export_sync_message_since(vv)
+}
+
+///|
+pub fn BlockDoc::apply_remote_sync_message(
+  self : BlockDoc,
+  message : @container.SyncMessage,
+) -> Unit {
+  self.tree.apply_remote_sync_message(message)
+}
+
+///|
+pub fn BlockDoc::get_version_vector(self : BlockDoc) -> @container.VersionVector {
+  self.tree.get_version_vector()
 }
 
 ///|
