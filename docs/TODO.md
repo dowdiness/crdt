@@ -436,9 +436,9 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 - [x] **Phase 1: Container + tree ops** — ✅ Done. `container/` package with `Document` struct. Block editor switched from `@tree.TreeState` to `@container.Document`. 25 tests.
   Plan: `docs/archive/completed-phases/2026-03-29-container-phase1-tree.md`
 - [x] **Phase 2: Per-block text (Path A — shared global LVs)** — ✅ Done (PR #112, event-graph-walker PR #18). `TextBlock` wraps per-block `FugueTree[String]` with shared global LVs. `Document::insert_text/delete_text/replace_text/get_text/text_len`. Block editor migrated from `TextState` map to Document text ops. 20 new tests, `next_version()` refactoring. Codex-reviewed.
-  Plan: `docs/plans/2026-04-03-container-phase2-text.md`
+  Plan: `docs/archive/completed-phases/2026-04-03-container-phase2-text.md`
 - [x] **Internal text pipeline refactoring** — ✅ Done (PR #134, event-graph-walker PR #21). Split Lv (replica-local causal handle) from ItemId (per-block Fugue identity), moved fugue storage to dense ItemId indexing, and cleaned merge/delete bookkeeping to target canonical versions instead of assuming LV=ItemId.
-  Plan: `docs/plans/2026-04-06-container-text-sync-refactor.md`
+  Plan: `docs/archive/completed-phases/2026-04-06-container-text-sync-refactor.md`
 - [x] **Phase 3: Unified sync** — ✅ Done (PR #134, event-graph-walker PR #21). Two peers converge on a block document with document-level sync export/import, causal-parent preservation, out-of-order buffering, incremental diff export, and BlockDoc integration.
   Design: `docs/plans/2026-03-29-container-design.md` §Phase 3
 - [ ] **Phase 4: Document-level undo** — Undo spans tree + text. Transaction boundaries.

@@ -188,7 +188,7 @@ separate optional suite unless runtime becomes prohibitive.
 ## Notes
 
 - Related design: `docs/plans/2026-03-29-container-design.md`
-- Related completed phase: `docs/plans/2026-04-03-container-phase2-text.md`
+- Related completed phase: `docs/archive/completed-phases/2026-04-03-container-phase2-text.md`
 - Key code references:
   `event-graph-walker/container/document.mbt`
   `event-graph-walker/container/text_block.mbt`
