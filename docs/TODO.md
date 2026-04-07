@@ -505,7 +505,7 @@ Post-consolidation app inventory:
 
 - [ ] **Live inline evaluation display** — makes the GIF compelling ("→ 10" appearing as you type). See §13 concrete projection candidates.
   Exit: demo shows evaluation results inline while typing.
-- [ ] **Scope-colored compact tree view (Phase 1)** — compact inline layout, full binder coloring, bold defs / regular usages, selection-driven binder↔usage highlighting with dimming.
+- [x] **Scope-colored compact tree view (Phase 1)** — compact inline layout, full binder coloring, bold defs / regular usages, selection-driven binder↔usage highlighting with dimming.
   Plan: `docs/plans/2026-04-04-scope-colored-tree-view-design.md`
   Exit: compact inline view with binder colors, def/use font weight, selection highlights binder + usages.
 - [ ] **Scope-colored tree view — smart tooltip (future)** — small tooltip popup on selection showing scope info (binding site, usage count). Smart positioning to avoid occluding relevant text.
