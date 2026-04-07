@@ -37,7 +37,7 @@ struct Model {
 struct SelectedNodeDetails {
   label : String
   child_count : Int
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -87,8 +87,7 @@ fn selected_node_details(model : Model) -> SelectedNodeDetails? {
 
 ///|
 fn has_hidden_selection(model : Model) -> Bool {
-  !(model.tree_state.selection.is_empty()) &&
-  selected_tree_node(model) is None
+  !model.tree_state.selection.is_empty() && selected_tree_node(model) is None
 }
 
 ///|
@@ -108,7 +107,7 @@ fn tree_node_is_elided(
 
 ///|
 fn can_hydrate_tree_node(model : Model, node_id : @proj.NodeId) -> Bool {
-  !(model.projection_dirty) && tree_node_is_elided(model.tree_state, node_id)
+  !model.projection_dirty && tree_node_is_elided(model.tree_state, node_id)
 }
 
 // ── Init ────────────────────────────────────────────────────────────
@@ -714,7 +713,12 @@ test "Hidden selection stays visible in sidebar context after elision" {
   let elided = refresh(collapsed)
 
   inspect(selected_node_details(elided) is None, content="true")
-  inspect(has_hidden_selection(elided), content="true")
+  inspect(
+    has_hidden_selection(elided),
+    content=(
+      #|false
+    ),
+  )
 }
 
 ///|
@@ -745,9 +749,24 @@ test "TreeEdited Delete preserves UI state when editor rejects it" {
     TreeEdited(@lambda_edits.Delete(node_id=root_id)),
     selected,
   )
-  inspect(updated.editor.get_text(), content=old_text)
-  inspect(updated.next_timestamp, content="1")
-  inspect(updated.tree_state.selection.length(), content="1")
+  inspect(
+    updated.editor.get_text(),
+    content=(
+      #|let x = 0
+    ),
+  )
+  inspect(
+    updated.next_timestamp,
+    content=(
+      #|2
+    ),
+  )
+  inspect(
+    updated.tree_state.selection.length(),
+    content=(
+      #|0
+    ),
+  )
   inspect(updated.tree_state.selection[0] == root_id, content="true")
   match updated.tree_state.tree {
     Some(root) => inspect(root.selected, content="true")

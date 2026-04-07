@@ -8,7 +8,7 @@ pub(all) enum ActionGroup {
   Wrap
   Binding
   Module
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 /// A structural editing action available on a node.
@@ -23,7 +23,7 @@ pub(all) struct Action {
   group : ActionGroup
   /// Whether the action requires user text input (e.g. a variable name)
   needs_input : Bool
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 /// Context about a node's position in the tree, used to filter actions.
@@ -36,7 +36,7 @@ pub(all) struct NodeContext {
   binding_def_index : Int?
   /// The NodeId of the enclosing Module (if is_let_binding)
   module_node_id : NodeId?
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 /// Create a default NodeContext (not a binding).

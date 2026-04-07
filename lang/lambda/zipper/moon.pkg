@@ -4,6 +4,7 @@ import {
   "dowdiness/lambda/ast" @ast,
   "moonbitlang/core/immut/hashset" @immut/hashset,
   "moonbitlang/core/list" @list,
+  "moonbitlang/core/debug",
 }
 
 import {

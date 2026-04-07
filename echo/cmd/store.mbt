@@ -2,7 +2,12 @@
 struct StoredPost {
   text : String
   ts : String
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
+
+///|
+impl Show for StoredPost with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 fn posts_to_json(posts : Array[StoredPost]) -> String {

@@ -3,7 +3,12 @@
 ///|
 /// Unique identifier for AST nodes (persistent across edits).
 /// Construct via `NodeId::from_int(n)`.
-pub struct NodeId(Int) derive(Show, Eq, Hash, Compare)
+pub struct NodeId(Int) derive(Debug, Eq, Hash, Compare)
+
+///|
+pub impl Show for NodeId with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub fn NodeId::from_int(n : Int) -> NodeId {
@@ -22,7 +27,12 @@ pub(all) struct SpanEdit {
   start : Int
   delete_len : Int
   inserted : String
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for SpanEdit with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 /// Hint for where to place the cursor after a structural edit.
@@ -30,4 +40,9 @@ pub(all) struct SpanEdit {
 pub(all) enum FocusHint {
   RestoreCursor
   MoveCursor(position~ : Int)
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for FocusHint with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}

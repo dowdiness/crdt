@@ -122,7 +122,12 @@ test "encode/decode roundtrip all value types" {
   inspect(store2.get("3"), content="Some(F64(3.14))")
   inspect(store2.get("4"), content="Some(String(\"hello\"))")
   inspect(store2.get("5"), content="Some(List([I64(1), I64(2)]))")
-  inspect(store2.get("6"), content="Some(Bytes(b\"\\x01\\x02\\x03\"))")
+  inspect(
+    store2.get("6"),
+    content=(
+      #|Some(Bytes(<Bytes: [0x01, 0x02, 0x03]>))
+    ),
+  )
   inspect(store2.keys().length(), content="6")
 }
 

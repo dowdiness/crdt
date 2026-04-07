@@ -1,6 +1,7 @@
 import {
   "dowdiness/canopy/echo" @echo,
   "dowdiness/canopy/echo/tokenizer" @tokenizer,
+  "moonbitlang/core/debug",
   "moonbitlang/core/json" @json,
   "moonbitlang/core/argparse" @argparse,
   "moonbitlang/x/sys" @sys,

@@ -11,7 +11,12 @@ pub(all) enum PositionRole {
   OperandRight(@ast.Bop)
   LetDefinition(@ast.VarName)
   LetBody
-} derive(Show)
+} derive(Debug)
+
+///|
+pub impl Show for PositionRole with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub fn available_actions(z : Zipper) -> Array[EditAction] {

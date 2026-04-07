@@ -5,6 +5,7 @@ import {
   "dowdiness/canopy/core",
   "dowdiness/canopy/editor",
   "dowdiness/markdown",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -25,7 +26,7 @@ pub(all) enum MarkdownEditOp {
   InsertBlockAfter(node_id~ : @core.NodeId)
   SplitBlock(node_id~ : @core.NodeId, offset~ : Int)
   MergeWithPrevious(node_id~ : @core.NodeId)
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 

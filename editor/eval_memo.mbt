@@ -5,7 +5,12 @@ pub(all) enum EvalResult {
   Value(String)
   Stuck(String)
   Suppressed
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for EvalResult with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 fn render_value(v : @eval.Value) -> String {

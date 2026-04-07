@@ -8,14 +8,24 @@ pub(all) enum EphemeralValue {
   Bytes(Bytes)
   List(Array[EphemeralValue])
   Map(Map[String, EphemeralValue])
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for EphemeralValue with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub(all) enum EphemeralEventTrigger {
   Local
   Import
   Timeout
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for EphemeralEventTrigger with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub(all) struct EphemeralStoreEvent {
@@ -23,7 +33,7 @@ pub(all) struct EphemeralStoreEvent {
   added : Array[String]
   updated : Array[String]
   removed : Array[String]
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub fn EphemeralStoreEvent::by(

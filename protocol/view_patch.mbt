@@ -15,7 +15,7 @@ pub(all) struct Decoration {
     data? : String,
     widget? : Bool,
   ) -> Decoration
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub fn Decoration::new(
@@ -34,7 +34,7 @@ pub(all) enum Severity {
   SevWarning
   SevInfo
   SevHint
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub impl ToJson for Severity with to_json(self) {
@@ -59,7 +59,7 @@ pub(all) struct Diagnostic {
     severity~ : Severity,
     message~ : String,
   ) -> Diagnostic
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub fn Diagnostic::new(
@@ -88,7 +88,7 @@ pub(all) enum ViewPatch {
   SetSelection(anchor~ : Int, head~ : Int)
   SelectNode(node_id~ : @core.NodeId)
   FullTree(root~ : ViewNode?)
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub impl ToJson for Decoration with to_json(self) {

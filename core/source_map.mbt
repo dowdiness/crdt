@@ -15,7 +15,7 @@ pub struct SourceMap {
   /// Token-level spans within nodes (e.g., param name in lambda, binding name in let).
   /// Outer key = NodeId of containing node, inner key = token role name, value = Range.
   token_spans : Map[NodeId, Map[String, Range]]
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 /// Create an empty SourceMap

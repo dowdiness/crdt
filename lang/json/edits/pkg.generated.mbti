@@ -5,6 +5,7 @@ import {
   "dowdiness/canopy/core",
   "dowdiness/canopy/editor",
   "dowdiness/json",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -27,7 +28,8 @@ pub(all) enum JsonEditOp {
   ChangeType(node_id~ : @core.NodeId, new_type~ : JsonType)
   RenameKey(object_id~ : @core.NodeId, key_index~ : Int, new_key~ : String)
   CommitEdit(node_id~ : @core.NodeId, new_value~ : String)
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
+pub impl Show for JsonEditOp
 
 pub(all) enum JsonType {
   JNull
@@ -36,7 +38,7 @@ pub(all) enum JsonType {
   JString
   JArray
   JObject
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 

@@ -4,6 +4,7 @@ package "dowdiness/canopy/core"
 import {
   "dowdiness/incr/cells",
   "dowdiness/seam",
+  "moonbitlang/core/debug",
   "moonbitlang/core/ref",
 }
 
@@ -26,12 +27,14 @@ pub fn[T : @dowdiness/loom/core.TreeNode] reconcile(ProjNode[T], ProjNode[T], @r
 pub(all) enum FocusHint {
   RestoreCursor
   MoveCursor(position~ : Int)
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
+pub impl Show for FocusHint
 
-pub struct NodeId(Int) derive(Compare, Eq, Hash, Show)
+pub struct NodeId(Int) derive(Compare, Eq, Hash, @debug.Debug)
 pub fn NodeId::from_int(Int) -> Self
 #deprecated
 pub fn NodeId::inner(Self) -> Int
+pub impl Show for NodeId
 pub impl ToJson for NodeId
 
 pub struct ProjNode[T] {
@@ -40,16 +43,17 @@ pub struct ProjNode[T] {
   children : Array[ProjNode[T]]
   start : Int
   end : Int
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 pub fn[T] ProjNode::id(Self[T]) -> NodeId
 pub fn[T] ProjNode::new(T, Int, Int, Int, Array[Self[T]]) -> Self[T]
+pub impl[T : @debug.Debug] Show for ProjNode[T]
 pub impl[T : ToJson] ToJson for ProjNode[T]
 
 pub struct SourceMap {
   node_to_range : Map[NodeId, @dowdiness/loom/core.Range]
   ranges : Array[(@dowdiness/loom/core.Range, NodeId)]
   token_spans : Map[NodeId, Map[String, @dowdiness/loom/core.Range]]
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 pub fn SourceMap::apply_edit(Self, Int, @dowdiness/loom/core.Range) -> Unit
 pub fn[T] SourceMap::from_ast(ProjNode[T]) -> Self
 pub fn SourceMap::get_all_token_spans(Self, NodeId) -> Array[(String, @dowdiness/loom/core.Range)]
@@ -72,7 +76,8 @@ pub(all) struct SpanEdit {
   start : Int
   delete_len : Int
   inserted : String
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
+pub impl Show for SpanEdit
 
 // Type aliases
 

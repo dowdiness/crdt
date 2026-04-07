@@ -3,6 +3,7 @@ import {
   "dowdiness/loom/core" @loomcore,
   "dowdiness/seam" @seam,
   "moonbitlang/core/cmp",
+  "moonbitlang/core/debug",
 }
 
 import {

@@ -2,7 +2,7 @@
 pub(all) struct HoleInfo {
   created_by : EditAction
   role : PositionRole
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub(all) struct HoleRegistry {

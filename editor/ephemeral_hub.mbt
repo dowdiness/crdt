@@ -4,7 +4,12 @@ pub(all) enum EphemeralNamespace {
   EditMode
   Drag
   Presence
-} derive(Show, Eq, Compare, Hash)
+} derive(Debug, Eq, Compare, Hash)
+
+///|
+pub impl Show for EphemeralNamespace with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 fn default_timeout(ns : EphemeralNamespace) -> UInt64 {

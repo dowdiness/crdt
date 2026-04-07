@@ -50,7 +50,12 @@ pub(all) enum TreeEditOp {
 
   // Rename
   Rename(node_id~ : NodeId, new_name~ : String)
-} derive(Show)
+} derive(Debug)
+
+///|
+pub impl Show for TreeEditOp with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 fn[T : Renderable] placeholder_text_for_kind(kind : T) -> String {

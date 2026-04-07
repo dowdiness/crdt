@@ -10,7 +10,12 @@ pub struct ProjNode[T] {
   children : Array[ProjNode[T]]
   start : Int
   end : Int
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl[T : Debug] Show for ProjNode[T] with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub fn[T] ProjNode::new(

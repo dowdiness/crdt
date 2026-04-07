@@ -9,7 +9,7 @@ pub(all) enum EditAction {
   SwapChildren
   ChangeOperator(@ast.Bop)
   CommitEdit(String)
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub(all) enum Direction {
@@ -17,7 +17,7 @@ pub(all) enum Direction {
   Down
   Left
   Right
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub(all) struct ActionRecord {
@@ -25,7 +25,7 @@ pub(all) struct ActionRecord {
   cursor_before : @core.NodeId
   cursor_after : @core.NodeId
   role : PositionRole
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub fn to_tree_edit_op(

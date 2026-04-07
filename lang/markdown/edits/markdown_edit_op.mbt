@@ -18,4 +18,4 @@ pub(all) enum MarkdownEditOp {
   InsertBlockAfter(node_id~ : NodeId)
   SplitBlock(node_id~ : NodeId, offset~ : Int)
   MergeWithPrevious(node_id~ : NodeId)
-} derive(Show, Eq)
+} derive(Debug, Eq)

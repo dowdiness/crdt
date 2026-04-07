@@ -3,6 +3,7 @@ package "dowdiness/canopy/projection"
 
 import {
   "dowdiness/canopy/lang/lambda/edits",
+  "moonbitlang/core/debug",
   "moonbitlang/core/immut/hashset",
 }
 
@@ -17,7 +18,7 @@ pub fn[T : @dowdiness/loom/core.TreeNode] is_leaf_node(T) -> Bool
 pub enum InteractiveChildren[T] {
   Loaded(Array[InteractiveTreeNode[T]])
   Elided(Int)
-} derive(Show)
+} derive(@debug.Debug)
 
 pub struct InteractiveTreeNode[T] {
   id : @dowdiness/canopy/core.NodeId
@@ -29,7 +30,7 @@ pub struct InteractiveTreeNode[T] {
   collapsed : Bool
   drop_target : Bool
   text_range : @dowdiness/loom/core.Range
-} derive(Show)
+} derive(@debug.Debug)
 pub fn[T : @dowdiness/loom/core.Renderable] InteractiveTreeNode::from_term_node(@dowdiness/canopy/core.ProjNode[T], @dowdiness/canopy/core.SourceMap) -> Self[T]
 
 pub struct TreeEditorState[T] {

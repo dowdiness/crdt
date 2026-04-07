@@ -30,7 +30,7 @@ pub(all) enum DropPosition {
   After
   /// Insert as a child of the target
   Inside
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub using @core {type FocusHint}

@@ -5,7 +5,7 @@
 pub struct FlatProj {
   defs : Array[(String, ProjNode[@ast.Term], Int, NodeId)] // (name, init, start, id)
   final_expr : ProjNode[@ast.Term]?
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub fn FlatProj::empty() -> FlatProj {

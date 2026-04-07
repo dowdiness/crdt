@@ -1,7 +1,12 @@
 ///|
 /// Opaque integer ID for canvas nodes.
 /// Uses tuple-struct pattern from projection/types.mbt.
-pub struct NodeId(Int) derive(Show, Eq, ToJson)
+pub struct NodeId(Int) derive(Debug, Eq, ToJson)
+
+///|
+pub impl Show for NodeId with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 /// Visual kind of a node.
@@ -10,7 +15,12 @@ pub enum NodeKind {
   Shape(String)
   /// Text label. `content` is the displayed string.
   Text(String)
-} derive(Show, Eq, ToJson)
+} derive(Debug, Eq, ToJson)
+
+///|
+pub impl Show for NodeKind with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 /// Pan and zoom state of the canvas viewport.
@@ -19,7 +29,12 @@ pub(all) struct Viewport {
   x : Double
   y : Double
   scale : Double
-} derive(Show, Eq, ToJson)
+} derive(Debug, Eq, ToJson)
+
+///|
+pub impl Show for Viewport with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 /// A single node on the canvas. Coordinates are in world space.
@@ -30,7 +45,12 @@ pub(all) struct CanvasNode {
   w : Double
   h : Double
   kind : NodeKind
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for CanvasNode with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 /// State captured at the start of a node drag gesture.
@@ -39,7 +59,12 @@ pub(all) struct DragState {
   /// Offset from cursor world position to node origin (node.x - cursor.x at drag start).
   offset_x : Double
   offset_y : Double
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for DragState with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 /// State captured at the start of a pan gesture.
@@ -48,7 +73,12 @@ pub(all) struct PanState {
   start_screen_y : Double
   start_pan_x : Double
   start_pan_y : Double
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for PanState with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub(all) struct InteractionState {
@@ -59,14 +89,24 @@ pub(all) struct InteractionState {
   pointer_down : Bool
   /// True once pointermove fires during the current pointer session.
   did_move : Bool
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for InteractionState with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub(all) struct CanvasState {
   viewport : Viewport
   nodes : Array[CanvasNode]
   interaction : InteractionState
-} derive(Show)
+} derive(Debug)
+
+///|
+pub impl Show for CanvasState with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 /// Default state centers the world origin in a 1440×800 browser viewport

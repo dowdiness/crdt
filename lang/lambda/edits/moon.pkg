@@ -6,6 +6,7 @@ import {
   "dowdiness/loom/core" @loomcore,
   "dowdiness/seam" @seam,
   "moonbitlang/core/cmp",
+  "moonbitlang/core/debug",
   "moonbitlang/core/immut/hashset" @immut/hashset,
 }
 

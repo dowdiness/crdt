@@ -2,7 +2,12 @@
 test "hub: set and get edit mode" {
   let hub = EphemeralHub::new("alice")
   hub.set_edit_mode("node-1")
-  inspect(hub.get_edit_mode("alice"), content="Some({node_id: \"node-1\"})")
+  inspect(
+    hub.get_edit_mode("alice"),
+    content=(
+      #|Some({ node_id: "node-1" })
+    ),
+  )
 }
 
 ///|
@@ -55,7 +60,12 @@ test "hub: encode_all and apply_all roundtrip" {
   let bytes = hub_a.encode_all()
   let hub_b = EphemeralHub::new("bob")
   hub_b.apply_all(bytes)
-  inspect(hub_b.get_edit_mode("alice"), content="Some({node_id: \"node-5\"})")
+  inspect(
+    hub_b.get_edit_mode("alice"),
+    content=(
+      #|Some({ node_id: "node-5" })
+    ),
+  )
 }
 
 ///|
@@ -65,7 +75,12 @@ test "hub: per-namespace encode/apply" {
   let bytes = hub_a.encode(EditMode)
   let hub_b = EphemeralHub::new("bob")
   hub_b.apply(EditMode, bytes)
-  inspect(hub_b.get_edit_mode("alice"), content="Some({node_id: \"node-3\"})")
+  inspect(
+    hub_b.get_edit_mode("alice"),
+    content=(
+      #|Some({ node_id: "node-3" })
+    ),
+  )
 }
 
 ///|

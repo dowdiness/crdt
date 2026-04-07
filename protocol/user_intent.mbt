@@ -13,7 +13,12 @@ pub(all) enum UserIntent {
   Undo
   Redo
   CommitEdit(node_id~ : @core.NodeId, value~ : String)
-} derive(Show, Eq)
+} derive(Debug, Eq)
+
+///|
+pub impl Show for UserIntent with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub impl ToJson for UserIntent with to_json(self) {
