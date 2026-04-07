@@ -2,6 +2,7 @@
 
 // Helper: build a ProjNode[Int] tree with predictable NodeIds.
 // The Int payload is the same as the node_id for simplicity.
+
 ///|
 fn make_node(id : Int, children : Array[ProjNode[Int]]) -> ProjNode[Int] {
   ProjNode::new(id, 0, 0, id, children)
