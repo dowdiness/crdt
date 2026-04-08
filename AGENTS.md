@@ -2,33 +2,7 @@
 
 Incremental projectional editor with CRDT collaboration, built in MoonBit.
 
-## MoonBit Language Notes
-
-- `pub` vs `pub(all)` visibility modifiers have different semantics — check current docs before using
-- `._` syntax is deprecated, use `.0` for tuple access
-- `try?` does not catch `abort` — use explicit error handling
-- `?` operator is not always supported — use explicit match/error handling when it fails
-- `ref` is a reserved keyword — do not use as variable/field names
-- Blackbox tests cannot construct internal structs — use whitebox tests or expose constructors
-- For cross-target builds, use per-file conditional compilation rather than `supported-targets` in moon.pkg.json
-- Error handling syntax: use `Unit!Error` or `T!Error` for fallible return types. Error propagation uses `!` suffix on calls, not `raise` keyword. Always verify MoonBit syntax against recent compiler behavior before committing.
-
-
-## MoonBit Code Search
-
-Prefer `moon ide` over grep/glob for MoonBit-specific code search. These commands use the compiler's semantic understanding, not text matching.
-
-```bash
-moon ide peek-def SyncEditor              # Go-to-definition with context
-moon ide peek-def -loc editor/foo.mbt:5   # Definition at cursor position
-moon ide find-references SyncEditor       # All usages across codebase
-moon ide outline editor/                  # Package structure overview
-moon ide doc "String::*rev*"              # API discovery with wildcards
-```
-
-Symbol syntax: `Symbol`, `@pkg.Symbol`, `Type::method`, `@pkg.Type::method`
-
-When to use: finding definitions, tracing usages, understanding package APIs, discovering methods. Falls back to grep only for non-MoonBit files or cross-language patterns.
+@~/.claude/moonbit-base.md
 
 ## Quick Commands
 
@@ -106,34 +80,17 @@ Browse `docs/` for architecture, decisions, development guides, and performance 
 
 **CRITICAL:** Prototype first, plan later. Build the smallest working change, test it in the browser, then iterate. Don't batch-build UI via subagents — tightly-coupled UI needs human-in-the-loop feedback. When the user questions value, stop and validate before continuing.
 
-### Performance Optimization Rule
+### Performance Optimization (project-specific addendum)
 
-**CRITICAL:** Before designing any performance optimization, write a microbenchmark that **reproduces the claimed bottleneck** in isolation. If the benchmark can't demonstrate the problem, stop and re-evaluate. Stale profiling data (from before prior optimizations) and O(bad) asymptotic complexity are not proof of a real problem. Check if existing mitigations (batch modes, caching, lazy eval) already neutralize the issue.
+The base rule (microbenchmark before optimizing) applies. Additionally: stale profiling data from before prior optimizations is not evidence. Check if existing mitigations (batch modes, caching, lazy eval) already neutralize the issue before proposing new ones.
 
 ### Quality & Edit Workflow
 
 Hooks enforce `moon check` after every edit and `moon fmt && moon info` before commits. After edits, also run `moon test` and rebuild JS if web is affected. See [docs/development/task-tracking.md](docs/development/task-tracking.md) for tracking workflow.
 
-## MoonBit Conventions
-
-- **Custom constructors:** Use `fn new(...)` inside struct body for labelled/optional params. See [examples](docs/development/moonbit-conventions-examples.md).
-- **Block-style:** Code organized in `///|` separated blocks
-- **Testing:** Use `inspect` for snapshots, `@qc` for properties
-- **Files:** `*_test.mbt` (blackbox), `*_wbtest.mbt` (whitebox), `*_benchmark.mbt`
-- **Trait impl:** `pub impl Trait for Type with method(self) { ... }` — one method per impl block
-- **Arrow functions:** `() => expr`, `() => { stmts }`. Empty body: `() => ()` not `() => {}`
-- **StringView/ArrayView patterns:** Use `.view()` + array patterns instead of index loops. See [examples](docs/development/moonbit-conventions-examples.md).
-
 ## Architecture Conventions
 
 - When adding shared content, use symlinks or references to a single source of truth. Never embed copies of shared files — flag the duplication problem first.
-
-## Code Review Standards
-
-- Never dismiss a review request — always do a thorough line-by-line review even if changes seem minor
-- Check for: integer overflow, zero/negative inputs, boundary validation, generation wrap-around
-- Do not delete public API types or re-exported symbols as 'unused' — they may be needed by downstream consumers
-- Verify method names match actual API before writing tests (e.g., check if it's `insert` vs `add_local_op`)
 
 ## Git & PR Workflow
 
