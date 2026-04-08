@@ -357,15 +357,15 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 **Impact:** High | **Effort:** Done (engine) / Medium (integration)
 
 - [x] **Wadler-Lindig engine** — ✅ Done (PR #106). `canopy/pretty/` with generic `Layout[A]`, suffix-aware group flattening, two renderers (`render_string`, `render_spans`), 7 property-based tests.
-  Design: `docs/plans/2026-03-31-pretty-printer-design.md`
-  Impl: `docs/plans/2026-03-31-pretty-printer-impl.md`
+  Design: `docs/archive/2026-03-31-pretty-printer-design.md`
+  Impl: `docs/archive/2026-03-31-pretty-printer-impl.md`
 - [x] **Lambda TermSym integration** — ✅ Done. `PrettyLayout` wrapper with precedence tracking in `lang/lambda/proj/pretty_layout.mbt`.
 - [x] **JSON pretty-printing** — ✅ Done. `json_to_layout` with string escaping in `lang/json/proj/pretty_layout.mbt`.
 - [ ] **Wire into REPL** — Use `render_string` in `cmd/main/` for formatted AST output.
   Exit: REPL displays width-aware formatted expressions.
 - [x] **Wire into web editor via ViewNode bridge** — ✅ Done (PR #109). `layout_to_view_tree` in `protocol/` converts `Layout[SyntaxCategory]` → per-line ViewNode tree with token_spans. HTMLAdapter renders syntax-highlighted lines. Property tests validate roundtrip and span coverage.
   Architecture: `docs/architecture/multi-representation-system.md`
-  Design: `docs/plans/2026-04-02-pretty-printer-viewnode-bridge-design.md`
+  Design: `docs/archive/2026-04-02-pretty-printer-viewnode-bridge-design.md`
 - [ ] **Structure-format projections from semantic model** — Rather than generalizing DOT/JSON/S-expr as tree-annotation IRs, build projections that query the semantic model (egglog knowledge base + incr reactive graph). Current DOT rendering needs `Resolution` (a semantic fact about scope), not a tree annotation. The right answer is richer semantics, not a better annotation mechanism.
   Why: the structure-format problem is "how to represent program meaning so projections render from it," not "how to annotate trees." See vision doc.
   Architecture: `docs/architecture/vision-projectional-bridge.md`, `docs/architecture/multi-representation-system.md`
@@ -413,11 +413,11 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 **Impact:** Medium | **Effort:** Medium
 
 - [x] **Phase 2: Direct evaluator** — ✅ Done (PR loom#69). Tree-walking `eval` in `loom/examples/lambda/src/eval/`. 31 tests, all Term variants, fuel-limited divergence. Educational comments.
-  Plan: `docs/plans/2026-04-02-lambda-evaluator-phase2-impl.md`
+  Plan: `docs/archive/2026-04-02-lambda-evaluator-phase2-impl.md`
 - [x] **Phase 0: Egglog API extensions** — ✅ Done (egglog PR #5). Added `Database::scan` and `Database::row_count`. 5 tests.
   Plan: `docs/plans/2026-04-02-lambda-evaluator-design.md` §Phase 0
 - [x] **Phase 1: Egglog relational evaluator** — ✅ Done (egglog PR #6). 17 Datalog rules + MoonBit bridge in `loom/egglog/examples/lambda-eval/`. Demand-driven evaluation, partial evaluation (holes), InEnv→TypeEnv rename, composition with typing. 25 tests.
-  Plan: `docs/plans/2026-04-02-lambda-evaluator-phase1-impl.md`
+  Plan: `docs/archive/2026-04-02-lambda-evaluator-phase1-impl.md`
 - [ ] **Phase 3: Editor integration** — Wire Tier 1 + Tier 2 into incr reactive graph with batch escalation.
   Plan: `docs/plans/2026-04-02-lambda-evaluator-design.md` §Phase 3
   Exit: Memo[EvalResult] per definition, Tier 2 batch escalation for incomplete programs.
