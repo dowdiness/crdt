@@ -541,7 +541,7 @@ Post-consolidation app inventory:
   Plan: `docs/plans/2026-04-08-generic-btree-library.md`
 - [ ] **Phase 2b: Full type migration** — order-tree replaces its internal types (OrderNode, Cursor, PathFrame, etc.) with `@btree.*` imports, removing ~1,100 lines of duplicate code.
 - [ ] **Phase 2c: Range delete extraction** — move `walker_range_delete.mbt` to lib/btree (most/all 510 lines). Only `delete_range_needs_merge_rebuild` stays in order-tree.
-- [ ] **Phase 2d: API narrowing** — once order-tree fully migrates, make walker internals (descend, prepare_*, propagate, PathFrame, Cursor) private. Add `from_sorted` bulk constructor.
+- [ ] **Phase 2d: API narrowing** — once order-tree fully migrates, make walker internals (descend, prepare_*, propagate, PathFrame, Cursor) private. Add `from_sorted` bulk constructor. Replace eager `BTree::iter` (materializes to_array) with lazy stack-based traversal using MoonBit's `Iter` yield protocol.
 - [ ] **event-graph-walker integration** — `impl @btree.BTreeElem for VisibleRun` (orphan-rule compliant, goes in egw).
 
 ---
