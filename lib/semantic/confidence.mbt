@@ -9,7 +9,6 @@
 /// Conflict details (what disagreed) are a logging concern, not a lattice concern.
 pub(all) enum Confidence[T] {
   Unknown
-  /// Confidence must be finite and in [0, 1]. NaN breaks lattice laws.
   Guessed(Float, T)
   RuleBased(T)
   Confirmed(T)
@@ -19,6 +18,33 @@ pub(all) enum Confidence[T] {
 ///|
 pub impl[T : Debug] Show for Confidence[T] with output(self, logger) {
   logger.write_string(@debug.to_string(self))
+}
+
+///|
+pub(all) suberror InvalidConfidence {
+  /// Float is NaN, infinite, or outside [0, 1].
+  BadConfidence(Float)
+} derive(Debug)
+
+///|
+pub impl Show for InvalidConfidence with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
+
+///|
+/// Validated constructor for `Guessed`. Confidence must be finite and in [0, 1].
+/// NaN and infinity break lattice laws (reflexivity, idempotency).
+pub fn[T] Confidence::guessed(
+  confidence : Float,
+  value : T,
+) -> Confidence[T] raise InvalidConfidence {
+  if confidence.is_nan() ||
+    confidence.is_inf() ||
+    confidence < 0.0F ||
+    confidence > 1.0F {
+    raise BadConfidence(confidence)
+  }
+  Guessed(confidence, value)
 }
 
 ///|

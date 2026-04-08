@@ -119,3 +119,13 @@ fn prop_join_identity(a : Confidence[Role]) -> Bool {
 test "lattice law: Unknown is identity" {
   @qc.quick_check_fn(prop_join_identity)
 }
+
+///|
+fn prop_join_top(a : Confidence[Role]) -> Bool {
+  Conflict.join(a) == Conflict && a.join(Conflict) == Conflict
+}
+
+///|
+test "lattice law: Conflict is top (absorbing)" {
+  @qc.quick_check_fn(prop_join_top)
+}
