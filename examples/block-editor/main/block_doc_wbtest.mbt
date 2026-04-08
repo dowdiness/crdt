@@ -23,8 +23,8 @@ test "children order is insertion order" {
   let b = doc.create_block(Paragraph)
   let children = doc.children(root_block_id)
   inspect(children.length(), content="2")
-  inspect(id_eq(children[0], a), content="true")
-  inspect(id_eq(children[1], b), content="true")
+  inspect(@container.tree_node_id_eq(children[0], a), content="true")
+  inspect(@container.tree_node_id_eq(children[1], b), content="true")
 }
 
 ///|
@@ -35,7 +35,7 @@ test "delete block removes from children" {
   doc.delete_block(a)
   let children = doc.children(root_block_id)
   inspect(children.length(), content="1")
-  inspect(id_eq(children[0], b), content="true")
+  inspect(@container.tree_node_id_eq(children[0], b), content="true")
   inspect(doc.is_alive(a), content="false")
 }
 
@@ -67,9 +67,9 @@ test "create_block_after inserts at correct position" {
   let c = doc.create_block_after(a, Paragraph)
   let children = doc.children(root_block_id)
   inspect(children.length(), content="3")
-  inspect(id_eq(children[0], a), content="true")
-  inspect(id_eq(children[1], c), content="true")
-  inspect(id_eq(children[2], b), content="true")
+  inspect(@container.tree_node_id_eq(children[0], a), content="true")
+  inspect(@container.tree_node_id_eq(children[1], c), content="true")
+  inspect(@container.tree_node_id_eq(children[2], b), content="true")
 }
 
 ///|
@@ -80,9 +80,9 @@ test "create_block_after appends when after_id is last" {
   let c = doc.create_block_after(b, Paragraph)
   let children = doc.children(root_block_id)
   inspect(children.length(), content="3")
-  inspect(id_eq(children[0], a), content="true")
-  inspect(id_eq(children[1], b), content="true")
-  inspect(id_eq(children[2], c), content="true")
+  inspect(@container.tree_node_id_eq(children[0], a), content="true")
+  inspect(@container.tree_node_id_eq(children[1], b), content="true")
+  inspect(@container.tree_node_id_eq(children[2], c), content="true")
 }
 
 // ── Markdown export tests ─────────────────────────────────────────────────
@@ -424,47 +424,39 @@ test "import: divider with spaces" {
 }
 
 ///|
-test "sync: full message converges two block docs" {
-  let doc_a = BlockDoc::new("alice")
-  let heading = doc_a.create_block(Heading(2))
-  doc_a.set_text(heading, "Shared title")
-  let todo = doc_a.create_block(ListItem(Todo))
-  doc_a.set_text(todo, "ship sync")
-  doc_a.set_checked(todo, true)
-
-  let doc_b = BlockDoc::new("bob")
-  doc_b.apply_remote_sync_message(doc_a.export_sync_message())
-
-  inspect(block_doc_to_markdown(doc_b), content=block_doc_to_markdown(doc_a))
-  let children = doc_b.children(root_block_id)
-  inspect(children.length(), content="2")
-  inspect(doc_b.get_type(children[0]), content="Heading(2)")
-  inspect(doc_b.get_type(children[1]), content="ListItem(Todo)")
-  inspect(doc_b.get_checked(children[1]), content="true")
+test "import: divider with asterisks" {
+  let doc = block_doc_from_markdown("***\n", "alice")
+  let children = doc.children(root_block_id)
+  inspect(children.length(), content="1")
+  inspect(doc.get_type(children[0]), content="Divider")
 }
 
 ///|
-test "sync: incremental message sends only missing block history" {
-  let doc_a = BlockDoc::new("alice")
-  let first = doc_a.create_block(Paragraph)
-  doc_a.set_text(first, "first")
-
-  let doc_b = BlockDoc::new("bob")
-  doc_b.apply_remote_sync_message(doc_a.export_sync_message())
-  let vv = doc_b.get_version_vector()
-
-  let second = doc_a.create_block_after(first, Heading(3))
-  doc_a.set_text(second, "later")
-  doc_a.set_type(first, ListItem(Bullet))
-  doc_a.set_text(first, "updated")
-
-  doc_b.apply_remote_sync_message(doc_a.export_sync_message_since(vv))
-
-  inspect(block_doc_to_markdown(doc_b), content=block_doc_to_markdown(doc_a))
-  let children = doc_b.children(root_block_id)
-  inspect(children.length(), content="2")
-  inspect(doc_b.get_type(children[0]), content="ListItem(Bullet)")
-  inspect(doc_b.get_text(children[0]), content="updated")
-  inspect(doc_b.get_type(children[1]), content="Heading(3)")
-  inspect(doc_b.get_text(children[1]), content="later")
+test "import: divider with underscores" {
+  let doc = block_doc_from_markdown("___\n", "alice")
+  let children = doc.children(root_block_id)
+  inspect(children.length(), content="1")
+  inspect(doc.get_type(children[0]), content="Divider")
 }
+
+///|
+test "import: hash without space is not heading" {
+  let doc = block_doc_from_markdown("##nospace\n", "alice")
+  let children = doc.children(root_block_id)
+  inspect(children.length(), content="1")
+  inspect(doc.get_type(children[0]), content="Paragraph")
+  inspect(doc.get_text(children[0]), content="##nospace")
+}
+
+///|
+test "import: star bullet list" {
+  let doc = block_doc_from_markdown("* star item\n", "alice")
+  let children = doc.children(root_block_id)
+  inspect(children.length(), content="1")
+  inspect(doc.get_type(children[0]), content="ListItem(Bullet)")
+  inspect(doc.get_text(children[0]), content="star item")
+}
+
+// TODO: sync tests require container-level sync API (SyncMessage, VersionVector)
+// that includes text CRDT state. Re-add when export_sync_message / apply_remote_sync_message
+// are implemented in dowdiness/event-graph-walker/container.

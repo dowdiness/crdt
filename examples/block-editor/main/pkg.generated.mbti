@@ -4,6 +4,7 @@ package "dowdiness/canopy-block-editor/main"
 import {
   "dowdiness/event-graph-walker/container",
   "dowdiness/event-graph-walker/internal/movable_tree",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -12,6 +13,8 @@ pub fn block_doc_from_markdown(String, String) -> BlockDoc raise @container.Docu
 pub fn block_doc_to_markdown(BlockDoc) -> String
 
 pub fn block_type_from_props(String, (String) -> String?) -> BlockType
+
+pub fn block_type_name(BlockType) -> String
 
 pub fn block_type_to_string(BlockType) -> (String, Map[String, String])
 
@@ -65,13 +68,15 @@ pub enum BlockType {
   Code(String)
   Divider
   Raw
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
+pub impl Show for BlockType
 
 pub enum ListStyle {
   Bullet
   Numbered
   Todo
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
+pub impl Show for ListStyle
 
 // Type aliases
 pub using @movable_tree {type TreeNodeId as BlockId}

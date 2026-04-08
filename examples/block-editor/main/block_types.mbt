@@ -27,7 +27,23 @@ pub impl Show for BlockType with output(self, logger) {
 }
 
 ///|
-/// Returns (type_str, extra_props) for JSON serialisation.
+/// The type identifier string (e.g. "paragraph", "heading").
+/// Cheap: no allocation, just returns a static string.
+pub fn block_type_name(t : BlockType) -> String {
+  match t {
+    Paragraph => "paragraph"
+    Heading(_) => "heading"
+    ListItem(_) => "list_item"
+    Quote => "quote"
+    Code(_) => "code"
+    Divider => "divider"
+    Raw => "raw"
+  }
+}
+
+///|
+/// Returns (type_str, extra_props) for property storage.
+/// Allocates a Map — use `block_type_name` when only the name is needed.
 pub fn block_type_to_string(t : BlockType) -> (String, Map[String, String]) {
   match t {
     Paragraph => ("paragraph", {})
@@ -67,13 +83,7 @@ pub fn block_type_from_props(
         _ => ListItem(Bullet)
       }
     "quote" => Quote
-    "code" =>
-      Code(
-        match get("language") {
-          Some(lang) => lang
-          None => ""
-        },
-      )
+    "code" => Code(get("language").unwrap_or(""))
     "divider" => Divider
     "raw" => Raw
     _ => Paragraph

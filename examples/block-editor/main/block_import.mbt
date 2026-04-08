@@ -22,13 +22,13 @@ pub fn block_doc_from_markdown(
   let mut i = 0
   while i < len {
     let line = lines[i]
-    if starts_with(line, "```") {
+    if line.has_prefix("```") {
       flush_paragraph(doc, para_buf)
       let lang = line[3:].to_string()
       let code_buf = StringBuilder::new()
       i = i + 1
       let mut first = true
-      while i < len && !starts_with(lines[i], "```") {
+      while i < len && !lines[i].has_prefix("```") {
         if !first {
           code_buf.write_string("\n")
         }
@@ -64,11 +64,11 @@ pub fn block_doc_from_markdown(
       continue
     }
     // Todo must be checked before bullet (both start with "- ")
-    if starts_with(line, "- [ ] ") ||
-      starts_with(line, "- [x] ") ||
-      starts_with(line, "- [X] ") {
+    if line.has_prefix("- [ ] ") ||
+      line.has_prefix("- [x] ") ||
+      line.has_prefix("- [X] ") {
       flush_paragraph(doc, para_buf)
-      let checked = !starts_with(line, "- [ ] ")
+      let checked = !line.has_prefix("- [ ] ")
       let text = line[6:].to_string()
       let id = doc.create_block(ListItem(Todo))
       doc.set_text(id, text)
@@ -78,7 +78,7 @@ pub fn block_doc_from_markdown(
       i = i + 1
       continue
     }
-    if starts_with(line, "- ") || starts_with(line, "* ") {
+    if line.has_prefix("- ") || line.has_prefix("* ") {
       flush_paragraph(doc, para_buf)
       let text = line[2:].to_string()
       let id = doc.create_block(ListItem(Bullet))
@@ -95,7 +95,7 @@ pub fn block_doc_from_markdown(
       i = i + 1
       continue
     }
-    if starts_with(line, "> ") {
+    if line.has_prefix("> ") {
       flush_paragraph(doc, para_buf)
       let text = line[2:].to_string()
       let id = doc.create_block(Quote)
@@ -117,7 +117,7 @@ fn flush_paragraph(
   doc : BlockDoc,
   buf : Array[String],
 ) -> Unit raise @container.DocumentError {
-  if buf.length() > 0 {
+  if !buf.is_empty() {
     let text = buf.join(" ")
     let id = doc.create_block(Paragraph)
     doc.set_text(id, text)
@@ -156,19 +156,6 @@ fn split_lines(s : String) -> Array[String] {
 }
 
 ///|
-fn starts_with(s : String, prefix : String) -> Bool {
-  if prefix.length() > s.length() {
-    return false
-  }
-  for i = 0; i < prefix.length(); i = i + 1 {
-    if s[i] != prefix[i] {
-      return false
-    }
-  }
-  true
-}
-
-///|
 /// Count leading '#' characters. Returns the heading level if followed by a space,
 /// otherwise 0.
 fn count_heading_hashes(line : String) -> Int {
@@ -192,7 +179,7 @@ fn is_divider(line : String) -> Bool {
   }
   let mut marker : UInt16 = 0
   let mut count = 0
-  for i = 0; i < line.length(); i = i + 1 {
+  for i in 0..<line.length() {
     let ch = line[i]
     if ch == ' ' {
       continue

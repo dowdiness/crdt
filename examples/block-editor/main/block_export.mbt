@@ -13,7 +13,7 @@ pub fn block_doc_to_markdown(doc : BlockDoc) -> String {
   let len = children.length()
   let mut numbered_counter = 1
   let mut prev_type : BlockType? = None
-  for i = 0; i < len; i = i + 1 {
+  for i in 0..<len {
     let id = children[i]
     let bt = doc.get_type(id)
     let text = doc.get_text(id)
@@ -26,6 +26,7 @@ pub fn block_doc_to_markdown(doc : BlockDoc) -> String {
         buf.write_string("\n")
       }
     }
+    // Reset counter for any non-Numbered block type
     match bt {
       ListItem(Numbered) => ()
       _ => numbered_counter = 1
@@ -36,7 +37,7 @@ pub fn block_doc_to_markdown(doc : BlockDoc) -> String {
         buf.write_string("\n")
       }
       Heading(n) => {
-        for j = 0; j < n; j = j + 1 {
+        for _ in 0..<n {
           buf.write_string("#")
         }
         buf.write_string(" ")

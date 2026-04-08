@@ -24,42 +24,33 @@ pub fn destroy_editor(handle : Int) -> Unit {
 
 ///|
 fn get_replica_id(handle : Int) -> String {
-  match replica_ids.get(handle) {
-    Some(id) => id
-    None => "unknown"
-  }
+  replica_ids.get(handle).unwrap_or("unknown")
 }
 
 ///|
 /// Parse "agent:counter" string into a TreeNodeId.
 /// Splits on last ':' so agent IDs without ':' are safe.
 fn parse_block_id(s : String) -> @container.TreeNodeId {
-  let mut last_colon = -1
-  for i = 0; i < s.length(); i = i + 1 {
-    if s[i] == ':' {
-      last_colon = i
+  match s.rev_split_once(":") {
+    None => @container.root_id
+    Some((agent, counter_view)) => {
+      // Parse integer directly from StringView — no intermediate String allocation
+      let mut counter = 0
+      let mut neg = false
+      let mut start = 0
+      if counter_view.length() > 0 && counter_view[0] == '-' {
+        neg = true
+        start = 1
+      }
+      for i in start..<counter_view.length() {
+        counter = counter * 10 + (counter_view[i].to_int() - 48)
+      }
+      if neg {
+        counter = -counter
+      }
+      @container.tree_node_id_new(agent.to_string(), counter)
     }
   }
-  if last_colon < 0 {
-    return @container.root_id
-  }
-  let agent = s[0:last_colon].to_string()
-  let counter_str = s[last_colon + 1:].to_string()
-  let mut counter = 0
-  let mut neg = false
-  let mut start = 0
-  if counter_str.length() > 0 && counter_str[0] == '-' {
-    neg = true
-    start = 1
-  }
-  for i = start; i < counter_str.length(); i = i + 1 {
-    let d = counter_str[i].to_int() - 48
-    counter = counter * 10 + d
-  }
-  if neg {
-    counter = -counter
-  }
-  @container.tree_node_id_new(agent, counter)
 }
 
 ///|
@@ -69,32 +60,29 @@ pub fn get_render_state(handle : Int) -> String {
       let buf = StringBuilder::new()
       buf.write_string("{\"blocks\":[")
       let children = doc.children(root_block_id)
-      for i = 0; i < children.length(); i = i + 1 {
+      for i in 0..<children.length() {
         if i > 0 {
           buf.write_string(",")
         }
         let id = children[i]
-        let (type_str, props) = block_type_to_string(doc.get_type(id))
+        let bt = doc.get_type(id)
         buf.write_string("{\"id\":\"")
-        write_json_escaped(buf, id_key(id))
+        write_json_escaped(buf, @container.tree_node_id_key(id))
         buf.write_string("\",\"block_type\":\"")
-        write_json_escaped(buf, type_str)
+        write_json_escaped(buf, block_type_name(bt))
+        // Extract level/list_style directly from BlockType — no Map allocation
         buf.write_string("\",\"level\":\"")
-        write_json_escaped(
-          buf,
-          match props.get("level") {
-            Some(v) => v
-            None => ""
-          },
-        )
+        match bt {
+          Heading(n) => write_json_escaped(buf, n.to_string())
+          _ => ()
+        }
         buf.write_string("\",\"list_style\":\"")
-        write_json_escaped(
-          buf,
-          match props.get("list_style") {
-            Some(v) => v
-            None => ""
-          },
-        )
+        match bt {
+          ListItem(Bullet) => buf.write_string("bullet")
+          ListItem(Numbered) => buf.write_string("numbered")
+          ListItem(Todo) => buf.write_string("todo")
+          _ => ()
+        }
         buf.write_string("\",\"checked\":")
         buf.write_string(if doc.get_checked(id) { "true" } else { "false" })
         buf.write_string(",\"text\":\"")
@@ -109,52 +97,56 @@ pub fn get_render_state(handle : Int) -> String {
 }
 
 ///|
+/// Escape a string for JSON output. Handles required escapes (RFC 8259 §7)
+/// and writes directly to the buffer without per-character allocation.
 fn write_json_escaped(buf : StringBuilder, s : String) -> Unit {
-  for i = 0; i < s.length(); i = i + 1 {
+  // Track start of unescaped run to batch-copy normal characters
+  let mut run_start = 0
+  for i in 0..<s.length() {
     let ch = s[i]
-    if ch == '"' {
-      buf.write_string("\\\"")
+    let escape : String? = if ch == '"' {
+      Some("\\\"")
     } else if ch == '\\' {
-      buf.write_string("\\\\")
+      Some("\\\\")
     } else if ch == '\n' {
-      buf.write_string("\\n")
+      Some("\\n")
     } else if ch == '\r' {
-      buf.write_string("\\r")
+      Some("\\r")
     } else if ch == '\t' {
-      buf.write_string("\\t")
+      Some("\\t")
     } else if ch.to_int() < 0x20 {
-      // JSON requires all control chars below 0x20 to be escaped
-      buf.write_string("\\u00")
+      // JSON requires all control chars below U+0020 to be \uXXXX escaped
       let hi = (ch.to_int() >> 4) & 0xf
       let lo = ch.to_int() & 0xf
-      buf.write_string(hex_digit(hi))
-      buf.write_string(hex_digit(lo))
+      Some("\\u00" + hex_char(hi).to_string() + hex_char(lo).to_string())
     } else {
-      buf.write_string(s[i:i + 1].to_string())
+      None
     }
+    match escape {
+      Some(esc) => {
+        // Flush the unescaped run before writing the escape sequence
+        if run_start < i {
+          buf.write_string(s[run_start:i].to_string())
+        }
+        buf.write_string(esc)
+        run_start = i + 1
+      }
+      None => ()
+    }
+  }
+  // Flush any remaining unescaped tail
+  if run_start < s.length() {
+    buf.write_string(s[run_start:].to_string())
   }
 }
 
 ///|
-fn hex_digit(n : Int) -> String {
-  match n {
-    0 => "0"
-    1 => "1"
-    2 => "2"
-    3 => "3"
-    4 => "4"
-    5 => "5"
-    6 => "6"
-    7 => "7"
-    8 => "8"
-    9 => "9"
-    10 => "a"
-    11 => "b"
-    12 => "c"
-    13 => "d"
-    14 => "e"
-    15 => "f"
-    _ => "0"
+/// Convert a nibble (0–15) to its hex character.
+fn hex_char(n : Int) -> Char {
+  if n < 10 {
+    ('0'.to_int() + n).unsafe_to_char()
+  } else {
+    ('a'.to_int() + n - 10).unsafe_to_char()
   }
 }
 
@@ -169,7 +161,7 @@ pub fn editor_insert_block_after(
       let after_id = parse_block_id(after_id_str)
       let bt = block_type_from_props(block_type_str, fn(_k) { None })
       let new_id = doc.create_block_after(after_id, bt) catch { _ => return "" }
-      id_key(new_id)
+      @container.tree_node_id_key(new_id)
     }
     None => ""
   }
