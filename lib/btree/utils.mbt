@@ -4,6 +4,7 @@ fn Array::sum(self : Array[Int]) -> Int {
 }
 
 ///|
+/// Cached span total: O(1) for both Leaf (stored span) and Internal (stored total).
 pub fn[T] BTreeNode::total(self : BTreeNode[T]) -> Int {
   match self {
     Leaf(span~, ..) => span
@@ -26,31 +27,23 @@ fn[T : BTreeElem] must_slice(elem : T, start~ : Int, end~ : Int) -> T {
 }
 
 ///|
+/// Prefix-sum search: walk cumulative counts to find which child slot
+/// contains a given position. Returns (slot_index, remaining_offset).
+///
+/// `in_slot` determines boundary behavior:
+/// - `fn(remaining, count) { remaining < count }` for reads/deletes (strict)
+/// - `fn(remaining, count) { remaining <= count }` for inserts (inclusive)
 fn[R] ArrayView::find_by_sum(
   self : ArrayView[Int],
   pos : Int,
+  in_slot? : (Int, Int) -> Bool = fn(remaining, count) { remaining < count },
   f : (Int, Int) -> R?,
 ) -> R? {
   for view = self, remaining = pos, i = 0 {
     match (view, remaining, i) {
       ([], _, _) => break None
-      ([count, ..], remaining, i) if remaining < count => break f(i, remaining)
-      ([count, .. rest], remaining, i) =>
-        continue rest, remaining - count, i + 1
-    }
-  }
-}
-
-///|
-fn[R] ArrayView::find_by_sum_inclusive(
-  self : ArrayView[Int],
-  pos : Int,
-  f : (Int, Int) -> R?,
-) -> R? {
-  for view = self, remaining = pos, i = 0 {
-    match (view, remaining, i) {
-      ([], _, _) => break None
-      ([count, ..], remaining, i) if remaining <= count => break f(i, remaining)
+      ([count, ..], remaining, i) if in_slot(remaining, count) =>
+        break f(i, remaining)
       ([count, .. rest], remaining, i) =>
         continue rest, remaining - count, i + 1
     }

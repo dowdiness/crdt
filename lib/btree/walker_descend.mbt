@@ -1,4 +1,6 @@
 ///|
+/// Find which child slot contains span position `pos`.
+/// Strict (<): position at a slot boundary falls into the next slot.
 fn find_slot(counts : Array[Int], pos : Int, _total : Int) -> (Int, Int) {
   guard counts.length() > 0 else { abort("find_slot: empty counts") }
   match
@@ -14,6 +16,8 @@ fn find_slot(counts : Array[Int], pos : Int, _total : Int) -> (Int, Int) {
 }
 
 ///|
+/// Find which child slot to insert into at span position `pos`.
+/// Inclusive (<=): position at a slot boundary stays in the current slot.
 fn find_slot_inclusive(
   counts : Array[Int],
   pos : Int,
@@ -21,9 +25,11 @@ fn find_slot_inclusive(
 ) -> (Int, Int) {
   guard counts.length() > 0 else { abort("find_slot_inclusive: empty counts") }
   match
-    counts[:counts.length() - 1].find_by_sum_inclusive(pos, fn(i, remaining) {
-      Some((i, remaining))
-    }) {
+    counts[:counts.length() - 1].find_by_sum(
+      pos,
+      in_slot=fn(remaining, count) { remaining <= count },
+      fn(i, remaining) { Some((i, remaining)) },
+    ) {
     Some(pair) => pair
     None => {
       let last = counts.length() - 1
@@ -43,6 +49,8 @@ fn[T] prepare_noop(
 }
 
 ///|
+/// Borrow one child from left sibling — cheaper than merge (O(1) rotation,
+/// preserves node count). Used when target is underfull but sibling has spare.
 fn[T] borrow_from_left(
   children : Array[BTreeNode[T]],
   counts : Array[Int],
@@ -188,6 +196,9 @@ fn[T] ensure_min_children(
 }
 
 ///|
+/// Pre-delete hook: ensure the child we're about to descend into has
+/// > min_degree children, so a subsequent delete won't underflow.
+/// Tries borrow first (cheaper), falls back to merge.
 pub fn[T] prepare_ensure_min(
   children : Array[BTreeNode[T]],
   counts : Array[Int],
@@ -198,6 +209,9 @@ pub fn[T] prepare_ensure_min(
 }
 
 ///|
+/// Pre-insert hook: proactively split full children before descending,
+/// so the insert never needs to backtrack. This is the top-down
+/// B-tree insert strategy (vs bottom-up split-and-propagate).
 pub fn[T] prepare_split(
   children : Array[BTreeNode[T]],
   counts : Array[Int],
@@ -220,6 +234,12 @@ pub fn[T] prepare_split(
 }
 
 ///|
+/// Core descent: navigate from root to leaf at span position `pos`.
+///
+/// At each internal node, find_slot_fn is called TWICE:
+/// 1. Before prepare — to identify which child to prepare
+/// 2. After prepare — because prepare (split/merge) may change indices
+/// This two-pass approach is why the first result's offset is discarded.
 pub fn[T] descend(
   node : BTreeNode[T],
   pos : Int,
@@ -250,8 +270,10 @@ pub fn[T] descend(
           None
         }
       Internal(children~, counts~, total~) => {
+        // First pass: find slot to prepare (may be invalidated by prepare)
         let (pre_idx, _) = find_slot_fn(counts, current_pos, total)
         prepare(children, counts, pre_idx, min_degree)
+        // Second pass: find correct slot after prepare may have split/merged
         let updated_total = counts.sum()
         let (child_idx, remaining) = find_slot_fn(
           counts, current_pos, updated_total,

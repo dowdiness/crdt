@@ -147,8 +147,9 @@ pub fn[T] BTree::init_root(self : BTree[T], elem : T, span : Int) -> Unit {
 }
 
 ///|
-/// Unwrap single-child internal root or return None for empty.
-/// Used after delete to maintain B-tree root invariants.
+/// A B-tree root with one internal child is a useless extra level —
+/// collapsing it maintains minimal height. A root with zero children
+/// means the tree is empty.
 pub fn[T] normalize_root_after_delete(root : BTreeNode[T]) -> BTreeNode[T]? {
   match root {
     Internal(children~, ..) if children.is_empty() => None

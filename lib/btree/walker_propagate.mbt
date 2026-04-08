@@ -1,4 +1,9 @@
+// Propagation: after a leaf splice, rebuild ancestors bottom-up,
+// splitting any node that exceeds 2*min_degree children.
+
 ///|
+/// Split a full internal node at its midpoint, producing two balanced halves.
+/// Maintains the B-tree invariant: each half has >= min_degree children.
 fn[T] split_internal(
   children : Array[BTreeNode[T]],
   counts : Array[Int],
@@ -42,6 +47,7 @@ fn[T] apply_splice(
   if splice.new_leaves.length() == 0 {
     return
   }
+  // Insert in reverse so each goes to start_idx in correct final order
   for i in (splice.new_leaves.length() - 1)>=..0 {
     let (elem, span) = splice.new_leaves[i]
     children.insert(splice.start_idx, Leaf(elem~, span~))
@@ -88,6 +94,43 @@ fn[T] maybe_split(
 }
 
 ///|
+/// Walk from a node upward through ancestor frames, updating each parent's
+/// child pointer and inserting any overflow sibling from a split below.
+/// Splits again if a parent exceeds capacity.
+fn[T] walk_up_ancestors(
+  path : Array[PathFrame[T]],
+  start_from : Int,
+  initial_node : BTreeNode[T],
+  initial_overflow : BTreeNode[T]?,
+  min_degree : Int,
+) -> (BTreeNode[T], BTreeNode[T]?) {
+  let mut current_node = initial_node
+  let mut overflow = initial_overflow
+  for i in start_from>=..0 {
+    let frame = path[i]
+    frame.children[frame.child_idx] = current_node
+    frame.counts[frame.child_idx] = current_node.total()
+    match overflow {
+      Some(sibling) => {
+        frame.children.insert(frame.child_idx + 1, sibling)
+        frame.counts.insert(frame.child_idx + 1, sibling.total())
+      }
+      _ => ()
+    }
+    let (updated, next_overflow) = maybe_split(
+      frame.children,
+      frame.counts,
+      min_degree,
+    )
+    current_node = updated
+    overflow = next_overflow
+  }
+  (current_node, overflow)
+}
+
+///|
+/// Rebuild ancestors after a leaf-level splice. Walks bottom-up from
+/// the leaf's parent, applying the splice then propagating splits upward.
 pub fn[T] propagate(
   path : Array[PathFrame[T]],
   splice : Splice[T],
@@ -102,31 +145,18 @@ pub fn[T] propagate(
     leaf_parent.counts,
     min_degree,
   )
-  let mut current_node = initial_node
-  let mut overflow = initial_overflow
-  for i in (path.length() - 2)>=..0 {
-    let frame = path[i]
-    frame.children[frame.child_idx] = current_node
-    frame.counts[frame.child_idx] = current_node.total()
-    match overflow {
-      None => ()
-      Some(sibling) => {
-        frame.children.insert(frame.child_idx + 1, sibling)
-        frame.counts.insert(frame.child_idx + 1, sibling.total())
-      }
-    }
-    let (updated, next_overflow) = maybe_split(
-      frame.children,
-      frame.counts,
-      min_degree,
-    )
-    current_node = updated
-    overflow = next_overflow
-  }
-  { node: current_node, overflow, leaf_delta }
+  let (node, overflow) = walk_up_ancestors(
+    path,
+    path.length() - 2,
+    initial_node,
+    initial_overflow,
+    min_degree,
+  )
+  { node, overflow, leaf_delta }
 }
 
 ///|
+/// Rebuild ancestors after a subtree-level splice (used by range delete).
 pub fn[T] propagate_node_splice(
   splice : NodeSplice[T],
   min_degree : Int,
@@ -143,26 +173,12 @@ pub fn[T] propagate_node_splice(
     splice.counts,
     min_degree,
   )
-  let mut current_node = initial_node
-  let mut overflow = initial_overflow
-  for i in (splice.prefix.length() - 1)>=..0 {
-    let frame = splice.prefix[i]
-    frame.children[frame.child_idx] = current_node
-    frame.counts[frame.child_idx] = current_node.total()
-    match overflow {
-      None => ()
-      Some(sibling) => {
-        frame.children.insert(frame.child_idx + 1, sibling)
-        frame.counts.insert(frame.child_idx + 1, sibling.total())
-      }
-    }
-    let (updated, next_overflow) = maybe_split(
-      frame.children,
-      frame.counts,
-      min_degree,
-    )
-    current_node = updated
-    overflow = next_overflow
-  }
-  { node: current_node, overflow, leaf_delta: splice.leaf_delta }
+  let (node, overflow) = walk_up_ancestors(
+    splice.prefix,
+    splice.prefix.length() - 1,
+    initial_node,
+    initial_overflow,
+    min_degree,
+  )
+  { node, overflow, leaf_delta: splice.leaf_delta }
 }
