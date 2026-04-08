@@ -76,23 +76,19 @@ pub struct PropagateResult[T] {
 
 ///|
 pub fn[T] LeafContext::left_neighbor(self : LeafContext[T]) -> T? {
-  if self.child_idx == 0 {
-    return None
-  }
+  guard self.child_idx > 0 else { return None }
   match self.children[self.child_idx - 1] {
     Leaf(elem~, ..) => Some(elem)
-    Internal(..) => None
+    _ => None
   }
 }
 
 ///|
 pub fn[T] LeafContext::right_neighbor(self : LeafContext[T]) -> T? {
-  if self.child_idx + 1 >= self.children.length() {
-    return None
-  }
+  guard self.child_idx + 1 < self.children.length() else { return None }
   match self.children[self.child_idx + 1] {
     Leaf(elem~, ..) => Some(elem)
-    Internal(..) => None
+    _ => None
   }
 }
 

@@ -12,8 +12,8 @@ pub fn[T] BTree::size(self : BTree[T]) -> Int {
 ///|
 pub fn[T] BTree::span(self : BTree[T]) -> Int {
   match self.root {
-    None => 0
     Some(node) => node.total()
+    _ => 0
   }
 }
 
@@ -24,27 +24,16 @@ pub fn[T] BTree::is_empty(self : BTree[T]) -> Bool {
 
 ///|
 pub fn[T] BTree::get_at(self : BTree[T], pos : Int) -> T? {
-  if pos < 0 {
-    return None
-  }
-  match self.root {
-    None => None
-    Some(node) =>
-      match node.navigate(pos) {
-        Some(result) => Some(result.elem)
-        None => None
-      }
-  }
+  guard pos >= 0 else { return None }
+  self.find(pos).map(fn(r) { r.elem })
 }
 
 ///|
 pub fn[T] BTree::find(self : BTree[T], pos : Int) -> FindResult[T]? {
-  if pos < 0 {
-    return None
-  }
+  guard pos >= 0 else { return None }
   match self.root {
-    None => None
     Some(node) => node.navigate(pos)
+    _ => None
   }
 }
 
@@ -58,8 +47,8 @@ pub fn[T] BTree::mutate_for_insert(
 ) -> Unit {
   match self.root {
     None => ()
-    Some(root) =>
-      match
+    Some(root) => {
+      let cursor = match
         descend(
           root,
           pos,
@@ -68,19 +57,19 @@ pub fn[T] BTree::mutate_for_insert(
           find_slot_inclusive,
           true,
         ) {
+        Some(c) => c
         None => abort("BTree::mutate_for_insert: descent failed")
-        Some(cursor) => {
-          let leaf_ctx = LeafContext::from_cursor(cursor)
-          let (splice, leaf_delta) = f(leaf_ctx)
-          let propagated = propagate(
-            cursor.path,
-            splice,
-            self.min_degree,
-            leaf_delta,
-          )
-          self.apply_propagated(propagated, normalize_delete=false)
-        }
       }
+      let leaf_ctx = LeafContext::from_cursor(cursor)
+      let (splice, leaf_delta) = f(leaf_ctx)
+      let propagated = propagate(
+        cursor.path,
+        splice,
+        self.min_degree,
+        leaf_delta,
+      )
+      self.apply_propagated(propagated, normalize_delete=false)
+    }
   }
 }
 
@@ -162,17 +151,14 @@ pub fn[T] BTree::init_root(self : BTree[T], elem : T, span : Int) -> Unit {
 /// Used after delete to maintain B-tree root invariants.
 pub fn[T] normalize_root_after_delete(root : BTreeNode[T]) -> BTreeNode[T]? {
   match root {
-    Internal(children~, ..) =>
-      if children.length() == 0 {
-        None
-      } else if children.length() == 1 {
-        match children[0] {
-          Internal(..) => Some(children[0])
-          Leaf(..) => Some(root)
-        }
+    Internal(children~, ..) if children.is_empty() => None
+    Internal(children~, ..) if children.length() == 1 =>
+      if children[0] is Internal(..) {
+        Some(children[0])
       } else {
         Some(root)
       }
+    Internal(..) => Some(root)
     Leaf(..) => abort("normalize_root_after_delete: root should be internal")
   }
 }
@@ -191,14 +177,12 @@ pub fn[T : BTreeElem] BTree::view(
     None => total
   }
   let result : Array[T] = []
-  if start >= end || start >= total {
-    return result
-  }
+  guard start < end && start < total else { return result }
   match self.root {
-    None => result
     Some(root) => {
       root.each_slice_in_range(start, end, fn(elem) { result.push(elem) })
       result
     }
+    _ => result
   }
 }

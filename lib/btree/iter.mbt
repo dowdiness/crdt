@@ -9,8 +9,8 @@ pub fn[T] BTreeNode::each(self : BTreeNode[T], f : (T) -> Unit) -> Unit {
 ///|
 pub fn[T] BTree::each(self : BTree[T], f : (T) -> Unit) -> Unit {
   match self.root {
-    None => ()
     Some(node) => node.each(f)
+    _ => ()
   }
 }
 

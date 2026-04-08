@@ -20,11 +20,9 @@ fn[T] BTreeNode::is_full(self : BTreeNode[T], min_degree : Int) -> Bool {
 }
 
 ///|
+/// Slice positions are computed by the library — failure is an invariant violation.
 fn[T : BTreeElem] must_slice(elem : T, start~ : Int, end~ : Int) -> T {
-  match @rle.Sliceable::slice(elem, start~, end~) {
-    Ok(result) => result
-    Err(_) => abort("btree internal error: slice failed")
-  }
+  @rle.Sliceable::slice(elem, start~, end~).unwrap()
 }
 
 ///|
