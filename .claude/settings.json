@@ -41,6 +41,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/stop-phrase-guard.sh",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }
