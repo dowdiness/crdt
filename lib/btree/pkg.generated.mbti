@@ -25,7 +25,7 @@ pub fn[T] prepare_ensure_min(Array[BTreeNode[T]], Array[Int], Int, Int) -> Unit
 
 pub fn[T] prepare_split(Array[BTreeNode[T]], Array[Int], Int, Int) -> Unit
 
-pub fn[T] propagate(Array[PathFrame[T]], Splice[T], Int, Int) -> PropagateResult[T]
+pub fn[T] propagate(Array[PathFrame[T]], Splice[T], Int) -> PropagateResult[T]
 
 pub fn[T] propagate_node_splice(NodeSplice[T], Int) -> PropagateResult[T]
 
@@ -43,8 +43,8 @@ pub fn[T] BTree::get_at(Self[T], Int) -> T?
 pub fn[T] BTree::init_root(Self[T], T, Int) -> Unit
 pub fn[T] BTree::is_empty(Self[T]) -> Bool
 pub fn[T] BTree::iter(Self[T]) -> Iter[T]
-pub fn[T, R] BTree::mutate_for_delete(Self[T], Int, (LeafContext[T]) -> (Splice[T], R, Int)) -> R?
-pub fn[T] BTree::mutate_for_insert(Self[T], Int, (LeafContext[T]) -> (Splice[T], Int)) -> Unit
+pub fn[T, R] BTree::mutate_for_delete(Self[T], Int, (LeafContext[T]) -> (Splice[T], R)) -> R?
+pub fn[T] BTree::mutate_for_insert(Self[T], Int, (LeafContext[T]) -> Splice[T]) -> Unit
 pub fn[T] BTree::new(min_degree? : Int) -> Self[T]
 pub fn[T] BTree::size(Self[T]) -> Int
 pub fn[T] BTree::span(Self[T]) -> Int

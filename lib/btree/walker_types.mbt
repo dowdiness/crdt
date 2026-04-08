@@ -29,6 +29,8 @@ pub struct LeafCursor[T] {
 } derive(Debug)
 
 ///|
+/// LCA interval for range operations. child_height is used by range delete
+/// to reconstruct boundary subtrees at the correct level.
 priv struct AncestorRange[T] {
   prefix : Array[PathFrame[T]]
   children : Array[BTreeNode[T]]

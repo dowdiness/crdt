@@ -2,12 +2,9 @@
 pub fn[T] BTreeNode::height(self : BTreeNode[T]) -> Int {
   match self {
     Leaf(..) => 0
-    Internal(children~, ..) =>
-      if children.length() == 0 {
-        1
-      } else {
-        children[0].height() + 1
-      }
+    // Empty internal is a transient state during range splicing — treat as 0
+    Internal(children~, ..) if children.is_empty() => 0
+    Internal(children~, ..) => children[0].height() + 1
   }
 }
 

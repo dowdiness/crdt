@@ -131,13 +131,15 @@ fn[T] walk_up_ancestors(
 ///|
 /// Rebuild ancestors after a leaf-level splice. Walks bottom-up from
 /// the leaf's parent, applying the splice then propagating splits upward.
+/// Leaf delta is derived from the splice (new_leaves added - old range removed).
 pub fn[T] propagate(
   path : Array[PathFrame[T]],
   splice : Splice[T],
   min_degree : Int,
-  leaf_delta : Int,
 ) -> PropagateResult[T] {
   guard path.length() > 0 else { abort("propagate: empty path") }
+  let leaf_delta = splice.new_leaves.length() -
+    (splice.end_idx - splice.start_idx)
   let leaf_parent = path[path.length() - 1]
   apply_splice(leaf_parent.children, leaf_parent.counts, splice)
   let (initial_node, initial_overflow) = maybe_split(

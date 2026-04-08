@@ -41,10 +41,12 @@ pub fn[T] BTree::find(self : BTree[T], pos : Int) -> FindResult[T]? {
 /// Descend for insert: splits full nodes during descent, uses inclusive slot
 /// finding, allows leaf-end positions. Tree must be non-empty (use init_root
 /// first). Aborts if pos is out of [0, span] or tree is empty.
+/// The callback receives a LeafContext and returns a Splice describing
+/// what to replace. The tree handles rebalancing and size tracking automatically.
 pub fn[T] BTree::mutate_for_insert(
   self : BTree[T],
   pos : Int,
-  f : (LeafContext[T]) -> (Splice[T], Int),
+  f : (LeafContext[T]) -> Splice[T],
 ) -> Unit {
   // Empty tree must be initialized via init_root before mutating.
   // Silent no-op would lose the insert with no signal.
@@ -65,13 +67,8 @@ pub fn[T] BTree::mutate_for_insert(
         None => abort("BTree::mutate_for_insert: descent failed")
       }
       let leaf_ctx = LeafContext::from_cursor(cursor)
-      let (splice, leaf_delta) = f(leaf_ctx)
-      let propagated = propagate(
-        cursor.path,
-        splice,
-        self.min_degree,
-        leaf_delta,
-      )
+      let splice = f(leaf_ctx)
+      let propagated = propagate(cursor.path, splice, self.min_degree)
       self.apply_propagated(propagated, normalize_delete=false)
     }
   }
@@ -80,16 +77,19 @@ pub fn[T] BTree::mutate_for_insert(
 ///|
 /// Descend for delete: ensures min children during descent, uses strict slot
 /// finding. Returns the callback's payload R, or None if pos is out of bounds
-/// or tree is empty. The callback must return (splice, payload, leaf_delta)
-/// where leaf_delta is the change in leaf count (typically -1).
+/// or tree is empty. The callback returns (splice, payload) where payload is
+/// any caller-defined data (e.g., the deleted element).
 pub fn[T, R] BTree::mutate_for_delete(
   self : BTree[T],
   pos : Int,
-  f : (LeafContext[T]) -> (Splice[T], R, Int),
+  f : (LeafContext[T]) -> (Splice[T], R),
 ) -> R? {
   match self.root {
     None => None
-    Some(root) =>
+    Some(root) => {
+      // Bounds check before descend — prepare_ensure_min mutates the tree,
+      // so we must not descend with an out-of-range position.
+      guard pos >= 0 && pos < root.total() else { return None }
       match
         descend(
           root,
@@ -102,17 +102,13 @@ pub fn[T, R] BTree::mutate_for_delete(
         None => None
         Some(cursor) => {
           let leaf_ctx = LeafContext::from_cursor(cursor)
-          let (splice, payload, leaf_delta) = f(leaf_ctx)
-          let propagated = propagate(
-            cursor.path,
-            splice,
-            self.min_degree,
-            leaf_delta,
-          )
+          let (splice, payload) = f(leaf_ctx)
+          let propagated = propagate(cursor.path, splice, self.min_degree)
           self.apply_propagated(propagated, normalize_delete=true)
           Some(payload)
         }
       }
+    }
   }
 }
 

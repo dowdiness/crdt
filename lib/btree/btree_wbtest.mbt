@@ -68,14 +68,11 @@ fn build_tree(items : Array[(Int, Int)]) -> BTree[TItem] {
     let elem = make_item(id, span)
     t.mutate_for_insert(pos, fn(ctx) {
       // Insert after current leaf (at end of span)
-      (
-        {
-          start_idx: ctx.child_idx + 1,
-          end_idx: ctx.child_idx + 1,
-          new_leaves: [(elem, span)],
-        },
-        1,
-      )
+      {
+        start_idx: ctx.child_idx + 1,
+        end_idx: ctx.child_idx + 1,
+        new_leaves: [(elem, span)],
+      }
     })
     pos = pos + span
   }
@@ -192,7 +189,6 @@ test "delete single element empties tree" {
     (
       { start_idx: ctx.child_idx, end_idx: ctx.child_idx + 1, new_leaves: [] },
       ctx.elem,
-      -1,
     )
   })
   inspect(
@@ -321,7 +317,6 @@ test "delete from multi-level tree triggers rebalancing" {
       (
         { start_idx: ctx.child_idx, end_idx: ctx.child_idx + 1, new_leaves: [] },
         ctx.elem,
-        -1,
       )
     })
     inspect(deleted is Some(_), content="true")
@@ -342,7 +337,6 @@ test "delete all elements collapses tree to empty" {
       (
         { start_idx: ctx.child_idx, end_idx: ctx.child_idx + 1, new_leaves: [] },
         ctx.elem,
-        -1,
       )
     })
   }
@@ -400,7 +394,6 @@ test "insert then delete roundtrip" {
       (
         { start_idx: ctx.child_idx, end_idx: ctx.child_idx + 1, new_leaves: [] },
         ctx.elem,
-        -1,
       )
     })
   }
