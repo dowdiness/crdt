@@ -277,39 +277,15 @@ pub fn to_proj_node(
 
 ///|
 /// Rebuild a composite Term's embedded sub-terms from reconciled ProjNode children.
-/// `shape` provides the constructor tag and scalar metadata (param name, op, let name).
-/// `children` provides the updated sub-terms.
-/// Leaf terms (Int, Var, Unit, Error) are returned unchanged.
+/// Reconstruct a Term kind from a shape and ProjNode children.
+/// Delegates to @ast.rebuild_from — the structural source of truth
+/// lives in loom/examples/lambda/src/ast/sym.mbt, not here.
 pub fn rebuild_kind(
   shape : @ast.Term,
   children : Array[ProjNode[@ast.Term]],
 ) -> @ast.Term {
-  fn child_kind(i : Int) -> @ast.Term {
-    if i < children.length() {
-      children[i].kind
-    } else {
-      Error("missing")
-    }
-  }
-
-  match shape {
-    Lam(param, _) => Lam(param, child_kind(0))
-    App(_, _) => App(child_kind(0), child_kind(1))
-    Bop(op, _, _) => Bop(op, child_kind(0), child_kind(1))
-    If(_, _, _) => If(child_kind(0), child_kind(1), child_kind(2))
-    Module(old_defs, _) =>
-      if children.length() >= 1 {
-        let new_defs : Array[(@ast.VarName, @ast.Term)] = []
-        for i = 0; i < children.length() - 1; i = i + 1 {
-          let name = if i < old_defs.length() { old_defs[i].0 } else { "_" }
-          new_defs.push((name, children[i].kind))
-        }
-        Module(new_defs, children[children.length() - 1].kind)
-      } else {
-        Module([], child_kind(0))
-      }
-    _ => shape
-  }
+  let child_kinds = children.map(fn(c) { c.kind })
+  @ast.rebuild_from(shape, child_kinds)
 }
 
 ///|
