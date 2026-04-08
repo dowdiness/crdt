@@ -536,8 +536,8 @@ Post-consolidation app inventory:
   Plan: `docs/plans/2026-04-07-rose-tree-zipper-impl.md`
   Design: `docs/superpowers/specs/2026-04-07-rose-tree-zipper-library-design.md`
 - [x] **ProjNode integration** — ✅ Done (PR #133). `core/proj_zipper.mbt` provides `navigate_proj[T]` via path arithmetic on ProjNode (no RoseZipper dependency in core/). Old `lang/lambda/zipper/` (Term-level Huet zipper) removed. 24 whitebox + 7 E2E tests.
-- [ ] **Phase 2: Annotation trait** — ScopeProvider, DepthCounter as Self-Closed Algebra traits.
-- [ ] **Phase 3: B-tree zipper** — Refactor OrderTree's `Cursor[T]` to use generic btree zipper.
+- ~~**Phase 2: Annotation trait**~~ — Dropped. Annotations are a tree-definition concern (stored in nodes at construction), not a zipper concern (accumulated during navigation). MoonBit's Self-based traits can't parameterize over node data type `T`. Depth and path are already built into the zipper. See: Haskell Annotations library, Trees that Grow (Najd & Peyton Jones 2016). A principled tree-with-annotations library is a separate future project.
+- [ ] **Phase 2: B-tree zipper** — Refactor OrderTree's `Cursor[T]` to use generic btree zipper.
 
 ---
 
