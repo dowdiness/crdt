@@ -11,9 +11,11 @@ fn[T] path_suffix_after_target(
 }
 
 ///|
-fn[T] rebuild_boundary_chain(
+/// Rebuild a boundary chain from the path suffix below the LCA.
+/// When seed is None, the bottom frame contributes only its kept siblings.
+fn[T] rebuild_boundary_chain_optional(
   path_suffix : Array[PathFrame[T]],
-  leaf : BTreeNode[T],
+  leaf : BTreeNode[T]?,
   keep_left : Bool,
 ) -> BTreeNode[T] {
   let mut current = leaf
@@ -26,19 +28,29 @@ fn[T] rebuild_boundary_chain(
         children.push(frame.children[j])
         counts.push(frame.counts[j])
       }
-      children.push(current)
-      counts.push(current.total())
+      match current {
+        Some(node) => {
+          children.push(node)
+          counts.push(node.total())
+        }
+        None => ()
+      }
     } else {
-      children.push(current)
-      counts.push(current.total())
+      match current {
+        Some(node) => {
+          children.push(node)
+          counts.push(node.total())
+        }
+        None => ()
+      }
       for j in (frame.child_idx + 1)..<frame.children.length() {
         children.push(frame.children[j])
         counts.push(frame.counts[j])
       }
     }
-    current = Internal(children~, counts~, total=counts.sum())
+    current = Some(Internal(children~, counts~, total=counts.sum()))
   }
-  current
+  current.unwrap()
 }
 
 ///|
@@ -98,35 +110,47 @@ fn[T] rightmost_leaf_in_subtree(node : BTreeNode[T]) -> LeafCursor[T] {
 }
 
 ///|
+/// Rebuild the left boundary subtree, keeping all siblings before the
+/// start leaf plus the sliced fragment of the start leaf (if any).
+/// Returns None only when there is truly nothing to keep on the left.
 fn[T : BTreeElem] left_boundary_subtree(
   lca : AncestorRange[T],
   start : LeafCursor[T],
 ) -> BTreeNode[T]? {
-  match left_boundary_keep(start) {
+  let kept_leaf : BTreeNode[T]? = match left_boundary_keep(start) {
+    Some(kept) => Some(Leaf(elem=kept, span=@rle.Spanning::span(kept)))
     None => None
-    Some(kept) => {
-      let kept_leaf = Leaf(elem=kept, span=@rle.Spanning::span(kept))
-      let target_depth = lca.prefix.length()
-      let suffix = path_suffix_after_target(start.path, target_depth)
-      Some(rebuild_boundary_chain(suffix, kept_leaf, true))
-    }
   }
+  let target_depth = lca.prefix.length()
+  let suffix = path_suffix_after_target(start.path, target_depth)
+  // Check if there's anything to keep: either a sliced leaf or siblings
+  let has_siblings = suffix.length() > 0 &&
+    suffix[suffix.length() - 1].child_idx > 0
+  guard kept_leaf is Some(_) || has_siblings else { return None }
+  Some(rebuild_boundary_chain_optional(suffix, kept_leaf, true))
 }
 
 ///|
+/// Rebuild the right boundary subtree, keeping the sliced fragment of the
+/// end leaf (if any) plus all siblings after the end leaf.
+/// Returns None only when there is truly nothing to keep on the right.
 fn[T : BTreeElem] right_boundary_subtree(
   lca : AncestorRange[T],
   end_ : LeafCursor[T],
 ) -> BTreeNode[T]? {
-  match right_boundary_keep(end_) {
+  let kept_leaf : BTreeNode[T]? = match right_boundary_keep(end_) {
+    Some(kept) => Some(Leaf(elem=kept, span=@rle.Spanning::span(kept)))
     None => None
-    Some(kept) => {
-      let kept_leaf = Leaf(elem=kept, span=@rle.Spanning::span(kept))
-      let target_depth = lca.prefix.length()
-      let suffix = path_suffix_after_target(end_.path, target_depth)
-      Some(rebuild_boundary_chain(suffix, kept_leaf, false))
-    }
   }
+  let target_depth = lca.prefix.length()
+  let suffix = path_suffix_after_target(end_.path, target_depth)
+  // Check if there's anything to keep: either a sliced leaf or siblings
+  let has_siblings = suffix.length() > 0 && {
+    let frame = suffix[suffix.length() - 1]
+    frame.child_idx + 1 < frame.children.length()
+  }
+  guard kept_leaf is Some(_) || has_siblings else { return None }
+  Some(rebuild_boundary_chain_optional(suffix, kept_leaf, false))
 }
 
 ///|
@@ -486,14 +510,16 @@ pub fn[T : BTreeElem] plan_delete_range(
 /// are mergeable, merge them and propagate the structural change.
 /// `boundary_pos` is the position where the deleted range started (after deletion,
 /// the left boundary's last leaf ends here and the right boundary's first leaf starts here).
-/// Returns the updated root node.
+/// Returns the updated root node and whether a merge occurred (for leaf_delta tracking).
 fn[T : BTreeElem] normalize_boundary_merge(
   root : BTreeNode[T],
   boundary_pos : Int,
   min_degree : Int,
-) -> BTreeNode[T] {
+) -> (BTreeNode[T], Bool) {
   // Nothing to merge at boundaries
-  guard boundary_pos > 0 && boundary_pos < root.total() else { return root }
+  guard boundary_pos > 0 && boundary_pos < root.total() else {
+    return (root, false)
+  }
   // Descend to the leaf just before the boundary (end-boundary semantics)
   let left_cursor = descend_leaf_at_end_boundary(root, boundary_pos, min_degree)
   // Descend to the leaf at the boundary (start semantics)
@@ -504,13 +530,15 @@ fn[T : BTreeElem] normalize_boundary_merge(
       if left.path.length() == right.path.length() &&
         shared_prefix_length(left.path, right.path) == left.path.length() {
         // Same leaf — no boundary merge needed
-        return root
+        return (root, false)
       }
       // Not at leaf boundaries — can't merge whole leaves
-      guard left.offset == left.span && right.offset == 0 else { return root }
+      guard left.offset == left.span && right.offset == 0 else {
+        return (root, false)
+      }
       // Check if mergeable
       guard @rle.Mergeable::can_merge(left.elem, right.elem) else {
-        return root
+        return (root, false)
       }
       // Merge: delete the right leaf, expand the left leaf to absorb it
       let merged = @rle.Mergeable::merge(left.elem, right.elem)
@@ -546,7 +574,7 @@ fn[T : BTreeElem] normalize_boundary_merge(
         leaf_delta: merged_subtree.leaf_count() - removed_leaf_count,
       }
       let result = propagate_node_splice(splice, min_degree)
-      match result.overflow {
+      let new_root = match result.overflow {
         None => result.node
         Some(sibling) => {
           let left_total = result.node.total()
@@ -558,7 +586,8 @@ fn[T : BTreeElem] normalize_boundary_merge(
           )
         }
       }
+      (new_root, true)
     }
-    _ => root
+    _ => (root, false)
   }
 }

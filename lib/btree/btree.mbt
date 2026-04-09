@@ -113,6 +113,49 @@ pub fn[T, R] BTree::mutate_for_delete(
 }
 
 ///|
+/// Delete all elements in the span range [start, end_).
+/// Handles all cases: single-leaf splice, multi-child LCA splice,
+/// underfull node repair, and post-splice boundary merging.
+pub fn[T : BTreeElem] BTree::delete_range(
+  self : BTree[T],
+  start : Int,
+  end_ : Int,
+) -> Unit {
+  match self.root {
+    None => ()
+    Some(root) => {
+      let total = root.total()
+      guard start >= 0 && start < end_ && start < total else { return }
+      let clamped_end = if end_ > total { total } else { end_ }
+      match plan_delete_range(root, start, clamped_end, self.min_degree) {
+        None => ()
+        Some(splice) => {
+          let propagated = propagate_node_splice(splice, self.min_degree)
+          self.apply_propagated(propagated, normalize_delete=true)
+          // Post-splice boundary merge: if the deletion created adjacent
+          // mergeable leaves, merge them. Must re-descend from new root
+          // since paths are stale after propagation.
+          match self.root {
+            Some(new_root) => {
+              let (merged_root, boundary_merged) = normalize_boundary_merge(
+                new_root,
+                start,
+                self.min_degree,
+              )
+              self.root = normalize_root_after_delete(merged_root)
+              if boundary_merged {
+                self.size = self.size - 1
+              }
+            }
+            None => ()
+          }
+        }
+      }
+    }
+  }
+}
+
+///|
 fn[T] BTree::apply_propagated(
   self : BTree[T],
   propagated : PropagateResult[T],
@@ -151,18 +194,23 @@ pub fn[T] BTree::init_root(self : BTree[T], elem : T, span : Int) -> Unit {
 ///|
 /// A B-tree root with one internal child is a useless extra level —
 /// collapsing it maintains minimal height. A root with zero children
-/// means the tree is empty.
+/// means the tree is empty. Iterative: collapses all unary internal
+/// chains (can occur after boundary merge + propagation).
 pub fn[T] normalize_root_after_delete(root : BTreeNode[T]) -> BTreeNode[T]? {
-  match root {
-    Internal(children~, ..) if children.is_empty() => None
-    Internal(children~, ..) if children.length() == 1 =>
-      if children[0] is Internal(..) {
-        Some(children[0])
-      } else {
-        Some(root)
-      }
-    Internal(..) => Some(root)
-    Leaf(..) => abort("normalize_root_after_delete: root should be internal")
+  let mut current = root
+  for ;; {
+    match current {
+      Internal(children~, ..) if children.is_empty() => return None
+      Internal(children~, ..) if children.length() == 1 =>
+        if children[0] is Internal(..) {
+          current = children[0]
+          continue
+        } else {
+          return Some(current)
+        }
+      Internal(..) => return Some(current)
+      Leaf(..) => abort("normalize_root_after_delete: root should be internal")
+    }
   }
 }
 

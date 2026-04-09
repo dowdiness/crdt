@@ -1093,7 +1093,8 @@ test "normalize_boundary_merge merges adjacent leaves across subtrees" {
     counts=[3, 3],
     total=6,
   )
-  let result = normalize_boundary_merge(root, 3, 2)
+  let (result, merged) = normalize_boundary_merge(root, 3, 2)
+  inspect(merged, content="true")
   inspect(result.total(), content="6")
   let items : Array[TItem] = []
   result.each(fn(item) { items.push(item) })
@@ -1118,9 +1119,74 @@ test "normalize_boundary_merge is no-op when boundaries not mergeable" {
     counts=[3, 3],
     total=6,
   )
-  let result = normalize_boundary_merge(root, 3, 2)
+  let (result, merged) = normalize_boundary_merge(root, 3, 2)
+  inspect(merged, content="false")
   inspect(result.total(), content="6")
   let items : Array[TItem] = []
   result.each(fn(item) { items.push(item) })
   inspect(items.length(), content="2")
+}
+
+// === BTree::delete_range ===
+
+///|
+test "BTree::delete_range removes contiguous elements" {
+  let t = build_tree([(1, 2), (2, 3), (3, 4)])
+  // Total span = 2+3+4 = 9, delete [2,5) removes item 2 exactly → 6 remaining
+  t.delete_range(2, 5)
+  inspect(t.span(), content="6")
+  inspect(t.size(), content="2")
+  let items = t.to_array()
+  inspect(items.length(), content="2")
+  inspect(items[0], content="{ id: 1, span: 2 }")
+  inspect(items[1], content="{ id: 3, span: 4 }")
+}
+
+///|
+test "BTree::delete_range merges boundary leaves" {
+  let t = build_tree([(1, 3), (2, 2), (1, 3)])
+  t.delete_range(3, 5)
+  inspect(t.span(), content="6")
+  // The two id=1 items should merge into one
+  let items = t.to_array()
+  inspect(items.length(), content="1")
+  inspect(items[0], content="{ id: 1, span: 6 }")
+}
+
+///|
+test "BTree::delete_range empty range is no-op" {
+  let t = build_tree([(1, 2), (2, 3)])
+  t.delete_range(2, 2)
+  inspect(t.span(), content="5")
+  inspect(t.size(), content="2")
+}
+
+///|
+test "BTree::delete_range full range clears tree" {
+  let t = build_tree([(1, 2), (2, 3)])
+  t.delete_range(0, 5)
+  inspect(t.span(), content="0")
+  inspect(t.is_empty(), content="true")
+}
+
+///|
+test "BTree::delete_range clamps end to span" {
+  let t = build_tree([(1, 2), (2, 3)])
+  t.delete_range(2, 99)
+  inspect(t.span(), content="2")
+  inspect(t.size(), content="1")
+}
+
+///|
+test "BTree::delete_range handles underfull propagation" {
+  // Build a tree deep enough that range delete causes underfull at LCA
+  let items : Array[(Int, Int)] = Array::makei(20, fn(i) { (i + 1, 1) })
+  let t = build_tree(items)
+  // Delete a large middle range
+  t.delete_range(5, 15)
+  inspect(t.span(), content="10")
+  inspect(t.size(), content="10")
+  // Verify tree is well-formed by iterating
+  let result = t.to_array()
+  inspect(result.length(), content="10")
 }
