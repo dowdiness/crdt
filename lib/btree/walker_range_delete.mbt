@@ -28,21 +28,12 @@ fn[T] rebuild_boundary_chain_optional(
         children.push(frame.children[j])
         counts.push(frame.counts[j])
       }
-      match current {
-        Some(node) => {
-          children.push(node)
-          counts.push(node.total())
-        }
-        None => ()
-      }
-    } else {
-      match current {
-        Some(node) => {
-          children.push(node)
-          counts.push(node.total())
-        }
-        None => ()
-      }
+    }
+    if current is Some(node) {
+      children.push(node)
+      counts.push(node.total())
+    }
+    if !keep_left {
       for j in (frame.child_idx + 1)..<frame.children.length() {
         children.push(frame.children[j])
         counts.push(frame.counts[j])
@@ -55,17 +46,13 @@ fn[T] rebuild_boundary_chain_optional(
 
 ///|
 fn[T : BTreeElem] left_boundary_keep(start : LeafCursor[T]) -> T? {
-  if start.offset == 0 {
-    return None
-  }
+  guard start.offset != 0 else { return None }
   Some(must_slice(start.elem, start=0, end=start.offset))
 }
 
 ///|
 fn[T : BTreeElem] right_boundary_keep(end_ : LeafCursor[T]) -> T? {
-  if end_.offset == end_.span {
-    return None
-  }
+  guard end_.offset != end_.span else { return None }
   Some(must_slice(end_.elem, start=end_.offset, end=end_.span))
 }
 
@@ -117,15 +104,14 @@ fn[T : BTreeElem] left_boundary_subtree(
   lca : AncestorRange[T],
   start : LeafCursor[T],
 ) -> BTreeNode[T]? {
-  let kept_leaf : BTreeNode[T]? = match left_boundary_keep(start) {
-    Some(kept) => Some(Leaf(elem=kept, span=@rle.Spanning::span(kept)))
-    None => None
+  let kept_leaf = left_boundary_keep(start).map(fn(kept) {
+    Leaf(elem=kept, span=@rle.Spanning::span(kept))
+  })
+  let suffix = path_suffix_after_target(start.path, lca.prefix.length())
+  let has_siblings = match suffix {
+    [.., frame] => frame.child_idx > 0
+    [] => false
   }
-  let target_depth = lca.prefix.length()
-  let suffix = path_suffix_after_target(start.path, target_depth)
-  // Check if there's anything to keep: either a sliced leaf or siblings
-  let has_siblings = suffix.length() > 0 &&
-    suffix[suffix.length() - 1].child_idx > 0
   guard kept_leaf is Some(_) || has_siblings else { return None }
   Some(rebuild_boundary_chain_optional(suffix, kept_leaf, true))
 }
@@ -138,18 +124,14 @@ fn[T : BTreeElem] right_boundary_subtree(
   lca : AncestorRange[T],
   end_ : LeafCursor[T],
 ) -> BTreeNode[T]? {
-  let kept_leaf : BTreeNode[T]? = match right_boundary_keep(end_) {
-    Some(kept) => Some(Leaf(elem=kept, span=@rle.Spanning::span(kept)))
-    None => None
+  let kept_leaf = right_boundary_keep(end_).map(fn(kept) {
+    Leaf(elem=kept, span=@rle.Spanning::span(kept))
+  })
+  let suffix = path_suffix_after_target(end_.path, lca.prefix.length())
+  let has_siblings = match suffix {
+    [.., frame] => frame.child_idx + 1 < frame.children.length()
+    [] => false
   }
-  let target_depth = lca.prefix.length()
-  let suffix = path_suffix_after_target(end_.path, target_depth)
-  // Check if there's anything to keep: either a sliced leaf or siblings
-  let has_siblings = suffix.length() > 0 &&
-    ({
-      let frame = suffix[suffix.length() - 1]
-      frame.child_idx + 1 < frame.children.length()
-    })
   guard kept_leaf is Some(_) || has_siblings else { return None }
   Some(rebuild_boundary_chain_optional(suffix, kept_leaf, false))
 }
@@ -180,13 +162,12 @@ fn[T : BTreeElem] merged_boundary_subtree(
 fn[T] BTreeNode::leaf_count(self : BTreeNode[T]) -> Int {
   match self {
     Leaf(..) => 1
-    Internal(children~, ..) => {
-      let mut total = 0
-      for child in children {
-        total = total + child.leaf_count()
+    Internal(children~, ..) =>
+      for child in children; total = 0 {
+        continue total + child.leaf_count()
+      } nobreak {
+        total
       }
-      total
-    }
   }
 }
 

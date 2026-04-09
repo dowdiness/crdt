@@ -121,35 +121,27 @@ pub fn[T : BTreeElem] BTree::delete_range(
   start : Int,
   end_ : Int,
 ) -> Unit {
-  match self.root {
+  guard self.root is Some(root) else { return }
+  let total = root.total()
+  guard start >= 0 && start < end_ && start < total else { return }
+  let clamped_end = if end_ > total { total } else { end_ }
+  match plan_delete_range(root, start, clamped_end, self.min_degree) {
     None => ()
-    Some(root) => {
-      let total = root.total()
-      guard start >= 0 && start < end_ && start < total else { return }
-      let clamped_end = if end_ > total { total } else { end_ }
-      match plan_delete_range(root, start, clamped_end, self.min_degree) {
-        None => ()
-        Some(splice) => {
-          let propagated = propagate_node_splice(splice, self.min_degree)
-          self.apply_propagated(propagated, normalize_delete=true)
-          // Post-splice boundary merge: if the deletion created adjacent
-          // mergeable leaves, merge them. Must re-descend from new root
-          // since paths are stale after propagation.
-          match self.root {
-            Some(new_root) => {
-              let (merged_root, boundary_merged) = normalize_boundary_merge(
-                new_root,
-                start,
-                self.min_degree,
-              )
-              self.root = normalize_root_after_delete(merged_root)
-              if boundary_merged {
-                self.size = self.size - 1
-              }
-            }
-            None => ()
-          }
-        }
+    Some(splice) => {
+      let propagated = propagate_node_splice(splice, self.min_degree)
+      self.apply_propagated(propagated, normalize_delete=true)
+      // Post-splice boundary merge: if the deletion created adjacent
+      // mergeable leaves, merge them. Must re-descend from new root
+      // since paths are stale after propagation.
+      guard self.root is Some(new_root) else { return }
+      let (merged_root, boundary_merged) = normalize_boundary_merge(
+        new_root,
+        start,
+        self.min_degree,
+      )
+      self.root = normalize_root_after_delete(merged_root)
+      if boundary_merged {
+        self.size = self.size - 1
       }
     }
   }
@@ -200,10 +192,10 @@ fn[T] normalize_root_after_delete(root : BTreeNode[T]) -> BTreeNode[T]? {
   let mut current = root
   for ;; {
     match current {
-      Internal(children~, ..) if children.is_empty() => return None
-      Internal(children~, ..) if children.length() == 1 =>
-        if children[0] is Internal(..) {
-          current = children[0]
+      Internal(children~, ..) if children is [] => return None
+      Internal(children~, ..) if children is [child] =>
+        if child is Internal(..) {
+          current = child
           continue
         } else {
           return Some(current)
