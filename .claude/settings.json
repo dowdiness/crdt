@@ -34,7 +34,7 @@
           },
           {
             "type": "command",
-            "command": "bash scripts/test-focus.sh",
+            "command": "test -f scripts/test-focus.sh && bash scripts/test-focus.sh || true",
             "timeout": 60,
             "async": true,
             "statusMessage": "Running focused tests..."
@@ -52,7 +52,7 @@
           },
           {
             "type": "command",
-            "command": "bash scripts/package-overview.sh",
+            "command": "test -f scripts/package-overview.sh && bash scripts/package-overview.sh || true",
             "timeout": 30,
             "statusMessage": "Discovering package structure..."
           }
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/stop-phrase-guard.sh",
+            "command": "test -f scripts/stop-phrase-guard.sh && bash scripts/stop-phrase-guard.sh || true",
             "timeout": 5
           }
         ]

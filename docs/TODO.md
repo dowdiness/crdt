@@ -187,13 +187,13 @@ Tracked by:
 - [x] **Memo Eq backdating cost** — ✅ Done. `BackdateEq` trait added to `loom/incr`; `Memo::new_memo` (uses `BackdateEq`, O(1) revision stamp) and `Memo::new_no_backdate` constructors added. `editor/projection_memo.mbt`: `proj_memo` uses `new_memo` with `VersionedFlatProj : BackdateEq`; `registry_memo` and `source_map_memo` use `new_no_backdate`. Per-benchmark: ~0.5–1ms savings at 1000 defs — real but modest.
 - [ ] Implement lazy loading for 100k+ operation documents (load causal graph skeleton, hydrate on demand)
 - [ ] Add B-tree indexing for FugueTree (O(n) → O(log n) random-access character lookup)
-- [ ] **Generic zipper libraries** — Extract two reusable zipper libraries from existing code.
-  Why: ProjNode is a rose tree, OrderTree is a B-tree. Both have generic zippers parameterized by `T` without codegen. Supersedes the `zipper-gen` codegen plan — uniform tree structures (rose tree, B-tree) have fixed derivatives regardless of `T`, so no per-type code generation is needed (McBride 2001).
+- [ ] **Generic tree libraries** — Extract reusable tree libraries from existing code.
+  Why: ProjNode is a rose tree, OrderTree is a B-tree. Both are generic in `T` without codegen (McBride 2001). Supersedes the `zipper-gen` codegen plan.
   Libraries:
-  - `rose-zipper[T]` — ✅ Done (`lib/zipper/`, PR #130). `RoseNode[T]`, `RoseCtx[T]`, `RoseZipper[T]`.
-  - `btree-zipper[T]` — `BTreeNode[T] { Leaf(T, Int) | Internal(Array, Array) }`, counted navigation, range operations. Consumer: `OrderTree[T]` (CRDT positioning).
+  - `rose-zipper[T]` — ✅ Done (`lib/zipper/`, PR #130). `RoseNode[T]`, `RoseCtx[T]`, `RoseZipper[T]`. Immutable/persistent — zipper is the primary API (navigation, focus, modify).
+  - `btree[T]` — Generic B-tree library. Node types, counted navigation, insert/delete with rebalancing, range operations. Cursor/zipper is an internal implementation detail (mutable, ephemeral). Consumer: `OrderTree[T]` (CRDT positioning).
   ProjNode navigation uses direct path arithmetic in `core/proj_zipper.mbt` (`navigate_proj`). The old `lang/lambda/zipper/` (Term-level Huet zipper) was removed in PR #133.
-  Exit: `btree-zipper[T]` extracted as standalone package, `order-tree/src/walker_types.mbt` refactored to use it.
+  Exit: `lib/btree` extracted as standalone package, `order-tree/src/` refactored to use it.
 
 ---
 
@@ -539,8 +539,10 @@ Post-consolidation app inventory:
 - ~~**Annotation trait**~~ — Dropped. Annotations are a tree-definition concern, not a zipper concern.
 - [x] **Phase 2: Generic B-tree library** — ✅ Done (PR #138). `lib/btree/` standalone module (`dowdiness/btree`). `BTreeNode[T]`, `BTree[T]`, `BTreeElem` super trait over rle's Spanning+Mergeable+Sliceable. High-level API: `mutate_for_insert/delete` with callbacks, `seek`, `view`. 22 whitebox tests. `order-tree` uses `@btree.BTreeElem` bounds.
   Plan: `docs/plans/2026-04-08-generic-btree-library.md`
-- [ ] **Phase 2b: Full type migration** — order-tree replaces its internal types (OrderNode, Cursor, PathFrame, etc.) with `@btree.*` imports, removing ~1,100 lines of duplicate code.
+- [x] **Phase 2b: Full type migration** — ✅ Done (PR #139 + order-tree#5). OrderTree wraps @btree.BTree[T]. insert_at/delete_at delegate via callbacks. -1,304 lines, 5 duplicate files deleted. 79 tests (12 @btree-internal tests moved out).
+  Plan: `docs/plans/2026-04-09-btree-type-migration.md`
 - [ ] **Phase 2c: Range delete extraction** — move `walker_range_delete.mbt` to lib/btree (most/all 510 lines). Only `delete_range_needs_merge_rebuild` stays in order-tree.
+  Also: add whitebox tests to lib/btree for `LeafContext::from_cursor`/neighbor access, `descend_leaf_at`/`descend_leaf_at_end_boundary` boundary semantics, ensure-min merge re-find, `propagate_node_splice` ancestor-count/overflow (test debt from Phase 2b cleanup).
 - [ ] **Phase 2d: API narrowing** — once order-tree fully migrates, make walker internals (descend, prepare_*, propagate, PathFrame, Cursor) private. Add `from_sorted` bulk constructor. Replace eager `BTree::iter` (materializes to_array) with lazy stack-based traversal using MoonBit's `Iter` yield protocol.
 - [ ] **event-graph-walker integration** — `impl @btree.BTreeElem for VisibleRun` (orphan-rule compliant, goes in egw).
 
@@ -560,7 +562,7 @@ Post-consolidation app inventory:
 | 8 | Complete WebSocket collaboration + recovery | High | High |
 | 9 | Rabbita projection editor performance | High | High | Mostly done |
 | 10 | Memory optimization (lazy loading, B-tree indexing) | High | Medium |
-| 11 | Generic zipper libraries (`rose-zipper[T]`, `btree-zipper[T]`) | Medium | Medium | Supersedes zipper-gen — ProjNode is a rose tree, OrderTree is a B-tree, both have generic zippers without codegen |
+| 11 | Generic tree libraries (`rose-zipper[T]`, `btree[T]`) | Medium | Medium | Rose tree → zipper is the API; B-tree → the tree is the API (cursor internal) |
 | 12 | Code cleanup | Medium | Medium | Mostly done |
 | 14 | EditorProtocol integration layer | High | High |
 | 20 | Editor framework decoupling (LanguageCapabilities[T]) | Medium | Medium | Phase 1 done (PR #135), Phase 2 planned |
