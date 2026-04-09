@@ -39,7 +39,11 @@ fn[T] rebuild_boundary_chain_optional(
         counts.push(frame.counts[j])
       }
     }
-    current = Some(Internal(children~, counts~, total=counts.sum()))
+    // Skip empty levels — don't create Internal(children=[], ...) nodes.
+    // Ancestor frames will collect their siblings at a higher level.
+    if children.length() > 0 {
+      current = Some(Internal(children~, counts~, total=counts.sum()))
+    }
   }
   current.unwrap()
 }

@@ -1237,6 +1237,57 @@ test "left_boundary_subtree preserves ancestor siblings when leaf has none" {
 }
 
 ///|
+test "rebuild_boundary_chain_optional skips empty levels" {
+  // Tree: root:[L, R, S]  R:[X, Y]  Y:[c, d]
+  // Delete c and d (entire Y) plus S. left_boundary_subtree should
+  // rebuild R with just X — the Y-level frame produces no children
+  // (child_idx=0, no kept leaf), so it must be skipped.
+  let x_leaf : BTreeNode[TItem] = Leaf(elem=make_item(1, 1), span=1)
+  let c_leaf : BTreeNode[TItem] = Leaf(elem=make_item(3, 1), span=1)
+  let d_leaf : BTreeNode[TItem] = Leaf(elem=make_item(4, 1), span=1)
+  let y_node : BTreeNode[TItem] = Internal(
+    children=[c_leaf, d_leaf],
+    counts=[1, 1],
+    total=2,
+  )
+  let r_node : BTreeNode[TItem] = Internal(
+    children=[x_leaf, y_node],
+    counts=[1, 2],
+    total=3,
+  )
+  let l_node : BTreeNode[TItem] = Internal(
+    children=[Leaf(elem=make_item(10, 2), span=2)],
+    counts=[2],
+    total=2,
+  )
+  let s_node : BTreeNode[TItem] = Internal(
+    children=[Leaf(elem=make_item(5, 1), span=1)],
+    counts=[1],
+    total=1,
+  )
+  let root : BTreeNode[TItem] = Internal(
+    children=[l_node, r_node, s_node],
+    counts=[2, 3, 1],
+    total=6,
+  )
+  // Delete [3, 6) — removes c, d (all of Y) and s (all of S)
+  // LCA is root, start in Y child_idx=0, end in S
+  let start = descend_leaf_at(root, 3, 2).unwrap()
+  let end_ = descend_leaf_at_end_boundary(root, 6, 2).unwrap()
+  let lca = lowest_common_ancestor_range(start, end_)
+  let left = left_boundary_subtree(lca, start)
+  inspect(left is Some(_), content="true")
+  let rebuilt = left.unwrap()
+  // Rebuilt subtree should contain only X, no empty internal nodes
+  let items : Array[TItem] = []
+  rebuilt.each(fn(item) { items.push(item) })
+  inspect(items.length(), content="1")
+  inspect(items[0], content="{ id: 1, span: 1 }")
+  // Height should be 1 (Internal wrapping X), not 2 (no empty Y-level)
+  inspect(rebuilt.height(), content="1")
+}
+
+///|
 test "BTree::delete_range preserves ancestor siblings at leaf boundary" {
   // 10 items, delete range that starts at a leaf which is first child of its parent
   // but the parent has left siblings in an ancestor
