@@ -714,3 +714,182 @@ test "plan_delete_range absorbs exact higher-level gap merge" {
   inspect(splice.new_children[0].total(), content="7")
   inspect(splice.leaf_delta, content="-2")
 }
+
+// === Test debt: LeafContext ===
+
+///|
+test "LeafContext::from_cursor extracts leaf info" {
+  let root : BTreeNode[TItem] = Internal(
+    children=[
+      Leaf(elem=make_item(1, 3), span=3),
+      Leaf(elem=make_item(2, 2), span=2),
+    ],
+    counts=[3, 2],
+    total=5,
+  )
+  let cursor = descend(root, 0, 2, prepare_noop, find_slot, false).unwrap()
+  let ctx = LeafContext::from_cursor(cursor)
+  inspect(ctx.elem, content="{ id: 1, span: 3 }")
+  inspect(ctx.span, content="3")
+  inspect(ctx.child_idx, content="0")
+}
+
+///|
+test "LeafContext neighbors return adjacent siblings" {
+  let root : BTreeNode[TItem] = Internal(
+    children=[
+      Leaf(elem=make_item(1, 3), span=3),
+      Leaf(elem=make_item(2, 2), span=2),
+      Leaf(elem=make_item(3, 4), span=4),
+    ],
+    counts=[3, 2, 4],
+    total=9,
+  )
+  // Middle leaf at position 3
+  let cursor = descend(root, 3, 2, prepare_noop, find_slot, false).unwrap()
+  let ctx = LeafContext::from_cursor(cursor)
+  inspect(ctx.left_neighbor(), content="Some({ id: 1, span: 3 })")
+  inspect(ctx.right_neighbor(), content="Some({ id: 3, span: 4 })")
+}
+
+///|
+test "LeafContext boundary neighbors are None" {
+  let root : BTreeNode[TItem] = Internal(
+    children=[
+      Leaf(elem=make_item(1, 3), span=3),
+      Leaf(elem=make_item(2, 2), span=2),
+    ],
+    counts=[3, 2],
+    total=5,
+  )
+  // First leaf — no left neighbor
+  let left_cursor = descend(root, 0, 2, prepare_noop, find_slot, false).unwrap()
+  let left_ctx = LeafContext::from_cursor(left_cursor)
+  inspect(left_ctx.left_neighbor() is None, content="true")
+  inspect(left_ctx.right_neighbor(), content="Some({ id: 2, span: 2 })")
+  // Last leaf — no right neighbor
+  let right_cursor = descend(root, 3, 2, prepare_noop, find_slot, false).unwrap()
+  let right_ctx = LeafContext::from_cursor(right_cursor)
+  inspect(right_ctx.left_neighbor(), content="Some({ id: 1, span: 3 })")
+  inspect(right_ctx.right_neighbor() is None, content="true")
+}
+
+// === Test debt: descend_leaf_at boundary semantics ===
+
+///|
+test "descend_leaf_at returns leaf containing position" {
+  let root : BTreeNode[TItem] = Internal(
+    children=[
+      Leaf(elem=make_item(1, 3), span=3),
+      Leaf(elem=make_item(2, 2), span=2),
+    ],
+    counts=[3, 2],
+    total=5,
+  )
+  // Position 0 → first leaf, offset 0
+  let leaf0 = descend_leaf_at(root, 0, 2).unwrap()
+  inspect(leaf0.elem, content="{ id: 1, span: 3 }")
+  inspect(leaf0.offset, content="0")
+  // Position 2 → still first leaf, offset 2
+  let leaf2 = descend_leaf_at(root, 2, 2).unwrap()
+  inspect(leaf2.elem, content="{ id: 1, span: 3 }")
+  inspect(leaf2.offset, content="2")
+  // Position 3 → second leaf (at boundary, goes to next leaf)
+  let leaf3 = descend_leaf_at(root, 3, 2).unwrap()
+  inspect(leaf3.elem, content="{ id: 2, span: 2 }")
+  inspect(leaf3.offset, content="0")
+}
+
+///|
+test "descend_leaf_at_end_boundary stays at current leaf at boundary" {
+  let root : BTreeNode[TItem] = Internal(
+    children=[
+      Leaf(elem=make_item(1, 3), span=3),
+      Leaf(elem=make_item(2, 2), span=2),
+    ],
+    counts=[3, 2],
+    total=5,
+  )
+  // End position 3 → first leaf (stays at current, offset=span=3)
+  let leaf3 = descend_leaf_at_end_boundary(root, 3, 2).unwrap()
+  inspect(leaf3.elem, content="{ id: 1, span: 3 }")
+  inspect(leaf3.offset, content="3")
+  inspect(leaf3.span, content="3")
+  // End position 5 → second leaf (at end, offset=span=2)
+  let leaf5 = descend_leaf_at_end_boundary(root, 5, 2).unwrap()
+  inspect(leaf5.elem, content="{ id: 2, span: 2 }")
+  inspect(leaf5.offset, content="2")
+}
+
+// === Test debt: ensure_min_children rebalancing ===
+
+///|
+test "ensure_min_children borrows from right sibling" {
+  // min_degree=2: need at least 2 children
+  let underfull : BTreeNode[TItem] = Internal(
+    children=[Leaf(elem=make_item(1, 1), span=1)],
+    counts=[1],
+    total=1,
+  )
+  let donor : BTreeNode[TItem] = Internal(
+    children=[
+      Leaf(elem=make_item(2, 1), span=1),
+      Leaf(elem=make_item(3, 1), span=1),
+      Leaf(elem=make_item(4, 1), span=1),
+    ],
+    counts=[1, 1, 1],
+    total=3,
+  )
+  let children : Array[BTreeNode[TItem]] = [underfull, donor]
+  let counts : Array[Int] = [1, 3]
+  ensure_min_children(children, counts, 0, 2)
+  // After borrow: underfull gets 2 children, donor keeps 2
+  match children[0] {
+    Internal(children=c, ..) => inspect(c.length(), content="2")
+    _ => abort("expected internal node")
+  }
+  match children[1] {
+    Internal(children=c, ..) => inspect(c.length(), content="2")
+    _ => abort("expected internal node")
+  }
+  // Counts updated
+  inspect(counts[0], content="2")
+  inspect(counts[1], content="2")
+}
+
+// === Test debt: propagate_node_splice ===
+
+///|
+test "propagate_node_splice updates ancestor counts after removal" {
+  // Build a 3-leaf tree: [a(2), b(3), c(4)] total=9
+  let root : BTreeNode[TItem] = Internal(
+    children=[
+      Leaf(elem=make_item(1, 2), span=2),
+      Leaf(elem=make_item(2, 3), span=3),
+      Leaf(elem=make_item(3, 4), span=4),
+    ],
+    counts=[2, 3, 4],
+    total=9,
+  )
+  // Splice that removes the middle child (index 1)
+  let splice : NodeSplice[TItem] = {
+    prefix: [],
+    children: match root {
+      Internal(children~, ..) => children
+      _ => abort("expected internal")
+    },
+    counts: match root {
+      Internal(counts~, ..) => counts
+      _ => abort("expected internal")
+    },
+    start_idx: 1,
+    end_idx: 2,
+    new_children: [],
+    original_child_count: 3,
+    leaf_delta: -1,
+  }
+  let result = propagate_node_splice(splice, 2)
+  inspect(result.leaf_delta, content="-1")
+  // Resulting node should have total = 2 + 4 = 6
+  inspect(result.node.total(), content="6")
+}
