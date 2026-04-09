@@ -145,10 +145,11 @@ fn[T : BTreeElem] right_boundary_subtree(
   let target_depth = lca.prefix.length()
   let suffix = path_suffix_after_target(end_.path, target_depth)
   // Check if there's anything to keep: either a sliced leaf or siblings
-  let has_siblings = suffix.length() > 0 && {
-    let frame = suffix[suffix.length() - 1]
-    frame.child_idx + 1 < frame.children.length()
-  }
+  let has_siblings = suffix.length() > 0 &&
+    ({
+      let frame = suffix[suffix.length() - 1]
+      frame.child_idx + 1 < frame.children.length()
+    })
   guard kept_leaf is Some(_) || has_siblings else { return None }
   Some(rebuild_boundary_chain_optional(suffix, kept_leaf, false))
 }
@@ -386,7 +387,6 @@ fn[T : BTreeElem] promote_empty_child_gap_merge(
     start_idx: child_idx - 1,
     end_idx: child_idx + 2,
     new_children,
-    original_child_count: parent.children.length(),
     leaf_delta: leaf_count_of_array(new_children) - removed_leaf_count,
   })
 }
@@ -454,7 +454,6 @@ fn[T : BTreeElem] plan_delete_range(
           start_idx: normalized_start_idx,
           end_idx: normalized_end_idx,
           new_children: normalized_children,
-          original_child_count: lca.children.length(),
           leaf_delta: leaf_count_of_array(normalized_children) -
           removed_leaf_count,
         })
@@ -496,7 +495,6 @@ fn[T : BTreeElem] plan_delete_range(
         start_idx: normalized_start_idx,
         end_idx: normalized_end_idx,
         new_children: normalized_children,
-        original_child_count: lca.children.length(),
         leaf_delta: leaf_count_of_array(normalized_children) -
         removed_leaf_count,
       })
@@ -545,18 +543,13 @@ fn[T : BTreeElem] normalize_boundary_merge(
       let merged_span = @rle.Spanning::span(merged)
       let merged_leaf : BTreeNode[T] = Leaf(elem=merged, span=merged_span)
       let lca = lowest_common_ancestor_range(left, right)
-      let left_suffix = path_suffix_after_target(
-        left.path,
-        lca.prefix.length(),
-      )
+      let left_suffix = path_suffix_after_target(left.path, lca.prefix.length())
       let right_suffix = path_suffix_after_target(
         right.path,
         lca.prefix.length(),
       )
       let merged_subtree = merge_boundary_chain(
-        left_suffix,
-        right_suffix,
-        merged_leaf,
+        left_suffix, right_suffix, merged_leaf,
       )
       let removed_leaf_count = leaf_count_of_children(
         lca.children,
@@ -570,7 +563,6 @@ fn[T : BTreeElem] normalize_boundary_merge(
         start_idx: lca.start_idx,
         end_idx: lca.end_idx,
         new_children: [merged_subtree],
-        original_child_count: lca.children.length(),
         leaf_delta: merged_subtree.leaf_count() - removed_leaf_count,
       }
       let result = propagate_node_splice(splice, min_degree)

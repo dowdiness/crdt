@@ -144,8 +144,7 @@ fn[T] walk_up_ancestors(
       _ => ()
     }
     // Repair underfull child after splice (< min_degree children)
-    if current_node.is_underfull(min_degree) &&
-      frame.children.length() > 1 {
+    if current_node.is_underfull(min_degree) && frame.children.length() > 1 {
       ensure_min_after_splice(
         frame.children,
         frame.counts,

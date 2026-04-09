@@ -924,7 +924,6 @@ test "propagate_node_splice updates ancestor counts after removal" {
     start_idx: 1,
     end_idx: 2,
     new_children: [],
-    original_child_count: 3,
     leaf_delta: -1,
   }
   let result = propagate_node_splice(splice, 2)
@@ -989,7 +988,6 @@ test "propagate_node_splice repairs underfull node by borrowing from right" {
     start_idx: 0,
     end_idx: 2,
     new_children: [],
-    original_child_count: 3,
     leaf_delta: -2,
   }
   let result = propagate_node_splice(splice, 2)
@@ -1061,7 +1059,6 @@ test "propagate_node_splice repairs underfull node by merging with sibling" {
     start_idx: 0,
     end_idx: 1,
     new_children: [],
-    original_child_count: 2,
     leaf_delta: -1,
   }
   let result = propagate_node_splice(splice, 2)

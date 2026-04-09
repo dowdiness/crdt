@@ -297,10 +297,7 @@ fn[T] descend(
 }
 
 ///|
-fn[T] copy_path(
-  path : Array[PathFrame[T]],
-  keep : Int,
-) -> Array[PathFrame[T]] {
+fn[T] copy_path(path : Array[PathFrame[T]], keep : Int) -> Array[PathFrame[T]] {
   let copied : Array[PathFrame[T]] = Array::new(capacity=keep)
   for i in 0..<keep {
     copied.push(path[i])

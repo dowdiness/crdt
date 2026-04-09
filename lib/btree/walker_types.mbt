@@ -8,7 +8,7 @@ priv struct PathFrame[T] {
   children : Array[BTreeNode[T]]
   counts : Array[Int]
   child_idx : Int
-} derive(Debug)
+}
 
 ///|
 /// A cursor pointing at a leaf together with its ancestor path.
@@ -18,7 +18,7 @@ priv struct Cursor[T] {
   leaf_span : Int
   offset : Int
   child_idx : Int
-} derive(Debug)
+}
 
 ///|
 priv struct LeafCursor[T] {
@@ -26,7 +26,7 @@ priv struct LeafCursor[T] {
   elem : T
   span : Int
   offset : Int
-} derive(Debug)
+}
 
 ///|
 /// LCA interval for range operations. child_height is used by range delete
@@ -48,7 +48,6 @@ priv struct NodeSplice[T] {
   start_idx : Int
   end_idx : Int
   new_children : Array[BTreeNode[T]]
-  original_child_count : Int
   leaf_delta : Int
 }
 
