@@ -141,10 +141,7 @@ fn[T : BTreeElem] merged_boundary_subtree(
         return None
       }
       let merged = @rle.Mergeable::merge(left, right)
-      let merged_leaf = Leaf(
-        elem=merged,
-        span=@rle.Spanning::span(merged),
-      )
+      let merged_leaf = Leaf(elem=merged, span=@rle.Spanning::span(merged))
       let target_depth = lca.prefix.length()
       let left_suffix = path_suffix_after_target(start.path, target_depth)
       let right_suffix = path_suffix_after_target(end_.path, target_depth)
@@ -317,10 +314,7 @@ fn[T : BTreeElem] absorb_subtree_gap_merge(
     return (new_children, start_idx, end_idx, false)
   }
   let merged = @rle.Mergeable::merge(left_edge.elem, right_edge.elem)
-  let merged_leaf = Leaf(
-    elem=merged,
-    span=@rle.Spanning::span(merged),
-  )
+  let merged_leaf = Leaf(elem=merged, span=@rle.Spanning::span(merged))
   let merged_subtree = merge_boundary_chain(
     left_edge.path,
     right_edge.path,
@@ -349,10 +343,7 @@ fn[T : BTreeElem] promote_empty_child_gap_merge(
     return None
   }
   let merged = @rle.Mergeable::merge(left_edge.elem, right_edge.elem)
-  let merged_leaf = Leaf(
-    elem=merged,
-    span=@rle.Spanning::span(merged),
-  )
+  let merged_leaf = Leaf(elem=merged, span=@rle.Spanning::span(merged))
   let merged_subtree = merge_boundary_chain(
     left_edge.path,
     right_edge.path,
@@ -393,9 +384,7 @@ pub fn[T : BTreeElem] plan_delete_range(
   }
   let clamped_end = if end_ > total { total } else { end_ }
   let start_cursor = descend_leaf_at(root, start, min_degree)
-  let end_cursor = descend_leaf_at_end_boundary(
-    root, clamped_end, min_degree,
-  )
+  let end_cursor = descend_leaf_at_end_boundary(root, clamped_end, min_degree)
   match (start_cursor, end_cursor) {
     (Some(start_leaf), Some(end_leaf)) => {
       let lca = lowest_common_ancestor_range(start_leaf, end_leaf)

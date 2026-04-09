@@ -416,7 +416,10 @@ test "descend_rightmost returns rightmost leaf with end offset" {
 ///|
 test "shared_prefix_length handles same leaf and divergence" {
   let root : BTreeNode[TItem] = Internal(
-    children=[Leaf(elem=make_item(1, 1), span=1), Leaf(elem=make_item(2, 1), span=1)],
+    children=[
+      Leaf(elem=make_item(1, 1), span=1),
+      Leaf(elem=make_item(2, 1), span=1),
+    ],
     counts=[1, 1],
     total=2,
   )
@@ -429,7 +432,10 @@ test "shared_prefix_length handles same leaf and divergence" {
 ///|
 test "lowest_common_ancestor_range handles same leaf" {
   let root : BTreeNode[TItem] = Internal(
-    children=[Leaf(elem=make_item(1, 3), span=3), Leaf(elem=make_item(2, 2), span=2)],
+    children=[
+      Leaf(elem=make_item(1, 3), span=3),
+      Leaf(elem=make_item(2, 2), span=2),
+    ],
     counts=[3, 2],
     total=5,
   )
@@ -465,12 +471,18 @@ test "lowest_common_ancestor_range handles same parent different children" {
 ///|
 test "lowest_common_ancestor_range handles higher level divergence" {
   let left_child : BTreeNode[TItem] = Internal(
-    children=[Leaf(elem=make_item(1, 1), span=1), Leaf(elem=make_item(2, 1), span=1)],
+    children=[
+      Leaf(elem=make_item(1, 1), span=1),
+      Leaf(elem=make_item(2, 1), span=1),
+    ],
     counts=[1, 1],
     total=2,
   )
   let right_child : BTreeNode[TItem] = Internal(
-    children=[Leaf(elem=make_item(3, 1), span=1), Leaf(elem=make_item(4, 1), span=1)],
+    children=[
+      Leaf(elem=make_item(3, 1), span=1),
+      Leaf(elem=make_item(4, 1), span=1),
+    ],
     counts=[1, 1],
     total=2,
   )
@@ -491,7 +503,10 @@ test "lowest_common_ancestor_range handles higher level divergence" {
 ///|
 test "left_boundary_subtree returns none when start is on leaf boundary" {
   let root : BTreeNode[TItem] = Internal(
-    children=[Leaf(elem=make_item(1, 2), span=2), Leaf(elem=make_item(2, 2), span=2)],
+    children=[
+      Leaf(elem=make_item(1, 2), span=2),
+      Leaf(elem=make_item(2, 2), span=2),
+    ],
     counts=[2, 2],
     total=4,
   )
@@ -504,7 +519,10 @@ test "left_boundary_subtree returns none when start is on leaf boundary" {
 ///|
 test "right_boundary_subtree returns none when end is on leaf boundary" {
   let root : BTreeNode[TItem] = Internal(
-    children=[Leaf(elem=make_item(1, 2), span=2), Leaf(elem=make_item(2, 2), span=2)],
+    children=[
+      Leaf(elem=make_item(1, 2), span=2),
+      Leaf(elem=make_item(2, 2), span=2),
+    ],
     counts=[2, 2],
     total=4,
   )
@@ -517,7 +535,10 @@ test "right_boundary_subtree returns none when end is on leaf boundary" {
 ///|
 test "left_boundary_subtree rebuilds to lca child height" {
   let left_child : BTreeNode[TItem] = Internal(
-    children=[Leaf(elem=make_item(1, 2), span=2), Leaf(elem=make_item(2, 1), span=1)],
+    children=[
+      Leaf(elem=make_item(1, 2), span=2),
+      Leaf(elem=make_item(2, 1), span=1),
+    ],
     counts=[2, 1],
     total=3,
   )
@@ -547,7 +568,10 @@ test "right_boundary_subtree rebuilds to lca child height" {
     total=2,
   )
   let right_child : BTreeNode[TItem] = Internal(
-    children=[Leaf(elem=make_item(2, 1), span=1), Leaf(elem=make_item(3, 2), span=2)],
+    children=[
+      Leaf(elem=make_item(2, 1), span=1),
+      Leaf(elem=make_item(3, 2), span=2),
+    ],
     counts=[1, 2],
     total=3,
   )
@@ -567,7 +591,10 @@ test "right_boundary_subtree rebuilds to lca child height" {
 ///|
 test "plan_delete_range handles same leaf splice" {
   let root : BTreeNode[TItem] = Internal(
-    children=[Leaf(elem=make_item(1, 5), span=5), Leaf(elem=make_item(2, 2), span=2)],
+    children=[
+      Leaf(elem=make_item(1, 5), span=5),
+      Leaf(elem=make_item(2, 2), span=2),
+    ],
     counts=[5, 2],
     total=7,
   )
@@ -624,12 +651,18 @@ test "plan_delete_range merges partial kept boundaries in same parent" {
 ///|
 test "plan_delete_range merges partial kept boundaries across higher lca" {
   let left_child : BTreeNode[TItem] = Internal(
-    children=[Leaf(elem=make_item(1, 3), span=3), Leaf(elem=make_item(2, 2), span=2)],
+    children=[
+      Leaf(elem=make_item(1, 3), span=3),
+      Leaf(elem=make_item(2, 2), span=2),
+    ],
     counts=[3, 2],
     total=5,
   )
   let right_child : BTreeNode[TItem] = Internal(
-    children=[Leaf(elem=make_item(3, 2), span=2), Leaf(elem=make_item(1, 2), span=2)],
+    children=[
+      Leaf(elem=make_item(3, 2), span=2),
+      Leaf(elem=make_item(1, 2), span=2),
+    ],
     counts=[2, 2],
     total=4,
   )
@@ -687,7 +720,10 @@ test "plan_delete_range absorbs exact leaf-level gap merge" {
 ///|
 test "plan_delete_range absorbs exact higher-level gap merge" {
   let left_child : BTreeNode[TItem] = Internal(
-    children=[Leaf(elem=make_item(5, 1), span=1), Leaf(elem=make_item(1, 2), span=2)],
+    children=[
+      Leaf(elem=make_item(5, 1), span=1),
+      Leaf(elem=make_item(1, 2), span=2),
+    ],
     counts=[1, 2],
     total=3,
   )
@@ -697,7 +733,10 @@ test "plan_delete_range absorbs exact higher-level gap merge" {
     total=2,
   )
   let right_child : BTreeNode[TItem] = Internal(
-    children=[Leaf(elem=make_item(1, 3), span=3), Leaf(elem=make_item(6, 1), span=1)],
+    children=[
+      Leaf(elem=make_item(1, 3), span=3),
+      Leaf(elem=make_item(6, 1), span=1),
+    ],
     counts=[3, 1],
     total=4,
   )
