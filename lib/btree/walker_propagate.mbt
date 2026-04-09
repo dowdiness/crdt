@@ -168,7 +168,7 @@ fn[T] walk_up_ancestors(
 /// Rebuild ancestors after a leaf-level splice. Walks bottom-up from
 /// the leaf's parent, applying the splice then propagating splits upward.
 /// Leaf delta is derived from the splice (new_leaves added - old range removed).
-pub fn[T] propagate(
+fn[T] propagate(
   path : Array[PathFrame[T]],
   splice : Splice[T],
   min_degree : Int,
@@ -195,7 +195,7 @@ pub fn[T] propagate(
 
 ///|
 /// Rebuild ancestors after a subtree-level splice (used by range delete).
-pub fn[T] propagate_node_splice(
+fn[T] propagate_node_splice(
   splice : NodeSplice[T],
   min_degree : Int,
 ) -> PropagateResult[T] {

@@ -196,7 +196,7 @@ pub fn[T] BTree::init_root(self : BTree[T], elem : T, span : Int) -> Unit {
 /// collapsing it maintains minimal height. A root with zero children
 /// means the tree is empty. Iterative: collapses all unary internal
 /// chains (can occur after boundary merge + propagation).
-pub fn[T] normalize_root_after_delete(root : BTreeNode[T]) -> BTreeNode[T]? {
+fn[T] normalize_root_after_delete(root : BTreeNode[T]) -> BTreeNode[T]? {
   let mut current = root
   for ;; {
     match current {

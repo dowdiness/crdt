@@ -4,7 +4,7 @@
 // - propagation is the only phase that rewrites ancestors and handles splits
 
 ///|
-pub(all) struct PathFrame[T] {
+priv struct PathFrame[T] {
   children : Array[BTreeNode[T]]
   counts : Array[Int]
   child_idx : Int
@@ -12,7 +12,7 @@ pub(all) struct PathFrame[T] {
 
 ///|
 /// A cursor pointing at a leaf together with its ancestor path.
-pub(all) struct Cursor[T] {
+priv struct Cursor[T] {
   path : Array[PathFrame[T]]
   leaf_elem : T
   leaf_span : Int
@@ -21,7 +21,7 @@ pub(all) struct Cursor[T] {
 } derive(Debug)
 
 ///|
-pub(all) struct LeafCursor[T] {
+priv struct LeafCursor[T] {
   path : Array[PathFrame[T]]
   elem : T
   span : Int
@@ -41,7 +41,7 @@ priv struct AncestorRange[T] {
 }
 
 ///|
-pub(all) struct NodeSplice[T] {
+priv struct NodeSplice[T] {
   prefix : Array[PathFrame[T]]
   children : Array[BTreeNode[T]]
   counts : Array[Int]
@@ -70,7 +70,7 @@ pub(all) struct Splice[T] {
 } derive(Debug)
 
 ///|
-pub(all) struct PropagateResult[T] {
+priv struct PropagateResult[T] {
   node : BTreeNode[T]
   overflow : BTreeNode[T]?
   leaf_delta : Int
@@ -95,7 +95,7 @@ pub fn[T] LeafContext::right_neighbor(self : LeafContext[T]) -> T? {
 }
 
 ///|
-pub fn[T] LeafContext::from_cursor(cursor : Cursor[T]) -> LeafContext[T] {
+fn[T] LeafContext::from_cursor(cursor : Cursor[T]) -> LeafContext[T] {
   guard cursor.path.length() > 0 else {
     abort("LeafContext::from_cursor: cursor missing parent frame")
   }
@@ -110,7 +110,7 @@ pub fn[T] LeafContext::from_cursor(cursor : Cursor[T]) -> LeafContext[T] {
 }
 
 ///|
-pub fn[T] LeafCursor::from_cursor(cursor : Cursor[T]) -> LeafCursor[T] {
+fn[T] LeafCursor::from_cursor(cursor : Cursor[T]) -> LeafCursor[T] {
   {
     path: cursor.path,
     elem: cursor.leaf_elem,

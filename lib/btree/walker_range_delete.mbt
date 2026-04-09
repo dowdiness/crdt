@@ -396,7 +396,7 @@ fn[T : BTreeElem] promote_empty_child_gap_merge(
 /// Returns a NodeSplice describing the structural changes, or None if
 /// the range is invalid or empty. The caller is responsible for
 /// propagating the splice and handling root lifecycle.
-pub fn[T : BTreeElem] plan_delete_range(
+fn[T : BTreeElem] plan_delete_range(
   root : BTreeNode[T],
   start : Int,
   end_ : Int,
