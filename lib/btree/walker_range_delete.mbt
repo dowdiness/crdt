@@ -108,10 +108,9 @@ fn[T : BTreeElem] left_boundary_subtree(
     Leaf(elem=kept, span=@rle.Spanning::span(kept))
   })
   let suffix = path_suffix_after_target(start.path, lca.prefix.length())
-  let has_siblings = match suffix {
-    [.., frame] => frame.child_idx > 0
-    [] => false
-  }
+  // Check ANY frame for left siblings, not just the deepest — ancestors
+  // may have siblings even when the leaf-parent doesn't.
+  let has_siblings = suffix.iter().any(fn(frame) { frame.child_idx > 0 })
   guard kept_leaf is Some(_) || has_siblings else { return None }
   Some(rebuild_boundary_chain_optional(suffix, kept_leaf, true))
 }
@@ -128,10 +127,10 @@ fn[T : BTreeElem] right_boundary_subtree(
     Leaf(elem=kept, span=@rle.Spanning::span(kept))
   })
   let suffix = path_suffix_after_target(end_.path, lca.prefix.length())
-  let has_siblings = match suffix {
-    [.., frame] => frame.child_idx + 1 < frame.children.length()
-    [] => false
-  }
+  // Check ANY frame for right siblings, not just the deepest.
+  let has_siblings = suffix.iter().any(fn(frame) {
+    frame.child_idx + 1 < frame.children.length()
+  })
   guard kept_leaf is Some(_) || has_siblings else { return None }
   Some(rebuild_boundary_chain_optional(suffix, kept_leaf, false))
 }

@@ -1188,6 +1188,67 @@ test "BTree::delete_range handles underfull propagation" {
   inspect(result.length(), content="10")
 }
 
+// === Boundary subtree ancestor sibling preservation ===
+
+///|
+test "left_boundary_subtree preserves ancestor siblings when leaf has none" {
+  // Tree: root:[L, R, S]  R:[X, Y]  Y:[c, d]
+  // Delete starting at c and extending into S → LCA is root.
+  // Suffix below LCA: [R-frame(child_idx=1), Y-frame(child_idx=0)].
+  // Deepest frame (Y) has child_idx=0 — no local left siblings.
+  // But R-frame has child_idx=1 — X is a left sibling that must be preserved.
+  let x_leaf : BTreeNode[TItem] = Leaf(elem=make_item(1, 1), span=1)
+  let c_leaf : BTreeNode[TItem] = Leaf(elem=make_item(3, 1), span=1)
+  let d_leaf : BTreeNode[TItem] = Leaf(elem=make_item(4, 1), span=1)
+  let y_node : BTreeNode[TItem] = Internal(
+    children=[c_leaf, d_leaf],
+    counts=[1, 1],
+    total=2,
+  )
+  let r_node : BTreeNode[TItem] = Internal(
+    children=[x_leaf, y_node],
+    counts=[1, 2],
+    total=3,
+  )
+  let l_node : BTreeNode[TItem] = Internal(
+    children=[Leaf(elem=make_item(10, 2), span=2)],
+    counts=[2],
+    total=2,
+  )
+  let s_node : BTreeNode[TItem] = Internal(
+    children=[Leaf(elem=make_item(5, 1), span=1)],
+    counts=[1],
+    total=1,
+  )
+  let root : BTreeNode[TItem] = Internal(
+    children=[l_node, r_node, s_node],
+    counts=[2, 3, 1],
+    total=6,
+  )
+  // start=c at pos=3 (L=2, X=1, c=0 within Y), end extends into S
+  let start = descend_leaf_at(root, 3, 2).unwrap()
+  let end_ = descend_leaf_at_end_boundary(root, 6, 2).unwrap()
+  let lca = lowest_common_ancestor_range(start, end_)
+  // left_boundary_subtree must return a subtree containing X
+  let left = left_boundary_subtree(lca, start)
+  inspect(left is Some(_), content="true")
+  // Should preserve X (span=1)
+  inspect(left.unwrap().total(), content="1")
+}
+
+///|
+test "BTree::delete_range preserves ancestor siblings at leaf boundary" {
+  // 10 items, delete range that starts at a leaf which is first child of its parent
+  // but the parent has left siblings in an ancestor
+  let t = build_tree(Array::makei(10, fn(i) { (i + 1, 1) }))
+  let original_span = t.span()
+  inspect(original_span, content="10")
+  // Delete [8, 10) — last 2 items
+  t.delete_range(8, 10)
+  inspect(t.span(), content="8")
+  inspect(t.size(), content="8")
+}
+
 // === Lazy BTree::iter ===
 
 ///|
