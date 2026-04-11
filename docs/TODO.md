@@ -119,9 +119,7 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
 - [ ] **Markdown Token payload removal**
   Why: `HeadingMarker(Int)`, `CodeFenceOpen(Int, String)`, `Text(String)`, `CodeText(String)` still carry payloads. Some are semantic (heading level, info string) not just raw text — needs design thought on how to derive from source.
   Exit: markdown Token is payload-free where possible, semantic info extracted at point-of-use.
-- [ ] **`TokenBuffer::get_view` helper**
-  Why: the `get_text` closure for `ReuseCursor::new` is duplicated across 4 production callsites (factories.mbt, lambda/cst_parser.mbt, json/cst_parser.mbt, markdown/cst_parser.mbt). Worth extracting now that markdown is a 4th consumer.
-  Exit: `TokenBuffer::get_view(source, i) -> StringView` replaces inline closures.
+- [x] **`TokenBuffer::get_view` helper** — ✅ Done. `TokenBuffer::get_view(self, i) -> StringView` exists in `loom/loom/src/core/token_buffer.mbt`. Production path (`factories.mbt`) already uses `buffer.get_view(i)`. Lambda/JSON `make_reuse_cursor` are test helpers operating on raw arrays, not production duplication.
 - [x] **Token::to_raw ↔ SyntaxKind::to_raw round-trip test** — ✅ Done. `token_rawkind_test.mbt` in both lambda and json verifies all Token/SyntaxKind pairs match.
 - [ ] **`SyntaxNode::find[K : ToRawKind]` generic method**
   Why: every projection calls `node.find_token(SomeKind.to_raw())` — verbose and error-prone. A generic method on SyntaxNode accepts any `ToRawKind` type directly: `node.find(HeadingMarkerToken)`.
@@ -187,11 +185,11 @@ Tracked by:
 - [x] **Memo Eq backdating cost** — ✅ Done. `BackdateEq` trait added to `loom/incr`; `Memo::new_memo` (uses `BackdateEq`, O(1) revision stamp) and `Memo::new_no_backdate` constructors added. `editor/projection_memo.mbt`: `proj_memo` uses `new_memo` with `VersionedFlatProj : BackdateEq`; `registry_memo` and `source_map_memo` use `new_no_backdate`. Per-benchmark: ~0.5–1ms savings at 1000 defs — real but modest.
 - [ ] Implement lazy loading for 100k+ operation documents (load causal graph skeleton, hydrate on demand)
 - [ ] Add B-tree indexing for FugueTree (O(n) → O(log n) random-access character lookup)
-- [ ] **Generic tree libraries** — Extract reusable tree libraries from existing code.
+- [x] **Generic tree libraries** — Extract reusable tree libraries from existing code.
   Why: ProjNode is a rose tree, OrderTree is a B-tree. Both are generic in `T` without codegen (McBride 2001). Supersedes the `zipper-gen` codegen plan.
   Libraries:
   - `rose-zipper[T]` — ✅ Done (`lib/zipper/`, PR #130). `RoseNode[T]`, `RoseCtx[T]`, `RoseZipper[T]`. Immutable/persistent — zipper is the primary API (navigation, focus, modify).
-  - `btree[T]` — Generic B-tree library. Node types, counted navigation, insert/delete with rebalancing, range operations. Cursor/zipper is an internal implementation detail (mutable, ephemeral). Consumer: `OrderTree[T]` (CRDT positioning).
+  - `btree[T]` — ✅ Done (`lib/btree/`, PRs #138–#141). Generic B-tree library. Node types, counted navigation, insert/delete with rebalancing, range operations. Cursor/zipper is an internal implementation detail (mutable, ephemeral). Consumer: `OrderTree[T]` (CRDT positioning).
   ProjNode navigation uses direct path arithmetic in `core/proj_zipper.mbt` (`navigate_proj`). The old `lang/lambda/zipper/` (Term-level Huet zipper) was removed in PR #133.
   Exit: `lib/btree` extracted as standalone package, `order-tree/src/` refactored to use it.
 
@@ -488,7 +486,7 @@ Post-consolidation app inventory:
 
 ### Medium effort (no new features needed)
 
-- [ ] **Record a GIF of the current editor** — pretty-printer + syntax highlighting + tree update is already visual. Embed at top of README. Imperfect GIF now is better than perfect GIF later.
+- [x] **Record a GIF of the current editor** — pretty-printer + syntax highlighting + tree update is already visual. Embed at top of README. Imperfect GIF now is better than perfect GIF later.
   Exit: README has a GIF that shows the editor experience in under 5 seconds.
 - [ ] **Promote product vision visibility** — add `VISION.md` symlink at repo root pointing to `docs/architecture/product-vision.md`, or expand README "Bigger Picture" section with the cold pitch text.
   Exit: a visitor who reads only the README encounters the product vision, not just the framework description.
@@ -497,7 +495,7 @@ Post-consolidation app inventory:
 
 ### Requires new features
 
-- [ ] **Live inline evaluation display** — makes the GIF compelling ("→ 10" appearing as you type). See §13 concrete projection candidates.
+- [x] **Live inline evaluation display** — makes the GIF compelling ("→ 10" appearing as you type). See §13 concrete projection candidates.
   Exit: demo shows evaluation results inline while typing.
 - [x] **Scope-colored compact tree view (Phase 1)** — compact inline layout, full binder coloring, bold defs / regular usages, selection-driven binder↔usage highlighting with dimming.
   Plan: `docs/plans/2026-04-04-scope-colored-tree-view-design.md`
@@ -505,7 +503,7 @@ Post-consolidation app inventory:
 - [ ] **Scope-colored tree view — smart tooltip (future)** — small tooltip popup on selection showing scope info (binding site, usage count). Smart positioning to avoid occluding relevant text.
   Depends on: Phase 1 compact view.
   Exit: tooltip appears on selection, never hides related nodes.
-- [ ] **Deploy updated web demo** — the current live demo URL points to rabbita, not the new web editor with pretty-printer.
+- [x] **Deploy updated web demo** — ✅ Done. README links to `canopy-ideal.pages.dev` (full-featured editor). `canopy-lambda-editor.pages.dev` also live for the canonical `web/` demo.
   Exit: live demo link in README shows the current canonical `web/` editor.
 
 ---
