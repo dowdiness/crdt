@@ -14,7 +14,6 @@
 // 6. Run Datalog + Bridge loop until fixpoint
 // 7. Merge: Tier 1 Value/Stuck stay; Suppressed replaced by Tier 2 if resolved
 
-
 ///|
 /// Internal state tracking per-definition evaluation for escalation.
 priv struct DefState {
