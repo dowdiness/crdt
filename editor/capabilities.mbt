@@ -13,6 +13,9 @@ pub struct LanguageCapabilities[T] {
   pretty_post_process : ((@pretty.Layout[@pretty.SyntaxCategory]) -> @pretty.Layout[
     @pretty.SyntaxCategory,
   ])?
+  /// Phantom field to tie T to the struct. Prevents mixing capabilities
+  /// from different languages (e.g. assigning Lambda caps to a JSON editor).
+  phantom : T?
 }
 
 ///|
@@ -22,11 +25,11 @@ pub fn[T] LanguageCapabilities::new(
     @pretty.SyntaxCategory,
   ])? = None,
 ) -> LanguageCapabilities[T] {
-  { get_annotations, pretty_post_process }
+  { get_annotations, pretty_post_process, phantom: None }
 }
 
 ///|
 /// Default capabilities with no language-specific behavior.
 pub fn[T] LanguageCapabilities::default() -> LanguageCapabilities[T] {
-  { get_annotations: None, pretty_post_process: None }
+  { get_annotations: None, pretty_post_process: None, phantom: None }
 }

@@ -114,16 +114,6 @@ fn[T] SyncEditor::force_parser_reset(self : SyncEditor[T]) -> @seam.SyntaxNode? 
 }
 
 ///|
-fn[T] SyncEditor::current_syntax_tree(
-  self : SyncEditor[T],
-) -> @seam.SyntaxNode? {
-  match self.syntax_tree.get() {
-    Some(tree) => Some(tree)
-    None => self.force_parser_reset()
-  }
-}
-
-///|
 pub fn[T] SyncEditor::mark_dirty(self : SyncEditor[T]) -> Unit {
   let _ = self.force_parser_reset()
 }

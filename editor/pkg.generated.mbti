@@ -224,6 +224,7 @@ pub fn JsWebSocket::send_bytes(Self, Bytes) -> Unit
 pub struct LanguageCapabilities[T] {
   get_annotations : (() -> Map[@dowdiness/canopy/core.NodeId, Array[@protocol.ViewAnnotation]])?
   pretty_post_process : ((@pretty.Layout[@pretty.SyntaxCategory]) -> @pretty.Layout[@pretty.SyntaxCategory])?
+  phantom : T?
 }
 pub fn[T] LanguageCapabilities::default() -> Self[T]
 pub fn[T] LanguageCapabilities::new(get_annotations? : (() -> Map[@dowdiness/canopy/core.NodeId, Array[@protocol.ViewAnnotation]])?, pretty_post_process? : ((@pretty.Layout[@pretty.SyntaxCategory]) -> @pretty.Layout[@pretty.SyntaxCategory])?) -> Self[T]
