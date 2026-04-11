@@ -11,7 +11,13 @@ fn require_node_id(
   key : String,
 ) -> @core.NodeId raise @editor.TreeEditError {
   match m.get(key) {
-    Some(Json::Number(n, ..)) => @core.NodeId::from_int(n.to_int())
+    Some(Json::Number(n, ..)) => {
+      let i = n.to_int()
+      guard i.to_double() == n else {
+        raise @editor.TreeEditError::FieldMustBeNumber(field=key)
+      }
+      @core.NodeId::from_int(i)
+    }
     None => raise @editor.TreeEditError::MissingField(field=key)
     Some(_) => raise @editor.TreeEditError::FieldMustBeNumber(field=key)
   }
@@ -101,7 +107,15 @@ pub fn parse_tree_edit_op(
     "Unwrap" => {
       let node_id = require_node_id(m, "node_id")
       let keep_child_index = match m.get("keep_child_index") {
-        Some(Json::Number(n, ..)) => n.to_int()
+        Some(Json::Number(n, ..)) => {
+          let i = n.to_int()
+          guard i.to_double() == n else {
+            raise @editor.TreeEditError::FieldMustBeNumber(
+              field="keep_child_index",
+            )
+          }
+          i
+        }
         None =>
           raise @editor.TreeEditError::MissingField(field="keep_child_index")
         Some(_) =>

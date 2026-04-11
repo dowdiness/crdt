@@ -63,7 +63,7 @@ test "unchanged tree produces no tree patches" {
 }
 
 ///|
-test "single character edit produces UpdateNode for changed leaf" {
+test "single character edit produces UpdateNode or ReplaceNode for changed leaf" {
   let editor = @lambda.new_lambda_editor("test").0
   editor.set_text("1")
   let state = @editor.ViewUpdateState::new()

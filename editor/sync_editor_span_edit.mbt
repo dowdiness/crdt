@@ -16,9 +16,9 @@ pub fn[T] SyncEditor::apply_span_edits(
     return
   }
   let old_cursor = self.get_cursor()
-  // Apply in reverse document order to avoid position shifts.
-  edits.sort_by(fn(a, b) { b.start.compare(a.start) })
-  for edit in edits {
+  let sorted = edits.copy()
+  sorted.sort_by(fn(a, b) { b.start.compare(a.start) })
+  for edit in sorted {
     self.apply_text_edit_internal(
       edit.start,
       edit.delete_len,

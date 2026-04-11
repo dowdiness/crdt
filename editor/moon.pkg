@@ -31,7 +31,7 @@ import {
   "dowdiness/canopy/lang/lambda" @lambda,
 } for "wbtest"
 
-warnings = "-29"
+warnings = "-7-29"
 
 options(
   is_main: false,
