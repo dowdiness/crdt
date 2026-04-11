@@ -170,6 +170,40 @@ fn[T] fix_left_border(
 ///
 /// Top-down: at each level, find any underfull child, stock it via
 /// merge-or-bulk-steal, then recurse into the result.
+/// Scan children for underfull nodes and fix via merge-or-bulk-steal.
+fn[T] repair_underfull_children(
+  children : Array[BTreeNode[T]],
+  counts : Array[Int],
+  min_degree : Int,
+) -> Unit {
+  let mut i = 0
+  while i < children.length() {
+    if children[i].is_underfull(min_degree) && children.length() > 1 {
+      let sibling_idx = if i > 0 { i - 1 } else { i + 1 }
+      children[sibling_idx] = children[sibling_idx].shallow_copy()
+      children[i] = children[i].shallow_copy()
+      let r = children[i].child_count()
+      let s = children[sibling_idx].child_count()
+      if r + s <= 2 * min_degree {
+        let merge_idx = if i > 0 { i - 1 } else { 0 }
+        merge_children(children, counts, merge_idx)
+        i = merge_idx
+      } else {
+        let steal_count = min_degree + 1 - r
+        if i > 0 {
+          bulk_steal_from_left(children, counts, i, steal_count)
+        } else {
+          bulk_steal_from_right(children, counts, i, steal_count)
+        }
+        i += 1
+      }
+    } else {
+      i += 1
+    }
+  }
+}
+
+///|
 fn[T] fix_merged_chain(
   node : BTreeNode[T],
   min_degree : Int,
@@ -180,40 +214,16 @@ fn[T] fix_merged_chain(
       guard children.length() > 1 else { return node }
       let children = children.copy()
       let counts = counts.copy()
-      // Scan all children for underfull nodes
-      let mut i = 0
-      while i < children.length() {
-        if children[i].is_underfull(min_degree) && children.length() > 1 {
-          // Stock this child from an adjacent sibling
-          let sibling_idx = if i > 0 { i - 1 } else { i + 1 }
-          children[sibling_idx] = children[sibling_idx].shallow_copy()
-          children[i] = children[i].shallow_copy()
-          let r = children[i].child_count()
-          let s = children[sibling_idx].child_count()
-          if r + s <= 2 * min_degree {
-            let merge_idx = if i > 0 { i - 1 } else { 0 }
-            merge_children(children, counts, merge_idx)
-            // After merge, re-check from the merge position
-            i = merge_idx
-          } else {
-            let steal_count = min_degree + 1 - r
-            if i > 0 {
-              bulk_steal_from_left(children, counts, i, steal_count)
-            } else {
-              bulk_steal_from_right(children, counts, i, steal_count)
-            }
-            i += 1
-          }
-        } else {
-          i += 1
-        }
-      }
-      // Recurse into all children to fix deeper levels
+      repair_underfull_children(children, counts, min_degree)
+      // Recurse into all children to fix deeper levels.
       for j in 0..<children.length() {
         let fixed = fix_merged_chain(children[j], min_degree)
         children[j] = fixed
         counts[j] = fixed.total()
       }
+      // Post-recursion repair: a child merge at depth D+1 can leave
+      // a child at depth D with fewer than min_degree children.
+      repair_underfull_children(children, counts, min_degree)
       Internal(children~, counts~, total=counts.sum())
     }
   }
