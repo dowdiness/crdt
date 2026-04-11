@@ -206,19 +206,13 @@ pub fn build_eval_memo(
   parser : @loom.ImperativeParser[@ast.Term],
 ) -> @incr.Memo[Array[EvalResult]] {
   let cache : Ref[Array[CachedDef]] = Ref::new([])
-  let prev_results : Ref[Array[EvalResult]] = Ref::new([])
-  @incr.Memo::new_no_backdate(
+  @incr.Memo::new(
     rt,
     fn() -> Array[EvalResult] {
       let _ = syntax_tree.get()
       let ast = parser.get_tree().unwrap_or(@ast.Term::Unit)
       let (results, new_cache) = eval_term_cached(ast, cache.val)
-      // If cache unchanged (same reference), reuse previous results array
-      if physical_equal(new_cache, cache.val) && prev_results.val.length() > 0 {
-        return prev_results.val
-      }
       cache.val = new_cache
-      prev_results.val = results
       results
     },
     label="eval_memo",
