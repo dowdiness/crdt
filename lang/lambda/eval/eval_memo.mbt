@@ -196,10 +196,13 @@ fn fill_suppressed(
 ///|
 /// Build a reactive eval memo with incremental caching.
 ///
-/// Caches per-definition results. When only definition N changes,
-/// reuses cached results for definitions 0..N-1 and re-evaluates
-/// from N onward. This satisfies the "re-editing one binding only
-/// re-evaluates dependents" requirement.
+/// Two layers of incrementality:
+/// - **Inner (CachedDef):** prefix-reuse cache. When only definition N changes,
+///   reuses results for definitions 0..N-1 and re-evaluates from N onward.
+/// - **Outer (Memo::new backdating):** when the recomputed Array[EvalResult]
+///   is structurally equal to the previous one, the memo's changed_at timestamp
+///   is preserved, preventing downstream memos (escalation, projection) from
+///   recomputing unnecessarily.
 pub fn build_eval_memo(
   rt : @incr.Runtime,
   syntax_tree : @incr.Signal[@seam.SyntaxNode?],
