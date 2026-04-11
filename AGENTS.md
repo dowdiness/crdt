@@ -32,6 +32,12 @@ cd examples/web && npm run dev      # Dev server (localhost:5173)
 moon build --target js              # Build for web
 ```
 
+### Formal Verification
+```bash
+cd lib/semantic/proof && moon prove  # Requires Why3 + z3 on PATH
+```
+Proof packages are standalone modules with `"proof-enabled": true`. Run `moon prove` from within the proof package directory. Requires Why3 1.7.2 and z3 4.13.x on PATH (`eval $(opam env)`). See [docs/development/formal-verification.md](docs/development/formal-verification.md) for setup and decision guide.
+
 ### Benchmarks
 ```bash
 moon bench --release                # Always use --release
@@ -86,7 +92,7 @@ The base rule (microbenchmark before optimizing) applies. Additionally: stale pr
 
 ### Quality & Edit Workflow
 
-Hooks enforce `moon check` after every edit and `moon fmt && moon info` before commits. After edits, also run `moon test` and rebuild JS if web is affected. After `moon info`, check `git diff *.mbti` for unintended trait bound changes — widening a bound is an API regression even if all current consumers satisfy it. See [docs/development/task-tracking.md](docs/development/task-tracking.md) for tracking workflow.
+Hooks enforce `moon check` after every edit and `moon fmt && moon info` before commits. After edits, also run `moon test` and rebuild JS if web is affected. For packages with `"proof-enabled": true`, also run `moon prove` from the proof package directory. After `moon info`, check `git diff *.mbti` for unintended trait bound changes — widening a bound is an API regression even if all current consumers satisfy it. See [docs/development/task-tracking.md](docs/development/task-tracking.md) for tracking workflow.
 
 ## Architecture Conventions
 
