@@ -97,7 +97,10 @@ Lambda-specific structural edit handlers.
 - TreeEditOp enum (Select, Delete, WrapInLambda, etc.)
 - 12 text_edit handler files (binding, commit, delete, drop, refactor, rename, structural, wrap)
 - scope analysis, free variables, actions
-- DropPosition, FocusHint enums (defined here, re-exported by projection/)
+- DropPosition, FocusHint enums (defined in core/, re-exported here via `pub using`)
+
+### `lang/lambda/companion/`
+Lambda editor bridge: new_lambda_editor factory, tree_edit_json bridge, AST helpers.
 
 ### `lang/lambda/flat/`
 VersionedFlatProj — incr memo wrapper for incremental FlatProj updates.
@@ -106,7 +109,19 @@ VersionedFlatProj — incr memo wrapper for incremental FlatProj updates.
 JSON projection builders: syntax_to_proj_node, populate_token_spans, memo builder.
 
 ### `lang/json/edits/`
-JSON structural edit handlers, bridge to SyncEditor, new_json_editor constructor, benchmarks.
+JSON structural edit definitions: JsonEditOp enum and compute_json_edit (pure computation, no editor dependency).
+
+### `lang/json/companion/`
+JSON editor bridge: new_json_editor factory, apply_json_edit bridge to SyncEditor, benchmarks.
+
+### `lang/markdown/proj/`
+Markdown projection builders: syntax_to_proj_node, populate_token_spans.
+
+### `lang/markdown/edits/`
+Markdown structural edit definitions: MarkdownEditOp enum and compute_markdown_edit (pure computation).
+
+### `lang/markdown/companion/`
+Markdown editor bridge: new_markdown_editor factory, apply_markdown_edit bridge to SyncEditor.
 
 ### `cmd/main/`
 Command-line entry points and REPL.
@@ -140,11 +155,15 @@ event-graph-walker (depends on rle + quickcheck)
 crdt (depends on event-graph-walker + dowdiness/lambda + dowdiness/json + dowdiness/loom + dowdiness/text_change via path deps)
   ├── framework/core (depends on loom/core — generic types + traits + SpanEdit + FocusHint)
   ├── lang/lambda/proj (depends on framework/core + lambda + seam)
-  ├── lang/lambda/edits (depends on framework/core + lang/lambda/proj + lambda)
+  ├── lang/lambda/edits (depends on core + lang/lambda/proj + lambda)
+  ├── lang/lambda/companion (depends on core + editor + lang/lambda/edits + lang/lambda/proj + lang/lambda/flat + lang/lambda/eval + incr + lambda + loom + seam)
   ├── lang/lambda/flat (depends on projection + incr)
   ├── lang/json/proj (depends on framework/core + json + loom + seam + incr)
-  ├── lang/json/edits (depends on framework/core + lang/json/proj + json + editor)
-  ├── projection (re-export facade: depends on framework/core + lang/lambda/proj + lang/lambda/edits)
+  ├── lang/json/edits (depends on core + lang/json/proj + json)
+  ├── lang/json/companion (depends on editor + lang/json/edits + lang/json/proj + json + loom)
+  ├── lang/markdown/edits (depends on core + markdown)
+  ├── lang/markdown/companion (depends on editor + lang/markdown/edits + lang/markdown/proj + markdown + loom)
+  ├── projection (re-export facade: depends on core + lang/lambda/proj + lang/lambda/edits)
   └── editor (depends on projection + framework/core + event-graph-walker + loom + incr)
 ```
 
