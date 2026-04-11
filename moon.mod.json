@@ -40,6 +40,9 @@
     },
     "dowdiness/egglog": {
       "path": "./loom/egglog"
+    },
+    "dowdiness/egraph": {
+      "path": "./loom/egraph"
     }
   },
   "readme": "README.mbt.md",
