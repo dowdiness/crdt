@@ -214,14 +214,16 @@ fn[T] propagate_node_splice(
   // internals pass the is_underfull check as no-ops.
   let mut pos = insert_start
   for _ in 0..<insert_count {
-    if pos < splice.children.length() &&
+    // Loop: one borrow isn't enough for min_degree > 2 when boundary
+    // root is heavily underfull. Keep repairing until valid or merged.
+    while pos < splice.children.length() &&
       splice.children[pos].is_underfull(min_degree) &&
       splice.children.length() > 1 {
       let len_before = splice.children.length()
       ensure_min_after_splice(splice.children, splice.counts, pos, min_degree)
       if splice.children.length() < len_before {
-        // Merge removed a sibling — check same position next iteration
-        continue
+        // Merge removed a sibling — break inner loop, re-check in outer
+        break
       }
     }
     pos += 1

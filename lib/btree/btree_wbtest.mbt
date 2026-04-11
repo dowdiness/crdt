@@ -1537,6 +1537,38 @@ fn prop_delete_range_iter_matches_view(case_ : DeleteRangeCase) -> Bool {
 }
 
 ///|
+test "property: delete_range with min_degree=3 preserves invariants" {
+  // Exercises multi-borrow chain repair: with min_degree=3, a boundary
+  // child with 1 child needs 2 borrows (not 1) to reach min_degree.
+  @qc.quick_check_fn(fn(case_ : DeleteRangeCase) -> Bool {
+    let t : BTree[TItem] = BTree::new(min_degree=3)
+    if case_.items.is_empty() {
+      return true
+    }
+    let (id, span) = case_.items[0]
+    t.init_root(make_item(id, span), span)
+    let mut pos = span
+    for i in 1..<case_.items.length() {
+      let (id, span) = case_.items[i]
+      let elem = make_item(id, span)
+      t.mutate_for_insert(pos, fn(ctx) {
+        {
+          start_idx: ctx.child_idx + 1,
+          end_idx: ctx.child_idx + 1,
+          new_leaves: [(elem, span)],
+        }
+      })
+      pos = pos + span
+    }
+    if !btree_invariants_hold(t) {
+      return false
+    }
+    t.delete_range(case_.start, case_.end_)
+    btree_invariants_hold(t)
+  })
+}
+
+///|
 test "delete_range with underfull boundary chain repair" {
   // Regression: this case produces underfull boundary subtrees,
   // repaired by chain repair + insertion-site repair.

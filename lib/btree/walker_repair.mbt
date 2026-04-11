@@ -76,7 +76,12 @@ fn[T] repair_at_boundary(
       )
       children[boundary_idx] = repaired_child
       counts[boundary_idx] = repaired_child.total()
-      if repaired_child.is_underfull(min_degree) && children.length() > 1 {
+      // Loop: ensure_min_after_splice borrows ONE child per call.
+      // For min_degree > 2, a heavily underfull boundary child needs
+      // multiple borrows (or eventually a merge) to reach min_degree.
+      while boundary_idx < children.length() &&
+        children[boundary_idx].is_underfull(min_degree) &&
+        children.length() > 1 {
         ensure_min_after_splice(children, counts, boundary_idx, min_degree)
       }
       Internal(children~, counts~, total=counts.sum())
