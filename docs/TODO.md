@@ -535,7 +535,8 @@ Post-consolidation app inventory:
   Plan: `docs/archive/2026-04-09-btree-range-delete-extraction.md`
 - [x] **Phase 2d: API narrowing** — ✅ Done (PR #141 + order-tree#7). `BTree::delete_range`, lazy cursor-based `iter`, 15 pub fns + 5 types made private. Fixed underfull propagation, boundary merge, boundary subtree sibling preservation. Fallback rebuild for underfull boundary subtrees. 3 property-based tests.
   Plan: `docs/plans/2026-04-09-btree-api-narrowing.md`
-- [ ] **Phase 2e: Splice promotion** — `rebuild_boundary_chain_optional` can produce underfull boundary subtrees, currently handled by O(n) fallback rebuild. Proper fix: promote the NodeSplice upward until boundary subtrees have enough material for valid B-tree nodes. Also: `from_sorted` bulk constructor (deferred from Phase 2d).
+- [x] **Phase 2e: Splice promotion** — ✅ Done (PR #144). O(n) fallback replaced with O(log n) chain repair (`repair_at_boundary` with `BoundaryKind` enum). Fixes: array aliasing (shallow-copy), unary root (insertion-site repair), min_degree > 2 (while loop). `from_sorted` bulk constructor added. Property tests at min_degree 2/3/5. delete_range benchmarks added.
+  Spec: `docs/archive/2026-04-11-btree-splice-promotion-design.md`
 - [x] **event-graph-walker integration** — ✅ Done (egw PR #23). `impl @btree.BTreeElem for VisibleRun` in `internal/document/visible_run.mbt`.
 
 ---
