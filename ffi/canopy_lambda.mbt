@@ -31,6 +31,19 @@ pub fn get_sync_editor() -> @editor.SyncEditor[@ast.Term]? {
 }
 
 ///|
+/// Get the companion for the most recently created lambda editor.
+pub fn get_lambda_companion() -> @lambda.LambdaCompanion? {
+  match last_created_handle.val {
+    Some(handle) =>
+      match lambda_handles.get(handle) {
+        Some(h) => Some(h.companion)
+        None => None
+      }
+    None => None
+  }
+}
+
+///|
 /// Create a new SyncEditor instance.
 /// Returns a unique handle for this editor.
 pub fn create_editor(agent_id : String) -> Int {
