@@ -182,9 +182,19 @@ test "insert_block_after: ZWSP present in raw text, absent in export" {
   inspect(result is Ok(_), content="true")
   // Raw text has ZWSP (parser needs it)
   inspect(ed.get_text().contains("\u200B"), content="true")
-  // Export strips ZWSP
-  let exported = ed.get_text().replace_all(old="\u200B", new="")
+  // Export strips placeholder ZWSP (the "\n\u200B\n" pattern)
+  let exported = ed.get_text().replace_all(old="\n\u200B\n", new="\n\n")
   inspect(exported.contains("\u200B"), content="false")
+}
+
+///|
+test "export preserves legitimate ZWSP in user content" {
+  let ed = new_markdown_editor("test")
+  // Simulate user content with ZWSP inside text (e.g., pasted from another tool)
+  ed.set_text("Hello\u200Bworld\n")
+  let exported = ed.get_text().replace_all(old="\n\u200B\n", new="\n\n")
+  // Legitimate ZWSP inside text is preserved
+  inspect(exported.contains("\u200B"), content="true")
 }
 
 ///|
