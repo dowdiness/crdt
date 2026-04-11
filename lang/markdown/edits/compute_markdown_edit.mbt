@@ -189,8 +189,13 @@ fn compute_insert_block_after(
   let insert_pos = range.end
   // Insert "\n\u200B\n" to create a visible empty paragraph.
   // The zero-width space gives the parser a real token to produce a ProjNode,
-  // so BlockInput can render and focus the new block. CommitEdit strips it
-  // on the first keystroke.
+  // so BlockInput can render and focus the new block. ZWSP is stripped at:
+  //   - markdown_export_text() (FFI export boundary — raw mode)
+  //   - block-input.ts (TS display/edit/commit — 3 sites)
+  //   - compute_merge_with_previous (on block merge)
+  // Known minor gap: MarkdownPreview renders node.text as-is (ZWSP invisible
+  // in HTML, but could leak on copy-paste from preview).
+  // Long-term fix: migrate to Container per-block text (empty block = empty text).
   Ok(
     Some(
       (
