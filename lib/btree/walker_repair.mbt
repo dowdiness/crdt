@@ -55,7 +55,7 @@ fn[T] repair_at_boundary(
         Right => 0
         Explicit(indices) => {
           let idx = indices[depth]
-          guard idx < children.length() else {
+          guard idx >= 0 && idx < children.length() else {
             abort(
               "repair_at_boundary: boundary index out of range (\{idx} >= \{children.length()})",
             )
