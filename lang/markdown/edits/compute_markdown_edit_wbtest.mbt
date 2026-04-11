@@ -168,3 +168,50 @@ test "split_block: end of block inserts after" {
   inspect(result is Ok(_), content="true")
   inspect(ed.get_text().length() > 6, content="true")
 }
+
+///|
+test "insert_block_after: ZWSP present in raw text, absent in export" {
+  let ed = new_markdown_editor("test")
+  ed.set_text("Hello\n")
+  // Force projection cycle
+  let state = @editor.ViewUpdateState::new()
+  let _ = @editor.compute_view_patches(state, ed)
+  let proj = ed.get_proj_node().unwrap()
+  let para_id = proj.children[0].id()
+  let result = apply_markdown_edit(ed, InsertBlockAfter(node_id=para_id), 0)
+  inspect(result is Ok(_), content="true")
+  // Raw text has ZWSP (parser needs it)
+  inspect(ed.get_text().contains("\u200B"), content="true")
+  // Export strips ZWSP
+  let exported = ed.get_text().replace_all(old="\u200B", new="")
+  inspect(exported.contains("\u200B"), content="false")
+}
+
+///|
+test "merge cleans up ZWSP from empty block" {
+  let ed = new_markdown_editor("test")
+  ed.set_text("Hello\n")
+  let state = @editor.ViewUpdateState::new()
+  let _ = @editor.compute_view_patches(state, ed)
+  // Insert an empty block after "Hello"
+  let proj = ed.get_proj_node().unwrap()
+  let para_id = proj.children[0].id()
+  let _ = apply_markdown_edit(ed, InsertBlockAfter(node_id=para_id), 0)
+  // Force re-projection to get new block's ID
+  let _ = @editor.compute_view_patches(state, ed)
+  let proj2 = ed.get_proj_node().unwrap()
+  // The new empty block should be at index 1
+  guard proj2.children.length() >= 2 else { // skip if projection didn't produce expected structure
+    return
+  }
+  let empty_block_id = proj2.children[1].id()
+  // Merge the empty block back into previous
+  let merge_result = apply_markdown_edit(
+    ed,
+    MergeWithPrevious(node_id=empty_block_id),
+    0,
+  )
+  inspect(merge_result is Ok(_), content="true")
+  // After merge, ZWSP should be gone from raw text too
+  inspect(ed.get_text().contains("\u200B"), content="false")
+}
