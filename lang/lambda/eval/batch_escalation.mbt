@@ -210,14 +210,12 @@ fn run_batch_egglog(
           }
         }
         None =>
-          match db.lookup("EvalError", [env_id, expr_id]) {
-            Some(@egglog.StrVal(msg)) => {
-              results[candidate_idx] = Stuck(
-                "\u{2039}type error: " + msg + "\u{203a}",
-              )
+          match find_any_eval_error(db) {
+            Some(msg) => {
+              results[candidate_idx] = Stuck("\u{2039}" + msg + "\u{203a}")
               progress = true
             }
-            _ => next_unresolved.push(candidate_idx)
+            None => next_unresolved.push(candidate_idx)
           }
       }
     }
@@ -227,6 +225,20 @@ fn run_batch_egglog(
     }
   }
   results
+}
+
+///|
+/// Safe because each candidate gets a fresh database — any EvalError entry
+/// came from evaluating this specific term.
+fn find_any_eval_error(db : @egglog.Database) -> String? {
+  for row in db.scan("EvalError") {
+    let (_, result) = row
+    match result {
+      @egglog.StrVal(msg) => return Some(msg)
+      _ => ()
+    }
+  }
+  None
 }
 
 ///|
