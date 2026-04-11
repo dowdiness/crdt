@@ -33,11 +33,12 @@ pub fn markdown_get_text(handle : Int) -> String {
 }
 
 ///|
-/// Return markdown text with ZWSP placeholders stripped.
-/// Use for export, clipboard, raw-mode display — not for internal position math.
+/// Return markdown text with ZWSP placeholder lines stripped.
+/// Only strips the "\n\u200B\n" pattern (empty-block sentinel from InsertBlockAfter),
+/// preserving legitimate ZWSP in user content (code blocks, pasted text).
 pub fn markdown_export_text(handle : Int) -> String {
   match markdown_editors.get(handle) {
-    Some(ed) => ed.get_text().replace_all(old="\u200B", new="")
+    Some(ed) => ed.get_text().replace_all(old="\n\u200B\n", new="\n\n")
     None => ""
   }
 }
