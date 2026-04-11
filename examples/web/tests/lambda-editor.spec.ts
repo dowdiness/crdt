@@ -63,7 +63,7 @@ test.describe('Lambda Editor — Foundation', () => {
   test('valid input shows no errors', async ({ page }) => {
     await loadExample(page, 'Basics');
     await expect(page.locator('#error-output')).toContainText('No errors');
-    expect(await page.locator('#error-output .error-item').count()).toBe(0);
+    expect(await page.locator('#error-output .diag-item').count()).toBe(0);
   });
 
 });

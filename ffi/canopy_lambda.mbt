@@ -112,6 +112,36 @@ pub fn get_errors_json(handle : Int) -> String {
 }
 
 ///|
+/// Get all diagnostics (parse errors + eval warnings) as JSON array.
+/// Each entry: {"level": "error"|"warning", "message": "..."}
+pub fn get_diagnostics_json(handle : Int) -> String {
+  match lambda_handles.get(handle) {
+    Some(h) => {
+      let diags : Array[Json] = []
+      for msg in h.editor.get_errors() {
+        let m : Map[String, Json] = {}
+        m["level"] = "error".to_json()
+        m["message"] = msg.to_json()
+        diags.push(Json::object(m))
+      }
+      for result in h.companion.get_eval_results() {
+        match result {
+          @lambda.EvalResult::Stuck(s) => {
+            let m : Map[String, Json] = {}
+            m["level"] = "warning".to_json()
+            m["message"] = s.to_json()
+            diags.push(Json::object(m))
+          }
+          _ => continue
+        }
+      }
+      Json::array(diags).stringify()
+    }
+    None => "[]"
+  }
+}
+
+///|
 /// Export all operations as a SyncMessage JSON string.
 pub fn export_all_json(handle : Int) -> String {
   match lambda_handles.get(handle) {

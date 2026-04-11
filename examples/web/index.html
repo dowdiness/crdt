@@ -157,6 +157,22 @@
       margin-bottom: 5px;
     }
 
+    .diag-item {
+      padding: 5px 0;
+      padding-left: 10px;
+      margin-bottom: 5px;
+    }
+
+    .diag-error {
+      color: #f48771;
+      border-left: 3px solid #ff0000;
+    }
+
+    .diag-warning {
+      color: #cca700;
+      border-left: 3px solid #cca700;
+    }
+
     .status {
       background: #007acc22;
       border-left: 3px solid #007acc;
@@ -583,13 +599,13 @@ IfThenElse   ::= 'if' Expression 'then' Expression 'else' Expression</pre>
       </div>
 
       <div class="panel">
-        <h2>AST Structure & Parse Errors</h2>
+        <h2>AST Structure & Diagnostics</h2>
         <div style="margin-bottom: 15px;">
           <h3 style="color: #9cdcfe; font-size: 13px; margin-bottom: 8px;">Structure</h3>
           <pre id="ast-output" style="background: #1e1e1e; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 12px; max-height: 300px; overflow-y: auto;">Waiting for input...</pre>
         </div>
         <div>
-          <h3 style="color: #9cdcfe; font-size: 13px; margin-bottom: 8px;">Errors</h3>
+          <h3 style="color: #9cdcfe; font-size: 13px; margin-bottom: 8px;">Diagnostics</h3>
           <ul id="error-output" class="error-list">
             <li>No errors</li>
           </ul>

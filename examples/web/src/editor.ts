@@ -49,13 +49,15 @@ export function createEditor(agentId: string) {
       astOutputEl.textContent = `Pretty-print error: ${e}`;
     }
 
-    // Errors
-    const errors: string[] = JSON.parse(crdt.get_errors_json(handle));
-    if (errors.length === 0) {
+    // Diagnostics (parse errors + eval warnings)
+    const diags: { level: string; message: string }[] = JSON.parse(
+      crdt.get_diagnostics_json(handle),
+    );
+    if (diags.length === 0) {
       errorEl.innerHTML = '<li>No errors</li>';
     } else {
-      errorEl.innerHTML = errors
-        .map(e => `<li class="error-item">${escapeHTML(e)}</li>`)
+      errorEl.innerHTML = diags
+        .map(d => `<li class="diag-item diag-${d.level}">${escapeHTML(d.message)}</li>`)
         .join('');
     }
   }

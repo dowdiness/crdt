@@ -64,6 +64,8 @@ pub fn get_ast_dot_resolved(Int) -> String
 
 pub fn get_ast_pretty(Int) -> String
 
+pub fn get_diagnostics_json(Int) -> String
+
 pub fn get_errors_json(Int) -> String
 
 pub fn get_lambda_companion() -> @companion.LambdaCompanion?

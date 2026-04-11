@@ -52,3 +52,35 @@ test "Web scenario: error persistence bug" {
   // THIS IS THE KEY TEST - errors should be CLEARED
   inspect(errors3.length(), content="0")
 }
+
+///|
+test "get_diagnostics_json: unbound variable produces warning" {
+  let (editor, companion) = @lambda.new_lambda_editor("test-diag")
+  editor.set_text("x")
+  // Parse errors
+  let errors = editor.get_errors()
+  inspect(errors.length(), content="0") // "x" is syntactically valid
+  // Eval results
+  let eval_results = companion.get_eval_results()
+  inspect(eval_results.length() > 0, content="true")
+  // Check that Stuck result exists
+  let has_stuck = eval_results.iter().any(fn(r) {
+    match r {
+      @lambda.EvalResult::Stuck(_) => true
+      _ => false
+    }
+  })
+  inspect(has_stuck, content="true")
+}
+
+///|
+test "get_diagnostics_json FFI: unbound variable" {
+  let handle = create_editor("test-diag-ffi")
+  set_text(handle, "x")
+  let json = get_diagnostics_json(handle)
+  println("diagnostics JSON: " + json)
+  // Should contain warning
+  inspect(json.contains("warning"), content="true")
+  inspect(json.contains("unbound"), content="true")
+  destroy_editor(handle)
+}

@@ -27,6 +27,7 @@ options(
         "get_ast_dot_resolved",
         "get_ast_pretty",
         "get_errors_json",
+        "get_diagnostics_json",
         "export_all_json",
         "export_since_json",
         "apply_sync_json",
