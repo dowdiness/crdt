@@ -15,11 +15,6 @@
 // 7. Merge: Tier 1 Value/Stuck stay; Suppressed replaced by Tier 2 if resolved
 
 ///|
-/// Maximum rounds of iterative forward propagation.
-/// A chain of N dependent definitions after a hole needs N rounds.
-const MAX_ESCALATION_ROUNDS = 10
-
-///|
 /// Internal state tracking per-definition evaluation for escalation.
 priv struct DefState {
   name : String
@@ -166,9 +161,12 @@ fn run_batch_egglog(
       None => ()
     }
   }
-  // Iterative escalation: keep resolving until no progress
+  // Iterative escalation: keep resolving until no progress.
+  // Bound by candidates.length() — each round resolves at least one definition
+  // when progress is made, so a chain of N dependent defs needs at most N rounds.
   let mut unresolved = candidates
-  for round = 0; round < MAX_ESCALATION_ROUNDS; round = round + 1 {
+  let max_rounds = candidates.length()
+  for round = 0; round < max_rounds; round = round + 1 {
     if unresolved.is_empty() {
       break
     }
@@ -210,14 +208,12 @@ fn run_batch_egglog(
           }
         }
         None =>
-          match db.lookup("EvalError", [env_id, expr_id]) {
-            Some(@egglog.StrVal(msg)) => {
-              results[candidate_idx] = Stuck(
-                "\u{2039}type error: " + msg + "\u{203a}",
-              )
+          match find_any_eval_error(db) {
+            Some(msg) => {
+              results[candidate_idx] = Stuck("\u{2039}" + msg + "\u{203a}")
               progress = true
             }
-            _ => next_unresolved.push(candidate_idx)
+            None => next_unresolved.push(candidate_idx)
           }
       }
     }
@@ -227,6 +223,20 @@ fn run_batch_egglog(
     }
   }
   results
+}
+
+///|
+/// Safe because each candidate gets a fresh database — any EvalError entry
+/// came from evaluating this specific term.
+fn find_any_eval_error(db : @egglog.Database) -> String? {
+  for row in db.scan("EvalError") {
+    let (_, result) = row
+    match result {
+      @egglog.StrVal(msg) => return Some(msg)
+      _ => ()
+    }
+  }
+  None
 }
 
 ///|

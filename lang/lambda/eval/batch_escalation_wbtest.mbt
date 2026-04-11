@@ -227,6 +227,123 @@ test "escalation: multi-round forward propagation" {
 }
 
 ///|
+test "escalation: nested type error — applying int as function inside addition" {
+  // let y = ?
+  // let z = (5 3) + 1    → App(Int(5), Int(3)) errors, but error is on sub-expr
+  // z
+  //
+  // Without the scan fix, EvalError is set on the App sub-expression,
+  // but the old point-lookup only checked the top-level Add expression.
+  let ast = @ast.Term::Module(
+    [
+      ("y", @ast.Term::Hole(0)),
+      (
+        "z",
+        @ast.Term::Bop(
+          Plus,
+          @ast.Term::App(@ast.Term::Int(5), @ast.Term::Int(3)),
+          @ast.Term::Int(1),
+        ),
+      ),
+    ],
+    @ast.Term::Var("z"),
+  )
+  let tier1 = eval_term(ast)
+  inspect(tier1[1], content="Suppressed")
+  let merged = escalate_suppressed(ast, tier1)
+  inspect(
+    merged[1],
+    content=(
+      #|Stuck("‹type error: App requires function›")
+    ),
+  )
+}
+
+///|
+test "escalation: top-level type error — applying int as function" {
+  // let y = ?
+  // let z = 5 3    → direct App error, EvalError on top-level expr
+  // z
+  let ast = @ast.Term::Module(
+    [
+      ("y", @ast.Term::Hole(0)),
+      ("z", @ast.Term::App(@ast.Term::Int(5), @ast.Term::Int(3))),
+    ],
+    @ast.Term::Var("z"),
+  )
+  let tier1 = eval_term(ast)
+  inspect(tier1[1], content="Suppressed")
+  let merged = escalate_suppressed(ast, tier1)
+  inspect(
+    merged[1],
+    content=(
+      #|Stuck("‹type error: App requires function›")
+    ),
+  )
+}
+
+///|
+test "escalation: adding closure to int" {
+  // let f = λx.x
+  // let y = ?
+  // let z = f + 1    → Add requires integers, but f is a closure
+  // z
+  let ast = @ast.Term::Module(
+    [
+      ("f", @ast.Term::Lam("x", @ast.Term::Var("x"))),
+      ("y", @ast.Term::Hole(0)),
+      ("z", @ast.Term::Bop(Plus, @ast.Term::Var("f"), @ast.Term::Int(1))),
+    ],
+    @ast.Term::Var("z"),
+  )
+  let tier1 = eval_term(ast)
+  inspect(tier1[2], content="Suppressed")
+  let merged = escalate_suppressed(ast, tier1)
+  inspect(
+    merged[2],
+    content=(
+      #|Stuck("‹type error: Add requires integers›")
+    ),
+  )
+}
+
+///|
+test "escalation: hole operand with sub-expression type error" {
+  // let x = ?
+  // let y = x + (5 3)    → x is unresolved hole, RHS has App type error
+  // y
+  //
+  // Codex edge case: egglog demands both Add operands in parallel,
+  // so the RHS App error fires even though LHS is unresolvable.
+  // We surface the type error because (5 3) is definitively wrong
+  // regardless of what x evaluates to — actionable feedback for the user.
+  let ast = @ast.Term::Module(
+    [
+      ("x", @ast.Term::Hole(0)),
+      (
+        "y",
+        @ast.Term::Bop(
+          Plus,
+          @ast.Term::Var("x"),
+          @ast.Term::App(@ast.Term::Int(5), @ast.Term::Int(3)),
+        ),
+      ),
+    ],
+    @ast.Term::Var("y"),
+  )
+  let tier1 = eval_term(ast)
+  let merged = escalate_suppressed(ast, tier1)
+  inspect(merged[0], content="Suppressed") // x = ? (hole)
+  inspect(
+    merged[1],
+    content=(
+      #|Stuck("‹type error: App requires function›")
+    ),
+  ) // y: sub-expression error surfaced
+  inspect(merged[2], content="Suppressed") // body: y is stuck, not propagated
+}
+
+///|
 test "escalation: non-module term unchanged" {
   let ast = @ast.Term::Int(42)
   let tier1 = eval_term(ast)
