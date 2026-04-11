@@ -67,13 +67,12 @@ pub fn IntConfidence::score(self : IntConfidence) -> Int {
 ///|
 /// Join for IntConfidence — structurally identical to Confidence::join.
 ///
-/// Verified properties (via moon prove):
-///   - Monotonicity: rank(result) >= rank(a) and rank(result) >= rank(b)
-///     (except when both carry matching values — Guessed+RuleBased→Confirmed)
-///   - Unknown is bottom: if a is Unknown, result == b (by rank + payload)
-///   - Conflict is top: if a or b is Conflict, result is Conflict
-///   - Agreement promotion: same payload from different tiers → Confirmed
+/// Verified properties (via moon prove, see proof_ensure below):
+///   - Conflict is top: if either input is Conflict, result is Conflict
+///   - Unknown is left/right identity: join(Unknown, x) == x and vice versa
 ///   - Disagreement absorption: different payloads → Conflict
+///   - Guessed max score: Guessed+Guessed with same payload → Guessed
+///     with exactly max(score_a, score_b) and payload preserved
 pub fn IntConfidence::join(
   self : IntConfidence,
   other : IntConfidence,
