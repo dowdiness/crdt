@@ -87,14 +87,29 @@ jobs:
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
 
-      - name: Set up OCaml and opam
-        uses: ocaml/setup-ocaml@v3
+      - name: Cache opam switch
+        id: opam-cache
+        uses: actions/cache@v4
         with:
-          ocaml-compiler: '5.3'
+          path: ~/.opam
+          key: opam-why3-1.7.2-z3-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install opam
+        if: steps.opam-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq opam
+          opam init --disable-sandboxing --yes
+          eval $(opam env)
 
       - name: Install Why3 and Z3
+        if: steps.opam-cache.outputs.cache-hit != 'true'
         run: |
+          eval $(opam env)
           opam install why3.1.7.2 z3 --yes
+
+      - name: Configure Why3 provers
+        run: |
           eval $(opam env)
           why3 config detect
 
