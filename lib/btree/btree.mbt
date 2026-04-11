@@ -1,7 +1,6 @@
 ///|
 pub fn[T] BTree::new(min_degree? : Int = DEFAULT_MIN_DEGREE) -> BTree[T] {
-  let min_degree = if min_degree < 2 { 2 } else { min_degree }
-  { root: None, min_degree, size: 0 }
+  { root: None, min_degree: clamp_min_degree(min_degree), size: 0 }
 }
 
 ///|
@@ -218,23 +217,13 @@ fn[T : BTreeElem] BTree::delete_range_rebuild(
     self.size = 0
     return
   }
-  // Rebuild tree from merged leaves
-  let first = merged[0]
-  let first_span = @rle.Spanning::span(first)
-  self.init_root(first, first_span)
-  let mut pos = first_span
-  for i in 1..<merged.length() {
-    let elem = merged[i]
-    let span = @rle.Spanning::span(elem)
-    self.mutate_for_insert(pos, fn(ctx) {
-      {
-        start_idx: ctx.child_idx + 1,
-        end_idx: ctx.child_idx + 1,
-        new_leaves: [(elem, span)],
-      }
-    })
-    pos = pos + span
-  }
+  // Rebuild tree from merged leaves using O(n) bulk constructor
+  let items : Array[(T, Int)] = merged.map(fn(elem) {
+    (elem, @rle.Spanning::span(elem))
+  })
+  let rebuilt : BTree[T] = BTree::from_sorted(items, min_degree=self.min_degree)
+  self.root = rebuilt.root
+  self.size = rebuilt.size
 }
 
 ///|
@@ -263,6 +252,49 @@ fn[T] BTree::apply_propagated(
     }
   }
   self.size = self.size + propagated.leaf_delta
+}
+
+///|
+/// Build a BTree bottom-up from a pre-sorted array of (element, span) pairs.
+/// O(n) instead of O(n log n) repeated inserts.
+/// Caller must ensure no adjacent items are mergeable (pre-merge if needed).
+pub fn[T] BTree::from_sorted(
+  items : Array[(T, Int)],
+  min_degree? : Int = DEFAULT_MIN_DEGREE,
+) -> BTree[T] {
+  let min_degree = clamp_min_degree(min_degree)
+  let max_degree = 2 * min_degree
+  if items.is_empty() {
+    return { root: None, min_degree, size: 0 }
+  }
+  let mut nodes : Array[BTreeNode[T]] = items.map(fn(pair) {
+    Leaf(elem=pair.0, span=pair.1)
+  })
+  while nodes.length() > max_degree {
+    let next : Array[BTreeNode[T]] = []
+    let mut i = 0
+    while i < nodes.length() {
+      let remaining = nodes.length() - i
+      // Redistribute when the leftover would violate min_degree
+      let chunk_size = if remaining > max_degree &&
+        remaining - max_degree < min_degree {
+        remaining / 2
+      } else if remaining <= max_degree {
+        remaining
+      } else {
+        max_degree
+      }
+      let chunk : Array[BTreeNode[T]] = []
+      for j in i..<(i + chunk_size) {
+        chunk.push(nodes[j])
+      }
+      next.push(make_internal(chunk))
+      i = i + chunk_size
+    }
+    nodes = next
+  }
+  let root = make_internal(nodes)
+  { root: Some(root), min_degree, size: items.length() }
 }
 
 ///|

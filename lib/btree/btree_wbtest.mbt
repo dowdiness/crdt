@@ -1604,3 +1604,197 @@ test "property: delete_range preserves span and content" {
 test "property: delete_range iter matches view" {
   @qc.quick_check_fn(prop_delete_range_iter_matches_view)
 }
+
+// === from_sorted ===
+
+///|
+test "from_sorted empty input" {
+  let t : BTree[TItem] = BTree::from_sorted([])
+  inspect(t.is_empty(), content="true")
+  inspect(t.size(), content="0")
+  inspect(t.span(), content="0")
+}
+
+///|
+test "from_sorted single element" {
+  let t : BTree[TItem] = BTree::from_sorted([(make_item(1, 5), 5)])
+  inspect(t.is_empty(), content="false")
+  inspect(t.size(), content="1")
+  inspect(t.span(), content="5")
+  inspect(t.get_at(0), content="Some({ id: 1, span: 5 })")
+  inspect(btree_invariants_hold(t), content="true")
+}
+
+///|
+test "from_sorted min_degree elements" {
+  // min_degree=2 → exactly 2 leaves, one Internal root
+  let items : Array[(TItem, Int)] = []
+  for i in 0..<2 {
+    items.push((make_item(i, 3), 3))
+  }
+  let t : BTree[TItem] = BTree::from_sorted(items, min_degree=2)
+  inspect(t.size(), content="2")
+  inspect(t.span(), content="6")
+  inspect(btree_invariants_hold(t), content="true")
+}
+
+///|
+test "from_sorted max_degree elements" {
+  // min_degree=2, max_degree=4 → exactly 4 leaves, one Internal root
+  let items : Array[(TItem, Int)] = []
+  for i in 0..<4 {
+    items.push((make_item(i, 2), 2))
+  }
+  let t : BTree[TItem] = BTree::from_sorted(items, min_degree=2)
+  inspect(t.size(), content="4")
+  inspect(t.span(), content="8")
+  inspect(btree_invariants_hold(t), content="true")
+}
+
+///|
+test "from_sorted triggers multi-level" {
+  // min_degree=2, max_degree=4 → 5 leaves requires 2 levels
+  let items : Array[(TItem, Int)] = []
+  for i in 0..<5 {
+    items.push((make_item(i, 1), 1))
+  }
+  let t : BTree[TItem] = BTree::from_sorted(items, min_degree=2)
+  inspect(t.size(), content="5")
+  inspect(t.span(), content="5")
+  inspect(btree_invariants_hold(t), content="true")
+}
+
+///|
+test "from_sorted redistribution of last chunk" {
+  // min_degree=3, max_degree=6 → 7 leaves: first chunk of 6, last chunk of 1
+  // 1 < min_degree=3, so redistribute: 4+3 or 3+4
+  let items : Array[(TItem, Int)] = []
+  for i in 0..<7 {
+    items.push((make_item(i, 2), 2))
+  }
+  let t : BTree[TItem] = BTree::from_sorted(items, min_degree=3)
+  inspect(t.size(), content="7")
+  inspect(t.span(), content="14")
+  inspect(btree_invariants_hold(t), content="true")
+}
+
+///|
+test "from_sorted content matches build_tree" {
+  // Both should produce the same leaf content and ordering
+  let input : Array[(Int, Int)] = [
+    (1, 3),
+    (2, 1),
+    (3, 2),
+    (4, 4),
+    (1, 2),
+    (2, 3),
+    (3, 1),
+    (4, 2),
+    (1, 1),
+  ]
+  let ref_tree = build_tree(input)
+  let items : Array[(TItem, Int)] = input.map(fn(pair) {
+    (make_item(pair.0, pair.1), pair.1)
+  })
+  let t : BTree[TItem] = BTree::from_sorted(items, min_degree=2)
+  inspect(t.size(), content=ref_tree.size().to_string())
+  inspect(t.span(), content=ref_tree.span().to_string())
+  // Same content when viewed
+  let ref_view = ref_tree.view()
+  let new_view = t.view()
+  inspect(new_view.length(), content=ref_view.length().to_string())
+  for i in 0..<ref_view.length() {
+    assert_eq(new_view[i], ref_view[i])
+  }
+  inspect(btree_invariants_hold(t), content="true")
+}
+
+///|
+test "from_sorted large tree" {
+  // 100 elements with default min_degree=10 → multi-level tree
+  let items : Array[(TItem, Int)] = []
+  for i in 0..<100 {
+    items.push((make_item(i % 10, i % 5 + 1), i % 5 + 1))
+  }
+  let t : BTree[TItem] = BTree::from_sorted(items)
+  inspect(t.size(), content="100")
+  inspect(btree_invariants_hold(t), content="true")
+  let all = t.view()
+  inspect(all.length(), content="100")
+}
+
+///|
+test "from_sorted redistribution at default degree boundaries" {
+  // min_degree=10, max_degree=20
+  // n=21: two chunks (11+10 or 10+11), both valid
+  for n in [21, 39, 41] {
+    let items : Array[(TItem, Int)] = []
+    for i in 0..<n {
+      items.push((make_item(i, 1), 1))
+    }
+    let t : BTree[TItem] = BTree::from_sorted(items)
+    inspect(t.size() == n, content="true")
+    inspect(t.span() == n, content="true")
+    inspect(btree_invariants_hold(t), content="true")
+  }
+}
+
+///|
+test "from_sorted clamps invalid min_degree" {
+  // min_degree=0, 1, negative should all clamp to 2
+  let items : Array[(TItem, Int)] = [(make_item(1, 1), 1), (make_item(2, 1), 1)]
+  for d in [-1, 0, 1] {
+    let t : BTree[TItem] = BTree::from_sorted(items, min_degree=d)
+    inspect(t.size(), content="2")
+    inspect(btree_invariants_hold(t), content="true")
+  }
+}
+
+///|
+struct FromSortedCase {
+  items : Array[(Int, Int)]
+  min_degree : Int
+} derive(Debug)
+
+///|
+impl Show for FromSortedCase with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
+
+///|
+impl @quickcheck.Arbitrary for FromSortedCase with arbitrary(size, rs) {
+  let capped = if size < 0 { 0 } else if size > 50 { 50 } else { size }
+  let item_count = rs.split().next_positive_int() % (capped + 1)
+  let min_degree = 2 + rs.split().next_positive_int() % 4
+  let items : Array[(Int, Int)] = []
+  for _ in 0..<item_count {
+    let id = 1 + rs.split().next_positive_int() % 10
+    let span = 1 + rs.split().next_positive_int() % 5
+    items.push((id, span))
+  }
+  { items, min_degree }
+}
+
+///|
+impl @qc.Shrink for FromSortedCase
+
+///|
+fn prop_from_sorted_invariants(case_ : FromSortedCase) -> Bool {
+  let items : Array[(TItem, Int)] = case_.items.map(fn(pair) {
+    (make_item(pair.0, pair.1), pair.1)
+  })
+  let t : BTree[TItem] = BTree::from_sorted(items, min_degree=case_.min_degree)
+  if t.size() != items.length() {
+    return false
+  }
+  let expected_span = items.fold(init=0, fn(acc, pair) { acc + pair.1 })
+  if t.span() != expected_span {
+    return false
+  }
+  btree_invariants_hold(t)
+}
+
+///|
+test "property: from_sorted produces valid btree" {
+  @qc.quick_check_fn(prop_from_sorted_invariants)
+}

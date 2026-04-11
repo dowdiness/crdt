@@ -86,11 +86,13 @@ The base rule (microbenchmark before optimizing) applies. Additionally: stale pr
 
 ### Quality & Edit Workflow
 
-Hooks enforce `moon check` after every edit and `moon fmt && moon info` before commits. After edits, also run `moon test` and rebuild JS if web is affected. See [docs/development/task-tracking.md](docs/development/task-tracking.md) for tracking workflow.
+Hooks enforce `moon check` after every edit and `moon fmt && moon info` before commits. After edits, also run `moon test` and rebuild JS if web is affected. After `moon info`, check `git diff *.mbti` for unintended trait bound changes — widening a bound is an API regression even if all current consumers satisfy it. See [docs/development/task-tracking.md](docs/development/task-tracking.md) for tracking workflow.
 
 ## Architecture Conventions
 
 - When adding shared content, use symlinks or references to a single source of truth. Never embed copies of shared files — flag the duplication problem first.
+- **Cross-package struct construction:** MoonBit's `pub struct` fields are read-only from outside the defining package. To construct or mutate fields cross-package, the struct must be `pub(all)` or have a named constructor. Verify this before planning any cross-package type migration.
+- **Test ownership:** Each package tests its own logic only. Trust imported libraries' correctness by interface contract. When migrating code between packages, delete tests that now test the wrong module — track upstream test debt in the imported package's backlog.
 
 ## Git & PR Workflow
 

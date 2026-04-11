@@ -19,6 +19,7 @@ pub(all) struct BTree[T] {
 pub fn[T : BTreeElem] BTree::delete_range(Self[T], Int, Int) -> Unit
 pub fn[T] BTree::each(Self[T], (T) -> Unit) -> Unit
 pub fn[T] BTree::find(Self[T], Int) -> FindResult[T]?
+pub fn[T] BTree::from_sorted(Array[(T, Int)], min_degree? : Int) -> Self[T]
 pub fn[T] BTree::get_at(Self[T], Int) -> T?
 pub fn[T] BTree::init_root(Self[T], T, Int) -> Unit
 pub fn[T] BTree::is_empty(Self[T]) -> Bool

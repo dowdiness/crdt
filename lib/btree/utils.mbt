@@ -4,6 +4,22 @@ fn Array::sum(self : Array[Int]) -> Int {
 }
 
 ///|
+fn clamp_min_degree(min_degree : Int) -> Int {
+  if min_degree < 2 {
+    2
+  } else {
+    min_degree
+  }
+}
+
+///|
+/// Wrap an array of child nodes into an Internal node with computed counts/total.
+fn[T] make_internal(children : Array[BTreeNode[T]]) -> BTreeNode[T] {
+  let counts : Array[Int] = children.map(fn(n) { n.total() })
+  Internal(children~, counts~, total=counts.sum())
+}
+
+///|
 /// Cached span total: O(1) for both Leaf (stored span) and Internal (stored total).
 pub fn[T] BTreeNode::total(self : BTreeNode[T]) -> Int {
   match self {
