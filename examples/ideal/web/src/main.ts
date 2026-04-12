@@ -180,8 +180,9 @@ function wireEditorEvents(el: CanopyEditor) {
     el.syncAfterExternalChange();
     el.notifyLocalChange();
     // Trigger Rabbita refresh
-    const { op, nodeId } = detail as StructuralEditDetail;
-    canopyGlobal.__canopy_pending_structural_edit = { op: op ?? detail.type, nodeId };
+    const op = detail.op ?? detail.type;
+    const nodeId = detail.nodeId ?? String(detail.target ?? "");
+    canopyGlobal.__canopy_pending_structural_edit = { op, nodeId };
     clickTrigger('canopy-editor-structural-edit');
   }) as EventListener, { signal });
   el.addEventListener(CanopyEvents.REQUEST_UNDO, () => {

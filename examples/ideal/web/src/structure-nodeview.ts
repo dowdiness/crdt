@@ -98,12 +98,12 @@ export class StructureCompoundView implements NodeView {
     this.contentDOM.className = "structure-children";
     this.dom.appendChild(this.contentDOM);
 
-    // Drag-and-drop handlers
-    const nid = node.attrs.nodeId as number;
+    // Drag-and-drop handlers — read this.node.attrs.nodeId at event time
+    // so the ID stays current after update() swaps in a new PM node.
 
     this.dom.addEventListener("dragstart", (e) => {
       e.stopPropagation(); // prevent ancestor compound views from overwriting
-      e.dataTransfer!.setData("application/x-canopy-node", String(nid));
+      e.dataTransfer!.setData("application/x-canopy-node", String(this.node.attrs.nodeId));
       e.dataTransfer!.effectAllowed = "move";
       this.dom.classList.add("dragging");
     });
@@ -127,6 +127,7 @@ export class StructureCompoundView implements NodeView {
       e.preventDefault();
       e.stopPropagation();
       this.dom.classList.remove("drop-target");
+      const nid = this.node.attrs.nodeId as number;
       const sourceId = e.dataTransfer!.getData("application/x-canopy-node");
       if (!sourceId || sourceId === String(nid)) return;
 
