@@ -319,10 +319,47 @@ From SuperOOP analysis and handler chain refactor (PR #54):
 
 **Impact:** High | **Effort:** Medium-High
 
-- [ ] Prepare drag-and-drop foundations for `examples/ideal` and `examples/block-editor`
-  Why: both editors need relocation UX, but the real missing pieces are a canonical move contract, backend legality checks, and model-level positioned move APIs rather than DOM-only gesture code.
-  Plan: `docs/plans/2026-03-30-editor-drag-drop-foundation.md`
-  Exit: `block-editor` exposes positioned block moves plus structural render metadata, and `ideal` accepts validated `Drop` edits through the canonical tree-edit bridge.
+- [x] Wire ideal editor drag-drop end-to-end (PR #174)
+  Done: JSON parser for Drop/StartDrag/DragOver, legality checks (self-drop, descendant-drop), browser event handlers on structure view, readonly guard.
+
+### Follow-ups: Correctness
+
+- [ ] **Position detection (Before/After/Inside)**
+  Why: v1 hardcodes `"After"`. Users need to control where the node lands.
+  Exit: mouse Y within target bounding box determines Before/After/Inside; visual indicator shows landing position.
+
+- [ ] **Semantic-aware drop**
+  Why: text-based splice creates parse errors (e.g. `let id =` with empty RHS after moving the lambda out). Drop should operate at AST level.
+  Exit: dropping a node produces a syntactically valid result or rejects with an error.
+
+- [ ] **Unit tests for drag-drop JSON parser and legality**
+  Why: no test coverage for `StartDrag`/`DragOver`/`Drop` parsing or self-drop/descendant-drop guards.
+  Exit: tests in `tree_edit_json_test.mbt` and `text_edit_drop_test.mbt` cover valid payloads, missing fields, bad position strings, self-drop, and descendant-drop.
+
+### Follow-ups: UX
+
+- [ ] **Drop indicator line**
+  Why: highlighting the whole target block doesn't communicate where the node will land.
+  Exit: a visible line appears between nodes during dragover showing the insertion point.
+
+- [ ] **Restrict drag initiation to grip handle**
+  Why: entire block is draggable, which can interfere with text selection or child interactions.
+  Exit: only the grip handle (≡) initiates drag; clicking elsewhere in the block does not start a drag.
+
+### Follow-ups: Block Editor & Shared Contract
+
+- [ ] Prepare drag-and-drop foundations for `examples/block-editor`
+  Why: `move_block` only appends as last child; needs `move_before`/`move_after` for sibling reorder.
+  Plan: `docs/plans/2026-03-30-editor-drag-drop-foundation.md` (steps 2-3)
+  Exit: `block-editor` exposes positioned block moves plus structural render metadata.
+
+- [ ] **Shared move contract documentation**
+  Why: both editors should use the same `source`/`target`/`position` payload shape.
+  Exit: documented contract in `docs/` covering payload shape, supported positions per editor, and legality rules.
+
+- [ ] **Convergence tests for concurrent drag-drop**
+  Why: concurrent relocations across CRDT peers need convergence guarantees.
+  Exit: property tests covering concurrent drop, undo grouping after relocation, and reconciliation.
 
 ---
 
