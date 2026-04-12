@@ -97,6 +97,47 @@ export class StructureCompoundView implements NodeView {
     this.contentDOM = document.createElement("div");
     this.contentDOM.className = "structure-children";
     this.dom.appendChild(this.contentDOM);
+
+    // Drag-and-drop handlers
+    const nodeId = node.attrs.node_id as number;
+
+    this.dom.addEventListener("dragstart", (e) => {
+      e.dataTransfer!.setData("application/x-canopy-node", String(nodeId));
+      e.dataTransfer!.effectAllowed = "move";
+      this.dom.classList.add("dragging");
+    });
+
+    this.dom.addEventListener("dragend", () => {
+      this.dom.classList.remove("dragging");
+    });
+
+    this.dom.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer!.dropEffect = "move";
+      this.dom.classList.add("drop-target");
+    });
+
+    this.dom.addEventListener("dragleave", () => {
+      this.dom.classList.remove("drop-target");
+    });
+
+    this.dom.addEventListener("drop", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.dom.classList.remove("drop-target");
+      const sourceId = e.dataTransfer!.getData("application/x-canopy-node");
+      if (!sourceId || sourceId === String(nodeId)) return;
+
+      this.dom.dispatchEvent(new CustomEvent("structural-edit-request", {
+        bubbles: true,
+        detail: {
+          type: "Drop",
+          source: Number(sourceId),
+          target: nodeId,
+          position: "After",
+        },
+      }));
+    });
   }
 
   update(node: PmNode): boolean {
