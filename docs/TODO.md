@@ -328,9 +328,8 @@ From SuperOOP analysis and handler chain refactor (PR #54):
   Why: v1 hardcodes `"After"`. Users need to control where the node lands.
   Exit: mouse Y within target bounding box determines Before/After/Inside; visual indicator shows landing position.
 
-- [ ] **Semantic-aware drop**
-  Why: text-based splice creates parse errors (e.g. `let id =` with empty RHS after moving the lambda out). Drop should operate at AST level.
-  Exit: dropping a node produces a syntactically valid result or rejects with an error.
+- [x] **Semantic-aware drop** (PR #179)
+  Done: Before/After replaces source with placeholder via `Renderable::placeholder()`, inserts source text from source map. Exchange unchanged. Playwright E2E tests cover all positions.
 
 - [x] **Unit tests for drag-drop JSON parser and legality**
   Why: no test coverage for `StartDrag`/`DragOver`/`Drop` parsing or self-drop/descendant-drop guards.
