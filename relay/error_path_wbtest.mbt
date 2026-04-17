@@ -53,6 +53,32 @@ test "on_disconnect: double disconnect does not panic" {
 }
 
 ///|
+test "on_disconnect: non-member does not broadcast PeerLeft" {
+  let room = RelayRoom::new()
+  let (send_a, msgs_a) = make_err_recorder()
+  err_connect_ok(room, "alice", send_a)
+  msgs_a.clear()
+  // Disconnecting a peer that was never registered is a no-op — no
+  // ghost PeerLeft reaches alice (prevents spurious ephemeral-state
+  // resets in editor/sync_editor_ws).
+  room.on_disconnect("ghost")
+  inspect(msgs_a.length(), content="0")
+  inspect(room.peer_count(), content="1")
+  // Same property holds for a second disconnect after a real removal.
+  let (send_b, msgs_b) = make_err_recorder()
+  err_connect_ok(room, "bob", send_b)
+  msgs_a.clear()
+  msgs_b.clear()
+  room.on_disconnect("bob")
+  // First disconnect delivers PeerLeft("bob") to alice.
+  inspect(msgs_a.length(), content="1")
+  msgs_a.clear()
+  room.on_disconnect("bob")
+  // Second disconnect of same id is a no-op — no duplicate PeerLeft.
+  inspect(msgs_a.length(), content="0")
+}
+
+///|
 test "on_message: non-member sender is dropped" {
   let room = RelayRoom::new()
   let (send_a, msgs_a) = make_err_recorder()

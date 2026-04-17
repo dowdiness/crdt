@@ -103,7 +103,14 @@ pub fn RelayRoom::on_message(
 }
 
 ///|
+/// Remove a peer and broadcast PeerLeft. No-op (and no broadcast) when the
+/// peer is not a current member — avoids ghost PeerLeft frames that would
+/// otherwise fire on double-disconnect (WS `close` + `error`) or on
+/// disconnects for IDs rejected at `on_connect`.
 pub fn RelayRoom::on_disconnect(self : RelayRoom, peer_id : String) -> Unit {
+  if !self.has_peer(peer_id) {
+    return
+  }
   self.peers = self.peers.filter(fn(p) { p.peer_id != peer_id })
   let leave_msg = encode_peer_left(peer_id)
   self.broadcast(peer_id, leave_msg)
