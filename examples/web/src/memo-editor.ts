@@ -1,4 +1,4 @@
-import * as crdt from '@moonbit/crdt';
+import * as crdt from '@moonbit/crdt-lambda';
 
 // MoonBit FFI exports — cast once at module load to avoid per-call `as any`
 const llm = crdt as unknown as {

@@ -1,6 +1,6 @@
 // Lambda Calculus Editor — thin DOM bridge over MoonBit CRDT backend
 
-import * as crdt from '@moonbit/crdt';
+import * as crdt from '@moonbit/crdt-lambda';
 import * as graphviz from '@moonbit/graphviz';
 import { HTMLAdapter } from '../../../lib/editor-adapter/html-adapter';
 import type { ViewPatch } from '../../../lib/editor-adapter/types';
