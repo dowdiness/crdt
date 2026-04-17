@@ -28,10 +28,15 @@ fn new_typecheck_bundle() -> TypecheckBundle {
   let typed_term_memo : @cells.Memo[@typecheck.TypedTerm] = scope.memo(
     fn() {
       let text = text_signal.get()
-      let term = @lambda_lang.parse(text) catch {
+      // parse_cst preserves `: Type` annotations on the CST. Parse
+      // diagnostics (lex errors, recoverable syntax errors) are surfaced
+      // separately via editor.get_errors() — get_diagnostics_json() only
+      // reads this memo when parse errors are empty, so we drop the
+      // diagnostics array here.
+      let (cst, _) = @lambda_lang.parse_cst(text) catch {
         _ => return @typecheck.TypedTerm::Error("parse")
       }
-      @typecheck.convert(term)
+      @typecheck.convert_from_cst(@seam.SyntaxNode::from_cst(cst))
     },
     label="lambda-typed-term",
   )
