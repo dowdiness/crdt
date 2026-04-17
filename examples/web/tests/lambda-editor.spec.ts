@@ -60,10 +60,13 @@ test.describe('Lambda Editor — Foundation', () => {
     await expect(page.locator('#ast-output')).not.toContainText('Waiting for input...');
   });
 
-  test('valid input shows no errors', async ({ page }) => {
+  test('example input parses successfully', async ({ page }) => {
     await loadExample(page, 'Basics');
-    await expect(page.locator('#error-output')).toContainText('No errors');
-    expect(await page.locator('#error-output .diag-item').count()).toBe(0);
+    // Parsing succeeds → AST graph renders. The lambda language has no
+    // type-annotation syntax, so the typechecker flags the unannotated
+    // lambdas in this example — that behavior is covered by the
+    // "typecheck error" test below; here we only verify parse success.
+    await expect(page.locator('#ast-graph svg')).toBeVisible();
   });
 
   test('unbound variable shows eval warning', async ({ page }) => {
@@ -74,6 +77,33 @@ test.describe('Lambda Editor — Foundation', () => {
     // "x" is an unbound variable — diagnostics panel should show a warning
     await expect(page.locator('#error-output .diag-item.diag-warning')).toBeVisible();
     await expect(page.locator('#error-output')).toContainText('unbound');
+  });
+
+  test('unbound variable produces typecheck error alongside warning', async ({ page }) => {
+    const editor = page.locator('#editor');
+    await editor.click();
+    await page.keyboard.type('x + 1');
+
+    await expect(page.locator('#error-output .diag-item.diag-error')).toBeVisible();
+    await expect(page.locator('#error-output')).toContainText('unbound variable: x');
+  });
+
+  test('unannotated lambda produces typecheck error', async ({ page }) => {
+    const editor = page.locator('#editor');
+    await editor.click();
+    await page.keyboard.type('\\x. x');
+
+    await expect(page.locator('#error-output .diag-item.diag-error')).toBeVisible();
+    await expect(page.locator('#error-output')).toContainText('missing type annotation');
+  });
+
+  test('well-typed expression shows no errors', async ({ page }) => {
+    const editor = page.locator('#editor');
+    await editor.click();
+    await page.keyboard.type('1 + 2');
+
+    await expect(page.locator('#error-output')).toContainText('No errors');
+    expect(await page.locator('#error-output .diag-item').count()).toBe(0);
   });
 
 });
