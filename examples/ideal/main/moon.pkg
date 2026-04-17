@@ -2,7 +2,7 @@ import {
   "moonbit-community/rabbita",
   "moonbit-community/rabbita/html",
   "dowdiness/canopy/core" @canopy_core,
-  "dowdiness/canopy/ffi" @ffi,
+  "dowdiness/canopy/ffi/lambda" @ffi,
   "dowdiness/canopy/editor" @editor,
   "dowdiness/canopy/projection" @proj,
   "dowdiness/canopy/lang/lambda" @lambda,

@@ -4,7 +4,7 @@
 test "Web scenario: error persistence bug" {
   // Simulate web editor usage
   let editor_ref : Ref[@editor.SyncEditor[@ast.Term]?] = { val: None }
-  editor_ref.val = Some(@lambda.new_lambda_editor("web-user").0)
+  editor_ref.val = Some(@lang_lambda.new_lambda_editor("web-user").0)
 
   // Type "x"
   match editor_ref.val {
@@ -55,7 +55,7 @@ test "Web scenario: error persistence bug" {
 
 ///|
 test "get_diagnostics_json: unbound variable produces warning" {
-  let (editor, companion) = @lambda.new_lambda_editor("test-diag")
+  let (editor, companion) = @lang_lambda.new_lambda_editor("test-diag")
   editor.set_text("x")
   // Parse errors
   let errors = editor.get_errors()
@@ -68,7 +68,7 @@ test "get_diagnostics_json: unbound variable produces warning" {
     .iter()
     .any(fn(r) {
       match r {
-        @lambda.EvalResult::Stuck(_) => true
+        @lang_lambda.EvalResult::Stuck(_) => true
         _ => false
       }
     })

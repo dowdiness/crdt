@@ -9,9 +9,9 @@ export default defineConfig({
     moonbitPlugin({
       modules: [
         {
-          name: '@moonbit/crdt',
+          name: '@moonbit/crdt-lambda',
           path: '../..',
-          output: '_build/js/release/build/ffi/ffi.js'
+          output: '_build/js/release/build/ffi/lambda/lambda.js'
         },
         {
           name: '@moonbit/crdt-json',
@@ -60,6 +60,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['*.wasm', '@moonbit/crdt', '@moonbit/crdt-json', '@moonbit/crdt-markdown', '@moonbit/graphviz']
+    exclude: ['*.wasm', '@moonbit/crdt-lambda', '@moonbit/crdt-json', '@moonbit/crdt-markdown', '@moonbit/graphviz']
   }
 });
