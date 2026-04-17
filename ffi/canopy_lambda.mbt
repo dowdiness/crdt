@@ -6,6 +6,37 @@
 priv struct LambdaHandle {
   editor : @editor.SyncEditor[@ast.Term]
   companion : @lambda.LambdaCompanion
+  typecheck : TypecheckBundle
+}
+
+///|
+/// Standalone runtime that drives the typecheck pipeline incrementally
+/// off the editor's text. Kept separate from the editor's runtime because
+/// LambdaCompanion does not expose its runtime to FFI.
+priv struct TypecheckBundle {
+  rt : @cells.Runtime
+  scope : @cells.Scope
+  text_signal : @cells.Signal[String]
+  output : @cells.Memo[@typecheck.ModuleTypeResult]
+}
+
+///|
+fn new_typecheck_bundle() -> TypecheckBundle {
+  let rt = @cells.Runtime::new()
+  let scope = @cells.Scope::new(rt)
+  let text_signal = scope.signal("", label="lambda-typecheck-text")
+  let typed_term_memo : @cells.Memo[@typecheck.TypedTerm] = scope.memo(
+    fn() {
+      let text = text_signal.get()
+      let term = @lambda_lang.parse(text) catch {
+        _ => return @typecheck.TypedTerm::Error("parse")
+      }
+      @typecheck.convert(term)
+    },
+    label="lambda-typed-term",
+  )
+  let output = @typecheck.build_typecheck_pipeline(rt, scope, typed_term_memo)
+  { rt, scope, text_signal, output }
 }
 
 ///|
@@ -50,7 +81,11 @@ pub fn create_editor(agent_id : String) -> Int {
   let handle = next_handle.val
   next_handle.val = handle + 1
   let (editor, companion) = @lambda.new_lambda_editor(agent_id)
-  lambda_handles[handle] = { editor, companion }
+  lambda_handles[handle] = {
+    editor,
+    companion,
+    typecheck: new_typecheck_bundle(),
+  }
   last_created_handle.val = Some(handle)
   handle
 }
@@ -58,6 +93,10 @@ pub fn create_editor(agent_id : String) -> Int {
 ///|
 /// Destroy an editor instance and free its resources.
 pub fn destroy_editor(handle : Int) -> Unit {
+  match lambda_handles.get(handle) {
+    Some(h) => h.typecheck.scope.dispose()
+    None => ()
+  }
   lambda_handles.remove(handle)
   view_states.remove(handle)
   pretty_view_states.remove(handle)
@@ -112,17 +151,35 @@ pub fn get_errors_json(handle : Int) -> String {
 }
 
 ///|
-/// Get all diagnostics (parse errors + eval warnings) as JSON array.
+/// Get all diagnostics (parse errors + type errors + eval warnings) as JSON array.
 /// Each entry: {"level": "error"|"warning", "message": "..."}
 pub fn get_diagnostics_json(handle : Int) -> String {
   match lambda_handles.get(handle) {
     Some(h) => {
       let diags : Array[Json] = []
-      for msg in h.editor.get_errors() {
+      let parse_errors = h.editor.get_errors()
+      for msg in parse_errors {
         let m : Map[String, Json] = {}
         m["level"] = "error".to_json()
         m["message"] = msg.to_json()
         diags.push(Json::object(m))
+      }
+      // Type diagnostics — only meaningful if parsing succeeded; otherwise
+      // the AST is incomplete and type errors would just be noise on top of
+      // the parse error.
+      if parse_errors.is_empty() {
+        h.typecheck.text_signal.set(h.editor.get_text())
+        let result = h.typecheck.rt.read(h.typecheck.output)
+        for diag in result.all_diagnostics {
+          let m : Map[String, Json] = {}
+          m["level"] = "error".to_json()
+          let prefix = match diag.def_name {
+            Some(name) => "[\{name}] "
+            None => ""
+          }
+          m["message"] = (prefix + diag.message).to_json()
+          diags.push(Json::object(m))
+        }
       }
       for result in h.companion.get_eval_results() {
         match result {
@@ -208,7 +265,11 @@ pub fn create_editor_with_undo(
     agent_id,
     capture_timeout_ms~,
   )
-  lambda_handles[handle] = { editor, companion }
+  lambda_handles[handle] = {
+    editor,
+    companion,
+    typecheck: new_typecheck_bundle(),
+  }
   last_created_handle.val = Some(handle)
   handle
 }
