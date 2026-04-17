@@ -1,5 +1,8 @@
 import { defineConfig } from 'vite';
+import { visualizer } from 'rollup-plugin-visualizer';
 import { moonbitPlugin } from './vite-plugin-moonbit';
+
+const analyze = process.env.ANALYZE === '1';
 
 export default defineConfig({
   plugins: [
@@ -16,7 +19,17 @@ export default defineConfig({
           output: '_build/js/release/build/browser/browser.js'
         }
       ]
-    })
+    }),
+    ...(analyze
+      ? [
+          visualizer({
+            filename: 'dist/bundle-stats.html',
+            template: 'treemap',
+            gzipSize: true,
+            brotliSize: true,
+          }),
+        ]
+      : []),
   ],
   server: {
     fs: {
