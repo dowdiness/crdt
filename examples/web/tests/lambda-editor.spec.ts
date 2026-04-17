@@ -60,13 +60,27 @@ test.describe('Lambda Editor — Foundation', () => {
     await expect(page.locator('#ast-output')).not.toContainText('Waiting for input...');
   });
 
-  test('example input parses successfully', async ({ page }) => {
-    await loadExample(page, 'Basics');
-    // Parsing succeeds → AST graph renders. The lambda language has no
-    // type-annotation syntax, so the typechecker flags the unannotated
-    // lambdas in this example — that behavior is covered by the
-    // "typecheck error" test below; here we only verify parse success.
-    await expect(page.locator('#ast-graph svg')).toBeVisible();
+  test('every example preset typechecks clean', async ({ page }) => {
+    // All five presets now carry `: Type` annotations on every lambda
+    // (see examples/web/index.html). Loading each must produce a clean
+    // typecheck — no diagnostic error items.
+    const examples = ['Basics', 'Composition', 'Currying', 'Conditional', 'Pipeline'];
+    for (const name of examples) {
+      await loadExample(page, name);
+      await expect(page.locator('#error-output')).toContainText('No errors');
+      expect(
+        await page.locator('#error-output .diag-item.diag-error').count(),
+      ).toBe(0);
+    }
+  });
+
+  test('annotated lambda typechecks clean', async ({ page }) => {
+    const editor = page.locator('#editor');
+    await editor.click();
+    await page.keyboard.type('\\x : Int. x');
+
+    await expect(page.locator('#error-output')).toContainText('No errors');
+    expect(await page.locator('#error-output .diag-item.diag-error').count()).toBe(0);
   });
 
   test('unbound variable shows eval warning', async ({ page }) => {

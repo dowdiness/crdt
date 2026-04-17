@@ -13,6 +13,7 @@ import {
   "dowdiness/lambda/ast" @ast,
   "dowdiness/lambda" @lambda_lang,
   "dowdiness/lambda/typecheck" @typecheck,
+  "dowdiness/seam" @seam,
   "dowdiness/incr/cells" @cells,
   "dowdiness/event-graph-walker/text",
   "moonbitlang/async/js_async" @js_async,

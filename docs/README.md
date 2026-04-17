@@ -79,6 +79,8 @@ Detailed documentation for each module:
 - [AST Zipper Design](plans/2026-03-28-ast-zipper-design.md) — Structural cursor + typed holes
 - [BFT Adapter](plans/2026-03-19-bft-adapter-design.md) — Byzantine Fault Tolerance (deferred)
 - [Ideal Editor](plans/2026-03-19-ideal-editor-impl.md) — Full-featured editor with inspector, benchmarks
+- [Lambda Annotation Plumbing — Design](plans/2026-04-18-lambda-annotation-plumbing-design.md) — Thread `: Type` annotations from CST to TypedTerm; fix unannotated-lambda noise
+- [Lambda Annotation Plumbing — Impl](plans/2026-04-18-lambda-annotation-plumbing-impl.md) — Two-phase task list (Loom L0–L11, Canopy C1–C7)
 
 ## Archive
 
