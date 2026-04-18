@@ -357,9 +357,14 @@ fn[T] SyncEditor::handle_recovery_retry(self : SyncEditor[T]) -> Unit {
     self.set_status(Error(reason=SyncErrorReason::Exhausted(peer_id~)))
     return
   }
-  // Send retry request, then advance for next attempt
+  // Advance ctx + status BEFORE the wire send so any re-entrant
+  // on_watchdog_fire triggered by side-effects of send_sync_request
+  // sees the matching request_id. Actual JS setTimeout delivery is
+  // async so the real concern is test-driven synchronous re-entry,
+  // not production network I/O — but the ordering is still the
+  // correct invariant.
   self.recovery_epoch += 1
-  self.send_sync_request(ctx.peer_id, self.recovery_epoch)
   ctx.advance_retry(self.recovery_epoch)
   self.set_status(Recovering(peer_id=ctx.peer_id, attempt=ctx.retries + 1))
+  self.send_sync_request(ctx.peer_id, self.recovery_epoch)
 }

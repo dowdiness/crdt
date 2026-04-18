@@ -290,15 +290,19 @@ test "SyncStatus: watchdog exhaustion → Error(Exhausted)" {
   let ctx = RecoveryContext::new("alice", empty_msg, 1)
   editor.recovery = Some(ctx)
   editor.set_status(Recovering(peer_id="alice", attempt=1))
-  // Three watchdog fires exhaust the retries budget (retries 0→1, 1→2, 2→3=exhausted)
-  // After each fire we simulate a new epoch for the watchdog to match
-  editor.on_watchdog_fire(1) // retries = 0 → not exhausted, advances; new epoch = 2
+  // Four watchdog fires total are needed to exhaust: the initial
+  // recovery attempt plus `max_retries_after_initial` (3) retries.
+  // Fires 1-3 advance retries 0→1, 1→2, 2→3. Fire 4 sees retries=3
+  // and hits the is_exhausted() branch.
+  // After each fire we pass the current recovery_epoch so the
+  // stale-check in on_watchdog_fire matches.
+  editor.on_watchdog_fire(1) // retries 0 → advances to 1 (epoch bumps to 2)
   inspect(editor.recovery is Some(_), content="true")
-  editor.on_watchdog_fire(editor.recovery_epoch) // retries = 1 → not exhausted, advances; new epoch = 3
+  editor.on_watchdog_fire(editor.recovery_epoch) // retries 1 → advances to 2 (epoch → 3)
   inspect(editor.recovery is Some(_), content="true")
-  editor.on_watchdog_fire(editor.recovery_epoch) // retries = 2 → not exhausted, advances; new epoch = 4
+  editor.on_watchdog_fire(editor.recovery_epoch) // retries 2 → advances to 3 (epoch → 4)
   inspect(editor.recovery is Some(_), content="true")
-  editor.on_watchdog_fire(editor.recovery_epoch) // retries = 3 → exhausted, clears
+  editor.on_watchdog_fire(editor.recovery_epoch) // retries 3 → exhausted, clears
   inspect(editor.recovery is None, content="true")
   inspect(
     editor.get_sync_status(),

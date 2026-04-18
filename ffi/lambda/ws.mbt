@@ -74,12 +74,16 @@ pub fn ws_enable_watchdog(handle : Int, timeout_ms : Int) -> Unit {
 
 ///|
 /// Register a JS callback that receives SyncStatus transitions.
-/// The callback payload is a tagged colon-separated string:
-///   "disconnected" | "idle"
-///   | "recovering:<peer_id>:<attempt>"
-///   | "error:exhausted:<peer_id>"
-///   | "error:target_left:<peer_id>"
-/// Host JS wires the delivery side via `globalThis.__canopy_on_status_change`.
+/// The callback payload is a JSON string; the JS host `JSON.parse`s it
+/// and reads the shape { tag, peer_id?, attempt?, reason? }:
+///   {"tag":"disconnected"}
+///   {"tag":"idle"}
+///   {"tag":"recovering","peer_id":"<id>","attempt":<n>}
+///   {"tag":"error","reason":"exhausted","peer_id":"<id>"}
+///   {"tag":"error","reason":"target_left","peer_id":"<id>"}
+/// JSON (vs. a delimited string) avoids ambiguity when peer_id contains
+/// characters that would otherwise need escaping at the boundary.
+/// Host JS wires delivery via `globalThis.__canopy_on_status_change`.
 pub fn ws_set_status_callback(handle : Int) -> Unit {
   match lambda_handles.get(handle) {
     Some(h) =>
@@ -93,20 +97,37 @@ pub fn ws_set_status_callback(handle : Int) -> Unit {
 }
 
 ///|
-/// Serialize a SyncStatus to the wire-friendly tagged string expected by the
-/// JS host. Primitives only — JS cannot pattern-match on MoonBit enum values
-/// because their compiled shape ($tag/_0/...) is not stable across targets.
+/// Serialize a SyncStatus to the JSON string documented on
+/// ws_set_status_callback. JSON escaping is handled by the core
+/// encoder, so peer_id values with special characters (':', '"', etc.)
+/// round-trip cleanly.
 fn encode_sync_status(status : @editor.SyncStatus) -> String {
-  match status {
-    Disconnected => "disconnected"
-    Idle => "idle"
-    Recovering(peer_id~, attempt~) => "recovering:\{peer_id}:\{attempt}"
+  let j : Json = match status {
+    Disconnected => Json::object({ "tag": Json::string("disconnected") })
+    Idle => Json::object({ "tag": Json::string("idle") })
+    Recovering(peer_id~, attempt~) =>
+      Json::object({
+        "tag": Json::string("recovering"),
+        "peer_id": Json::string(peer_id),
+        "attempt": Json::number(attempt.to_double()),
+      })
     Error(reason~) =>
       match reason {
-        Exhausted(peer_id~) => "error:exhausted:\{peer_id}"
-        TargetLeft(peer_id~) => "error:target_left:\{peer_id}"
+        Exhausted(peer_id~) =>
+          Json::object({
+            "tag": Json::string("error"),
+            "reason": Json::string("exhausted"),
+            "peer_id": Json::string(peer_id),
+          })
+        TargetLeft(peer_id~) =>
+          Json::object({
+            "tag": Json::string("error"),
+            "reason": Json::string("target_left"),
+            "peer_id": Json::string(peer_id),
+          })
       }
   }
+  j.stringify()
 }
 
 ///|
