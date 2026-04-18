@@ -82,14 +82,22 @@ pub fn ws_enable_watchdog(handle : Int, timeout_ms : Int) -> Unit {
 /// JSON (vs. a delimited string) avoids ambiguity when peer_id contains
 /// characters that would otherwise need escaping at the boundary.
 /// Host JS wires delivery via `globalThis.__canopy_on_status_change`.
+/// Fires one notification with the current status immediately on
+/// registration so late-registering hosts can bootstrap — otherwise
+/// a status that changed before registration would never be observed.
 pub fn ws_set_status_callback(handle : Int) -> Unit {
   match lambda_handles.get(handle) {
-    Some(h) =>
+    Some(h) => {
       h.editor.set_on_status_change(
         Some(fn(status) {
           js_notify_status_change(handle, encode_sync_status(status))
         }),
       )
+      js_notify_status_change(
+        handle,
+        encode_sync_status(h.editor.get_sync_status()),
+      )
+    }
     None => ()
   }
 }
