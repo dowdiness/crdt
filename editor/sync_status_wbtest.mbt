@@ -31,13 +31,13 @@ test "SyncStatus: Show impl" {
     ),
   )
   inspect(
-    SyncStatus::Error(reason=SyncErrorReason::Exhausted(peer_id="bob")),
+    SyncStatus::Error(reason=Exhausted(peer_id="bob")),
     content=(
       #|Error(reason=Exhausted(peer_id="bob"))
     ),
   )
   inspect(
-    SyncStatus::Error(reason=SyncErrorReason::TargetLeft(peer_id="carol")),
+    SyncStatus::Error(reason=TargetLeft(peer_id="carol")),
     content=(
       #|Error(reason=TargetLeft(peer_id="carol"))
     ),
@@ -323,9 +323,7 @@ test "SyncStatus: Error → Idle on successful apply_sync" {
   let ws = make_test_ws()
   editor_b.ws_on_open(ws)
   // Manually force editor_b into Error state
-  editor_b.set_status(
-    SyncStatus::Error(reason=SyncErrorReason::Exhausted(peer_id="carol")),
-  )
+  editor_b.set_status(SyncStatus::Error(reason=Exhausted(peer_id="carol")))
   inspect(
     editor_b.get_sync_status(),
     content=(
@@ -371,9 +369,7 @@ test "SyncStatus: failed apply_sync leaves Error status intact" {
     }
   }
   // Force editor_b into Error state.
-  editor_b.set_status(
-    SyncStatus::Error(reason=SyncErrorReason::Exhausted(peer_id="alice")),
-  )
+  editor_b.set_status(SyncStatus::Error(reason=Exhausted(peer_id="alice")))
   // Apply the orphan delta — must raise TextError::SyncFailed with
   // SyncFailure::MissingDependency specifically. Any other exception
   // (or no exception) would mean the test isn't exercising what it claims.

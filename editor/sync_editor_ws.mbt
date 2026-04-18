@@ -116,9 +116,7 @@ pub fn[T] SyncEditor::ws_on_message(self : SyncEditor[T], data : Bytes) -> Unit 
           if ctx.peer_id == peer_id {
             let target = ctx.peer_id
             self.recovery = None
-            self.set_status(
-              Error(reason=SyncErrorReason::TargetLeft(peer_id=target)),
-            )
+            self.set_status(Error(reason=TargetLeft(peer_id=target)))
           }
         None => ()
       }
@@ -354,7 +352,7 @@ fn[T] SyncEditor::handle_recovery_retry(self : SyncEditor[T]) -> Unit {
     // Give up — clear recovery and surface the error
     let peer_id = ctx.peer_id
     self.recovery = None
-    self.set_status(Error(reason=SyncErrorReason::Exhausted(peer_id~)))
+    self.set_status(Error(reason=Exhausted(peer_id~)))
     return
   }
   // Advance ctx + status BEFORE the wire send so any re-entrant

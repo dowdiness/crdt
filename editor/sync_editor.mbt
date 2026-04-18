@@ -276,14 +276,8 @@ pub fn[T] SyncEditor::on_watchdog_fire(
   self : SyncEditor[T],
   request_id : Int,
 ) -> Unit {
-  let ctx = match self.recovery {
-    Some(ctx) => ctx
-    None => return // No recovery in progress — stale fire
-  }
-  // Stale check: if the request_id doesn't match the current epoch, ignore.
-  if !ctx.matches_request_id(request_id.to_string()) {
-    return
-  }
+  guard self.recovery is Some(ctx) else { return }
+  guard ctx.matches_request_id(request_id.to_string()) else { return }
   self.handle_recovery_retry()
 }
 
