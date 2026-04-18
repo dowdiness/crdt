@@ -98,18 +98,9 @@ fn[T : Eq] SyncEditor::apply_local_text_change(
 }
 
 ///|
-fn[T : Eq] SyncEditor::force_parser_reset(
-  self : SyncEditor[T],
-) -> @seam.SyntaxNode? {
-  let source = self.doc.text()
-  self.parser.set_source(source)
-  self.mark_projection_dirty()
-  self.parser.runtime().read(self.parser.syntax_tree())
-}
-
-///|
 pub fn[T : Eq] SyncEditor::mark_dirty(self : SyncEditor[T]) -> Unit {
-  let _ = self.force_parser_reset()
+  self.parser.set_source(self.doc.text())
+  self.mark_projection_dirty()
 }
 
 ///|
