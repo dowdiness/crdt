@@ -2,8 +2,8 @@
 
 import * as crdt from '@moonbit/crdt-lambda';
 import * as graphviz from '@moonbit/graphviz';
-import { HTMLAdapter } from '../../../lib/editor-adapter/html-adapter';
-import type { ViewPatch } from '../../../lib/editor-adapter/types';
+import { HTMLAdapter } from '../../../adapters/editor-adapter/html-adapter';
+import type { ViewPatch } from '../../../adapters/editor-adapter/types';
 
 export function createEditor(agentId: string) {
   const handle = crdt.create_editor(agentId);

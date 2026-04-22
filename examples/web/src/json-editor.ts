@@ -1,6 +1,6 @@
 import * as crdt from '@moonbit/crdt-json';
-import { HTMLAdapter } from '../../../lib/editor-adapter/html-adapter';
-import type { ViewPatch, ViewNode } from '../../../lib/editor-adapter/types';
+import { HTMLAdapter } from '../../../adapters/editor-adapter/html-adapter';
+import type { ViewPatch, ViewNode } from '../../../adapters/editor-adapter/types';
 
 type InlineMode = 'add-member' | 'wrap-object' | 'change-type' | null;
 

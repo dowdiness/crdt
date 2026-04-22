@@ -423,13 +423,11 @@ fn[T : BTreeElem] plan_delete_range(
       }
       let new_children : Array[BTreeNode[T]] = []
       match left_boundary_subtree(lca, start_leaf) {
-        Some(left) =>
-          new_children.push(fix_left_border(left, min_degree))
+        Some(left) => new_children.push(fix_left_border(left, min_degree))
         None => ()
       }
       match right_boundary_subtree(lca, end_leaf) {
-        Some(right) =>
-          new_children.push(fix_right_border(right, min_degree))
+        Some(right) => new_children.push(fix_right_border(right, min_degree))
         None => ()
       }
       let (normalized_children, normalized_start_idx, normalized_end_idx, _) = absorb_subtree_gap_merge(
