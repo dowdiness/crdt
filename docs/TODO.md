@@ -44,6 +44,12 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
 - [x] Adopt `moon.work` (Stage 1 of workspace reorg, deferred from PR #210).
   Landed: workspace members = `./`, `./lib/text-change`, `./lib/zipper`, `./lib/btree`. All 14 hard-coded JS-artifact-path consumers (Vite configs, tsconfigs, `scripts/build-js.sh`, `package-release.sh`, CI upload paths, `examples/relay-server/src/index.ts`, `docs/development/JS_INTEGRATION.md`) rewritten to the namespaced path. Root `moon test` now covers 1029 tests across workspace members.
 
+- [ ] Fix `examples/prosemirror` TypeScript check (27 errors from Stage 5 `lib/editor-adapter` → `adapters/editor-adapter` move).
+  Why: `adapters/editor-adapter/` has no `package.json`, so when `npx tsc --noEmit` in `examples/prosemirror` processes its files, `prosemirror-*` and `@codemirror/*` type resolution fails (TS2307) and every untyped param becomes implicit-any (TS7006). Also `rootDir: "src"` in `examples/prosemirror/tsconfig.json` rejects imports from outside src (TS6059).
+  Scope: Vite build is unaffected; not caught by any CI job today. Same issue likely latent for `examples/web` and `examples/demo-react` if they ever run tsc over the adapter.
+  Fix options: (a) add `package.json` with `peerDependencies` to `adapters/editor-adapter/`; (b) add a dedicated `tsconfig.json` in `adapters/editor-adapter/` with `paths` mappings; (c) gate adapter type-checking under one owner project instead of each consumer.
+  Exit: `npx tsc --noEmit` clean in `examples/{prosemirror,web,demo-react}`; add a CI job that runs it.
+
 - [ ] Reduce CRDT JS bundle size for `index.html` / `memo.html` (lambda bundle is 546 kB, 46 kB over 500 kB threshold).
   Why: large bundle impacts initial page load for web editors.
   Plan: `docs/plans/2026-04-18-crdt-bundle-split.md`
