@@ -46,7 +46,7 @@ export interface MoonBitPluginOptions {
  * moonbitPlugin({
  *   modules: [
  *     {
- *       name: '@moonbit/crdt',
+ *       name: '@moonbit/crdt-lambda',
  *       path: '..',
  *       output: '_build/js/release/build/dowdiness/canopy/ffi/lambda/lambda.js'
  *     },

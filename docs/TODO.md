@@ -41,9 +41,6 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
   Why: current supported targets are native and JS only.
   Exit: wasm build runs in CI and is documented as supported.
 
-- [x] Adopt `moon.work` (Stage 1 of workspace reorg, deferred from PR #210).
-  Landed: workspace members = `./`, `./lib/text-change`, `./lib/zipper`, `./lib/btree`. All 14 hard-coded JS-artifact-path consumers (Vite configs, tsconfigs, `scripts/build-js.sh`, `package-release.sh`, CI upload paths, `examples/relay-server/src/index.ts`, `docs/development/JS_INTEGRATION.md`) rewritten to the namespaced path. Root `moon test` now covers 1029 tests across workspace members.
-
 - [ ] Add `npx tsc --noEmit` CI job for `examples/{web,prosemirror,demo-react}`.
   Why: today no CI job runs `tsc --noEmit` on the examples, so TS regressions in `adapters/editor-adapter/` or example sources go unnoticed (see the Stage 5 move / `@moonbit/canopy` rename, which left 28 errors on main before #211 fixed them).
   Exit: a CI job runs `tsc --noEmit` per example and blocks merge on failure.
