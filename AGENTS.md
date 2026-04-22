@@ -15,23 +15,23 @@ git submodule update --init --recursive
 
 ### Test & Build
 ```bash
-moon test                           # canopy module tests
+# Workspace-root commands cover canopy + lib/text-change + lib/zipper + lib/btree (`moon.work` members)
+moon test                           # All workspace members (~1029 tests)
+moon check                          # Lint across workspace
+moon info && moon fmt               # Format & update interfaces
+
+# Submodules and example modules are NOT workspace members — still need fanout:
 cd event-graph-walker && moon test  # CRDT library tests
 cd loom/loom && moon test           # Parser framework tests
 cd loom/seam && moon test           # CST library tests
 cd loom/examples/lambda && moon test # Lambda parser tests
-cd lib/btree && moon test           # B-tree library tests
-cd lib/text-change && moon test     # Text-change library tests
-cd lib/zipper && moon test          # Zipper library tests
-cd lib/semantic && moon test        # Semantic annotation tests
+cd lib/semantic && moon test        # Semantic annotation tests (not a workspace member)
 cd examples/ideal && moon test      # Ideal editor example (PR-gated in CI)
 cd examples/block-editor && moon test
 cd examples/canvas && moon test
-moon info && moon fmt               # Format & update interfaces
-moon check                          # Lint
 ```
 
-Note: `moon.work` (workspace manifest) is a candidate followup — dependency direction rules are already enforced via `scripts/check-deps.sh` without it. The workspace changes canopy's JS build artifact path (`_build/js/release/build/ffi/*` → `_build/js/release/build/dowdiness/canopy/ffi/*`) and requires coordinated updates to ~14 web/CI configs; tracked separately.
+JS build artifacts are namespaced under the module path: `_build/js/release/build/dowdiness/canopy/ffi/{lambda,json,markdown}/...`. Vite configs, tsconfigs, `scripts/build-js.sh`, `scripts/package-release.sh`, and CI artifact uploads all reference this namespaced path.
 
 ### Web Development
 ```bash

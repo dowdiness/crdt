@@ -2,11 +2,19 @@
   "name": "dowdiness/btree",
   "version": "0.1.0",
   "deps": {
-    "dowdiness/rle": { "path": "../../rle" },
+    "dowdiness/rle": {
+      "path": "../../rle",
+      "version": "0.1.0"
+    },
     "moonbitlang/quickcheck": "0.11.2"
   },
   "repository": "https://github.com/dowdiness/canopy",
   "license": "Apache-2.0",
-  "keywords": ["btree", "data-structure", "counted-sequence", "moonbit"],
+  "keywords": [
+    "btree",
+    "data-structure",
+    "counted-sequence",
+    "moonbit"
+  ],
   "description": "Generic counted B-tree with O(log n) indexed access, insert, delete, and range operations"
 }

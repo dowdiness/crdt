@@ -11,17 +11,17 @@ export default defineConfig({
         {
           name: '@moonbit/crdt-lambda',
           path: '../..',
-          output: '_build/js/release/build/ffi/lambda/lambda.js'
+          output: '_build/js/release/build/dowdiness/canopy/ffi/lambda/lambda.js'
         },
         {
           name: '@moonbit/crdt-json',
           path: '../..',
-          output: '_build/js/release/build/ffi/json/json.js'
+          output: '_build/js/release/build/dowdiness/canopy/ffi/json/json.js'
         },
         {
           name: '@moonbit/crdt-markdown',
           path: '../..',
-          output: '_build/js/release/build/ffi/markdown/markdown.js'
+          output: '_build/js/release/build/dowdiness/canopy/ffi/markdown/markdown.js'
         },
         {
           name: '@moonbit/graphviz',
