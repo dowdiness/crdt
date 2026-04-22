@@ -207,9 +207,13 @@ See "Stage 0 findings" section above for details.
 - `companion/` stays inside the canopy module (it's app-tier).
 - Each split: introduce `moon.mod.json`, add to `moon.work`, path-dep from canopy root, `moon check --target all`.
 
-### Stage 5 — clarify `lib/editor-adapter`
+### Stage 5 — clarify `lib/editor-adapter` (done 2026-04-22)
 
-- Move out of `lib/` (e.g., to `adapters/editor-adapter/` or under `examples/`), or rename `lib/` to a neutral name (`packages/`), or split into `lib-mbt/` + `lib-ts/`. Mechanical PR.
+- ✅ Moved `lib/editor-adapter/` → `adapters/editor-adapter/` via `git mv` (history preserved).
+- ✅ Updated 6 TypeScript consumers in `examples/{prosemirror,web}/...` (pure path rewrite, same depth).
+- ✅ Updated `docs/development/ADDING_A_LANGUAGE.md`.
+- Historical plan docs (2026-04-01, 2026-04-18) kept unchanged — they describe the state at that time.
+- `lib/` now contains only MoonBit modules: `btree`, `text-change`, `semantic`, `zipper` (+ `semantic/proof`). Category confusion resolved.
 
 ### Stage 6 (optional) — reduce submodule coupling
 

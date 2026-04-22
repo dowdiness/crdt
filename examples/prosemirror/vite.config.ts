@@ -14,7 +14,7 @@ export default defineConfig({
     }) as PluginOption
   ],
   resolve: {
-    // Ensure packages imported by lib/editor-adapter/ (which lives
+    // Ensure packages imported by adapters/editor-adapter/ (which lives
     // outside this project's node_modules tree) resolve from here.
     dedupe: [
       'prosemirror-commands',
@@ -31,7 +31,7 @@ export default defineConfig({
   },
   server: {
     fs: {
-      // Allow reading MoonBit build output and lib/ from the monorepo root
+      // Allow reading MoonBit build output and adapters/ from the monorepo root
       allow: ['../..']
     }
   },

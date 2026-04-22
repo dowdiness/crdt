@@ -490,7 +490,7 @@ create/destroy/get_text/set_text/apply_edit exports. Use a handle range
 that doesn't collide with existing languages (Lambda: 0-9999, JSON: 10000+,
 Markdown: 20000+). Add the import to `ffi/moon.pkg`.
 
-**TypeScript adapter** (`lib/editor-adapter/` or `examples/web/src/`):
+**TypeScript adapter** (`adapters/editor-adapter/` or `examples/web/src/`):
 Import the FFI functions, wire to your UI. See `examples/web/src/markdown-editor.ts`
 for the pattern.
 
