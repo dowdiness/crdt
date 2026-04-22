@@ -172,13 +172,11 @@ Staged, each stage = its own PR, repo stays green.
 
 See "Stage 0 findings" section above for details.
 
-### Stage 1 — introduce `moon.work` for two in-repo libs (narrow)
+### Stage 1 — introduce `moon.work` (DEFERRED to followup PR)
 
-- `moon work init` at repo root.
-- `moon work use .`, `moon work use lib/text-change`, `moon work use lib/zipper`.
-- Add root-level build commands (`moon check --target all`, `moon test --target all`) **alongside** the existing `cd X && moon test` fanout in `CLAUDE.md`. Do **not** remove the fanout — submodules still need it.
-- Verify `moon check`, `moon test`, `moon info`, `moon fmt` at the root pass.
-- No changes to submodules, examples, or other lib/* members.
+**Attempted 2026-04-22 and reverted.** When canopy is a workspace member, moon namespaces JS build artifacts: `_build/js/release/build/ffi/lambda/lambda.js` → `_build/js/release/build/dowdiness/canopy/ffi/lambda/lambda.js`. This breaks 14 downstream consumers (Vite configs, tsconfigs, build-js.sh artifact checker, package-release.sh, CI artifact upload paths, relay-server dynamic imports). The coordinated path rewrite is self-contained but larger than this PR; deferring to a dedicated follow-up.
+
+Stages 2, 3 (non-workspace parts), and 5 do **not** depend on `moon.work` and are kept in this PR.
 
 ### Stage 2 — write and enforce the dependency rules (done 2026-04-22)
 
@@ -189,13 +187,13 @@ See "Stage 0 findings" section above for details.
 - ✅ Wired into CI as `dep-check` job; added to `all-checks-passed` gate.
 - Skipped: cycle detection among known couplings (drift tracking) — future enhancement; dep-graph.txt serves as current baseline.
 
-### Stage 3 — decide on `lib/btree`, `lib/semantic`, examples (done 2026-04-22)
+### Stage 3 — decide on examples + lib/btree handling (done 2026-04-22, minus workspace parts)
 
-- ✅ `lib/btree`: added to workspace (option a). Test count rose from 948 → 1029 at workspace root.
-- ✅ `moon work sync` observed: pins every path-dep to an explicit `version` (including non-workspace-member path-deps like `rle`). More aggressive than the docs imply — worth knowing for future drift detection.
-- ✅ `lib/semantic`: kept out of workspace (option c). The cross-dep into `loom/examples/markdown` stays a known yellow flag; inclusion deferred until the coupling is resolved or semantic is actually consumed by root.
-- ✅ `examples/{ideal, block-editor, canvas}`: audited. Found `examples/ideal` broken by stale rename (`antisatori/graphviz` → `dowdiness/graphviz` never propagated after graphviz submodule rename). Fixed mechanically and now builds (12 tests pass). Added new `test-examples` matrix job in `.github/workflows/ci.yml` gating all three.
-- Example modules **not** added to workspace — gated via per-module CI matrix instead, consistent with the submodule pattern. Keeps workspace scope to authored libraries.
+- ✅ `examples/{ideal, block-editor, canvas}`: audited. Found `examples/ideal` broken by stale rename (`antisatori/graphviz` → `dowdiness/graphviz` never propagated after graphviz submodule rename). Fixed mechanically (12 tests pass). Added new `test-examples` matrix job in `.github/workflows/ci.yml` gating all three.
+- ✅ `lib/btree` format drift caught and fixed. When `lib/btree` was briefly added to the workspace during Stage 1, `moon fmt --check` revealed pre-existing canonical-format drift in 4 files (`btree_wbtest.mbt`, `walker_propagate.mbt`, `walker_range_delete.mbt`, `walker_repair.mbt`). Ran `moon fmt` to reformat; keeping the fixes even though the workspace was reverted — they are canonical moon fmt output.
+- ⏸️ `lib/btree` workspace membership: deferred with Stage 1.
+- ✅ `lib/semantic` stays out (cross-dep into `loom/examples/markdown` yellow flag persists).
+- Example modules are **not** workspace members — gated via per-module CI matrix instead, consistent with the submodule pattern.
 
 ### Stage 4 — narrow splits in `lang/*` (only if warranted)
 

@@ -14,30 +14,24 @@ git submodule update --init --recursive
 ```
 
 ### Test & Build
-
-**Workspace members** (canopy + `lib/text-change` + `lib/zipper` + `lib/btree`, covered by `moon.work`): run from repo root.
-
 ```bash
-moon test                           # all workspace members (canopy + lib/*)
-moon check                          # Lint across workspace
-moon info && moon fmt               # Regenerate .mbti + format across workspace
-moon work sync                      # Align path-dep versions after bumps
-```
-
-**Non-workspace MoonBit modules** (submodules, loom members, lib/semantic, examples): still per-module.
-
-```bash
+moon test                           # canopy module tests
 cd event-graph-walker && moon test  # CRDT library tests
 cd loom/loom && moon test           # Parser framework tests
 cd loom/seam && moon test           # CST library tests
 cd loom/examples/lambda && moon test # Lambda parser tests
+cd lib/btree && moon test           # B-tree library tests
+cd lib/text-change && moon test     # Text-change library tests
+cd lib/zipper && moon test          # Zipper library tests
 cd lib/semantic && moon test        # Semantic annotation tests
 cd examples/ideal && moon test      # Ideal editor example (PR-gated in CI)
 cd examples/block-editor && moon test
 cd examples/canvas && moon test
+moon info && moon fmt               # Format & update interfaces
+moon check                          # Lint
 ```
 
-Submodules are not workspace members by design (they have independent release cycles). `lib/semantic` is kept out until its cross-dep into `loom/examples/markdown` is resolved.
+Note: `moon.work` (workspace manifest) is a candidate followup — dependency direction rules are already enforced via `scripts/check-deps.sh` without it. The workspace changes canopy's JS build artifact path (`_build/js/release/build/ffi/*` → `_build/js/release/build/dowdiness/canopy/ffi/*`) and requires coordinated updates to ~14 web/CI configs; tracked separately.
 
 ### Web Development
 ```bash
