@@ -125,6 +125,11 @@ Route tasks based on judgment complexity, not importance.
 
 **Use `/delegate` skill** before composing Agent prompts for non-trivial delegation. It provides the handoff format and task-type templates.
 
+## Code Review Expectations
+
+- Expect Codex/CodeRabbit reviews on every PR — proactively check for common issues before submitting: correct API usage (e.g., get_result() not read(), get() not peek()), missed callers when refactoring, variant semantics preserved
+- Run format checks and full test suite before pushing
+
 ## Git & PR Workflow
 
 - After rebase operations, verify files are in the correct directories
