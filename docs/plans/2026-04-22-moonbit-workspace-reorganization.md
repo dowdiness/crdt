@@ -1,7 +1,7 @@
 # MoonBit Workspace Reorganization — Analysis & Staged Plan
 
 **Date:** 2026-04-22
-**Status:** Analysis / proposal. No code changes yet.
+**Status:** Stages 0, 2, 3, 5 complete (shipped in PR #210). Stage 1 deferred to a follow-up PR. Stages 4, 6 optional — not pursued.
 **Scope:** Propose a `moon.work`-based workspace layout for the Canopy monorepo, with a low-risk staged migration. No full rewrite.
 
 **Revision note:** This doc was reviewed by codex against the actual repo on 2026-04-22 and corrected. The Facts/Interpretations/Rules sections now reflect verified imports, not guesses.
