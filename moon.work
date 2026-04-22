@@ -1,0 +1,5 @@
+members = [
+  ".",
+  "./lib/text-change",
+  "./lib/zipper",
+]

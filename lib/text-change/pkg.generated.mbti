@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "dowdiness/text_change"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn compute_text_change(String, String) -> TextChange
 
@@ -11,10 +15,8 @@ pub(all) struct TextChange {
   start : Int
   delete_len : Int
   inserted : String
-}
+} derive(Eq, @debug.Debug)
 pub fn TextChange::is_noop(Self) -> Bool
-pub impl Eq for TextChange
-pub impl Show for TextChange
 
 // Type aliases
 
