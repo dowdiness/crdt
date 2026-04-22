@@ -9,7 +9,7 @@
     "dowdiness/text_change": {
       "path": "../../lib/text-change"
     },
-    "antisatori/graphviz": {
+    "dowdiness/graphviz": {
       "path": "../../graphviz"
     },
     "dowdiness/lambda": {

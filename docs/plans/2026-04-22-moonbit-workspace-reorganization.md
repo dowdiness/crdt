@@ -189,14 +189,13 @@ See "Stage 0 findings" section above for details.
 - ✅ Wired into CI as `dep-check` job; added to `all-checks-passed` gate.
 - Skipped: cycle detection among known couplings (drift tracking) — future enhancement; dep-graph.txt serves as current baseline.
 
-### Stage 3 — decide on `lib/btree`, `lib/semantic`, examples
+### Stage 3 — decide on `lib/btree`, `lib/semantic`, examples (done 2026-04-22)
 
-- Resolve the `lib/btree` governance question. Options:
-  - (a) Make it a workspace member and accept that submodules path-dep into a workspace member. Document the semantics you pick.
-  - (b) Publish `lib/btree` to mooncakes and migrate submodules from path-dep to registry-dep.
-  - (c) Leave status quo (not a workspace member).
-- Audit whether `examples/{ideal, block-editor, canvas}` build on PRs. Either add them to CI (preferred) or explicitly document that they're deploy-only. If adding to CI, decide whether to make them workspace members too.
-- Add `lib/semantic` + `lib/semantic/proof` to the workspace **only when** a root package actually depends on them.
+- ✅ `lib/btree`: added to workspace (option a). Test count rose from 948 → 1029 at workspace root.
+- ✅ `moon work sync` observed: pins every path-dep to an explicit `version` (including non-workspace-member path-deps like `rle`). More aggressive than the docs imply — worth knowing for future drift detection.
+- ✅ `lib/semantic`: kept out of workspace (option c). The cross-dep into `loom/examples/markdown` stays a known yellow flag; inclusion deferred until the coupling is resolved or semantic is actually consumed by root.
+- ✅ `examples/{ideal, block-editor, canvas}`: audited. Found `examples/ideal` broken by stale rename (`antisatori/graphviz` → `dowdiness/graphviz` never propagated after graphviz submodule rename). Fixed mechanically and now builds (12 tests pass). Added new `test-examples` matrix job in `.github/workflows/ci.yml` gating all three.
+- Example modules **not** added to workspace — gated via per-module CI matrix instead, consistent with the submodule pattern. Keeps workspace scope to authored libraries.
 
 ### Stage 4 — narrow splits in `lang/*` (only if warranted)
 

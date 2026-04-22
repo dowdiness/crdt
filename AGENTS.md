@@ -15,26 +15,29 @@ git submodule update --init --recursive
 
 ### Test & Build
 
-**Workspace members** (canopy + `lib/text-change` + `lib/zipper`, covered by `moon.work`): run from repo root.
+**Workspace members** (canopy + `lib/text-change` + `lib/zipper` + `lib/btree`, covered by `moon.work`): run from repo root.
 
 ```bash
 moon test                           # all workspace members (canopy + lib/*)
 moon check                          # Lint across workspace
 moon info && moon fmt               # Regenerate .mbti + format across workspace
+moon work sync                      # Align path-dep versions after bumps
 ```
 
-**Non-workspace MoonBit modules** (submodules, loom members, other lib/*): still per-module.
+**Non-workspace MoonBit modules** (submodules, loom members, lib/semantic, examples): still per-module.
 
 ```bash
 cd event-graph-walker && moon test  # CRDT library tests
 cd loom/loom && moon test           # Parser framework tests
 cd loom/seam && moon test           # CST library tests
 cd loom/examples/lambda && moon test # Lambda parser tests
-cd lib/btree && moon test           # B-tree library tests
 cd lib/semantic && moon test        # Semantic annotation tests
+cd examples/ideal && moon test      # Ideal editor example (PR-gated in CI)
+cd examples/block-editor && moon test
+cd examples/canvas && moon test
 ```
 
-Submodules are not workspace members by design (they have independent release cycles). Keep the per-module loop for them.
+Submodules are not workspace members by design (they have independent release cycles). `lib/semantic` is kept out until its cross-dep into `loom/examples/markdown` is resolved.
 
 ### Web Development
 ```bash

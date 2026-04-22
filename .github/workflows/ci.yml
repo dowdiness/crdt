@@ -85,6 +85,36 @@ jobs:
       - name: Check and test ${{ matrix.name }}
         run: ./scripts/run-moon-module.sh ci "${{ matrix.path }}"
 
+  test-examples:
+    name: Test MoonBit Examples
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ideal
+            path: examples/ideal
+          - name: block-editor
+            path: examples/block-editor
+          - name: canvas
+            path: examples/canvas
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: Verify MoonBit installation
+        run: moon version --all
+
+      - name: Check and test ${{ matrix.name }}
+        run: ./scripts/run-moon-module.sh ci "${{ matrix.path }}"
+
   prove:
     name: Formal Verification
     runs-on: ubuntu-latest
@@ -355,6 +385,7 @@ jobs:
       - dep-check
       - test-main
       - test-submodules
+      - test-examples
       - prove
       - format-check
       - build-js
@@ -368,6 +399,7 @@ jobs:
           if [[ "${{ needs.dep-check.result }}" != "success" ]] || \
              [[ "${{ needs.test-main.result }}" != "success" ]] || \
              [[ "${{ needs.test-submodules.result }}" != "success" ]] || \
+             [[ "${{ needs.test-examples.result }}" != "success" ]] || \
              [[ "${{ needs.prove.result }}" != "success" ]] || \
              [[ "${{ needs.format-check.result }}" != "success" ]] || \
              [[ "${{ needs.build-js.result }}" != "success" ]] || \
