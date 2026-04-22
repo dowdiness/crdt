@@ -642,16 +642,25 @@ test "plan_delete_range merges partial kept boundaries in same parent" {
     total=7,
   )
   let splice = plan_delete_range(root, 1, 6, 2).unwrap()
-  inspect(splice.new_children.length(), content=(
-    #|2
-  ))
+  inspect(
+    splice.new_children.length(),
+    content=(
+      #|2
+    ),
+  )
   inspect(splice.new_children[0].height(), content="0")
-  inspect(splice.new_children[0].total(), content=(
-    #|1
-  ))
-  inspect(splice.leaf_delta, content=(
-    #|-1
-  ))
+  inspect(
+    splice.new_children[0].total(),
+    content=(
+      #|1
+    ),
+  )
+  inspect(
+    splice.leaf_delta,
+    content=(
+      #|-1
+    ),
+  )
 }
 
 ///|
@@ -681,16 +690,25 @@ test "plan_delete_range merges partial kept boundaries across higher lca" {
   inspect(splice.prefix.length(), content="0")
   inspect(splice.start_idx, content="0")
   inspect(splice.end_idx, content="2")
-  inspect(splice.new_children.length(), content=(
-    #|2
-  ))
+  inspect(
+    splice.new_children.length(),
+    content=(
+      #|2
+    ),
+  )
   inspect(splice.new_children[0].height(), content="1")
-  inspect(splice.new_children[0].total(), content=(
-    #|1
-  ))
-  inspect(splice.leaf_delta, content=(
-    #|-2
-  ))
+  inspect(
+    splice.new_children[0].total(),
+    content=(
+      #|1
+    ),
+  )
+  inspect(
+    splice.leaf_delta,
+    content=(
+      #|-2
+    ),
+  )
 }
 
 ///|
@@ -1175,10 +1193,12 @@ test "BTree::delete_range full range clears tree" {
   let t = build_tree([(1, 2), (2, 3)])
   t.delete_range(0, 5)
   inspect(t.span(), content="0")
-  inspect(t.is_empty(), content=(
-    #|true
-
-  ))
+  inspect(
+    t.is_empty(),
+    content=(
+      #|true
+    ),
+  )
 }
 
 ///|
@@ -1649,7 +1669,6 @@ test "delete_range with underfull boundary chain repair" {
     t.size(),
     content=(
       #|14
-
     ),
   )
   inspect(
@@ -1678,154 +1697,237 @@ fn[T] debug_tree(node : BTreeNode[T], depth : Int) -> String {
 ///|
 test "debug: counterexample 25 items" {
   let t = build_tree([
-    (3, 3), (3, 1), (2, 1), (1, 1), (1, 2),
-    (3, 2), (2, 3), (1, 3), (3, 2), (2, 2),
-    (2, 1), (2, 3), (4, 1), (5, 1), (4, 2),
-    (4, 1), (4, 2), (5, 3), (4, 2), (1, 3),
-    (5, 3), (4, 1), (2, 3), (5, 2), (4, 1),
+    (3, 3),
+    (3, 1),
+    (2, 1),
+    (1, 1),
+    (1, 2),
+    (3, 2),
+    (2, 3),
+    (1, 3),
+    (3, 2),
+    (2, 2),
+    (2, 1),
+    (2, 3),
+    (4, 1),
+    (5, 1),
+    (4, 2),
+    (4, 1),
+    (4, 2),
+    (5, 3),
+    (4, 2),
+    (1, 3),
+    (5, 3),
+    (4, 1),
+    (2, 3),
+    (5, 2),
+    (4, 1),
   ])
   t.delete_range(14, 19)
-  inspect(debug_tree(t.root.unwrap(), 0), content=(
-    #|Internal(n=2, t=44)
-    #|  Internal(n=2, t=14)
-    #|    Internal(n=2, t=6)
-    #|      Internal(n=2, t=4)
-    #|        Leaf(3)
-    #|        Leaf(1)
-    #|      Internal(n=2, t=2)
-    #|        Leaf(1)
-    #|        Leaf(1)
-    #|    Internal(n=2, t=8)
-    #|      Internal(n=2, t=4)
-    #|        Leaf(2)
-    #|        Leaf(2)
-    #|      Internal(n=2, t=4)
-    #|        Leaf(3)
-    #|        Leaf(1)
-    #|  Internal(n=2, t=30)
-    #|    Internal(n=3, t=10)
-    #|      Internal(n=3, t=5)
-    #|        Leaf(1)
-    #|        Leaf(1)
-    #|        Leaf(3)
-    #|      Internal(n=2, t=2)
-    #|        Leaf(1)
-    #|        Leaf(1)
-    #|      Internal(n=2, t=3)
-    #|        Leaf(2)
-    #|        Leaf(1)
-    #|    Internal(n=4, t=20)
-    #|      Internal(n=2, t=5)
-    #|        Leaf(2)
-    #|        Leaf(3)
-    #|      Internal(n=2, t=5)
-    #|        Leaf(2)
-    #|        Leaf(3)
-    #|      Internal(n=2, t=4)
-    #|        Leaf(3)
-    #|        Leaf(1)
-    #|      Internal(n=3, t=6)
-    #|        Leaf(3)
-    #|        Leaf(2)
-    #|        Leaf(1)
-    #|
-
-  ))
-  inspect(btree_invariants_hold(t), content=(
-    #|true
-
-  ))
+  inspect(
+    debug_tree(t.root.unwrap(), 0),
+    content=(
+      #|Internal(n=2, t=44)
+      #|  Internal(n=2, t=14)
+      #|    Internal(n=2, t=6)
+      #|      Internal(n=2, t=4)
+      #|        Leaf(3)
+      #|        Leaf(1)
+      #|      Internal(n=2, t=2)
+      #|        Leaf(1)
+      #|        Leaf(1)
+      #|    Internal(n=2, t=8)
+      #|      Internal(n=2, t=4)
+      #|        Leaf(2)
+      #|        Leaf(2)
+      #|      Internal(n=2, t=4)
+      #|        Leaf(3)
+      #|        Leaf(1)
+      #|  Internal(n=2, t=30)
+      #|    Internal(n=3, t=10)
+      #|      Internal(n=3, t=5)
+      #|        Leaf(1)
+      #|        Leaf(1)
+      #|        Leaf(3)
+      #|      Internal(n=2, t=2)
+      #|        Leaf(1)
+      #|        Leaf(1)
+      #|      Internal(n=2, t=3)
+      #|        Leaf(2)
+      #|        Leaf(1)
+      #|    Internal(n=4, t=20)
+      #|      Internal(n=2, t=5)
+      #|        Leaf(2)
+      #|        Leaf(3)
+      #|      Internal(n=2, t=5)
+      #|        Leaf(2)
+      #|        Leaf(3)
+      #|      Internal(n=2, t=4)
+      #|        Leaf(3)
+      #|        Leaf(1)
+      #|      Internal(n=3, t=6)
+      #|        Leaf(3)
+      #|        Leaf(2)
+      #|        Leaf(1)
+      #|
+    ),
+  )
+  inspect(
+    btree_invariants_hold(t),
+    content=(
+      #|true
+    ),
+  )
 }
 
 ///|
 test "debug: counterexample 32 items" {
   let t = build_tree([
-    (2, 1), (4, 2), (2, 2), (5, 3), (3, 1),
-    (5, 2), (4, 2), (2, 1), (4, 1), (3, 2),
-    (5, 3), (1, 2), (2, 1), (4, 2), (1, 2),
-    (3, 3), (4, 1), (5, 2), (5, 2), (1, 2),
-    (1, 2), (3, 2), (3, 3), (5, 3), (2, 2),
-    (3, 1), (1, 2), (3, 3), (2, 1), (3, 3),
-    (1, 2), (1, 3),
+    (2, 1),
+    (4, 2),
+    (2, 2),
+    (5, 3),
+    (3, 1),
+    (5, 2),
+    (4, 2),
+    (2, 1),
+    (4, 1),
+    (3, 2),
+    (5, 3),
+    (1, 2),
+    (2, 1),
+    (4, 2),
+    (1, 2),
+    (3, 3),
+    (4, 1),
+    (5, 2),
+    (5, 2),
+    (1, 2),
+    (1, 2),
+    (3, 2),
+    (3, 3),
+    (5, 3),
+    (2, 2),
+    (3, 1),
+    (1, 2),
+    (3, 3),
+    (2, 1),
+    (3, 3),
+    (1, 2),
+    (1, 3),
   ])
   t.delete_range(26, 66)
-  inspect(btree_invariants_hold(t), content=(
-    #|true
-  ))
-  inspect(debug_tree(t.root.unwrap(), 0), content=(
-    #|Internal(n=3, t=26)
-    #|  Internal(n=2, t=8)
-    #|    Internal(n=2, t=3)
-    #|      Leaf(1)
-    #|      Leaf(2)
-    #|    Internal(n=2, t=5)
-    #|      Leaf(2)
-    #|      Leaf(3)
-    #|  Internal(n=2, t=6)
-    #|    Internal(n=2, t=3)
-    #|      Leaf(1)
-    #|      Leaf(2)
-    #|    Internal(n=2, t=3)
-    #|      Leaf(2)
-    #|      Leaf(1)
-    #|  Internal(n=3, t=12)
-    #|    Internal(n=2, t=3)
-    #|      Leaf(1)
-    #|      Leaf(2)
-    #|    Internal(n=2, t=5)
-    #|      Leaf(3)
-    #|      Leaf(2)
-    #|    Internal(n=3, t=4)
-    #|      Leaf(1)
-    #|      Leaf(2)
-    #|      Leaf(1)
-    #|
-  ))
+  inspect(
+    btree_invariants_hold(t),
+    content=(
+      #|true
+    ),
+  )
+  inspect(
+    debug_tree(t.root.unwrap(), 0),
+    content=(
+      #|Internal(n=3, t=26)
+      #|  Internal(n=2, t=8)
+      #|    Internal(n=2, t=3)
+      #|      Leaf(1)
+      #|      Leaf(2)
+      #|    Internal(n=2, t=5)
+      #|      Leaf(2)
+      #|      Leaf(3)
+      #|  Internal(n=2, t=6)
+      #|    Internal(n=2, t=3)
+      #|      Leaf(1)
+      #|      Leaf(2)
+      #|    Internal(n=2, t=3)
+      #|      Leaf(2)
+      #|      Leaf(1)
+      #|  Internal(n=3, t=12)
+      #|    Internal(n=2, t=3)
+      #|      Leaf(1)
+      #|      Leaf(2)
+      #|    Internal(n=2, t=5)
+      #|      Leaf(3)
+      #|      Leaf(2)
+      #|    Internal(n=3, t=4)
+      #|      Leaf(1)
+      #|      Leaf(2)
+      #|      Leaf(1)
+      #|
+    ),
+  )
 }
 
 ///|
 test "inline: exact property test case" {
   let items : Array[(Int, Int)] = [
-    (2, 1), (4, 2), (2, 2), (5, 3), (3, 1),
-    (5, 2), (4, 2), (2, 1), (4, 1), (3, 2),
-    (5, 3), (1, 2), (2, 1), (4, 2), (1, 2),
-    (3, 3), (4, 1), (5, 2), (5, 2), (1, 2),
-    (1, 2), (3, 2), (3, 3), (5, 3), (2, 2),
-    (3, 1), (1, 2), (3, 3), (2, 1), (3, 3),
-    (1, 2), (1, 3),
+    (2, 1),
+    (4, 2),
+    (2, 2),
+    (5, 3),
+    (3, 1),
+    (5, 2),
+    (4, 2),
+    (2, 1),
+    (4, 1),
+    (3, 2),
+    (5, 3),
+    (1, 2),
+    (2, 1),
+    (4, 2),
+    (1, 2),
+    (3, 3),
+    (4, 1),
+    (5, 2),
+    (5, 2),
+    (1, 2),
+    (1, 2),
+    (3, 2),
+    (3, 3),
+    (5, 3),
+    (2, 2),
+    (3, 1),
+    (1, 2),
+    (3, 3),
+    (2, 1),
+    (3, 3),
+    (1, 2),
+    (1, 3),
   ]
   let t = build_tree(items)
   inspect(btree_invariants_hold(t), content="true")
   t.delete_range(26, 66)
-  inspect(debug_tree(t.root.unwrap(), 0), content=(
-    #|Internal(n=3, t=26)
-    #|  Internal(n=2, t=8)
-    #|    Internal(n=2, t=3)
-    #|      Leaf(1)
-    #|      Leaf(2)
-    #|    Internal(n=2, t=5)
-    #|      Leaf(2)
-    #|      Leaf(3)
-    #|  Internal(n=2, t=6)
-    #|    Internal(n=2, t=3)
-    #|      Leaf(1)
-    #|      Leaf(2)
-    #|    Internal(n=2, t=3)
-    #|      Leaf(2)
-    #|      Leaf(1)
-    #|  Internal(n=3, t=12)
-    #|    Internal(n=2, t=3)
-    #|      Leaf(1)
-    #|      Leaf(2)
-    #|    Internal(n=2, t=5)
-    #|      Leaf(3)
-    #|      Leaf(2)
-    #|    Internal(n=3, t=4)
-    #|      Leaf(1)
-    #|      Leaf(2)
-    #|      Leaf(1)
-    #|
-  ))
+  inspect(
+    debug_tree(t.root.unwrap(), 0),
+    content=(
+      #|Internal(n=3, t=26)
+      #|  Internal(n=2, t=8)
+      #|    Internal(n=2, t=3)
+      #|      Leaf(1)
+      #|      Leaf(2)
+      #|    Internal(n=2, t=5)
+      #|      Leaf(2)
+      #|      Leaf(3)
+      #|  Internal(n=2, t=6)
+      #|    Internal(n=2, t=3)
+      #|      Leaf(1)
+      #|      Leaf(2)
+      #|    Internal(n=2, t=3)
+      #|      Leaf(2)
+      #|      Leaf(1)
+      #|  Internal(n=3, t=12)
+      #|    Internal(n=2, t=3)
+      #|      Leaf(1)
+      #|      Leaf(2)
+      #|    Internal(n=2, t=5)
+      #|      Leaf(3)
+      #|      Leaf(2)
+      #|    Internal(n=3, t=4)
+      #|      Leaf(1)
+      #|      Leaf(2)
+      #|      Leaf(1)
+      #|
+    ),
+  )
 }
 
 ///|
