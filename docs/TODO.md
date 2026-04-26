@@ -247,6 +247,15 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
 
 ---
 
+## 16. Lambda Type System
+
+- [ ] Evolve the lambda typecheck pipeline so it produces ranged diagnostics + queryable types via subscription, not stringly-typed JSON snapshots.
+  Why: the diagnostic pane shipped (PR #186 + follow-ups), but the pipeline below it lacks the primitives every future surface needs — source ranges on diagnostics, a typed wire protocol, `TypecheckIndex`, push-based subscription, per-def memos, and a shared `attach_typecheck` abstraction. Once these land, hover / inline squigglies / inlay hints / click-to-locate become ~10-line consumers each.
+  Plan: `docs/plans/2026-04-26-lambda-typecheck-pipeline-evolution.md`
+  Exit: 6/6 plan steps shipped — type diagnostics carry ranges, wire is typed (no JSON round-trip), `query_type_at_offset` exposed and consumed by hover, diagnostic updates are subscription-driven, per-def memo isolation verified by test, and `@typecheck.attach` is the single shared attachment abstraction used by both canopy and the loom example.
+
+---
+
 ## Shipped history
 
 Completed items (with PR references and shipping notes) are preserved in
