@@ -18,7 +18,20 @@ loop. No type changes were needed. **`stable` exports earn the label.**
 
 The items below are gaps in the concrete adapter, not in the protocol.
 
-## P1 — `SetDiagnostics` is a no-op in `CM6Adapter`
+## P1 — `SetDiagnostics` is a no-op in `CM6Adapter` (resolved)
+
+**Resolved:** implemented in canopy after this doc landed. `SetDiagnostics`
+patches now dispatch a `StateEffect` into a `diagnosticField` /
+`diagnosticPlugin` pair (mirrors the existing decoration code), rendering
+each diagnostic as a CM6 `Decoration.mark` with class
+`cm-diagnostic cm-diagnostic-${severity}` and a native-tooltip
+`title`/`data-severity` attribute pair. No new dependency on
+`@codemirror/lint`. The `static extensions()` return now includes the
+new field + plugin so consumers get squigglies automatically.
+
+**Original report below for context.**
+
+
 
 **File:** `cm6-adapter.ts`, `applyPatch`
 
@@ -113,7 +126,7 @@ Without one of these, "two consumers on CI" can't actually be wired up.
 
 ## Concrete asks for `0.1.0-alpha.1`
 
-- [ ] P1 — implement `SetDiagnostics` in `CM6Adapter`
+- [x] P1 — implement `SetDiagnostics` in `CM6Adapter`
 - [ ] P2 — `import type` fix for `DecorationSet` + `ViewUpdate`
 - [ ] P3 — `override` modifier on `PeerCursorWidget` methods
 - [ ] P4 — decide: publish or drop `private: true`
