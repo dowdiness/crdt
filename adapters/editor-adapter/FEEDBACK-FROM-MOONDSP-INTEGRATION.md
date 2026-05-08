@@ -127,10 +127,9 @@ Without one of these, "two consumers on CI" can't actually be wired up.
 ## Concrete asks for `0.1.0-alpha.1`
 
 - [x] P1 — implement `SetDiagnostics` in `CM6Adapter`
-- [ ] P2 — `import type` fix for `DecorationSet` + `ViewUpdate`
-- [ ] P3 — `override` modifier on `PeerCursorWidget` methods
+- [x] P2 — `import type` fix for `DecorationSet` + `ViewUpdate`
+- [x] P3 — `override` modifier on `PeerCursorWidget` methods
 - [ ] P4 — decide: publish or drop `private: true`
 
-P2 + P3 are 1-line fixes each. P1 is the substantive item; P4 is the
-publish decision. moondsp's vendor copy can drop most local deltas the
-moment alpha.1 lands.
+Only P4 (the publish decision) remains. moondsp's vendor copy can drop
+its local TypeScript deltas the moment alpha.1 lands.

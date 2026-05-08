@@ -3,11 +3,10 @@
 import {
   EditorView,
   Decoration as CmDecoration,
-  DecorationSet,
   ViewPlugin,
-  ViewUpdate,
   WidgetType,
 } from "@codemirror/view";
+import type { DecorationSet, ViewUpdate } from "@codemirror/view";
 import { StateField, StateEffect, RangeSetBuilder } from "@codemirror/state";
 import type { EditorAdapter } from './adapter';
 import type { ViewPatch, UserIntent, Decoration, Diagnostic } from './types';
@@ -25,11 +24,11 @@ class PeerCursorWidget extends WidgetType {
     super();
   }
 
-  eq(other: PeerCursorWidget): boolean {
+  override eq(other: PeerCursorWidget): boolean {
     return this.label === other.label && this.cssClass === other.cssClass && this.color === other.color;
   }
 
-  toDOM(): HTMLElement {
+  override toDOM(): HTMLElement {
     const wrapper = document.createElement("span");
     wrapper.className = this.cssClass;
     if (this.color) wrapper.style.setProperty("--color", this.color);
@@ -42,7 +41,7 @@ class PeerCursorWidget extends WidgetType {
     return wrapper;
   }
 
-  ignoreEvent(): boolean {
+  override ignoreEvent(): boolean {
     return true;
   }
 }
