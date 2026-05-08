@@ -64,7 +64,7 @@ pub fn render_history(
   }
   let data = collect_history_data(snap, local_agent)
   let comp = chain_compress(data, snap)
-  Dot(emit_dot_string(comp, snap, data))
+  Dot(emit_dot_string(comp, snap, data, local_agent))
 }
 
 ///|
@@ -268,6 +268,7 @@ fn emit_dot_string(
   comp : CompressedData,
   snap : @history.CausalSnapshot,
   data : HistoryData,
+  local_agent : String,
 ) -> String {
   let buf = StringBuilder::new()
   buf.write_string("digraph {\n")
@@ -295,7 +296,12 @@ fn emit_dot_string(
 
   // Nodes.
   for i in 0..<comp.nodes.length() {
-    let (label, agent, is_frontier) = node_attrs(comp.nodes[i], snap, data)
+    let (label, agent, is_frontier) = node_attrs(
+      comp.nodes[i],
+      snap,
+      data,
+      local_agent,
+    )
     let color_idx = data.agent_color.get(agent).unwrap_or(0)
     let fill = palette_color(color_idx)
     buf.write_string("  n")
@@ -335,18 +341,21 @@ fn node_attrs(
   node : CompressedNode,
   snap : @history.CausalSnapshot,
   data : HistoryData,
+  local_agent : String,
 ) -> (String, String, Bool) {
   match node {
     Single(lv) => {
       let entry = snap.entry(lv).unwrap()
       let agent = entry.agent()
-      let label = escape_dot_string(agent) + "#" + entry.seq().to_string()
+      let label = escape_dot_string(display_name(agent, local_agent)) +
+        "#" +
+        entry.seq().to_string()
       (label, agent, data.frontier.contains(lv))
     }
     Chain(lvs) => {
       let head = snap.entry(lvs[0]).unwrap()
       let agent = head.agent()
-      let label = escape_dot_string(agent) +
+      let label = escape_dot_string(display_name(agent, local_agent)) +
         " (" +
         lvs.length().to_string() +
         " ops)"
@@ -379,7 +388,12 @@ pub fn legend_html(
   )
   // Local agent first — anchor for "this color is you."
   match data.agent_color.get(local_agent) {
-    Some(idx) => append_legend_chip(buf, palette_color(idx), "You")
+    Some(idx) =>
+      append_legend_chip(
+        buf,
+        palette_color(idx),
+        display_name(local_agent, local_agent),
+      )
     None => ()
   }
   // Remote agents in palette-index order so the strip reads left-to-right
@@ -392,7 +406,11 @@ pub fn legend_html(
   }
   others.sort_by(fn(a, b) { a.0 - b.0 })
   for pair in others {
-    append_legend_chip(buf, palette_color(pair.0), peer_label(pair.1))
+    append_legend_chip(
+      buf,
+      palette_color(pair.0),
+      display_name(pair.1, local_agent),
+    )
   }
   // Frontier swatch — amber border, no fill — mirrors the SVG's stroke.
   buf.write_string(
@@ -420,16 +438,29 @@ fn append_legend_chip(
 }
 
 ///|
-/// Display name for a remote agent. Production agent IDs from the ideal
-/// editor look like `ideal-{timestamp}-{random8}` — the prefix is shared
-/// across the session so the trailing 4 chars are the discriminator. For
-/// short or non-standard IDs, fall back to the full string.
-fn peer_label(agent : String) -> String {
-  let n = agent.length()
-  if n <= 8 {
-    agent
+/// Single source of truth for agent identity in user-facing labels.
+/// The local agent is always "You"; remote agents get a short
+/// "Peer-XXXX" name derived from the trailing 4 chars of their agent
+/// ID (production IDs look like `ideal-{timestamp}-{random8}` — the
+/// prefix is shared across the session so the suffix is the
+/// discriminator). For short or non-standard IDs, the full string is
+/// kept verbatim.
+///
+/// Used by both `legend_html` (decoder strip) and `node_attrs` (SVG
+/// labels) so a single agent reads with the same name in both
+/// surfaces — without this, the legend would say "You" while the
+/// graph showed `ideal-mqr4kx0a-9d49…`, and users would have to
+/// manually correlate the two.
+fn display_name(agent : String, local_agent : String) -> String {
+  if agent == local_agent {
+    "You"
   } else {
-    "Peer-" + agent[n - 4:n].to_owned()
+    let n = agent.length()
+    if n <= 8 {
+      agent
+    } else {
+      "Peer-" + agent[n - 4:n].to_owned()
+    }
   }
 }
 
