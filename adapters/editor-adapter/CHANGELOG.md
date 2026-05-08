@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `README.md` documenting the package boundary, public API stability tiers, wire-format invariants, and extension points.
 - `CHANGELOG.md` (this file).
+- `CM6Adapter` now applies `SetDiagnostics` patches as inline `cm-diagnostic cm-diagnostic-${severity}` marks with native-tooltip `title` and `data-severity` attributes. `static extensions()` returns the new diagnostic field + plugin alongside the decoration pair. (#227)
+
+### Changed
+- `cm6-adapter.ts`: `DecorationSet` and `ViewUpdate` are now imported with `import type`, fixing the build for downstream TypeScript projects with `verbatimModuleSyntax: true` (a Vite/SvelteKit default).
+- `cm6-adapter.ts`: `PeerCursorWidget.{eq, toDOM, ignoreEvent}` now carry the `override` modifier, fixing the build for downstream projects with `noImplicitOverride: true`.
 
 ## [0.0.0] - Initial
 
