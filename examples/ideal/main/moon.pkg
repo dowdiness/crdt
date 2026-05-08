@@ -4,6 +4,7 @@ import {
   "dowdiness/canopy/core" @canopy_core,
   "dowdiness/canopy/ffi/lambda" @ffi,
   "dowdiness/canopy/editor" @editor,
+  "dowdiness/event-graph-walker/history" @history,
   "dowdiness/canopy/projection" @proj,
   "dowdiness/canopy/lang/lambda" @lambda,
   "dowdiness/canopy/lang/lambda/edits" @lambda_edits,
