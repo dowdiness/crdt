@@ -214,14 +214,14 @@ pub fn parse_to_proj_node(
 }
 
 ///|
-/// Build the 3-memo pipeline (proj, registry, source_map) for the JSON
-/// projection. No FlatProj.
+/// Memo builder for JSON projection pipeline.
+/// Returns 3 memos (no FlatProj) for SyncEditor::new_generic.
 pub fn build_json_projection_memos(
   parser : @loom.Parser[@json.JsonValue],
 ) -> (
   @incr.Memo[ProjNode[@json.JsonValue]?],
   @incr.Memo[Map[NodeId, ProjNode[@json.JsonValue]]],
-  @incr.Memo[@core.SourceMap],
+  @incr.Memo[SourceMap],
 ) {
   @core.build_projection_memos(
     parser.runtime(),
