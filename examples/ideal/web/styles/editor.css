@@ -677,21 +677,17 @@ canopy-editor {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── SVG-rendering bottom tabs (Graphviz, Causal History) ─ */
+/* ── Graphviz tab ───────────────────────────────────────── */
 
 /*
- * Both tabs render an SVG produced by `@gv_svg.render_svg_with_config` with
- * a viewBox but no intrinsic width/height. Without an explicit max-height
- * the SVG inflates to (container_width × viewBox_aspect), which for narrow
- * graphs (e.g. a 3-node chain at viewBox 90×146) produces a 2000+px tall
- * SVG inside a 160px-tall panel — the visible area shows only padding and
- * the user has to scroll to find the graph.
- *
- * Constrain on both axes so the SVG fits the panel by default while
- * preserving aspect ratio.
+ * The SVG produced by `@gv_svg.render_svg_with_config` carries a viewBox
+ * but no intrinsic width/height. Without an explicit max-height the SVG
+ * inflates to (container_width × viewBox_aspect), which for narrow graphs
+ * (e.g. a 3-node chain at viewBox 90×146) produces a 2000+px tall SVG
+ * inside a 160px panel. Constrain on both axes so the SVG fits the panel
+ * by default while preserving aspect ratio.
  */
-.graphviz-content,
-.history-content {
+.graphviz-content {
   overflow: auto;
   display: flex;
   align-items: center;
@@ -699,12 +695,85 @@ canopy-editor {
   padding: var(--space-md);
 }
 
-.graphviz-content svg,
-.history-content svg {
+.graphviz-content svg {
   max-width: 100%;
   max-height: calc(var(--bottom-content-max-height) - var(--space-md) * 2);
   width: auto;
   height: auto;
+}
+
+/* ── Causal History tab ─────────────────────────────────── */
+
+/*
+ * Vertical layout: legend strip on top (decoder for the agent palette and
+ * the "now" frontier highlight), SVG below in a centered, overflow-aware
+ * region. Same SVG sizing strategy as the Graphviz tab, scoped to the
+ * graph row so the legend isn't squeezed out.
+ */
+.history-content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
+  overflow: hidden;
+}
+
+.history-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  padding: var(--space-xs) var(--space-md);
+  font-size: 11px;
+  color: var(--canopy-muted);
+  border-bottom: 1px solid var(--canopy-border);
+  flex-shrink: 0;
+}
+
+.history-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  white-space: nowrap;
+}
+
+.history-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.history-legend-frontier {
+  width: 10px;
+  height: 8px;
+  border-radius: 2px;
+  border: 2px solid;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.history-graph {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: var(--space-md);
+}
+
+.history-graph svg {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+
+.history-empty {
+  display: block;
+  padding: var(--space-md);
+  font-size: var(--text-small);
+  color: var(--canopy-muted);
 }
 
 /* ── Panel scrim (mobile only — hidden on desktop) ─────── */

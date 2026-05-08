@@ -34,21 +34,27 @@ fn graphviz_render_cmd(model : Model) -> @rabbita.Cmd {
 }
 
 ///|
-/// Render the causal-graph history view as SVG into the History tab's
-/// container. Mirrors `graphviz_render_cmd` — guarded on tab + visibility.
+/// Render the causal-graph history view (legend + SVG) into the History
+/// tab's container. Mirrors `graphviz_render_cmd` — guarded on tab and
+/// visibility.
 fn history_render_cmd(model : Model) -> @rabbita.Cmd {
   if model.bottom_tab != History || !model.workspace.bottom_visible {
     return @rabbita.none
   }
   let snap = model.editor.causal_snapshot()
-  let svg = match render_history(snap, model.editor.get_peer_id()) {
-    Empty => "<span class=\"no-problems\">No operations recorded yet</span>"
+  let me = model.editor.get_peer_id()
+  let html = match render_history(snap, me) {
+    Empty => "<span class=\"history-empty\">No edits yet.</span>"
     TooLarge(n) =>
-      "<span class=\"no-problems\">Graph too large — \{n} ops; collapsing UI deferred to Phase 2</span>"
-    Dot(dot) => render_dot_to_svg(dot)
+      "<span class=\"history-empty\">\{n} operations — too many to display.</span>"
+    Dot(dot) =>
+      legend_html(snap, me) +
+      "<div class=\"history-graph\">" +
+      render_dot_to_svg(dot) +
+      "</div>"
   }
   @rabbita_cmd.raw_effect(
-    fn(_) { js_set_inner_html("canopy-history-container", svg) },
+    fn(_) { js_set_inner_html("canopy-history-container", html) },
     kind=@rabbita_cmd.after_render,
   )
 }
