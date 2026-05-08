@@ -73,6 +73,9 @@
   --space-xl: 24px;
   --space-2xl: 32px;
 
+  /* ── Bottom panel ──────────────────────────────────────── */
+  --bottom-content-max-height: 160px;
+
   /* ── Radii ─────────────────────────────────────────────── */
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -632,7 +635,7 @@ canopy-editor {
 .bottom-content {
   padding: var(--space-md) var(--space-lg);
   overflow-y: auto;
-  max-height: 160px;
+  max-height: var(--bottom-content-max-height);
   font-size: var(--text-small);
   line-height: var(--leading-normal);
 }
@@ -674,33 +677,33 @@ canopy-editor {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Graphviz ───────────────────────────────────────────── */
+/* ── SVG-rendering bottom tabs (Graphviz, Causal History) ─ */
 
-.graphviz-content {
-  overflow: auto;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: var(--space-md);
-}
-
-.graphviz-content svg {
-  max-width: 100%;
-  height: auto;
-}
-
-/* ── Causal History ─────────────────────────────────────── */
-
+/*
+ * Both tabs render an SVG produced by `@gv_svg.render_svg_with_config` with
+ * a viewBox but no intrinsic width/height. Without an explicit max-height
+ * the SVG inflates to (container_width × viewBox_aspect), which for narrow
+ * graphs (e.g. a 3-node chain at viewBox 90×146) produces a 2000+px tall
+ * SVG inside a 160px-tall panel — the visible area shows only padding and
+ * the user has to scroll to find the graph.
+ *
+ * Constrain on both axes so the SVG fits the panel by default while
+ * preserving aspect ratio.
+ */
+.graphviz-content,
 .history-content {
   overflow: auto;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   padding: var(--space-md);
 }
 
+.graphviz-content svg,
 .history-content svg {
   max-width: 100%;
+  max-height: calc(var(--bottom-content-max-height) - var(--space-md) * 2);
+  width: auto;
   height: auto;
 }
 
