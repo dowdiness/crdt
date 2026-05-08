@@ -189,6 +189,20 @@ fn bottom_render_cmd(model : Model) -> @rabbita.Cmd {
 }
 
 ///|
+/// Focus the active tab's button after the next render. Roving tabindex
+/// makes inactive tabs unreachable via Tab; without this, arrow-key
+/// navigation would leave focus stranded on the previous (now
+/// `tabindex="-1"`) button. Click-driven switches are no-ops because the
+/// browser already focuses the clicked button.
+fn bottom_tab_focus_cmd(tab : BottomTab) -> @rabbita.Cmd {
+  let id = bottom_tab_button_id(tab)
+  @rabbita_cmd.raw_effect(
+    fn(_) { js_focus_element(id) },
+    kind=@rabbita_cmd.after_render,
+  )
+}
+
+///|
 /// Stable slug per tab — used for both the tab button id and the tabpanel
 /// id, so `aria-controls` ↔ `aria-labelledby` round-trips cleanly.
 fn bottom_tab_slug(tab : BottomTab) -> String {
@@ -227,27 +241,50 @@ fn view_bottom_tabs(dispatch : Dispatch[Msg], model : Model) -> Html {
     (CrdtState, "CRDT State"),
     (Graphviz, "Graphviz"),
   ]
-  @html.div(
-    class="bottom-tabs",
-    attrs=@html.Attrs::build()
-      .role("tablist")
-      .aria_label("Bottom panel sections"),
-    tabs.map(fn(pair) {
-      let (tab, label) = pair
-      let active = model.bottom_tab == tab
-      let class_name = if active { "tab active" } else { "tab" }
-      let attrs = @html.Attrs::build()
-        .id(bottom_tab_button_id(tab))
-        .role("tab")
-        .aria_selected(if active { "true" } else { "false" })
-        .aria_controls(bottom_tab_panel_id(tab))
+  // Build buttons with WAI-ARIA tabs keyboard support: arrow keys
+  // navigate, Home/End jump to ends, and roving tabindex keeps the focus
+  // budget at one (active tab is tabindex=0; others are -1, so the page
+  // Tab key skips over inactive tabs).
+  let n = tabs.length()
+  let first_tab = tabs[0].0
+  let last_tab = tabs[n - 1].0
+  let buttons : Array[Html] = []
+  for i in 0..<n {
+    let (tab, label) = tabs[i]
+    let prev_tab = tabs[(i + n - 1) % n].0
+    let next_tab = tabs[(i + 1) % n].0
+    let active = model.bottom_tab == tab
+    let class_name = if active { "tab active" } else { "tab" }
+    let attrs = @html.Attrs::build()
+      .id(bottom_tab_button_id(tab))
+      .role("tab")
+      .aria_selected(if active { "true" } else { "false" })
+      .aria_controls(bottom_tab_panel_id(tab))
+      .tabindex(if active { 0 } else { -1 })
+      .on_keydown(fn(ev) {
+        match ev.key() {
+          "ArrowLeft" | "ArrowUp" => dispatch(SelectBottomTab(prev_tab))
+          "ArrowRight" | "ArrowDown" => dispatch(SelectBottomTab(next_tab))
+          "Home" => dispatch(SelectBottomTab(first_tab))
+          "End" => dispatch(SelectBottomTab(last_tab))
+          _ => @rabbita.none
+        }
+      })
+    buttons.push(
       @html.button(
         class=class_name,
         on_click=dispatch(SelectBottomTab(tab)),
         attrs~,
         [@html.text(label)],
-      )
-    }),
+      ),
+    )
+  }
+  @html.div(
+    class="bottom-tabs",
+    attrs=@html.Attrs::build()
+      .role("tablist")
+      .aria_label("Bottom panel sections"),
+    buttons,
   )
 }
 

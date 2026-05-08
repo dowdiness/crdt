@@ -886,6 +886,13 @@ canopy-editor {
     padding: var(--space-md) var(--space-md);
   }
 
+  /* Drop the desktop's fixed 36px height on the bottom tab strip so its
+     children's 44px touch targets aren't clipped by an undersized parent. */
+  .bottom-tabs {
+    height: auto;
+    min-height: 44px;
+  }
+
   /* Hide spacers on mobile — let flex-gap handle spacing */
   .toolbar-spacer { flex: 0 0 var(--space-xs); }
 
