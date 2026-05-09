@@ -17,6 +17,75 @@ pub fn new_markdown_editor(
 }
 
 ///|
+/// Return markdown text with ZWSP placeholder lines stripped structurally.
+///
+/// Identifies sentinel paragraphs (those whose AST is exactly
+/// `Paragraph([Text("\u200B")])`) and removes only the ZWSP character itself,
+/// collapsing `prev\n\u200B\nnext` to `prev\n\nnext` (preserving the block
+/// separator). Leaves ZWSP inside other content (code blocks, paragraphs with
+/// other text) untouched.
+pub fn export_markdown_text(
+  editor : @editor.SyncEditor[@markdown.Block],
+) -> String {
+  let src = editor.get_text()
+  guard editor.get_proj_node() is Some(root) else { return src }
+  let source_map = editor.get_source_map()
+  let ranges : Array[(Int, Int)] = []
+  collect_zwsp_ranges(root, source_map, ranges)
+  if ranges.is_empty() {
+    return src
+  }
+  ranges.sort_by(fn(a, b) { a.0.compare(b.0) })
+  let buf = StringBuilder::new()
+  let mut pos = 0
+  for r in ranges {
+    let (s, e) = r
+    if s > pos {
+      buf.write_string(src[pos:s].to_owned())
+    }
+    pos = e
+  }
+  if pos < src.length() {
+    buf.write_string(src[pos:].to_owned())
+  }
+  buf.to_string()
+}
+
+///|
+/// Walk the projection tree and append the source range of every ZWSP-sentinel
+/// Paragraph to `out`. The range covers exactly the ZWSP character (the "text"
+/// token span), so removing it from source converts `\n\u200B\n` into `\n\n`.
+fn collect_zwsp_ranges(
+  node : @core.ProjNode[@markdown.Block],
+  source_map : @core.SourceMap,
+  out : Array[(Int, Int)],
+) -> Unit {
+  if is_zwsp_sentinel(node.kind) {
+    match source_map.get_token_span(node.id(), "text") {
+      Some(r) => out.push((r.start, r.end))
+      None => ()
+    }
+    return
+  }
+  for child in node.children {
+    collect_zwsp_ranges(child, source_map, out)
+  }
+}
+
+///|
+fn is_zwsp_sentinel(block : @markdown.Block) -> Bool {
+  match block {
+    Paragraph(inlines) =>
+      inlines.length() == 1 &&
+      (match inlines[0] {
+        Text(s) => s == "\u200B"
+        _ => false
+      })
+    _ => false
+  }
+}
+
+///|
 /// Bridge a structural MarkdownEditOp into the text CRDT by computing
 /// span-level text edits and applying them via SyncEditor.
 pub fn apply_markdown_edit(
