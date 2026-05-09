@@ -94,8 +94,9 @@ test "insert_block_after: ZWSP present in raw text, absent in export" {
   inspect(result is Ok(_), content="true")
   // Raw text has ZWSP (parser needs it)
   inspect(ed.get_text().contains("\u200B"), content="true")
-  // Export strips placeholder ZWSP (the "\n\u200B\n" pattern)
-  let exported = ed.get_text().replace_all(old="\n\u200B\n", new="\n\n")
+  // Force re-projection so export_markdown_text sees the new sentinel paragraph.
+  let _ = @editor.compute_view_patches(state, ed)
+  let exported = export_markdown_text(ed)
   inspect(exported.contains("\u200B"), content="false")
 }
 
@@ -104,9 +105,27 @@ test "export preserves legitimate ZWSP in user content" {
   let ed = new_markdown_editor("test")
   // Simulate user content with ZWSP inside text (e.g., pasted from another tool)
   ed.set_text("Hello\u200Bworld\n")
-  let exported = ed.get_text().replace_all(old="\n\u200B\n", new="\n\n")
+  let state = @editor.ViewUpdateState::ViewUpdateState()
+  let _ = @editor.compute_view_patches(state, ed)
+  let exported = export_markdown_text(ed)
   // Legitimate ZWSP inside text is preserved
   inspect(exported.contains("\u200B"), content="true")
+}
+
+///|
+/// Regression: a code block containing a line whose only content is U+200B
+/// must round-trip unchanged. The previous blind `replace_all("\n\u200B\n",
+/// "\n\n")` mangled this case.
+test "export preserves ZWSP-only line inside a code block" {
+  let ed = new_markdown_editor("test")
+  ed.set_text("```\nfoo\n\u200B\nbar\n```\n")
+  let state = @editor.ViewUpdateState::ViewUpdateState()
+  let _ = @editor.compute_view_patches(state, ed)
+  let exported = export_markdown_text(ed)
+  // ZWSP-only line inside the fenced code block is preserved.
+  inspect(exported.contains("\n\u200B\n"), content="true")
+  // No structural mangling \u2014 original source survives untouched.
+  inspect(exported, content="```\nfoo\n\u200B\nbar\n```\n")
 }
 
 ///|

@@ -36,12 +36,14 @@ pub fn markdown_get_text(handle : Int) -> String {
 }
 
 ///|
-/// Return markdown text with ZWSP placeholder lines stripped.
-/// Only strips the "\n\u200B\n" pattern (empty-block sentinel from InsertBlockAfter),
-/// preserving legitimate ZWSP in user content (code blocks, pasted text).
+/// Return markdown text with ZWSP placeholder paragraphs stripped structurally.
+/// Delegates to the companion helper which walks the projection tree, identifies
+/// sentinel paragraphs (AST `Paragraph([Text("\u200B")])`), and removes only the
+/// ZWSP character itself \u2014 leaving ZWSP inside other content (code blocks,
+/// paragraphs with mixed text) untouched.
 pub fn markdown_export_text(handle : Int) -> String {
   match markdown_editors.get(handle) {
-    Some(ed) => ed.get_text().replace_all(old="\n\u200B\n", new="\n\n")
+    Some(ed) => @md_companion.export_markdown_text(ed)
     None => ""
   }
 }

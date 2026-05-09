@@ -10,6 +10,8 @@ import {
 // Values
 pub fn apply_markdown_edit(@editor.SyncEditor[@markdown.Block], @edits.MarkdownEditOp, Int) -> Result[Unit, String]
 
+pub fn export_markdown_text(@editor.SyncEditor[@markdown.Block]) -> String
+
 pub fn new_markdown_editor(String, capture_timeout_ms? : Int) -> @editor.SyncEditor[@markdown.Block]
 
 // Errors
