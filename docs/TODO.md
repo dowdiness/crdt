@@ -263,21 +263,31 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
 
 GitHub issue: [#216](https://github.com/dowdiness/canopy/issues/216).
 Steps 1, 3, 4 shipped (#239, #241, #242). Step 2 items below are blocked
-on **moji** (in-progress MoonBit UAX #29 library). The #242 audit
-(`docs/plans/2026-05-09-216-step4-bridge-audit.md`) localises the
-conversion seam and lists follow-ups not blocked on moji.
+on **moji** (in-progress MoonBit UAX #29 library, planned at
+`lib/moji/`, tracked in [#250](https://github.com/dowdiness/canopy/issues/250)).
+The #242 audit (`docs/plans/2026-05-09-216-step4-bridge-audit.md`)
+localises the conversion seam; the
+[moji API spec](plans/2026-05-10-moji-api-spec.md) derives the minimum
+API surface canopy needs and details per-call-site usage. The longer
+[derivation doc](plans/2026-05-10-moji-api-derivation.md) carries the
+full audit trail.
 
 - [x] Migrate `examples/ideal/web/src/bridge.ts` per-char `insert_at`/`delete_at` loop onto `handle_text_intent`.
   Shipped: bridge now calls `handle_text_intent_checked` (Bool-returning FFI added in `ffi/lambda/intent.mbt`) once per CM6 change with cumulative-delta bookkeeping; partial-batch + drift-detection semantics preserved from the prior `applyCharChanges` loop.
 
-- [ ] (moji-blocked) Switch `SyncEditor::backspace` to a grapheme boundary (`editor/sync_editor_text.mbt:37`).
-  Plan: bulk-splice seam at `apply_text_edit_internal`; cursor clamping at the per-char path.
+- [ ] (moji-blocked) Enforce the **cursor-on-boundary invariant** across `SyncEditor` — `move_cursor`, `insert`, `delete`, `backspace`, `_and_record` family, and both branches of `apply_text_edit_internal`. Plan: spec §0.5 + §1.1–§1.4. Includes the existing `backspace`-grapheme-boundary item (`editor/sync_editor_text.mbt:37`) and post-insert clamp (`editor/sync_editor_text.mbt:11`).
 
-- [ ] (moji-blocked) Clamp post-insert cursor in `SyncEditor::insert` to a grapheme boundary (`editor/sync_editor_text.mbt:11`).
+- [ ] (moji-blocked) **Unconditional cursor post-snap** in both `apply_text_edit_internal` branches (cursor-to-edit-end and cursor-stays). Cluster-fusing inserts (RIs, ZWJ, virama, VS-16) shift downstream boundaries even when the splice itself was boundary-aligned in the old text. Plan: spec §0.5 cluster-fusing inserts.
 
-- [ ] (moji-blocked) Make `text_diff::find_common_prefix` / `find_common_suffix_after_prefix` grapheme-safe (`editor/text_diff.mbt:166`).
+- [ ] (moji-blocked) Make `text_diff::find_common_prefix` / `find_common_suffix_after_prefix` grapheme-safe (`editor/text_diff.mbt:166`). Fix lives in `lib/text-change/text_change.mbt::compute_text_change` so canopy + valtio + loom (all path-dep on the leaf) get the fix in one move. Plan: spec §1.7 + §1.9.
 
-- [ ] (moji-blocked) Add `move_cursor_left_grapheme` / `_right_grapheme` (and word variants per UAX #29) on `SyncEditor`.
+- [ ] (moji-blocked) Add `move_cursor_left_grapheme` / `_right_grapheme` (and word variants per UAX #29) on `SyncEditor`. Plan: spec §1.6. Word-navigation policy (whitespace-skipping, punctuation handling) is a separate concern layered on raw UAX boundaries.
+
+- [ ] (moji-blocked) **§1.1 splice policy split** in `apply_text_edit_internal` — pure insertion (`deleted_len == 0`) snaps `start` to a single boundary; replacement/deletion expands both endpoints. Naive expansive-rule-for-all destroys content on mid-cluster pure inserts. Plan: spec §1.1.
+
+- [ ] (moji-blocked) **FFI variant naming**: document `handle_text_intent_checked` as "exact splice" (rejects non-boundary) and `handle_text_intent` as "snap splice" (applies §1.1 policy) in their doc-comments. Prevents future callers from picking the wrong variant from a batched context. Plan: spec §1.11.
+
+- [ ] (canopy-side, integration-time) Decide cursor unit-storage (UTF-16 vs item-space vs grapheme-ordinal). Recommended UTF-16 (smallest blast radius). Drives whether §1.2–§1.4 analyses need redoing under a different unit. Plan: spec §6.1.
 
 - [x] Add a one-line docstring to `lang/markdown/edits/compute_markdown_edit.mbt:211 compute_split_block` noting `offset` is a code-unit offset inside the text span.
 
