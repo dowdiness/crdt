@@ -97,14 +97,22 @@ in reverse at the same seam.
 HTMLTextAreaElement
   → onKeydown('Enter' mid-text)
   → emit StructuralEdit{ op: 'split_block', params: { offset: String(selectionStart) } }
-  → main.ts → crdt.handle_structural_intent(...)
-  → ffi/markdown/markdown_ffi.mbt → apply_markdown_tree_edit_json
-  → lang/markdown/edits/compute_markdown_edit.mbt:211  compute_split_block
+  → examples/web/src/markdown-editor.ts blockInput.onIntent
+  → applyEdit('split_block', nodeId, '', parseInt(params.offset))
+  → crdt.markdown_apply_edit(handle, 'split_block', nodeId, '', offset, ts)
+  → ffi/markdown/markdown_ffi.mbt:62 markdown_apply_edit
+       (param2 is reused as the offset slot; "split_block" → SplitBlock op)
+  → lang/markdown/edits/compute_markdown_edit.mbt:211 compute_split_block
        offset is a code-unit offset *inside the source-mapped text span*:
          split_pos = text_range.start + offset
          delete_len = range.end - split_pos
          FocusHint::MoveCursor(position = split_pos + separator.length())
 ```
+
+The markdown editor uses its own `markdown_apply_edit` FFI (a fixed-arity
+six-argument bridge with a `param1: String` / `param2: Int` reuse pattern),
+*not* the lambda editor's `handle_structural_intent` — the two structural-
+edit FFIs evolved separately.
 
 **Sharp edge.** `selectionStart` and `text_range.start/end` are both
 UTF-16 code units, so the path is internally consistent for ASCII; for

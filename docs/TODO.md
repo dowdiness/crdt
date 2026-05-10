@@ -279,8 +279,7 @@ conversion seam and lists follow-ups not blocked on moji.
 
 - [ ] (moji-blocked) Add `move_cursor_left_grapheme` / `_right_grapheme` (and word variants per UAX #29) on `SyncEditor`.
 
-- [ ] Add a one-line docstring to `lang/markdown/edits/compute_markdown_edit.mbt:211 compute_split_block` noting `offset` is a code-unit offset inside the text span.
-  Status: not blocked on moji; cleanup item from the audit's open follow-ups.
+- [x] Add a one-line docstring to `lang/markdown/edits/compute_markdown_edit.mbt:211 compute_split_block` noting `offset` is a code-unit offset inside the text span.
 
 - [ ] Disambiguate `UserIntent.SetCursor.position` — same `number` carries PM-tree positions (PMAdapter) and CM-doc code-unit offsets (CM6Adapter). Naming cleanup, not unit conversion.
   Status: not blocked on moji.
