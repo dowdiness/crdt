@@ -69,6 +69,7 @@ options(
         "get_view_tree_json",
         "compute_view_patches_json",
         "handle_text_intent",
+        "handle_text_intent_checked",
         "handle_undo",
         "handle_redo",
         "handle_structural_intent",

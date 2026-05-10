@@ -6,7 +6,7 @@ import type { CrdtModule, ProjNodeJson } from "./types";
  * CrdtBridge — connects PM NodeViews to the CRDT backend.
  *
  * Handles:
- * - Leaf text edits (CM6 → char-at-a-time CRDT ops via source map)
+ * - Leaf text edits (CM6 → bulk-splice via handle_text_intent + source map)
  * - Token edits (lambda param, let-def name)
  * - Structural edits (delete, wrap via TreeEditOp)
  * - Remote sync (apply ops → reconcile PM)
@@ -72,11 +72,8 @@ export class CrdtBridge {
       this.scheduleReconcile();
       return;
     }
-    const basePos: number = entry.start;
-    const ts = Date.now();
-
-    if (!this.applyCharChanges(basePos, ts, changes)) {
-      // Delete failed — CM6 is out of sync with CRDT. Reconcile to resync.
+    if (!this.applySpliceChanges(entry.start, Date.now(), changes)) {
+      // CM6/CRDT drift — abort the batch to avoid broadcasting a clamped edit.
       this.scheduleReconcile();
       return;
     }
@@ -92,10 +89,7 @@ export class CrdtBridge {
       this.scheduleReconcile();
       return;
     }
-    const basePos: number = entry.token_spans[tokenRole].start;
-    const ts = Date.now();
-
-    if (!this.applyCharChanges(basePos, ts, changes)) {
+    if (!this.applySpliceChanges(entry.token_spans[tokenRole].start, Date.now(), changes)) {
       this.scheduleReconcile();
       return;
     }
@@ -139,8 +133,25 @@ export class CrdtBridge {
     }
   }
 
-  /** Apply char-at-a-time CRDT changes. Returns false if any delete fails. */
-  private applyCharChanges(
+  /**
+   * Apply CM6 changes to the CRDT as bulk splices via `handle_text_intent_checked`.
+   *
+   * `iterChanges` emits non-overlapping ranges in old-doc order, so each
+   * subsequent call must be shifted by the cumulative net delta of prior
+   * splices in the same batch (matches the offset bookkeeping the prior
+   * per-char loop used).
+   *
+   * Returns false on drift: `apply_text_edit_internal` would silently clamp
+   * an out-of-bounds index, and the bridge would then broadcast that clamped
+   * edit to peers before reconcile runs. The checked variant rejects the
+   * splice instead, mirroring the old `delete_at`-returns-false recovery path.
+   *
+   * A multi-change batch where splice K fails leaves splices 0..K-1 applied
+   * to the CRDT but un-broadcast on this edit; the next successful edit's
+   * `export_since_json` broadcast carries them as part of the CRDT delta.
+   * This matches the prior per-char loop's behavior — preserved, not new.
+   */
+  private applySpliceChanges(
     basePos: number,
     ts: number,
     changes: { from: number; to: number; insert: string }[],
@@ -148,18 +159,22 @@ export class CrdtBridge {
     let posOffset = 0;
     for (const change of changes) {
       const deleteLen = change.to - change.from;
-      for (let i = deleteLen - 1; i >= 0; i--) {
-        const ok = this.crdt.delete_at(this.handle, basePos + change.from + i + posOffset, ts);
-        if (!ok) {
-          console.warn("delete_at failed at", basePos + change.from + i + posOffset);
-          return false;
-        }
+      const ok = this.crdt.handle_text_intent_checked(
+        this.handle,
+        basePos + change.from + posOffset,
+        deleteLen,
+        change.insert,
+        ts,
+      );
+      if (!ok) {
+        console.warn(
+          "handle_text_intent_checked drift at",
+          basePos + change.from + posOffset,
+          "deleteLen=", deleteLen,
+        );
+        return false;
       }
-      posOffset -= deleteLen;
-      for (let i = 0; i < change.insert.length; i++) {
-        this.crdt.insert_at(this.handle, basePos + change.from + posOffset + i, change.insert[i], ts);
-      }
-      posOffset += change.insert.length;
+      posOffset += change.insert.length - deleteLen;
     }
     return true;
   }
