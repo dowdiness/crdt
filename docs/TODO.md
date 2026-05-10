@@ -297,10 +297,16 @@ The [moji API spec](plans/2026-05-10-moji-api-spec.md) is now
 
 - [x] Add a one-line docstring to `lang/markdown/edits/compute_markdown_edit.mbt:211 compute_split_block` noting `offset` is a code-unit offset inside the text span.
 
-- [ ] **Restore non-BMP §4.3 cluster-fusing-cursor tests** once the CRDT-layer `String::sub` abort is fixed (the four `panic #216` tests in `editor/sync_editor_text_wbtest.mbt`). Recipe inline in the test file: `"🇯🇵🇺🇸"` + `apply_text_edit(4, 0, "🇮")` → cursor 8 post-snap; `"👩💻"` cursor=2 + `insert_at(2, "\u{200D}")` → cursor 0 or 5 post-snap.
-  Status: blocked on the event-graph-walker `String::sub` mid-surrogate abort, which is a separate fix.
+- [ ] **Fix the CRDT non-BMP `String::sub` mid-surrogate abort** in `event-graph-walker`'s `Document::insert` / `Document::delete`. Highest-leverage next moji follow-up: it unblocks the four `panic #216` tests in `editor/sync_editor_text_wbtest.mbt` AND the next item below. Plan: needs its own brainstorm + Codex design pass since it touches FugueMax CRDT internals (item-space encoding for non-BMP codepoints — see `project_unicode_failure_modes.md` memory). Submodule PR cycle in `event-graph-walker`, then bump the canopy submodule pointer.
+  Status: highest-priority follow-up to #251; gates the next two items.
 
-- [ ] (perf, P3) `editor/sync_editor_text.mbt::utf16_offset_to_item_pos` is O(n) per call and runs on every mutation path; `gcb_of` does up to 13 binary searches per codepoint; `next/prev_grapheme_boundary` rebuild the boundary array each call (O(n²) for tight loops). Acceptable for canopy's short strings today; document so the cost isn't a future surprise (already done in `lib/moji/grapheme.mbt` doc-comments). File a tuning issue when a hot-path actually needs it.
+- [ ] **Restore non-BMP §4.3 cluster-fusing-cursor tests** once the CRDT abort above is fixed. Recipe inline in `editor/sync_editor_text_wbtest.mbt`: `"🇯🇵🇺🇸"` + `apply_text_edit(4, 0, "🇮")` → cursor 8 post-snap; `"👩💻"` cursor=2 + `insert_at(2, "\u{200D}")` → cursor 0 or 5 post-snap. The four `panic #216` tests above will start failing (no abort) at the same time; convert each to inspect-style.
+  Status: blocked on the CRDT abort fix.
+
+- [ ] **Word-navigation policy on top of moji's raw UAX boundaries.** moji exposes spec-correct UAX #29 word boundaries (every transition between word/whitespace/punctuation). Editor word-navigation typically wants different semantics — skip whitespace, treat punctuation as part of the word in some contexts, optionally split camelCase/snake_case. Plan: define the policy as a wrapper around `move_cursor_left_word` / `_right_word` in `editor/sync_editor_text.mbt`. Spec §6.3 deliberately deferred this; pick a default policy (Sublime/VS Code-style is a reasonable starting point) and ship behind a config flag if needed.
+  Status: not blocked; standalone canopy-side work.
+
+- [ ] (perf, P3) `editor/sync_editor_text.mbt::utf16_offset_to_item_pos` is O(n) per call and runs on every mutation path; `gcb_of` does up to 13 binary searches per codepoint; `next/prev_grapheme_boundary` rebuild the boundary array each call (O(n²) for tight loops). Acceptable for canopy's short strings today; documented in `lib/moji/grapheme.mbt` and `lib/moji/README.md`. Concrete fixes when a hot-path actually needs them: ASCII fast path in `gcb_of` (only CR/LF/Control populate `< 0x80`), drop `ch.to_string().length()` allocation in `utf16_offset_to_item_pos` (use `if ch.to_int() >= 0x10000 { 2 } else { 1 }`), and a materialise-once boundary cache for hot callers.
   Status: not blocking; cosmetic perf debt.
 
 - [ ] Disambiguate `UserIntent.SetCursor.position` — same `number` carries PM-tree positions (PMAdapter) and CM-doc code-unit offsets (CM6Adapter). Naming cleanup, not unit conversion.
