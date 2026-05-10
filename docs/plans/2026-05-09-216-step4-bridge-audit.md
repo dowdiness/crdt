@@ -23,12 +23,18 @@ remaining position-bearing surfaces explicitly.
 - The new `adapters/editor-adapter/pm-adapter.ts` does not need a
   position-unit shim. Its PM doc is non-editable; `TextChange` is a no-op
   in its `applyPatch`; PM-tree positions never reach the CRDT.
-- The **older ProseMirror bridge** at `examples/ideal/web/src/bridge.ts`
+- ~~The **older ProseMirror bridge** at `examples/ideal/web/src/bridge.ts`
   *does* call `insert_at`/`delete_at` char-by-char, *does* read the source
   map on the JS side via `get_source_map_json`, and is therefore **not
   served by the bulk-splice seam**. It needs its own grapheme story —
   either retire the per-char loop in favor of `handle_text_intent`, or add
-  matching grapheme handling at the `insert_at`/`delete_at` FFI.
+  matching grapheme handling at the `insert_at`/`delete_at` FFI.~~
+  **Resolved by PR #246:** the older ProseMirror bridge has been migrated
+  onto `handle_text_intent_checked` (a Bool-returning variant of
+  `handle_text_intent`). It now joins the bulk-splice seam, so the same
+  MoonBit-side grapheme shim covers it. The JS-side source map is still
+  read for `basePos` lookup; the per-char loop and the `insert_at`/
+  `delete_at` codepath in the bridge are gone.
 - Position-bearing surfaces the seam does *not* cover (each needs its own
   decision once moji lands):
   - per-character `SyncEditor::insert` / `delete` / `backspace` and the
@@ -47,7 +53,7 @@ remaining position-bearing surfaces explicitly.
 |---|---|---|---|---|
 | CM6Adapter | `adapters/editor-adapter/cm6-adapter.ts` | CodeMirror 6 doc | UTF-16 code units (CM6 native) | yes — via `handle_text_intent` |
 | BlockInput | `adapters/editor-adapter/block-input.ts` | `<textarea>` overlay | UTF-16 code units (`HTMLTextAreaElement.selectionStart`) | yes — via `compute_split_block` (text-span offset) |
-| Older ideal bridge | `examples/ideal/web/src/bridge.ts` | CM6 NodeViews per leaf | UTF-16 code units, **plus JS-side `get_source_map_json`** | yes — via `insert_at`/`delete_at` char-by-char |
+| Older ideal bridge | `examples/ideal/web/src/bridge.ts` | CM6 NodeViews per leaf | UTF-16 code units, **plus JS-side `get_source_map_json`** | yes — via `handle_text_intent_checked` (post #246; was `insert_at`/`delete_at` char-by-char) |
 | PMAdapter (new) | `adapters/editor-adapter/pm-adapter.ts` | PM doc is `editable: () => false` | PM-tree positions only (`SelectNode`/`SetCursor`) | no — `SetCursor` dropped in `examples/prosemirror/src/main.ts:63` |
 | HTMLAdapter | `adapters/editor-adapter/html-adapter.ts` | none — click → `SelectNode` only | n/a (no text positions) | partial — only `SelectNode` |
 | MarkdownPreview | `adapters/editor-adapter/markdown-preview.ts` | render-only, emits no intents | n/a | no |
@@ -143,6 +149,12 @@ offset. That is a separate PM-tree → text mapping problem; **out of
 scope for #216 Step 4 unless PM is made editable.**
 
 ### Path D — older ideal bridge (ProseMirror with NodeViews + per-char FFI)
+
+> **Post-#246 update:** the bridge has since been migrated to bulk-splice
+> via `handle_text_intent_checked` (PR #246). The trace below describes
+> the *pre-#246* state that this audit recommended changing — preserved
+> as the historical motivation for the migration. For the current call
+> shape, see `examples/ideal/web/src/bridge.ts::applySpliceChanges`.
 
 ```
 CM6 NodeView leaf change
@@ -257,17 +269,24 @@ when moji lands; explicitly out of scope for the seam):
 
 These do not gate Step 2; they are smaller cleanups that fall out of the audit.
 
-1. **Migrate the older ideal bridge** off the per-char `insert_at` /
+1. ~~**Migrate the older ideal bridge** off the per-char `insert_at` /
    `delete_at` loop and onto `handle_text_intent`, so it joins the
-   bulk-splice seam. Otherwise it needs a parallel grapheme story.
-2. **`compute_split_block` offset semantics** (`lang/markdown/edits/compute_markdown_edit.mbt:211`)
+   bulk-splice seam. Otherwise it needs a parallel grapheme story.~~
+   **Shipped: PR #246.** Bridge now calls `handle_text_intent_checked`
+   (Bool-returning FFI variant) once per CM6 change with cumulative-
+   delta bookkeeping. Drift detection preserved.
+2. ~~**`compute_split_block` offset semantics** (`lang/markdown/edits/compute_markdown_edit.mbt:211`)
    should gain a brief docstring noting the offset is a code-unit offset
-   inside the text span — same caveat as `SyncEditor::move_cursor`.
+   inside the text span — same caveat as `SyncEditor::move_cursor`.~~
+   **Shipped: PR #248.**
 3. **`UserIntent.SetCursor.position`** type-promiscuity (PM-tree vs CM-doc).
    Naming cleanup, not unit conversion.
 4. **`ffi/lambda/intent.mbt::insert_at` / `delete_at`** are documented "for
-   the ProseMirror bridge" — this is accurate (the ideal bridge uses them);
-   no action needed, only worth noting for context.
+   the ProseMirror bridge" — post-#246 the ideal bridge no longer calls
+   them in its hot path, but the FFI surface is retained for whitebox
+   tests under `examples/ideal/main/view_history_wbtest.mbt`. Doc
+   strings remain as-is; the "ProseMirror bridge" framing is now stale
+   but not actively misleading.
 
 ## What this changes about #216 Step 2
 
