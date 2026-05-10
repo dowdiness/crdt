@@ -208,6 +208,13 @@ fn compute_insert_block_after(
 
 ///|
 /// Split block at cursor offset within the text span.
+///
+/// `offset` is a UTF-16 code-unit offset inside the block's text span
+/// (i.e. relative to `text_range.start`, not the document root). Same
+/// unit caveat as `SyncEditor::move_cursor`: pre-moji this is not
+/// grapheme-aware, so callers should clamp to a grapheme boundary
+/// before passing — see `docs/plans/2026-05-09-216-step4-bridge-audit.md`
+/// Path B.
 fn compute_split_block(
   source : String,
   proj : ProjNode[@markdown.Block],
