@@ -259,7 +259,38 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
 
 ---
 
-## 16. Lambda Type System
+## 16. Unicode Text Correctness
+
+GitHub issue: [#216](https://github.com/dowdiness/canopy/issues/216).
+Steps 1, 3, 4 shipped (#239, #241, #242). Step 2 items below are blocked
+on **moji** (in-progress MoonBit UAX #29 library). The #242 audit
+(`docs/plans/2026-05-09-216-step4-bridge-audit.md`) localises the
+conversion seam and lists follow-ups not blocked on moji.
+
+- [ ] Migrate `examples/ideal/web/src/bridge.ts` per-char `insert_at`/`delete_at` loop onto `handle_text_intent`.
+  Why: the older ideal bridge currently composes positions in JS using `get_source_map_json` + per-char iteration (`bridge.ts:143-164`). Moving it onto `handle_text_intent` puts it on the same bulk-splice seam as CM6Adapter, so a single MoonBit-side grapheme shim covers both.
+  Plan: `docs/plans/2026-05-09-216-step4-bridge-audit.md` (Path D, follow-up #1)
+  Exit: ideal bridge no longer calls `insert_at`/`delete_at` in its hot path; existing CM6 NodeView keystroke flow still passes.
+  Status: not blocked on moji.
+
+- [ ] (moji-blocked) Switch `SyncEditor::backspace` to a grapheme boundary (`editor/sync_editor_text.mbt:37`).
+  Plan: bulk-splice seam at `apply_text_edit_internal`; cursor clamping at the per-char path.
+
+- [ ] (moji-blocked) Clamp post-insert cursor in `SyncEditor::insert` to a grapheme boundary (`editor/sync_editor_text.mbt:11`).
+
+- [ ] (moji-blocked) Make `text_diff::find_common_prefix` / `find_common_suffix_after_prefix` grapheme-safe (`editor/text_diff.mbt:166`).
+
+- [ ] (moji-blocked) Add `move_cursor_left_grapheme` / `_right_grapheme` (and word variants per UAX #29) on `SyncEditor`.
+
+- [ ] Add a one-line docstring to `lang/markdown/edits/compute_markdown_edit.mbt:211 compute_split_block` noting `offset` is a code-unit offset inside the text span.
+  Status: not blocked on moji; cleanup item from the audit's open follow-ups.
+
+- [ ] Disambiguate `UserIntent.SetCursor.position` — same `number` carries PM-tree positions (PMAdapter) and CM-doc code-unit offsets (CM6Adapter). Naming cleanup, not unit conversion.
+  Status: not blocked on moji.
+
+---
+
+## 17. Lambda Type System
 
 - [ ] Evolve the lambda typecheck pipeline so it produces ranged diagnostics + queryable types via subscription, not stringly-typed JSON snapshots.
   Why: the diagnostic pane shipped (PR #186 + follow-ups), but the pipeline below it lacks the primitives every future surface needs — source ranges on diagnostics, a typed wire protocol, `TypecheckIndex`, push-based subscription, per-def memos, and a shared `attach_typecheck` abstraction. Once these land, hover / inline squigglies / inlay hints / click-to-locate become ~10-line consumers each.
