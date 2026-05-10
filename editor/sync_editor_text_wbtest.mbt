@@ -106,15 +106,12 @@ test "insert_at with multi-char text" {
 
 // ─── Non-ASCII safety probes (issue #216) ────────────────────────────────
 //
-// Surveys the editor's behavior on non-ASCII inputs so the bugs documented
-// in issue #216 are visible and so the test suite goes red the moment any
-// of the underlying layers is fixed. The tests split along the actual
-// failure modes observed today:
+// Surveys the editor's behavior on non-ASCII inputs so the issue #216 layers
+// stay visible. The tests split along the actual failure modes observed
+// today:
 //
-//   1. BMP-only inputs (combining marks): the editor runs without aborting
-//      but produces wrong output (deletes only the combining mark, not the
-//      grapheme). Pinned with `inspect`. When moji-based fixes land, these
-//      assertions need to be updated to the grapheme-correct values.
+//   1. BMP-only inputs (combining marks): moji keeps editor cursors and
+//      splice endpoints on grapheme boundaries. Pinned with `inspect`.
 //
 //   2. Surrogate-pair inputs (emoji, ZWJ family, flag): the CRDT layer
 //      (event-graph-walker) currently *aborts* via `String::sub` when an
@@ -138,10 +135,8 @@ test "insert: BMP single-code-unit char advances cursor by 1 (baseline)" {
 
 ///|
 /// #216: backspace after a combining acute accent (NFD form of "é")
-/// currently deletes only the combining mark, leaving the bare "e".
-/// The user pressed backspace expecting the whole grapheme to go.
-/// Post-fix (moji): text="", cursor=0.
-test "#216 xfail: backspace removes only combining mark, not grapheme" {
+/// removes the whole grapheme cluster.
+test "#216: backspace removes combining grapheme" {
   let editor = @lambda.new_lambda_editor("test-agent").0
   editor.insert("e") catch {
     _ => ()
@@ -150,7 +145,77 @@ test "#216 xfail: backspace removes only combining mark, not grapheme" {
     _ => ()
   } // COMBINING ACUTE
   let _ = editor.backspace()
-  inspect(editor.get_text(), content="e")
+  inspect(editor.get_text(), content="")
+  inspect(editor.get_cursor(), content="0")
+}
+
+///|
+test "insert combining mark leaves cursor on grapheme boundary" {
+  let editor = @lambda.new_lambda_editor("test-agent").0
+  editor.insert("e") catch {
+    _ => ()
+  }
+  editor.insert("\u{0301}") catch {
+    _ => ()
+  }
+  inspect(editor.get_text(), content="é")
+  inspect(editor.get_cursor(), content="2")
+}
+
+///|
+test "move_cursor snaps interior grapheme offset backward" {
+  let editor = @lambda.new_lambda_editor("test-agent").0
+  editor.insert("e") catch {
+    _ => ()
+  }
+  editor.insert("\u{0301}") catch {
+    _ => ()
+  }
+  editor.move_cursor(1)
+  inspect(editor.get_cursor(), content="0")
+}
+
+///|
+test "move_cursor_left_grapheme skips combining mark" {
+  let editor = @lambda.new_lambda_editor("test-agent").0
+  editor.insert("e") catch {
+    _ => ()
+  }
+  editor.insert("\u{0301}") catch {
+    _ => ()
+  }
+  editor.move_cursor_left_grapheme()
+  inspect(editor.get_cursor(), content="0")
+}
+
+///|
+test "move_cursor_right_grapheme skips combining mark" {
+  let editor = @lambda.new_lambda_editor("test-agent").0
+  editor.insert("e") catch {
+    _ => ()
+  }
+  editor.insert("\u{0301}") catch {
+    _ => ()
+  }
+  editor.insert("b") catch {
+    _ => ()
+  }
+  editor.move_cursor(0)
+  editor.move_cursor_right_grapheme()
+  inspect(editor.get_cursor(), content="2")
+}
+
+///|
+test "apply_text_edit pure insert snaps mid-cluster to previous boundary" {
+  let editor = @lambda.new_lambda_editor("test-agent").0
+  editor.insert("e") catch {
+    _ => ()
+  }
+  editor.insert("\u{0301}") catch {
+    _ => ()
+  }
+  editor.apply_text_edit(1, 0, "X", 0)
+  inspect(editor.get_text(), content="Xé")
   inspect(editor.get_cursor(), content="1")
 }
 
