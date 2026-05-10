@@ -74,6 +74,35 @@ pub fn handle_text_intent(
 }
 
 ///|
+/// Bounds-checked variant of `handle_text_intent`. Returns `false` when the
+/// requested splice would have been silently clamped by
+/// `apply_text_edit_internal` — i.e. when the caller's view of the document
+/// has drifted from the CRDT's. The CRDT is left untouched in that case so
+/// the caller can resync without broadcasting garbage to peers.
+pub fn handle_text_intent_checked(
+  handle : Int,
+  from : Int,
+  deleted_len : Int,
+  insert : String,
+  timestamp_ms : Int,
+) -> Bool {
+  match lambda_handles.get(handle) {
+    Some(h) => {
+      let text_len = h.editor.get_text().length()
+      if from < 0 ||
+        deleted_len < 0 ||
+        from > text_len ||
+        from + deleted_len > text_len {
+        return false
+      }
+      h.editor.apply_text_edit(from, deleted_len, insert, timestamp_ms)
+      true
+    }
+    None => false
+  }
+}
+
+///|
 pub fn handle_undo(handle : Int) -> Bool {
   undo_manager_undo(handle)
 }

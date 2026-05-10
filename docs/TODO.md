@@ -267,11 +267,8 @@ on **moji** (in-progress MoonBit UAX #29 library). The #242 audit
 (`docs/plans/2026-05-09-216-step4-bridge-audit.md`) localises the
 conversion seam and lists follow-ups not blocked on moji.
 
-- [ ] Migrate `examples/ideal/web/src/bridge.ts` per-char `insert_at`/`delete_at` loop onto `handle_text_intent`.
-  Why: the older ideal bridge currently composes positions in JS using `get_source_map_json` + per-char iteration (`bridge.ts:143-164`). Moving it onto `handle_text_intent` puts it on the same bulk-splice seam as CM6Adapter, so a single MoonBit-side grapheme shim covers both.
-  Plan: `docs/plans/2026-05-09-216-step4-bridge-audit.md` (Path D, follow-up #1)
-  Exit: ideal bridge no longer calls `insert_at`/`delete_at` in its hot path; existing CM6 NodeView keystroke flow still passes.
-  Status: not blocked on moji.
+- [x] Migrate `examples/ideal/web/src/bridge.ts` per-char `insert_at`/`delete_at` loop onto `handle_text_intent`.
+  Shipped: bridge now calls `handle_text_intent_checked` (Bool-returning FFI added in `ffi/lambda/intent.mbt`) once per CM6 change with cumulative-delta bookkeeping; partial-batch + drift-detection semantics preserved from the prior `applyCharChanges` loop.
 
 - [ ] (moji-blocked) Switch `SyncEditor::backspace` to a grapheme boundary (`editor/sync_editor_text.mbt:37`).
   Plan: bulk-splice seam at `apply_text_edit_internal`; cursor clamping at the per-char path.
