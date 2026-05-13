@@ -1,7 +1,7 @@
 // Pretty-printer FFI — ViewNode tree and ViewPatch streams for formatted display
 
 ///|
-let pretty_view_states : Map[Int, @editor.ViewUpdateState] = Map::new()
+let pretty_view_states : Map[Int, @editor.ViewUpdateState] = Map::default()
 
 ///|
 /// Get the pretty-printed ViewNode tree as JSON for a lambda editor.

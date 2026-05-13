@@ -7,6 +7,10 @@ import {
   "moonbitlang/core/debug",
 } for "wbtest"
 
+import {
+  "moonbitlang/core/debug",
+} for "test"
+
 options(
   is_main: false,
 )

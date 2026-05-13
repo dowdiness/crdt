@@ -1,7 +1,7 @@
 // View FFI — ViewNode tree and ViewPatch streams for lambda editors
 
 ///|
-let view_states : Map[Int, @editor.ViewUpdateState] = Map::new()
+let view_states : Map[Int, @editor.ViewUpdateState] = Map::default()
 
 ///|
 /// Get the ViewNode tree as JSON for a lambda editor.

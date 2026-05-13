@@ -46,15 +46,15 @@ test "format_edit_user_message" {
 ///|
 test "split_lines preserves trailing empty segment" {
   // "a\n" should produce ["a", ""], not ["a"]
-  inspect(split_lines("a\n"), content="[\"a\", \"\"]")
+  debug_inspect(split_lines("a\n"), content="[\"a\", \"\"]")
 }
 
 ///|
 test "split_lines empty input" {
-  inspect(split_lines(""), content="[\"\"]")
+  debug_inspect(split_lines(""), content="[\"\"]")
 }
 
 ///|
 test "split_lines no trailing newline" {
-  inspect(split_lines("a\nb"), content="[\"a\", \"b\"]")
+  debug_inspect(split_lines("a\nb"), content="[\"a\", \"b\"]")
 }

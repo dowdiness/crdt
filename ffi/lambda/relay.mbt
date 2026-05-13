@@ -1,7 +1,7 @@
 // Relay room FFI — multi-peer relay room management
 
 ///|
-let relay_rooms : Map[String, @relay.RelayRoom] = Map::new()
+let relay_rooms : Map[String, @relay.RelayRoom] = Map::default()
 
 ///|
 fn get_or_create_room(room_id : String) -> @relay.RelayRoom {

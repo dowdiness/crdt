@@ -116,7 +116,7 @@ test "remove_outdated_at triggers Timeout event" {
   store.remove_outdated_at(5000UL)
   inspect(events.length(), content="1")
   inspect(events[0].by, content="Timeout")
-  inspect(events[0].removed, content="[\"1\"]")
+  @debug.debug_inspect(events[0].removed, content="[\"1\"]")
   inspect(events[0].added.length(), content="0")
   inspect(events[0].updated.length(), content="0")
 }

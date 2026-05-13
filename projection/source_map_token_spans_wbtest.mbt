@@ -10,7 +10,7 @@ fn parse_syntax_for_token_test(text : String) -> @seam.SyntaxNode raise {
 test "token span: lambda param" {
   let text = "\u{03BB}x.x"
   let syntax = parse_syntax_for_token_test(text)
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let proj = @lambda_proj.to_proj_node(syntax, counter)
   let sm = SourceMap::from_ast(proj)
   @lambda_proj.populate_token_spans(sm, syntax, proj)
@@ -26,7 +26,7 @@ test "token span: lambda param" {
 test "token span: lambda param multi-char" {
   let text = "\u{03BB}foo.foo"
   let syntax = parse_syntax_for_token_test(text)
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let proj = @lambda_proj.to_proj_node(syntax, counter)
   let sm = SourceMap::from_ast(proj)
   @lambda_proj.populate_token_spans(sm, syntax, proj)
@@ -42,7 +42,7 @@ test "token span: nested lambda params" {
   // λx.λy.x — outer lambda param "x" at 1..2, inner lambda param "y" at 4..5
   let text = "\u{03BB}x.\u{03BB}y.x"
   let syntax = parse_syntax_for_token_test(text)
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let proj = @lambda_proj.to_proj_node(syntax, counter)
   let sm = SourceMap::from_ast(proj)
   @lambda_proj.populate_token_spans(sm, syntax, proj)
@@ -64,7 +64,7 @@ test "token span: let def name" {
   // let x = 1\nx — name "x" at position 4..5
   let text = "let x = 1\nx"
   let syntax = parse_syntax_for_token_test(text)
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let proj = @lambda_proj.to_proj_node(syntax, counter)
   let sm = SourceMap::from_ast(proj)
   @lambda_proj.populate_token_spans(sm, syntax, proj)
@@ -78,7 +78,7 @@ test "token span: let def name" {
 test "token span: multiple let defs" {
   let text = "let x = 1\nlet y = 2\nx + y"
   let syntax = parse_syntax_for_token_test(text)
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let proj = @lambda_proj.to_proj_node(syntax, counter)
   let sm = SourceMap::from_ast(proj)
   @lambda_proj.populate_token_spans(sm, syntax, proj)
@@ -97,7 +97,7 @@ test "token span: multiple let defs" {
 test "token span: no token spans for simple expression" {
   let text = "42"
   let syntax = parse_syntax_for_token_test(text)
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let proj = @lambda_proj.to_proj_node(syntax, counter)
   let sm = SourceMap::from_ast(proj)
   @lambda_proj.populate_token_spans(sm, syntax, proj)
@@ -109,7 +109,7 @@ test "token span: lambda inside let def" {
   // let f = λx.x\nf — both "name:0" and lambda "param" should be recorded
   let text = "let f = \u{03BB}x.x\nf"
   let syntax = parse_syntax_for_token_test(text)
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let proj = @lambda_proj.to_proj_node(syntax, counter)
   let sm = SourceMap::from_ast(proj)
   @lambda_proj.populate_token_spans(sm, syntax, proj)
@@ -128,7 +128,7 @@ test "token span: lambda inside let def" {
 test "token span: get_token_span returns None for missing role" {
   let text = "\u{03BB}x.x"
   let syntax = parse_syntax_for_token_test(text)
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let proj = @lambda_proj.to_proj_node(syntax, counter)
   let sm = SourceMap::from_ast(proj)
   @lambda_proj.populate_token_spans(sm, syntax, proj)
@@ -155,7 +155,7 @@ test "token span: set_token_span manual" {
 test "token span: JSON includes token spans" {
   let text = "\u{03BB}x.x"
   let syntax = parse_syntax_for_token_test(text)
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let proj = @lambda_proj.to_proj_node(syntax, counter)
   let sm = SourceMap::from_ast(proj)
   @lambda_proj.populate_token_spans(sm, syntax, proj)

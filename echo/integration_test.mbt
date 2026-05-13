@@ -168,7 +168,7 @@ test "integration - duplicate posts produce zero IDF vectors" {
   let _ = corpus.add_post("全く同じ文章を二回投稿する")
   // Standard TF-IDF: IDF = ln(N/df) = ln(1) = 0 for terms in all docs
   let results = corpus.query_similar(id0, top_n=1)
-  inspect(results, content="[]")
+  debug_inspect(results, content="[]")
 }
 
 ///|
@@ -177,7 +177,7 @@ test "integration - single char post has no similarity" {
   let id0 = corpus.add_post("あ")
   let _ = corpus.add_post("カレーを作った")
   let results = corpus.query_similar(id0)
-  inspect(results, content="[]")
+  debug_inspect(results, content="[]")
 }
 
 ///|
@@ -200,28 +200,28 @@ test "integration - snapshot all cluster scores" {
   // Snapshot full rankings for representative posts from each cluster
   // This captures the actual behavior for regression detection
   let curry = corpus.query_similar(0, top_n=5)
-  inspect(
+  debug_inspect(
     curry.map(fn(p) { p.0 }),
     content=(
       #|[3, 4, 28, 1, 27]
     ),
   )
   let crdt = corpus.query_similar(5, top_n=5)
-  inspect(
+  debug_inspect(
     crdt.map(fn(p) { p.0 }),
     content=(
       #|[9, 7, 6, 17, 8]
     ),
   )
   let moonbit = corpus.query_similar(16, top_n=5)
-  inspect(
+  debug_inspect(
     moonbit.map(fn(p) { p.0 }),
     content=(
       #|[18, 17, 19, 10, 15]
     ),
   )
   let daily = corpus.query_similar(27, top_n=5)
-  inspect(
+  debug_inspect(
     daily.map(fn(p) { p.0 }),
     content=(
       #|[25, 23, 26, 0, 24]

@@ -31,7 +31,7 @@ test "keys returns only non-deleted" {
   store.set("1", @editor.EphemeralValue::I64(1L))
   store.set("2", @editor.EphemeralValue::I64(2L))
   store.delete("1")
-  inspect(store.keys(), content="[\"2\"]")
+  @debug.debug_inspect(store.keys(), content="[\"2\"]")
 }
 
 ///|
@@ -53,13 +53,13 @@ test "subscribe receives Local events" {
   store.set("1", @editor.EphemeralValue::I64(42L))
   inspect(events.length(), content="1")
   inspect(events[0].by(), content="Local")
-  inspect(events[0].added(), content="[\"1\"]")
+  @debug.debug_inspect(events[0].added(), content="[\"1\"]")
 }
 
 ///|
 test "subscribe auto-unsubscribe on false" {
   let store = @editor.EphemeralStore::new(60000UL)
-  let call_count : Ref[Int] = Ref::new(0)
+  let call_count : Ref[Int] = Ref(0)
   let _sub = store.subscribe(fn(_event) {
     call_count.val = call_count.val + 1
     false
@@ -72,7 +72,7 @@ test "subscribe auto-unsubscribe on false" {
 ///|
 test "unsubscribe stops events" {
   let store = @editor.EphemeralStore::new(60000UL)
-  let call_count : Ref[Int] = Ref::new(0)
+  let call_count : Ref[Int] = Ref(0)
   let sub = store.subscribe(fn(_event) {
     call_count.val = call_count.val + 1
     true
@@ -145,7 +145,7 @@ test "apply triggers Import event" {
   store.apply(bytes)
   inspect(events.length(), content="1")
   inspect(events[0].by(), content="Import")
-  inspect(events[0].added(), content="[\"1\"]")
+  @debug.debug_inspect(events[0].added(), content="[\"1\"]")
 }
 
 ///|
@@ -180,14 +180,14 @@ test "peer IDs must be canonical decimal strings" {
     rejected.push(caught)
   }
   store.set("0", @editor.EphemeralValue::I64(7L))
-  inspect(rejected, content="[true, true, true]")
+  @debug.debug_inspect(rejected, content="[true, true, true]")
   @debug.debug_inspect(store.get("0"), content="Some(I64(7))")
 }
 
 ///|
 test "subscribe_local_updates receives bytes and can apply to another store" {
   let store = @editor.EphemeralStore::new(60000UL)
-  let received_bytes : Ref[Bytes] = Ref::new(Bytes::new(0))
+  let received_bytes : Ref[Bytes] = Ref(Bytes::new(0))
   let _sub = store.subscribe_local_updates(fn(bytes) {
     received_bytes.val = bytes
     true
@@ -213,11 +213,11 @@ test "set triggers updated event on existing key" {
   store.set("1", @editor.EphemeralValue::I64(20L))
   inspect(events.length(), content="2")
   // First set should be "added"
-  inspect(events[0].added(), content="[\"1\"]")
-  inspect(events[0].updated(), content="[]")
+  @debug.debug_inspect(events[0].added(), content="[\"1\"]")
+  @debug.debug_inspect(events[0].updated(), content="[]")
   // Second set should be "updated"
-  inspect(events[1].added(), content="[]")
-  inspect(events[1].updated(), content="[\"1\"]")
+  @debug.debug_inspect(events[1].added(), content="[]")
+  @debug.debug_inspect(events[1].updated(), content="[\"1\"]")
 }
 
 ///|
@@ -238,8 +238,8 @@ test "apply triggers updated event on existing key" {
   store.apply(bytes)
   inspect(events.length(), content="1")
   inspect(events[0].by(), content="Import")
-  inspect(events[0].updated(), content="[\"1\"]")
-  inspect(events[0].added(), content="[]")
+  @debug.debug_inspect(events[0].updated(), content="[\"1\"]")
+  @debug.debug_inspect(events[0].added(), content="[]")
 }
 
 ///|

@@ -62,7 +62,7 @@ test "char_type - M before H priority" {
 ///|
 test "segment - basic Japanese sentence" {
   let result = segment("今日はいい天気です")
-  inspect(
+  debug_inspect(
     result,
     content=(
       #|["今日", "は", "いい", "天気", "です"]
@@ -73,7 +73,7 @@ test "segment - basic Japanese sentence" {
 ///|
 test "segment - name sentence" {
   let result = segment("私の名前は田中です")
-  inspect(
+  debug_inspect(
     result,
     content=(
       #|["私", "の", "名前", "は", "田中", "です"]
@@ -83,12 +83,12 @@ test "segment - name sentence" {
 
 ///|
 test "segment - empty string" {
-  inspect(segment(""), content="[]")
+  debug_inspect(segment(""), content="[]")
 }
 
 ///|
 test "segment - single character" {
-  inspect(
+  debug_inspect(
     segment("あ"),
     content=(
       #|["あ"]
@@ -98,7 +98,7 @@ test "segment - single character" {
 
 ///|
 test "segment - katakana" {
-  inspect(
+  debug_inspect(
     segment("カレーライス"),
     content=(
       #|["カレーライス"]
@@ -108,7 +108,7 @@ test "segment - katakana" {
 
 ///|
 test "segment - mixed Japanese and ASCII" {
-  inspect(
+  debug_inspect(
     segment("MoonBitで開発する"),
     content=(
       #|["MoonBit", "で", "開発", "する"]
@@ -118,7 +118,7 @@ test "segment - mixed Japanese and ASCII" {
 
 ///|
 test "segment - longer sentence" {
-  inspect(
+  debug_inspect(
     segment("共同編集にはCRDTかOTが必要"),
     content=(
       #|["共同", "編集", "に", "は", "CRDT", "か", "OT", "が", "必要"]

@@ -59,7 +59,7 @@ test "InteractiveTreeNode from AstNode" {
 test "reconcile_ast preserves IDs for matching nodes" {
   let (old_root, _) = @lambda_proj.parse_to_proj_node("x + 1")
   let (new_root, _) = @lambda_proj.parse_to_proj_node("x + 2")
-  let reconciled = @core.reconcile(old_root, new_root, Ref::new(100))
+  let reconciled = @core.reconcile(old_root, new_root, Ref(100))
   inspect(reconciled.node_id, content=old_root.node_id.to_string())
   inspect(
     reconciled.children[0].node_id,
@@ -72,7 +72,7 @@ test "reconcile_ast preserves IDs for matching nodes" {
 test "reconcile_ast preserves IDs across operator-only edits" {
   let (old_root, _) = @lambda_proj.parse_to_proj_node("x + 1")
   let (new_root, _) = @lambda_proj.parse_to_proj_node("x - 1")
-  let reconciled = @core.reconcile(old_root, new_root, Ref::new(100))
+  let reconciled = @core.reconcile(old_root, new_root, Ref(100))
   inspect(reconciled.node_id, content=old_root.node_id.to_string())
   inspect(
     reconciled.children[0].node_id,
@@ -89,7 +89,7 @@ test "reconcile_ast preserves IDs across operator-only edits" {
 test "reconcile_ast shrinks rebuilt source map when children disappear" {
   let (old_root, _) = @lambda_proj.parse_to_proj_node("1 + 2 + 3")
   let (new_root, _) = @lambda_proj.parse_to_proj_node("1 + 2")
-  let reconciled = @core.reconcile(old_root, new_root, Ref::new(100))
+  let reconciled = @core.reconcile(old_root, new_root, Ref(100))
   inspect(
     @core.SourceMap::from_ast(reconciled).node_count() <
     @core.SourceMap::from_ast(old_root).node_count(),

@@ -14,6 +14,29 @@ impl @quickcheck.Arbitrary for TestExpr with arbitrary(size, rs) {
 impl @qc.Shrink for TestExpr
 
 ///|
+struct TestExprPair {
+  old : TestExpr
+  new : TestExpr
+} derive(Debug)
+
+///|
+impl Show for TestExprPair with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
+
+///|
+impl @quickcheck.Arbitrary for TestExprPair with arbitrary(size, rs) {
+  let depth = if size < 1 { 1 } else if size > 4 { 4 } else { size }
+  {
+    old: gen_test_expr(rs.split(), depth),
+    new: gen_test_expr(rs.split(), depth),
+  }
+}
+
+///|
+impl @qc.Shrink for TestExprPair
+
+///|
 /// Bounded-depth recursive generator for TestExpr trees.
 fn gen_test_expr(rs : @splitmix.RandomState, depth : Int) -> TestExpr {
   if depth <= 0 {
@@ -124,13 +147,14 @@ fn all_unique(arr : Array[Int]) -> Bool {
 ///|
 /// Property 1: All NodeIds are unique after reconcile.
 /// After reconcile(old, new, counter), the result tree has no duplicate IDs.
-fn prop_unique_ids_after_reconcile(pair : (TestExpr, TestExpr)) -> Bool {
-  let (old_expr, new_expr) = pair
-  let old_counter = Ref::new(0)
+fn prop_unique_ids_after_reconcile(pair : TestExprPair) -> Bool {
+  let old_expr = pair.old
+  let new_expr = pair.new
+  let old_counter = Ref(0)
   let old_node = to_proj_node(old_expr, old_counter)
-  let new_counter = Ref::new(0)
+  let new_counter = Ref(0)
   let new_node = to_proj_node(new_expr, new_counter)
-  let counter = Ref::new(1000)
+  let counter = Ref(1000)
   let result = reconcile(old_node, new_node, counter)
   let ids = collect_ids(result)
   all_unique(ids)
@@ -146,11 +170,11 @@ test "property: unique IDs after reconcile" {
 /// Building two ProjNodes from the same TestExpr (with different ID ranges)
 /// and reconciling should yield the old tree's IDs positionally.
 fn prop_preserves_ids_for_identical_trees(expr : TestExpr) -> Bool {
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let old_node = to_proj_node(expr, counter)
-  let new_counter = Ref::new(500)
+  let new_counter = Ref(500)
   let new_node = to_proj_node(expr, new_counter)
-  let reconcile_counter = Ref::new(1000)
+  let reconcile_counter = Ref(1000)
   let result = reconcile(old_node, new_node, reconcile_counter)
   let old_ids = collect_ids(old_node)
   let result_ids = collect_ids(result)
@@ -177,11 +201,11 @@ test "property: preserves IDs for identical trees" {
 /// We test this by building two trees with the same shape but different labels.
 fn prop_uses_new_kind_values(expr : TestExpr) -> Bool {
   let relabeled = relabel_expr(expr, "old_")
-  let counter_old = Ref::new(0)
+  let counter_old = Ref(0)
   let old_node = to_proj_node(relabeled, counter_old)
-  let counter_new = Ref::new(500)
+  let counter_new = Ref(500)
   let new_node = to_proj_node(expr, counter_new)
-  let reconcile_counter = Ref::new(1000)
+  let reconcile_counter = Ref(1000)
   let result = reconcile(old_node, new_node, reconcile_counter)
   let result_kinds = collect_kinds(result)
   let new_kinds = collect_kinds(new_node)
@@ -216,17 +240,17 @@ test "property: uses new kind values after reconcile" {
 /// reconcile(tree, tree) then reconcile(result, tree) should produce
 /// the same IDs as the first reconcile.
 fn prop_idempotent_on_stable(expr : TestExpr) -> Bool {
-  let counter1 = Ref::new(0)
+  let counter1 = Ref(0)
   let tree1 = to_proj_node(expr, counter1)
-  let counter2 = Ref::new(500)
+  let counter2 = Ref(500)
   let tree2 = to_proj_node(expr, counter2)
-  let counter3 = Ref::new(800)
+  let counter3 = Ref(800)
   let tree3 = to_proj_node(expr, counter3)
   // First reconcile
-  let rc1 = Ref::new(1000)
+  let rc1 = Ref(1000)
   let result1 = reconcile(tree1, tree2, rc1)
   // Second reconcile: reconcile(result1, tree3)
-  let rc2 = Ref::new(2000)
+  let rc2 = Ref(2000)
   let result2 = reconcile(result1, tree3, rc2)
   // IDs from result1 and result2 should be the same
   let ids1 = collect_ids(result1)
@@ -262,15 +286,15 @@ fn prop_retained_siblings_keep_ids_after_insert(expr : TestExpr) -> Bool {
     Branch(t, _) => t
     _ => ""
   }
-  let old_counter = Ref::new(0)
+  let old_counter = Ref(0)
   let old_node = to_proj_node(expr, old_counter)
   // Build new tree with an extra Leaf inserted in the middle
   let insert_idx = children.length() / 2
   let new_children = insert_at(children, insert_idx, Leaf("inserted"))
   let new_expr = Branch(tag, new_children)
-  let new_counter = Ref::new(500)
+  let new_counter = Ref(500)
   let new_node = to_proj_node(new_expr, new_counter)
-  let reconcile_counter = Ref::new(1000)
+  let reconcile_counter = Ref(1000)
   let result = reconcile(old_node, new_node, reconcile_counter)
   // The old IDs for retained children should appear in the result.
   // Build a set of old child IDs
@@ -311,15 +335,15 @@ fn prop_reused_id_count_after_delete(expr : TestExpr) -> Bool {
     Branch(t, _) => t
     _ => ""
   }
-  let old_counter = Ref::new(0)
+  let old_counter = Ref(0)
   let old_node = to_proj_node(expr, old_counter)
   // Build new tree with one child removed from the middle
   let remove_idx = children.length() / 2
   let new_children = remove_at(children, remove_idx)
   let new_expr = Branch(tag, new_children)
-  let new_counter = Ref::new(500)
+  let new_counter = Ref(500)
   let new_node = to_proj_node(new_expr, new_counter)
-  let reconcile_counter = Ref::new(1000)
+  let reconcile_counter = Ref(1000)
   let result = reconcile(old_node, new_node, reconcile_counter)
   // Result should have one fewer child
   if result.children.length() != old_node.children.length() - 1 {
@@ -353,18 +377,19 @@ test "property: reused ID count correct after child deletion" {
 /// Given different old and new trees, reconcile(old, new) then
 /// reconcile(result1, new_copy) should produce the same IDs —
 /// a second pass on the same new tree shouldn't change anything.
-fn prop_reconcile_idempotent_on_diff_trees(pair : (TestExpr, TestExpr)) -> Bool {
-  let (old_expr, new_expr) = pair
+fn prop_reconcile_idempotent_on_diff_trees(pair : TestExprPair) -> Bool {
+  let old_expr = pair.old
+  let new_expr = pair.new
   // Build old tree with counter range 0+
-  let old_node = to_proj_node(old_expr, Ref::new(0))
+  let old_node = to_proj_node(old_expr, Ref(0))
   // Build first new tree with counter range 500+
-  let new_node1 = to_proj_node(new_expr, Ref::new(500))
+  let new_node1 = to_proj_node(new_expr, Ref(500))
   // First reconcile with fresh IDs from 1000+
-  let result1 = reconcile(old_node, new_node1, Ref::new(1000))
+  let result1 = reconcile(old_node, new_node1, Ref(1000))
   // Build second copy of new tree with counter range 600+
-  let new_node2 = to_proj_node(new_expr, Ref::new(600))
+  let new_node2 = to_proj_node(new_expr, Ref(600))
   // Second reconcile with fresh IDs from 2000+
-  let result2 = reconcile(result1, new_node2, Ref::new(2000))
+  let result2 = reconcile(result1, new_node2, Ref(2000))
   // IDs should match positionally
   let ids1 = collect_ids(result1)
   let ids2 = collect_ids(result2)
@@ -389,18 +414,19 @@ test "property: reconcile idempotent on different trees" {
 /// Runs reconcile three times: old→new, result1→new, result2→new.
 /// result2 and result3 should have identical IDs, catching any drift
 /// that only manifests after multiple passes.
-fn prop_reconcile_triple_idempotent(pair : (TestExpr, TestExpr)) -> Bool {
-  let (old_expr, new_expr) = pair
+fn prop_reconcile_triple_idempotent(pair : TestExprPair) -> Bool {
+  let old_expr = pair.old
+  let new_expr = pair.new
   // Build old tree with counter range 0+
-  let old_node = to_proj_node(old_expr, Ref::new(0))
+  let old_node = to_proj_node(old_expr, Ref(0))
   // Build three copies of new tree with different counter ranges
-  let new_node1 = to_proj_node(new_expr, Ref::new(500))
-  let new_node2 = to_proj_node(new_expr, Ref::new(600))
-  let new_node3 = to_proj_node(new_expr, Ref::new(700))
+  let new_node1 = to_proj_node(new_expr, Ref(500))
+  let new_node2 = to_proj_node(new_expr, Ref(600))
+  let new_node3 = to_proj_node(new_expr, Ref(700))
   // Three rounds of reconcile with well-separated counter ranges
-  let result1 = reconcile(old_node, new_node1, Ref::new(1000))
-  let result2 = reconcile(result1, new_node2, Ref::new(2000))
-  let result3 = reconcile(result2, new_node3, Ref::new(3000))
+  let result1 = reconcile(old_node, new_node1, Ref(1000))
+  let result2 = reconcile(result1, new_node2, Ref(2000))
+  let result3 = reconcile(result2, new_node3, Ref(3000))
   // result2 and result3 should have identical IDs
   let ids2 = collect_ids(result2)
   let ids3 = collect_ids(result3)
@@ -452,11 +478,12 @@ fn collect_child_counts_rec(
 ///|
 /// Property 9: Result has the same shape as the new tree.
 /// Node count and child counts at every position match.
-fn prop_result_same_shape_as_new(pair : (TestExpr, TestExpr)) -> Bool {
-  let (old_expr, new_expr) = pair
-  let old_node = to_proj_node(old_expr, Ref::new(0))
-  let new_node = to_proj_node(new_expr, Ref::new(500))
-  let result = reconcile(old_node, new_node, Ref::new(1000))
+fn prop_result_same_shape_as_new(pair : TestExprPair) -> Bool {
+  let old_expr = pair.old
+  let new_expr = pair.new
+  let old_node = to_proj_node(old_expr, Ref(0))
+  let new_node = to_proj_node(new_expr, Ref(500))
+  let result = reconcile(old_node, new_node, Ref(1000))
   // Same total node count
   if count_nodes(result) != count_nodes(new_node) {
     return false
@@ -490,10 +517,10 @@ fn prop_different_root_kind_all_fresh(expr : TestExpr) -> Bool {
     Leaf(s) => Branch(s, [])
     Branch(_, _) => expr
   }
-  let old_node = to_proj_node(old_expr, Ref::new(0))
-  let new_node = to_proj_node(new_expr, Ref::new(500))
+  let old_node = to_proj_node(old_expr, Ref(0))
+  let new_node = to_proj_node(new_expr, Ref(500))
   let counter_start = 1000
-  let result = reconcile(old_node, new_node, Ref::new(counter_start))
+  let result = reconcile(old_node, new_node, Ref(counter_start))
   // All result IDs should be fresh (>= counter_start)
   let result_ids = collect_ids(result)
   for id in result_ids {
@@ -523,12 +550,13 @@ test "property: different root kind produces all fresh IDs" {
 ///|
 /// Property 11: Fresh IDs come from the counter range.
 /// After reconcile, any ID not reused from old must be >= counter start.
-fn prop_fresh_ids_from_counter_range(pair : (TestExpr, TestExpr)) -> Bool {
-  let (old_expr, new_expr) = pair
-  let old_node = to_proj_node(old_expr, Ref::new(0))
-  let new_node = to_proj_node(new_expr, Ref::new(500))
+fn prop_fresh_ids_from_counter_range(pair : TestExprPair) -> Bool {
+  let old_expr = pair.old
+  let new_expr = pair.new
+  let old_node = to_proj_node(old_expr, Ref(0))
+  let new_node = to_proj_node(new_expr, Ref(500))
   let counter_start = 1000
-  let counter = Ref::new(counter_start)
+  let counter = Ref(counter_start)
   let result = reconcile(old_node, new_node, counter)
   // Build set of old IDs
   let old_id_set : Map[Int, Bool] = {}
@@ -566,7 +594,7 @@ fn prop_swap_siblings_preserves_most_ids(expr : TestExpr) -> Bool {
     Branch(t, cs) => if cs.length() >= 2 { (t, cs) } else { return true }
     Leaf(_) => return true
   }
-  let old_counter = Ref::new(0)
+  let old_counter = Ref(0)
   let old_node = to_proj_node(expr, old_counter)
   // Swap first two children
   let swapped : Array[TestExpr] = []
@@ -576,9 +604,9 @@ fn prop_swap_siblings_preserves_most_ids(expr : TestExpr) -> Bool {
     swapped.push(children[i])
   }
   let new_expr = Branch(tag, swapped)
-  let new_counter = Ref::new(500)
+  let new_counter = Ref(500)
   let new_node = to_proj_node(new_expr, new_counter)
-  let result = reconcile(old_node, new_node, Ref::new(1000))
+  let result = reconcile(old_node, new_node, Ref(1000))
   // Collect old child root IDs
   let old_child_ids : Map[Int, Bool] = {}
   for child in old_node.children {
@@ -610,13 +638,13 @@ fn prop_deep_change_preserves_ancestor_ids(expr : TestExpr) -> Bool {
     Leaf(_) => return true
     _ => ()
   }
-  let old_counter = Ref::new(0)
+  let old_counter = Ref(0)
   let old_node = to_proj_node(expr, old_counter)
   // Modify the leftmost leaf's label (Leaf→Leaf stays same_kind)
   let new_expr = modify_leftmost_leaf(expr)
-  let new_counter = Ref::new(500)
+  let new_counter = Ref(500)
   let new_node = to_proj_node(new_expr, new_counter)
-  let result = reconcile(old_node, new_node, Ref::new(1000))
+  let result = reconcile(old_node, new_node, Ref(1000))
   // Collect ancestor IDs along the leftmost path in old and result
   let old_path_ids = collect_leftmost_path_ids(old_node)
   let result_path_ids = collect_leftmost_path_ids(result)
@@ -674,13 +702,14 @@ fn collect_leftmost_path_ids(node : ProjNode[TestExpr]) -> Array[Int] {
 /// Property 14: No new-tree ID leakage.
 /// Result IDs come from {old IDs} ∪ {counter range} only — never
 /// from the new tree's temporary IDs.
-fn prop_no_new_tree_id_leakage(pair : (TestExpr, TestExpr)) -> Bool {
-  let (old_expr, new_expr) = pair
-  let old_node = to_proj_node(old_expr, Ref::new(0))
+fn prop_no_new_tree_id_leakage(pair : TestExprPair) -> Bool {
+  let old_expr = pair.old
+  let new_expr = pair.new
+  let old_node = to_proj_node(old_expr, Ref(0))
   // New tree IDs in range 500-999
-  let new_node = to_proj_node(new_expr, Ref::new(500))
+  let new_node = to_proj_node(new_expr, Ref(500))
   let counter_start = 1000
-  let result = reconcile(old_node, new_node, Ref::new(counter_start))
+  let result = reconcile(old_node, new_node, Ref(counter_start))
   // Build sets of old and new IDs
   let old_id_set : Map[Int, Bool] = {}
   for id in collect_ids(old_node) {
@@ -750,10 +779,10 @@ fn to_proj_node_with_spans(
 /// (0-based vs 100-based). Result should match new tree's spans.
 fn prop_result_uses_new_spans(expr : TestExpr) -> Bool {
   // Old tree: spans from 0+
-  let old_node = to_proj_node_with_spans(expr, Ref::new(0), Ref::new(0))
+  let old_node = to_proj_node_with_spans(expr, Ref(0), Ref(0))
   // New tree: spans from 100+ (different positions)
-  let new_node = to_proj_node_with_spans(expr, Ref::new(500), Ref::new(100))
-  let result = reconcile(old_node, new_node, Ref::new(1000))
+  let new_node = to_proj_node_with_spans(expr, Ref(500), Ref(100))
+  let result = reconcile(old_node, new_node, Ref(1000))
   let result_spans = collect_spans(result)
   let new_spans = collect_spans(new_node)
   if result_spans.length() != new_spans.length() {

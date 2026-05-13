@@ -13,8 +13,8 @@ pub fn[T : TreeNode] build_projection_memos(
   @incr.Memo[Map[NodeId, ProjNode[T]]],
   @incr.Memo[SourceMap],
 ) {
-  let prev_proj_ref : Ref[ProjNode[T]?] = Ref::new(None)
-  let counter : Ref[Int] = Ref::new(0)
+  let prev_proj_ref : Ref[ProjNode[T]?] = Ref(None)
+  let counter : Ref[Int] = Ref(0)
 
   let proj_memo : @incr.Memo[ProjNode[T]?] = @incr.Memo::new_no_backdate(
     rt,

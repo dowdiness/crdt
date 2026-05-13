@@ -317,13 +317,13 @@ test "to_path returns child indices from root" {
     .go_down(index=1)
     .unwrap()
   inspect(z.focus.data, content="y")
-  inspect(z.to_path(), content="[0, 1]")
+  @debug.debug_inspect(z.to_path(), content="[0, 1]")
 }
 
 ///|
 test "to_path at root is empty" {
   let z = RoseZipper::from_root(RoseNode::new(data=1))
-  inspect(z.to_path(), content="[]")
+  @debug.debug_inspect(z.to_path(), content="[]")
 }
 
 ///|

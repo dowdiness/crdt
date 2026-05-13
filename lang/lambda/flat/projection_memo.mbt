@@ -17,19 +17,19 @@ pub fn build_lambda_projection_memos(
   let rt = parser.runtime()
   let source_text = parser.source()
   let syntax_tree = parser.syntax_tree()
-  let prev_flat_proj_ref : Ref[@lambda_proj.FlatProj?] = Ref::new(None)
-  let prev_syntax_root_ref : Ref[@seam.SyntaxNode?] = Ref::new(None)
-  let next_id_ref : Ref[Int] = Ref::new(0)
+  let prev_flat_proj_ref : Ref[@lambda_proj.FlatProj?] = Ref(None)
+  let prev_syntax_root_ref : Ref[@seam.SyntaxNode?] = Ref(None)
+  let next_id_ref : Ref[Int] = Ref(0)
   // Change tracking side-channel: set by proj_memo, read by registry and source_map.
   // None = full rebuild needed (first parse, def count change, no prev root).
   // Some([]) = nothing changed. Some([2, 5]) = defs 2 and 5 changed. -1 = final_expr.
-  let changed_def_indices_ref : Ref[Array[Int]?] = Ref::new(None)
+  let changed_def_indices_ref : Ref[Array[Int]?] = Ref(None)
   // Revision counter: bumped each time proj_memo recomputes. Downstream memos
   // track the last revision they processed. If they skipped revisions (lazy
   // access pattern), the delta in changed_def_indices_ref doesn't match their
   // prev state, so they must fall back to full rebuild.
-  let proj_revision_ref : Ref[Int] = Ref::new(0)
-  let proj_changed_at_ref : Ref[@incr.Revision] = Ref::new(
+  let proj_revision_ref : Ref[Int] = Ref(0)
+  let proj_changed_at_ref : Ref[@incr.Revision] = Ref(
     @incr.Revision::initial(),
   )
 
@@ -59,10 +59,10 @@ pub fn build_lambda_projection_memos(
           }
         }
       }
-      let counter = Ref::new(next_id_ref.val)
+      let counter = Ref(next_id_ref.val)
       let result = match (prev_flat_proj_ref.val, prev_syntax_root_ref.val) {
         (Some(prev_fp), Some(prev_root)) => {
-          let changed = Ref::new(([] : Array[Int]))
+          let changed = Ref(([] : Array[Int]))
           let result = @lambda_proj.to_flat_proj_incremental(
             syntax_root,
             prev_root,
@@ -136,13 +136,13 @@ pub fn build_lambda_projection_memos(
   // Counter write-back ensures Unit fallback IDs don't collide with future IDs.
   // prev_module_id_ref holds the Module node_id from the most recent successful
   // conversion, so stable Module IDs survive incremental rebuilds.
-  let prev_module_id_ref : Ref[Int?] = Ref::new(None)
+  let prev_module_id_ref : Ref[Int?] = Ref(None)
   let cached_proj_node : @incr.Memo[@core.ProjNode[@ast.Term]?] = @incr.Memo::new_no_backdate(
     rt,
     fn() -> @core.ProjNode[@ast.Term]? {
       match proj_memo.get().proj {
         Some(fp) => {
-          let counter = Ref::new(next_id_ref.val)
+          let counter = Ref(next_id_ref.val)
           let proj = fp.to_proj_node_with_prev_module_id(
             counter,
             prev_module_id_ref.val,
@@ -162,13 +162,13 @@ pub fn build_lambda_projection_memos(
     label="cached_proj_node",
   )
 
-  let prev_registry_ref : Ref[Map[@core.NodeId, @core.ProjNode[@ast.Term]]?] = Ref::new(
+  let prev_registry_ref : Ref[Map[@core.NodeId, @core.ProjNode[@ast.Term]]?] = Ref(
     None,
   )
-  let registry_prev_children_ref : Ref[Array[@core.ProjNode[@ast.Term]]?] = Ref::new(
+  let registry_prev_children_ref : Ref[Array[@core.ProjNode[@ast.Term]]?] = Ref(
     None,
   )
-  let registry_last_revision_ref : Ref[Int] = Ref::new(0)
+  let registry_last_revision_ref : Ref[Int] = Ref(0)
 
   let registry_memo : @incr.Memo[Map[@core.NodeId, @core.ProjNode[@ast.Term]]] = @incr.Memo::new_no_backdate(
     rt,
@@ -241,11 +241,11 @@ pub fn build_lambda_projection_memos(
     label="proj_registry",
   )
 
-  let prev_source_map_ref : Ref[@core.SourceMap?] = Ref::new(None)
-  let source_map_prev_children_ref : Ref[Array[@core.ProjNode[@ast.Term]]?] = Ref::new(
+  let prev_source_map_ref : Ref[@core.SourceMap?] = Ref(None)
+  let source_map_prev_children_ref : Ref[Array[@core.ProjNode[@ast.Term]]?] = Ref(
     None,
   )
-  let source_map_last_revision_ref : Ref[Int] = Ref::new(0)
+  let source_map_last_revision_ref : Ref[Int] = Ref(0)
 
   let source_map_memo : @incr.Memo[@core.SourceMap] = @incr.Memo::new_no_backdate(
     rt,
