@@ -275,6 +275,9 @@ jobs:
   web-e2e:
     name: Web E2E
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.59.1-noble
+      options: --ipc=host
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -297,28 +300,6 @@ jobs:
         working-directory: examples/web
         run: npm ci
 
-      - name: Get Playwright version
-        id: playwright-version
-        working-directory: examples/web
-        run: echo "version=$(npx playwright --version | awk '{print $2}')" >> $GITHUB_OUTPUT
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v5
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ steps.playwright-version.outputs.version }}-chromium
-
-      - name: Install Playwright browser
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        working-directory: examples/web
-        run: npx playwright install --with-deps chromium
-
-      - name: Install Playwright system deps
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        working-directory: examples/web
-        run: npx playwright install-deps chromium
-
       - name: Update MoonBit dependencies
         run: make update
 
@@ -328,6 +309,9 @@ jobs:
   demo-react-e2e:
     name: Demo React E2E
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.59.1-noble
+      options: --ipc=host
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -349,28 +333,6 @@ jobs:
       - name: Install demo-react dependencies
         working-directory: examples/demo-react
         run: npm ci
-
-      - name: Get Playwright version
-        id: playwright-version
-        working-directory: examples/demo-react
-        run: echo "version=$(npx playwright --version | awk '{print $2}')" >> $GITHUB_OUTPUT
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v5
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ steps.playwright-version.outputs.version }}-chromium
-
-      - name: Install Playwright browser
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        working-directory: examples/demo-react
-        run: npx playwright install --with-deps chromium
-
-      - name: Install Playwright system deps
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        working-directory: examples/demo-react
-        run: npx playwright install-deps chromium
 
       - name: Update MoonBit dependencies
         run: make update
