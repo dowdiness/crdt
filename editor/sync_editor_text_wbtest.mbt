@@ -107,20 +107,14 @@ test "insert_at with multi-char text" {
 // ─── Non-ASCII safety probes (issue #216) ────────────────────────────────
 //
 // Surveys the editor's behavior on non-ASCII inputs so the issue #216 layers
-// stay visible. The tests split along the actual failure modes observed
-// today:
+// stay visible:
 //
-//   1. BMP-only inputs (combining marks): moji keeps editor cursors and
-//      splice endpoints on grapheme boundaries. Pinned with `inspect`.
+//   1. BMP-only inputs (combining marks): editor cursors and splice endpoints
+//      stay on grapheme boundaries.
 //
-//   2. Surrogate-pair inputs (emoji, ZWJ family, flag): the CRDT layer
-//      (event-graph-walker) currently *aborts* via `String::sub` when an
-//      insert lands on a UTF-16 code-unit boundary mid-surrogate. Marked
-//      with the `panic ` test prefix, which expects abort. When the CRDT
-//      issue (eg-walker, related to #216) is fixed, these tests will start
-//      failing because the abort no longer fires — at which point they
-//      should be rewritten as inspect-style tests against the new
-//      post-fix surface behavior.
+//   2. Surrogate-pair inputs (emoji, ZWJ family, regional indicators): parser
+//      recovery and editor mutation paths must keep token/text spans from
+//      slicing through the UTF-16 surrogate pair.
 
 ///|
 /// BMP single-code-unit char (Japanese Hiragana). Sanity baseline.
@@ -253,52 +247,61 @@ test "insert_at preserves cursor when BMP splice fuses cluster" {
   inspect(editor.get_cursor(), content="0")
 }
 
-// §4.3 third table rows 1-2 — RI re-pairing and ZWJ profession join — are
-// not yet exercisable: loading the required non-BMP text into the editor
-// hits the CRDT-layer `String::sub` mid-surrogate abort tracked by the 4
-// `panic #216` tests above. Restore these once that abort is fixed:
-//
-//   - "🇯🇵🇺🇸" + apply_text_edit(4, 0, "🇮") → cursor 8 post-snap
-//   - "👩💻" with cursor=2, insert_at(2, "\u{200D}") → cursor 0 or 5 post-snap
-
 ///|
-/// #216: insert of a surrogate-pair emoji currently aborts in the CRDT
-/// (`String::sub` mid-surrogate). The whole call stack — `SyncEditor::insert`
-/// → `TextState::insert` → `Document::insert` → `String::sub` — panics, not
-/// just the editor layer. Tracked separately as the eg-walker CRDT issue
-/// referenced from #216.
-test "panic #216: insert non-BMP emoji aborts in CRDT" {
+test "RI re-pairing snaps cursor to next grapheme boundary" {
   let editor = @lambda.new_lambda_editor("test-agent").0
-  editor.insert("😀") catch {
-    _ => ()
-  }
+  editor.set_text("🇯🇵🇺🇸")
+  editor.apply_text_edit(4, 0, "🇮", 0)
+  inspect(editor.get_text(), content="🇯🇵🇮🇺🇸")
+  inspect(editor.get_cursor(), content="8")
 }
 
 ///|
-/// #216: same abort path triggered through a ZWJ family. Each insert of a
-/// single non-BMP component goes through the same `Document::insert` path.
-test "panic #216: insert ZWJ family member aborts in CRDT" {
+test "ZWJ profession join snaps preserved cursor to grapheme boundary" {
   let editor = @lambda.new_lambda_editor("test-agent").0
-  editor.insert("👨") catch {
-    _ => ()
-  }
+  editor.set_text("👩💻")
+  editor.move_cursor(2)
+  editor.insert_at(2, "\u{200D}", 0)
+  inspect(editor.get_text(), content="👩‍💻")
+  inspect(editor.get_cursor(), content="5")
 }
 
 ///|
-/// #216: regional indicator (flag half) is also non-BMP — same crash path.
-test "panic #216: insert regional indicator aborts in CRDT" {
+/// #216: insert of a surrogate-pair emoji stores the full non-BMP codepoint
+/// and leaves the cursor after the grapheme.
+test "#216: insert non-BMP emoji stores full emoji" {
   let editor = @lambda.new_lambda_editor("test-agent").0
-  editor.insert("🇯") catch {
-    _ => ()
-  }
+  try! editor.insert("😀")
+  inspect(editor.get_text(), content="😀")
+  inspect(editor.get_cursor(), content="2")
+}
+
+///|
+/// #216: ZWJ-family components are non-BMP; inserting one must not produce a
+/// mid-surrogate parser recovery token.
+test "#216: insert ZWJ family member stores full emoji" {
+  let editor = @lambda.new_lambda_editor("test-agent").0
+  try! editor.insert("👨")
+  inspect(editor.get_text(), content="👨")
+  inspect(editor.get_cursor(), content="2")
+}
+
+///|
+/// #216: regional indicators are non-BMP and must stay atomic through parser
+/// recovery.
+test "#216: insert regional indicator stores flag half" {
+  let editor = @lambda.new_lambda_editor("test-agent").0
+  try! editor.insert("🇯")
+  inspect(editor.get_text(), content="🇯")
+  inspect(editor.get_cursor(), content="2")
 }
 
 ///|
 /// #216: `set_text` of a string containing a surrogate pair routes through
-/// the same CRDT insert and aborts. This is the path used by the
-/// ProseMirror bridge, so external text coming in over the bridge can
-/// crash the editor.
-test "panic #216: set_text with non-BMP content aborts" {
+/// the same bulk text mutation path used by external bridge updates.
+test "#216: set_text with non-BMP content stores full emoji" {
   let editor = @lambda.new_lambda_editor("test-agent").0
   editor.set_text("😀")
+  inspect(editor.get_text(), content="😀")
+  inspect(editor.get_cursor(), content="2")
 }
