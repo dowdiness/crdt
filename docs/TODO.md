@@ -96,6 +96,10 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
 
 ## 4. Rabbita Projection Editor Performance
 
+- [ ] Split and optimize the `handle_text_intent` browser edit path.
+  Why: the 2026-05-14 real browser phase benchmark shows the large edit path is dominated by `handleTextIntent` (`p95` 14.7 ms on a 7,284-char example). Rabbita `refreshTotal` is only `p95` 1.6 ms, `TreeEditorState::refresh` is `p95` 0.4 ms, and `buildScopeMap` is `p95` 0.2 ms, so projection refresh is not the first bottleneck.
+  Exit: browser-level phase timings split `handle_text_intent` into edit translation, sync-editor mutation, and state publication, and the large-edit text-change `p95` is comfortably below the single-frame compute budget.
+
 - [ ] Remove redundant render-time tree scans (e.g. sidebar selection lookup from the full rendered tree).
   Why: low priority — full frame is <1 ms, but the scans are still wasted work.
   Exit: render path does not scan the full tree for already-known state.
