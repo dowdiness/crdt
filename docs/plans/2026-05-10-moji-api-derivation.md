@@ -1,9 +1,9 @@
 # moji API derivation — what canopy needs from a MoonBit UAX #29 library
 
-**Status:** spec only (v5) — kept unedited as the audit-trail record. The library and integration shipped in [#251](https://github.com/dowdiness/canopy/pull/251); the clean-cut spec at [`2026-05-10-moji-api-spec.md`](2026-05-10-moji-api-spec.md) is annotated with implementation status. Per-item shipped notes live in `docs/TODO.md` §16.
+**Status:** historical derivation record (v5). The library and integration shipped in [#251](https://github.com/dowdiness/canopy/pull/251); the follow-up parser/undo non-BMP fixes also landed. The clean-cut spec at [`2026-05-10-moji-api-spec.md`](2026-05-10-moji-api-spec.md) and `docs/TODO.md` §16 carry current implementation status.
 
-**Audience:** moji author. Secondary: canopy maintainers planning #216
-Step 2 once moji is available.
+**Original audience:** moji author. Current audience: canopy maintainers
+auditing why the shipped API has this shape.
 
 **Revision history:**
 
@@ -11,7 +11,7 @@ Step 2 once moji is available.
 - v2 (2026-05-10) — Codex review. Five critical fixes: strict-vs-snap
   semantics for cursor stepping (§1.3/§1.4/§1.6), insertion-vs-replace
   policy split (§1.1), explicit UTF-16 ↔ item-space layer (new §0),
-  `compute_text_change` re-added as moji-blocked (§1.10), JS bridge
+  `compute_text_change` re-added for moji integration (§1.10), JS bridge
   recommended to reject non-boundary splices rather than silently snap
   (§1.9). Plus the unit-storage decision promoted to §6.
 - v3 (2026-05-10) — Second Codex pass. Critical: strict-step formulas
@@ -25,7 +25,7 @@ Step 2 once moji is available.
   as "exact splice" vs "snap splice," added a §2.1 fallback contract
   for moji authors who can't accept arbitrary UTF-16 offsets, fixed
   the §4.1 Hangul fixture, and split §4.4 by seam variant. §6.1
-  notes Codex's Option A recommendation pending human decision.
+  notes Codex's Option A recommendation before the human decision.
 - v4 (2026-05-10) — Self-review pass (Opus, deep-think). Critical:
   §0.5's invariant maintenance for `apply_text_edit_internal` was
   unconditionally false in cluster-fusing-insert scenarios (regional
@@ -59,11 +59,12 @@ Step 2 once moji is available.
 
 - [docs/plans/2026-05-09-216-step4-bridge-audit.md](2026-05-09-216-step4-bridge-audit.md)
   — bulk-splice seam, Path E table, conversion-point recommendation.
-- [docs/TODO.md §16](../TODO.md) — open `(moji-blocked)` items.
+- [docs/TODO.md §16](../TODO.md) — shipped moji items and remaining
+  standalone follow-ups.
 - `memory/project_unicode_failure_modes.md` — bimodal failure pattern.
 - `memory/project_text_mutation_funnel.md` — funnel vs bypass routes.
 - [docs/development/API_REFERENCE.md](../development/API_REFERENCE.md)
-  — current Position Units contract; reserved `GraphemeOffset` name.
+  — current UTF-16 position-unit contract.
 
 ## TL;DR
 
@@ -405,7 +406,7 @@ span edits.
 
 ### 1.6 `move_cursor_left/right_grapheme` and word variants (STRICT FIX)
 
-New API per TODO.md §16.
+Shipped via #251 per TODO.md §16.
 
 - **Operation:** strict step left/right by one cluster (or one word).
 - **Function used (corrected):**
@@ -488,7 +489,7 @@ New API per TODO.md §16.
   only trigger was CM6/CRDT drift (rare); post-grapheme-rejection it
   becomes drift OR any non-boundary splice (more likely with non-ASCII
   input). This is not a new bug class but it is a more-likely-to-fire
-  one. Cross-references TODO §16's open follow-up on tightening this.
+  one. Cross-references TODO §16's standalone follow-up on tightening this.
 
 - **Inputs needed from moji:** none directly; the seam calls the
   primitives already listed.
@@ -701,10 +702,10 @@ Listed so moji does not grow accidentally.
   `String` to be a valid UTF-16 sequence.
 - **Splice-boundary integrity** — checking that an *inserted* string
   doesn't fuse with surrounding text into an unintended cluster (e.g.
-  regional indicator merging with neighbour). Real concern, but not
-  blocking the current `(moji-blocked)` items. Canopy may layer it
-  later by re-checking boundaries on the post-splice text using the
-  primitives moji already exposes — no new moji function required.
+  regional indicator merging with neighbour). Real concern, but not a
+  moji API blocker. Canopy may layer it later by re-checking boundaries
+  on the post-splice text using the primitives moji already exposes —
+  no new moji function required.
 - **JS bindings.** Moji is a MoonBit library. The JS side does not
   call moji directly; the bulk-splice seam carries the conversion.
 - **CRDT position conversion.** UTF-16 ↔ item-space is canopy's
@@ -834,14 +835,18 @@ moves behave the same way.
   conjuncts, which moved between Unicode versions).
 - **Allocation strategy** — tuple iterator vs. out-buffer.
 
-## 6. Open questions for the human reviewer
+## 6. Historical questions for the human reviewer
 
 In rough order of how much they shape the integration plan.
 
 ### 6.1 (NEW IN V2, HEADLINE) Unit-storage decision
 
-**What unit will canopy store internally for `self.cursor` and the
-public `move_cursor` / `get_cursor` boundary after moji lands?**
+**Current status:** #251 chose Option A. `self.cursor`, `move_cursor`, and
+`get_cursor` remain UTF-16 code-unit offsets, with editor APIs maintaining a
+grapheme-boundary invariant.
+
+**Original question:** what unit should canopy store internally for
+`self.cursor` and the public `move_cursor` / `get_cursor` boundary?
 Three options, each shifts where conversions live:
 
 | Option | `self.cursor` unit | What changes |
@@ -850,11 +855,11 @@ Three options, each shifts where conversions live:
 | B — switch to item-space | one per codepoint | CRDT calls become natural. Public boundary needs UTF-16 → item-space conversion at every entry (CM6, BlockInput, bridge, undo). Larger blast radius but eliminates per-call codepoint counting. |
 | C — switch to grapheme-ordinal | one per cluster | Public boundary becomes the reserved `GraphemeOffset` opaque type. Both layers (moji + item-space) live at the boundary. Largest blast radius but cleanest invariant. |
 
-The option chosen drives whether the seam needs both conversions on
-every call (A) or just one (B), and whether `GraphemeOffset` becomes
-real now or stays reserved.
+The option chosen drove whether the seam needed both conversions on every call
+(A) or just one (B), and whether `GraphemeOffset` became real immediately or
+stayed reserved.
 
-**Codex review (v3 pass) recommends Option A**, with reasoning:
+**Codex review (v3 pass) recommended Option A**, with reasoning:
 
 - Smallest blast radius. Public boundary stays UTF-16 (matching CM6,
   the textarea API, and existing FFI shapes).
@@ -871,15 +876,16 @@ A "hidden fourth option" of dual-store (cursor stored in two units
 simultaneously) is unsound — two authoritative cursor units will
 drift. Caching is fine; dual *authority* is not.
 
-The spec deliberately does not pick — this is a human decision, and
-Codex's recommendation is one input. Other inputs to weigh:
+The original spec deliberately did not pick — this was a human decision, and
+Codex's recommendation was one input. Other inputs weighed:
 
 - where canopy expects to land in 12 months (will it eventually need
   to expose grapheme-ordinal externally?);
 - how much per-call codepoint counting costs in practice (measure
   before deciding — Option A's per-call O(n) walk may be a non-issue
   with caching);
-- whether the `GraphemeOffset` opaque type lands now or later;
+- whether the `GraphemeOffset` opaque type would land now or later (it did
+  not land in #251);
 - **bridge impact (v4 add).** Option A leaves the JS bridge wire
   unchanged (still UTF-16 offsets). Options B and C change the public
   boundary, requiring updates to `bridge.ts`, `cm6-adapter.ts`,
