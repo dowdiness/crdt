@@ -1,7 +1,7 @@
 # #216 Step 4 — Bridge position-unit audit
 
-**Status:** investigation only. No code changes. Informs the moji-blocked
-grapheme-aware fixes (Step 2 of #216).
+**Status:** historical investigation. The main bridge-seam recommendation
+shipped via #246 and #251; current remaining follow-ups live in TODO.md §16.
 
 **Scope:** confirm where the editor's UTF-16 code-unit ↔ grapheme-cluster
 conversion needs to live for each external bridge. The original framing in
@@ -35,13 +35,14 @@ remaining position-bearing surfaces explicitly.
   MoonBit-side grapheme shim covers it. The JS-side source map is still
   read for `basePos` lookup; the per-char loop and the `insert_at`/
   `delete_at` codepath in the bridge are gone.
-- Position-bearing surfaces the seam does *not* cover (each needs its own
-  decision once moji lands):
+- Position-bearing surfaces the seam did *not* cover at investigation time:
   - per-character `SyncEditor::insert` / `delete` / `backspace` and the
     `_and_record` family — bypass `apply_text_edit_internal`
   - `move_cursor(position : Int)` — cursor-only API, no text change
   - `undo` / `redo` — replay CRDT ops directly on the doc
   - remote sync (`apply_sync`) — applies peer ops via the CRDT
+  **Status after #251:** the local editor/cursor/undo surfaces are now
+  grapheme-aware through `@moji`; remote sync remains a CRDT-layer concern.
 - The "infeasibility" framing in earlier drafts is too strong:
   per-bridge JS-side conversion is *available* (the ideal bridge already
   does it via `get_source_map_json`), just **not preferred** for new
@@ -249,15 +250,17 @@ apply_text_edit_internal(start_cu : Int, deleted_len_cu : Int, inserted : String
 3. Concentrating the conversion in MoonBit means one moji binding rather
    than one per bridge.
 
-**What this recommendation does NOT solve** (each is a separate decision
-when moji lands; explicitly out of scope for the seam):
+**What this recommendation did NOT solve at the time** (each was a
+separate decision outside this bridge seam):
 
 - The ideal bridge's per-char loop in `examples/ideal/web/src/bridge.ts:143-164`.
-  Recommended action: migrate to `handle_text_intent` so it joins the seam.
+  Status: resolved by #246, which migrated it to the shared text-intent
+  seam.
 - `SyncEditor::move_cursor(position : Int)` and the cursor invariant at
   insert / backspace in `editor/sync_editor_text.mbt:62,11,40` — these
-  are the *cursor*, not the seam. They need their own grapheme clamp,
-  per #216's "Direction of the fix."
+  were the *cursor*, not the seam. Status: #251 added the local
+  grapheme-boundary invariant through `@moji`; the follow-up parser/undo fix
+  converted the non-BMP panic probes into behavior tests.
 - Outbound `ViewPatch::SetSelection.{anchor,head}` — not currently
   emitted by `compute_view_patches`; if/when added, the same seam (in
   the emit direction) applies.

@@ -8,11 +8,12 @@ throughout — matching MoonBit `String[Int]` indexing and CodeMirror 6's
 wire convention.
 
 [#250]: https://github.com/dowdiness/canopy/issues/250
+[#251]: https://github.com/dowdiness/canopy/pull/251
 [spec]: https://github.com/dowdiness/canopy/blob/main/docs/plans/2026-05-10-moji-api-spec.md
 
 ## Status
 
-Phases 1-3 complete. Tracked under canopy issue [#250]; spec at
+Implemented in canopy [#251] from the original [#250] request; spec at
 [`docs/plans/2026-05-10-moji-api-spec.md`][spec].
 
 - **1187/1187** Unicode 15.1 `GraphemeBreakTest.txt` cases pass

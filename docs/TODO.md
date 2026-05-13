@@ -289,7 +289,7 @@ The [moji API spec](plans/2026-05-10-moji-api-spec.md) is now
   Shipped (#251): all per-character methods use spec §1.2-§1.4 strict-step formulas (`prev_grapheme_boundary(cursor - 1)` / `next_grapheme_boundary(cursor + 1)`); `apply_text_edit_internal` cursor-stays branch post-snaps with `next` per spec §0.5; `_and_record` mutations got the same treatment in `editor/sync_editor_undo.mbt`.
 
 - [x] **Unconditional cursor post-snap** in both `apply_text_edit_internal` branches (cursor-to-edit-end and cursor-stays). Cluster-fusing inserts (RIs, ZWJ, virama, VS-16) shift downstream boundaries even when the splice itself was boundary-aligned in the old text.
-  Shipped (#251): private `SplicePolicy` enum gates Snap vs Exact paths; both branches post-snap unconditionally per spec §0.5. BMP cluster-fusing test pinned in `editor/sync_editor_text_wbtest.mbt`; non-BMP RI/ZWJ-profession fixtures stubbed pending the CRDT abort fix.
+  Shipped (#251 + follow-up): private `SplicePolicy` enum gates Snap vs Exact paths; both branches post-snap unconditionally per spec §0.5. BMP and non-BMP cluster-fusing tests are pinned in `editor/sync_editor_text_wbtest.mbt`.
 
 - [x] Make `text_diff::find_common_prefix` / `find_common_suffix_after_prefix` grapheme-safe (`editor/text_diff.mbt`). Fix lives in `lib/text-change/text_change.mbt::compute_text_change` so canopy + valtio + loom (all path-dep on the leaf) get the fix in one move.
   Shipped (#251): both walks now use `@moji.grapheme_boundaries`. 3 `#216 xfail/panic` tests in `editor/text_diff_test.mbt` flipped to passing inspect assertions.
@@ -308,11 +308,11 @@ The [moji API spec](plans/2026-05-10-moji-api-spec.md) is now
 
 - [x] Add a one-line docstring to `lang/markdown/edits/compute_markdown_edit.mbt:211 compute_split_block` noting `offset` is a code-unit offset inside the text span.
 
-- [ ] **Fix the CRDT non-BMP `String::sub` mid-surrogate abort** in `event-graph-walker`'s `Document::insert` / `Document::delete`. Highest-leverage next moji follow-up: it unblocks the four `panic #216` tests in `editor/sync_editor_text_wbtest.mbt` AND the next item below. Plan: needs its own brainstorm + Codex design pass since it touches FugueMax CRDT internals (item-space encoding for non-BMP codepoints — see `project_unicode_failure_modes.md` memory). Submodule PR cycle in `event-graph-walker`, then bump the canopy submodule pointer.
-  Status: highest-priority follow-up to #251; gates the next two items.
+- [x] **Fix parser/undo non-BMP `String::sub` mid-surrogate aborts.**
+  Resolved (follow-up): `Document::insert` was already codepoint-safe; the unresolved abort surfaces were Loom parser recovery slicing token text with validated substring syntax and `event-graph-walker/text::TextState::insert_and_record` slicing inserted text one UTF-16 code unit at a time. Loom now uses raw `StringView` token spans and keeps recovered invalid-token spans on scalar boundaries; `insert_and_record` now iterates inserted text by `Char` and records full-codepoint undo content. The four `panic #216` tests are now inspect-style behavior tests.
 
-- [ ] **Restore non-BMP §4.3 cluster-fusing-cursor tests** once the CRDT abort above is fixed. Recipe inline in `editor/sync_editor_text_wbtest.mbt`: `"🇯🇵🇺🇸"` + `apply_text_edit(4, 0, "🇮")` → cursor 8 post-snap; `"👩💻"` cursor=2 + `insert_at(2, "\u{200D}")` → cursor 0 or 5 post-snap. The four `panic #216` tests above will start failing (no abort) at the same time; convert each to inspect-style.
-  Status: blocked on the CRDT abort fix.
+- [x] **Restore non-BMP §4.3 cluster-fusing-cursor tests.**
+  Resolved (follow-up): `editor/sync_editor_text_wbtest.mbt` now pins `"🇯🇵🇺🇸" + apply_text_edit(4, 0, "🇮") → cursor 8` and `"👩💻" + insert_at(2, "\u{200D}") → cursor 5`.
 
 - [ ] **Word-navigation policy on top of moji's raw UAX boundaries.** moji exposes spec-correct UAX #29 word boundaries (every transition between word/whitespace/punctuation). Editor word-navigation typically wants different semantics — skip whitespace, treat punctuation as part of the word in some contexts, optionally split camelCase/snake_case. Plan: define the policy as a wrapper around `move_cursor_left_word` / `_right_word` in `editor/sync_editor_text.mbt`. Spec §6.3 deliberately deferred this; pick a default policy (Sublime/VS Code-style is a reasonable starting point) and ship behind a config flag if needed.
   Status: not blocked; standalone canopy-side work.

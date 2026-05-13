@@ -2,30 +2,31 @@
 
 **Status:** implemented in [#251](https://github.com/dowdiness/canopy/pull/251) — the moji library lives at `lib/moji/` and is wired into the editor's diff layer, cursor invariant, arrow-key API, and FFI variants per the per-call-site analysis below. Conformance: 1187/1187 GraphemeBreakTest + 1826/1826 WordBreakTest cases pass against Unicode 15.1.
 
-The spec is preserved unedited as the design record; see TODO.md §16 for the per-item shipped notes and remaining follow-ups (notably: §4.3 non-BMP cluster-fusing-cursor fixtures stubbed pending the CRDT `String::sub` abort fix).
+The spec body is preserved as the pre-implementation design record; see TODO.md §16 for the per-item shipped notes and remaining follow-ups.
 
-**Audience:** moji author. Secondary: canopy maintainers integrating
-moji once it lands.
+**Original audience:** moji author. Current audience: canopy maintainers
+checking what shipped in #251 and what remains in TODO.md §16.
 
 ## Background
 
 [Canopy](https://github.com/dowdiness/canopy) is an incremental
-projectional editor with CRDT collaboration, written in MoonBit. The
-editor today treats text positions as UTF-16 code-unit offsets, which
-produces a bimodal failure surface for non-ASCII inputs:
+projectional editor with CRDT collaboration, written in MoonBit. At the
+time this spec was written, the editor treated text positions as UTF-16
+code-unit offsets without a grapheme-boundary invariant, which produced
+a bimodal failure surface for non-ASCII inputs:
 
 - **Surrogate pairs** (emoji, ZWJ sequences, regional-indicator flags)
-  produce typed rejections at the CRDT boundary today, having
-  previously aborted via `String::sub`. The editor layer still cannot
-  round-trip them cleanly: `cursor + "😀".length()` after `insert("😀")`
-  can land between the high and low surrogate.
+  could reach mid-surrogate positions in lower parser/undo text-layer calls.
+  Current status: the follow-up after #251 converted the `panic #216` probes
+  into inspect-style behavior tests and restored the non-BMP §4.3
+  cluster-fusing-cursor fixtures.
 - **BMP combining marks** (NFD `"e\u{0301}"`) silently corrupt:
   `backspace` deletes only the trailing combining mark; the diff
   reports a 1-code-unit delete.
 
-Closing both edges requires UAX #29 grapheme-cluster awareness in the
-editor layer. moji is the planned MoonBit library that provides it.
-This spec derives the minimum API surface canopy needs from a per-
+Closing both edges required UAX #29 grapheme-cluster awareness in the
+editor layer. `lib/moji/` is the MoonBit library that now provides it.
+This spec derives the minimum API surface canopy needed from a per-
 call-site audit of every position-bearing surface in the editor.
 
 The spec is API-only. moji's implementation strategy (table-driven vs
