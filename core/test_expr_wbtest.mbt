@@ -99,7 +99,7 @@ test "SourceMap::from_ast works with TestExpr" {
 test "reconcile preserves IDs when kinds match" {
   let old = ProjNode::new(Leaf("x"), 0, 1, 42, [])
   let new_ = ProjNode::new(Leaf("y"), 0, 1, 99, [])
-  let counter = Ref::new(100)
+  let counter = Ref(100)
   let result = reconcile(old, new_, counter)
   // same_kind(Leaf, Leaf) is true → old ID preserved
   inspect(result.node_id, content="42")
@@ -110,7 +110,7 @@ test "reconcile preserves IDs when kinds match" {
 test "reconcile assigns fresh IDs when kinds differ" {
   let old = ProjNode::new(Leaf("x"), 0, 1, 42, [])
   let new_ = ProjNode::new(Branch("b", []), 0, 3, 99, [])
-  let counter = Ref::new(100)
+  let counter = Ref(100)
   let result = reconcile(old, new_, counter)
   // same_kind(Leaf, Branch) is false → fresh ID
   inspect(result.node_id, content="100")
@@ -120,7 +120,7 @@ test "reconcile assigns fresh IDs when kinds differ" {
 test "assign_fresh_ids renumbers entire subtree" {
   let child = ProjNode::new(Leaf("a"), 0, 1, 0, [])
   let root = ProjNode::new(Branch("r", [Leaf("a")]), 0, 5, 1, [child])
-  let counter = Ref::new(50)
+  let counter = Ref(50)
   let result = assign_fresh_ids(root, counter)
   // post-order: child gets 50, parent gets 51
   inspect(result.children[0].node_id, content="50")

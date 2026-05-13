@@ -206,7 +206,7 @@ fn fill_suppressed(
 pub fn build_eval_memo(
   parser : @loom.Parser[@ast.Term],
 ) -> @incr.Memo[Array[EvalResult]] {
-  let cache : Ref[Array[CachedDef]] = Ref::new([])
+  let cache : Ref[Array[CachedDef]] = Ref([])
   @incr.Memo::new(
     parser.runtime(),
     fn() -> Array[EvalResult] {

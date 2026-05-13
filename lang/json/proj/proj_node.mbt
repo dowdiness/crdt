@@ -209,7 +209,7 @@ pub fn parse_to_proj_node(
   let (cst, diagnostics) = @json.parse_cst(text)
   let syntax_node = @seam.SyntaxNode::from_cst(cst)
   let errors = diagnostics.map(fn(d) { d.message })
-  let root = syntax_to_proj_node(syntax_node, Ref::new(0))
+  let root = syntax_to_proj_node(syntax_node, Ref(0))
   (root, errors)
 }
 

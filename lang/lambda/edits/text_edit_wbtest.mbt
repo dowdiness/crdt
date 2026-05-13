@@ -13,7 +13,7 @@ fn parse_with_token_spans(
 ) raise {
   let (cst, _) = @parser.parse_cst(text) catch { _ => fail("parse failed") }
   let syntax = @seam.SyntaxNode::from_cst(cst)
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let proj = to_proj_node(syntax, counter)
   let sm = SourceMap::from_ast(proj)
   populate_token_spans(sm, syntax, proj)

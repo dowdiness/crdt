@@ -27,7 +27,7 @@ fn tree_refresh_bench_setup(
   let sm_a = SourceMap::from_ast(root_a)
   let state = TreeEditorState::from_projection(Some(root_a), sm_a)
   let (root_b, _) = @lambda_proj.parse_to_proj_node(source_b)
-  let reconciled = @core.reconcile(root_a, root_b, Ref::new(1000))
+  let reconciled = @core.reconcile(root_a, root_b, Ref(1000))
   let sm_b = SourceMap::from_ast(reconciled)
   (state, root_a, sm_a, reconciled, sm_b)
 }

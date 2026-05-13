@@ -138,7 +138,7 @@ test "token spans for object keys stored on Object node" {
   let text = "{\"a\": 1, \"b\": 2}"
   let (cst, _) = @json.parse_cst(text) catch { _ => abort("parse failed") }
   let syntax_node = @seam.SyntaxNode::from_cst(cst)
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let proj = syntax_to_proj_node(syntax_node, counter)
   let sm = @core.SourceMap::from_ast(proj)
   populate_token_spans(sm, syntax_node, proj)
@@ -158,7 +158,7 @@ test "token spans for object keys stored on Object node" {
 test "reconcile preserves IDs on value edit" {
   let (old_proj, _) = parse_to_proj_node("{\"a\": 1, \"b\": 2}")
   let (new_proj, _) = parse_to_proj_node("{\"a\": 99, \"b\": 2}")
-  let counter = Ref::new(100)
+  let counter = Ref(100)
   let reconciled = @core.reconcile(old_proj, new_proj, counter)
   // Object kind matches → old root ID preserved
   inspect(reconciled.node_id, content=old_proj.node_id.to_string())

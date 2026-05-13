@@ -112,7 +112,7 @@ fn SourceMap::node_to_range_at_position(
 ) -> Map[NodeId, Range] {
   self.ranges
   .iter()
-  .fold(init=Map::new(), fn(acc, item) {
+  .fold(init=Map::default(), fn(acc, item) {
     if item.0.contains(position) {
       acc.set(item.1, item.0)
     }

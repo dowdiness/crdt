@@ -38,7 +38,7 @@ fn new_typecheck_bundle(
 }
 
 ///|
-let lambda_handles : Map[Int, LambdaHandle] = Map::new()
+let lambda_handles : Map[Int, LambdaHandle] = Map::default()
 
 ///|
 let next_handle : Ref[Int] = { val: 1 }

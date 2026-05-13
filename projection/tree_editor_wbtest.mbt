@@ -75,7 +75,7 @@ test "refresh_node_minimal skips unchanged subtrees" {
   let old_source_map = SourceMap::from_ast(old_root)
   let state = TreeEditorState::from_projection(Some(old_root), old_source_map)
   let (new_root, _) = @lambda_proj.parse_to_proj_node("(1 + 2) + (3 + 5)")
-  let reconciled = @core.reconcile(old_root, new_root, Ref::new(1000))
+  let reconciled = @core.reconcile(old_root, new_root, Ref(1000))
   let source_map = SourceMap::from_ast(reconciled)
   let ui_state : TreeUIState = {
     collapsed_nodes: @immut/hashset.new(),
@@ -497,7 +497,7 @@ test "refresh rebuilds structural indexes for updated projection" {
   let old_source_map = SourceMap::from_ast(old_root)
   let state = TreeEditorState::from_projection(Some(old_root), old_source_map)
   let (new_root, _) = @lambda_proj.parse_to_proj_node("(1 + 2) + (3 + 5)")
-  let reconciled = @core.reconcile(old_root, new_root, Ref::new(1000))
+  let reconciled = @core.reconcile(old_root, new_root, Ref(1000))
   let source_map = SourceMap::from_ast(reconciled)
   let refreshed = state.refresh(Some(reconciled), source_map)
   let ids = tree_editor_test_ids(refreshed.tree)
@@ -527,7 +527,7 @@ test "refresh builder reuses unchanged sibling subtree after unrelated leaf chan
   let old_source_map = SourceMap::from_ast(old_root)
   let state = TreeEditorState::from_projection(Some(old_root), old_source_map)
   let (new_root, _) = @lambda_proj.parse_to_proj_node("(1 + 2) + (3 + 5)")
-  let reconciled = @core.reconcile(old_root, new_root, Ref::new(1000))
+  let reconciled = @core.reconcile(old_root, new_root, Ref(1000))
   let source_map = SourceMap::from_ast(reconciled)
   let ui_state : TreeUIState = {
     collapsed_nodes: @immut/hashset.new(),
@@ -679,7 +679,7 @@ test "TreeEditorState::refresh preserves unchanged sibling subtree through publi
   let old_right = old_root_children[1]
 
   let (new_root, _) = @lambda_proj.parse_to_proj_node("(1 + 2) + (3 + 5)")
-  let reconciled = @core.reconcile(old_root, new_root, Ref::new(1000))
+  let reconciled = @core.reconcile(old_root, new_root, Ref(1000))
   let source_map = SourceMap::from_ast(reconciled)
   let refreshed = state.refresh(Some(reconciled), source_map)
   let refreshed_tree = match refreshed.tree {

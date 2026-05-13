@@ -3,13 +3,13 @@
 /// with lambda (0+) and JSON (10000+).
 
 ///|
-let markdown_editors : Map[Int, @editor.SyncEditor[@md.Block]] = Map::new()
+let markdown_editors : Map[Int, @editor.SyncEditor[@md.Block]] = Map::default()
 
 ///|
 let markdown_next_handle : Ref[Int] = { val: 20000 }
 
 ///|
-let markdown_view_states : Map[Int, @editor.ViewUpdateState] = Map::new()
+let markdown_view_states : Map[Int, @editor.ViewUpdateState] = Map::default()
 
 // ── Lifecycle ────────────────────────────────────────────────────────────
 

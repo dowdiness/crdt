@@ -55,14 +55,14 @@ test "query_text - finds similar posts" {
 test "query_text - empty query returns empty" {
   let corpus = Corpus::new()
   let _ = corpus.add_post("hello")
-  inspect(corpus.query_text(""), content="[]")
+  debug_inspect(corpus.query_text(""), content="[]")
 }
 
 ///|
 test "query_text - single char query returns empty" {
   let corpus = Corpus::new()
   let _ = corpus.add_post("hello world")
-  inspect(corpus.query_text("h"), content="[]")
+  debug_inspect(corpus.query_text("h"), content="[]")
 }
 
 ///|
@@ -81,7 +81,7 @@ test "query_text - top_n limits results" {
 test "query_text - top_n zero returns empty" {
   let corpus = Corpus::new()
   let _ = corpus.add_post("hello")
-  inspect(corpus.query_text("hello", top_n=0), content="[]")
+  debug_inspect(corpus.query_text("hello", top_n=0), content="[]")
 }
 
 ///|
@@ -99,7 +99,7 @@ test "query_similar - basic" {
 ///|
 test "query_similar - invalid id returns empty" {
   let corpus = Corpus::new()
-  inspect(corpus.query_similar(999), content="[]")
+  debug_inspect(corpus.query_similar(999), content="[]")
 }
 
 ///|

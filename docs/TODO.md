@@ -106,10 +106,17 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
 
 - [ ] Implement lazy loading for 100 k+ operation documents (load causal graph skeleton, hydrate on demand).
 
-- [ ] Add B-tree indexing for FugueTree (O(n) → O(log n) random-access character lookup).
+- [ ] Benchmark `FugueTree` whole-list traversal after the early-exit `lv_to_position` change.
+  Why: event-graph-walker#38 removes `lv_to_position`'s full `get_visible_items()` allocation by sharing an early-exit traversal helper, but full-list callers such as `get_visible_items()` / `to_text()` may have different constant-factor tradeoffs.
+  Exit: release benchmarks cover `get_visible_items()` and `to_text()` on representative trees; keep the shared traversal helper only if whole-list callers do not regress materially, otherwise restore a direct collection path while preserving early exit for point lookup.
 
-- [ ] Cheaper `FugueTree::lv_to_position`.
-  Why: current impl allocates the full visible-items array then linearly scans. Replace with a tree walk that counts visible items and exits early when target LV is found. No allocation, O(n/2) average. ~20 lines in `event-graph-walker/internal/fugue/tree.mbt`. Bottleneck for incremental remote cache updates.
+- [ ] Consider a public allocation-free `FugueTree` visible traversal API.
+  Why: `get_visible_items()` must materialize the full visible sequence by contract. A visitor/iterator-style API would let callers that only need a point query, fold, or early-exit search reuse canonical tree order without allocating an array.
+  Exit: either expose a documented `visit_visible` / `find_visible` style API and migrate suitable internal callers, or document why the private traversal helper is sufficient for now.
+
+- [ ] Add visible-order indexing for FugueTree / Document LV-position queries.
+  Why: early-exit traversal avoids allocation but remains O(n) worst-case. A maintained visible-order index, B-tree, or reverse LV→position map could make `position_to_lv` and `lv_to_position` near O(log n), but must stay coherent across insert/delete/undelete, merge, and retreat paths.
+  Exit: benchmarked design/prototype with clear mutation invariants, or a written decision that the complexity is not justified by measured workloads.
 
 ---
 

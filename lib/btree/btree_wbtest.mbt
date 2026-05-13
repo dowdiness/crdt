@@ -222,7 +222,7 @@ test "each visits all elements in order" {
   let t = build_tree([(1, 2), (2, 3), (3, 1)])
   let ids : Array[Int] = []
   t.each(fn(item) { ids.push(item.id) })
-  inspect(
+  @debug.debug_inspect(
     ids,
     content=(
       #|[1, 2, 3]

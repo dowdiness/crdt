@@ -106,7 +106,7 @@ test "extract_gemini_text surfaces Gemini API error" {
   let result : Result[String, LlmError] = Ok(extract_gemini_text(response)) catch {
     err => Err(err)
   }
-  inspect(
+  debug_inspect(
     result,
     content="Err(LlmError(\"Gemini API error: API key not valid\"))",
   )

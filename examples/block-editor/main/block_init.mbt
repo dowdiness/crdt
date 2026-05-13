@@ -1,8 +1,8 @@
 ///|
-let docs : Map[Int, BlockDoc] = Map::new()
+let docs : Map[Int, BlockDoc] = Map::default()
 
 ///|
-let replica_ids : Map[Int, String] = Map::new()
+let replica_ids : Map[Int, String] = Map::default()
 
 ///|
 let next_handle : Ref[Int] = { val: 1 }

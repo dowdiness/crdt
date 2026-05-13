@@ -1,9 +1,4 @@
 ///|
-impl Show for StoredPost with output(self, logger) {
-  logger.write_string(@debug.to_string(self))
-}
-
-///|
 test "StoredPost JSON round-trip" {
   let posts : Array[StoredPost] = [
     { text: "CRDTのmerge操作でバグ", ts: "2026-04-04T10:00:00Z" },
@@ -21,14 +16,14 @@ test "StoredPost JSON round-trip" {
 ///|
 test "posts_from_json - empty string returns empty, no error" {
   let (posts, err) = posts_from_json("")
-  inspect(posts, content="[]")
+  debug_inspect(posts, content="[]")
   inspect(err is None, content="true")
 }
 
 ///|
 test "posts_from_json - invalid JSON returns error" {
   let (posts, err) = posts_from_json("not json")
-  inspect(posts, content="[]")
+  debug_inspect(posts, content="[]")
   // Error should be Some(...) for corrupt data
   inspect(err is None, content="false")
 }
@@ -36,6 +31,6 @@ test "posts_from_json - invalid JSON returns error" {
 ///|
 test "posts_from_json - empty array" {
   let (posts, err) = posts_from_json("[]")
-  inspect(posts, content="[]")
+  debug_inspect(posts, content="[]")
   inspect(err is None, content="true")
 }

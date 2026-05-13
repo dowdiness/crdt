@@ -6,7 +6,7 @@
 /// Property 1: Every node in a ProjNode tree has a range in the SourceMap.
 /// SourceMap::from_ast should produce an entry for every node in the tree.
 fn prop_from_ast_covers_all_nodes(expr : TestExpr) -> Bool {
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let root = to_proj_node(expr, counter)
   let sm = SourceMap::from_ast(root)
   let ids = collect_ids(root)
@@ -30,7 +30,7 @@ test "property: from_ast covers all nodes" {
 /// Property 2: The sorted ranges array has the same length as node_to_range.
 /// After from_ast, ranges should contain exactly one entry per node.
 fn prop_ranges_length_matches_node_count(expr : TestExpr) -> Bool {
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let root = to_proj_node(expr, counter)
   let sm = SourceMap::from_ast(root)
   sm.ranges.length() == sm.node_count()
@@ -46,8 +46,8 @@ test "property: ranges array length matches node count" {
 /// with ties broken by end position (descending — larger ranges first).
 /// Uses realistic nested ranges so sorting is non-trivially exercised.
 fn prop_ranges_sorted(expr : TestExpr) -> Bool {
-  let counter = Ref::new(0)
-  let offset = Ref::new(0)
+  let counter = Ref(0)
+  let offset = Ref(0)
   let root = to_proj_node_with_ranges(expr, counter, offset)
   let sm = SourceMap::from_ast(root)
   for i = 1; i < sm.ranges.length(); i = i + 1 {
@@ -72,7 +72,7 @@ test "property: ranges array is correctly sorted" {
 /// Property 4: rebuild() then from_ast() produce the same SourceMap content.
 /// Rebuilding from the same tree should yield identical node_to_range entries.
 fn prop_rebuild_matches_from_ast(expr : TestExpr) -> Bool {
-  let counter = Ref::new(0)
+  let counter = Ref(0)
   let root = to_proj_node(expr, counter)
   let sm1 = SourceMap::from_ast(root)
   let sm2 = SourceMap::new()
@@ -133,8 +133,8 @@ fn to_proj_node_with_ranges(
 /// For every node with children, the parent's range should contain
 /// each child's range.
 fn prop_parent_encloses_children(expr : TestExpr) -> Bool {
-  let counter = Ref::new(0)
-  let offset = Ref::new(0)
+  let counter = Ref(0)
+  let offset = Ref(0)
   let root = to_proj_node_with_ranges(expr, counter, offset)
   let sm = SourceMap::from_ast(root)
   check_enclosure(root, sm)
@@ -172,8 +172,8 @@ test "property: parent ranges enclose child ranges" {
 /// containing range among all nodes that contain the query position.
 /// Probes multiple positions across the root range for better coverage.
 fn prop_innermost_node_has_minimal_range(expr : TestExpr) -> Bool {
-  let counter = Ref::new(0)
-  let offset = Ref::new(0)
+  let counter = Ref(0)
+  let offset = Ref(0)
   let root = to_proj_node_with_ranges(expr, counter, offset)
   let sm = SourceMap::from_ast(root)
   let root_range = match sm.get_range(root.id()) {
@@ -230,8 +230,8 @@ test "property: innermost_node_at returns minimal containing node" {
 /// All token spans should be gone after rebuild (as documented in
 /// source_map.mbt — "clears token_spans").
 fn prop_rebuild_clears_token_spans(expr : TestExpr) -> Bool {
-  let counter = Ref::new(0)
-  let offset = Ref::new(0)
+  let counter = Ref(0)
+  let offset = Ref(0)
   let root = to_proj_node_with_ranges(expr, counter, offset)
   let sm = SourceMap::from_ast(root)
   // Set a token span on the root node

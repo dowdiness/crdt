@@ -94,14 +94,14 @@ pub fn new_lambda_editor(
   // Ref side-channels let the build_memos callback publish extra memos
   // (beyond the 3-tuple SyncEditor expects) and the runtime back out to
   // the enclosing scope for companion construction + capabilities wiring.
-  let rt_ref : Ref[@incr.Runtime?] = Ref::new(None)
-  let proj_memo_ref : Ref[@incr.Memo[@lambda_flat.VersionedFlatProj]?] = Ref::new(
+  let rt_ref : Ref[@incr.Runtime?] = Ref(None)
+  let proj_memo_ref : Ref[@incr.Memo[@lambda_flat.VersionedFlatProj]?] = Ref(
     None,
   )
-  let escalation_memo_ref : Ref[@incr.Memo[Array[@lambda_eval.EvalResult]]?] = Ref::new(
+  let escalation_memo_ref : Ref[@incr.Memo[Array[@lambda_eval.EvalResult]]?] = Ref(
     None,
   )
-  let cached_proj_node_ref : Ref[@incr.Memo[@core.ProjNode[@ast.Term]?]?] = Ref::new(
+  let cached_proj_node_ref : Ref[@incr.Memo[@core.ProjNode[@ast.Term]?]?] = Ref(
     None,
   )
   let editor = @editor.SyncEditor::new_generic(

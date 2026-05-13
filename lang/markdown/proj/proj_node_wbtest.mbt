@@ -74,7 +74,7 @@ test "projection: IDs are unique" {
 test "projection: incremental reparse preserves IDs" {
   let source = "# Hello\n\nWorld"
   let parser = @loom.new_imperative_parser(source, @markdown.markdown_grammar)
-  let counter : Ref[Int] = Ref::new(0)
+  let counter : Ref[Int] = Ref(0)
   // Initial parse
   let _ = parser.parse()
   // First projection

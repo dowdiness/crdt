@@ -49,7 +49,7 @@ pub fn to_flat_proj_incremental(
   old_root : @seam.SyntaxNode,
   old_fp : FlatProj,
   counter : Ref[Int],
-  changed_indices? : Ref[Array[Int]] = Ref::new([]),
+  changed_indices? : Ref[Array[Int]] = Ref([]),
 ) -> FlatProj {
   // Extract LetDef children from old and new roots
   let new_children = new_root.children()

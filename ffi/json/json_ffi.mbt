@@ -3,13 +3,13 @@
 // lambda registry (1..9999). Structural edits live in edit.mbt.
 
 ///|
-let json_editors : Map[Int, @editor.SyncEditor[@djson.JsonValue]] = Map::new()
+let json_editors : Map[Int, @editor.SyncEditor[@djson.JsonValue]] = Map::default()
 
 ///|
 let json_next_handle : Ref[Int] = { val: 10000 }
 
 ///|
-let json_view_states : Map[Int, @editor.ViewUpdateState] = Map::new()
+let json_view_states : Map[Int, @editor.ViewUpdateState] = Map::default()
 
 // ── Lifecycle ────────────────────────────────────────────────────────────
 
