@@ -97,6 +97,104 @@ fn update_pointer_down(
 }
 
 ///|
+/// Start an edge-creation gesture from the output handle of `node_id`.
+fn update_connect_start(
+  state : CanvasState,
+  node_id : NodeId,
+  world_x : Double,
+  world_y : Double,
+) -> CanvasState {
+  let conn : ConnectState = {
+    from_node: node_id,
+    cursor_x: world_x,
+    cursor_y: world_y,
+  }
+  let new_interaction : InteractionState = {
+    ..state.interaction,
+    connecting: Some(conn),
+    pointer_down: true,
+    did_move: false,
+  }
+  { ..state, interaction: new_interaction }
+}
+
+///|
+fn update_connect_move(
+  state : CanvasState,
+  world_x : Double,
+  world_y : Double,
+) -> CanvasState {
+  match state.interaction.connecting {
+    None => state
+    Some(conn) => {
+      let new_conn : ConnectState = {
+        ..conn,
+        cursor_x: world_x,
+        cursor_y: world_y,
+      }
+      let new_interaction : InteractionState = {
+        ..state.interaction,
+        connecting: Some(new_conn),
+        did_move: true,
+      }
+      { ..state, interaction: new_interaction }
+    }
+  }
+}
+
+///|
+fn edge_exists(edges : Array[Edge], source : NodeId, target : NodeId) -> Bool {
+  edges.iter().any(fn(e) { e.source == source && e.target == target })
+}
+
+///|
+fn can_commit_edge(state : CanvasState, source : NodeId, target : NodeId) -> Bool {
+  source != target &&
+  find_node(state.nodes, source) is Some(_) &&
+  find_node(state.nodes, target) is Some(_) &&
+  !edge_exists(state.edges, source, target)
+}
+
+///|
+fn append_edge(state : CanvasState, source : NodeId, target : NodeId) -> CanvasState {
+  let edge : Edge = {
+    id: EdgeId(state.next_edge_id),
+    source,
+    target,
+  }
+  let edges = state.edges.copy()
+  edges.push(edge)
+  {
+    ..state,
+    edges,
+    next_edge_id: state.next_edge_id + 1,
+  }
+}
+
+///|
+/// Commit an in-flight connection if released over a different node, otherwise drop it.
+/// Duplicate edges (same source and target) are not added.
+fn update_connect_end(state : CanvasState, target : NodeId?) -> CanvasState {
+  match state.interaction.connecting {
+    None => state
+    Some(conn) => {
+      let new_state = match target {
+        Some(t) if can_commit_edge(state, conn.from_node, t) =>
+          append_edge(state, conn.from_node, t)
+        _ => state
+      }
+      let new_interaction : InteractionState = {
+        ..new_state.interaction,
+        connecting: None,
+        pointer_down: false,
+        did_move: false,
+      }
+      { ..new_state, interaction: new_interaction }
+    }
+  }
+}
+
+///|
 /// Dispatch a pointer-move event to the active gesture.
 /// Accepts screen coordinates; converts to world coords internally for dragging.
 fn update_pointer_move(
@@ -104,12 +202,19 @@ fn update_pointer_move(
   sx : Double,
   sy : Double,
 ) -> CanvasState {
-  match state.interaction.dragging {
+  match state.interaction.connecting {
     Some(_) => {
       let (wx, wy) = screen_to_world(state.viewport, sx, sy)
-      update_node_drag_move(state, wx, wy)
+      update_connect_move(state, wx, wy)
     }
-    None => update_pan_move(state, sx, sy)
+    None =>
+      match state.interaction.dragging {
+        Some(_) => {
+          let (wx, wy) = screen_to_world(state.viewport, sx, sy)
+          update_node_drag_move(state, wx, wy)
+        }
+        None => update_pan_move(state, sx, sy)
+      }
   }
 }
 
@@ -184,6 +289,11 @@ fn update_pointer_up(state : CanvasState, node_id_int : Int) -> CanvasState {
   } else {
     Some(NodeId(node_id_int))
   }
+  // If a connection gesture is in flight, commit/cancel it and exit.
+  match state.interaction.connecting {
+    Some(_) => return update_connect_end(state, hovered)
+    None => ()
+  }
   let new_selected : NodeId? = if state.interaction.pointer_down &&
     !state.interaction.did_move {
     hovered
@@ -193,6 +303,7 @@ fn update_pointer_up(state : CanvasState, node_id_int : Int) -> CanvasState {
   let new_interaction : InteractionState = {
     dragging: None,
     panning: None,
+    connecting: None,
     pointer_down: false,
     did_move: false,
     selected: new_selected,
