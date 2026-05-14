@@ -128,6 +128,7 @@ behavior** — check the code before relying on any specific detail.
 
 Recently completed (for quick reference):
 
+- [Canvas Handles And Edges](archive/completed-phases/2026-05-14-canvas-handles-edges.md)
 - [Lambda Annotation Plumbing — Design](archive/completed-phases/2026-04-18-lambda-annotation-plumbing-design.md)
 - [Lambda Annotation Plumbing — Impl](archive/completed-phases/2026-04-18-lambda-annotation-plumbing-impl.md)
 - [Framework Extraction — Design](archive/2026-03-18-framework-extraction-design.md)
