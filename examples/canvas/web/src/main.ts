@@ -208,8 +208,8 @@ root.addEventListener('pointerdown', (e: PointerEvent) => {
         mb.pointer_down_handle(handle, hit.nodeId, sx, sy);
         pointerDownNodeId = 0; // pointerup uses hover target, not down target
       } else {
-        // Input handle clicks are inert for now.
-        mb.pointer_down(handle, 0, sx, sy);
+        // Input handle clicks are inert for now; do not start background pan.
+        pointerDownNodeId = 0;
       }
       break;
     case 'node':

@@ -152,22 +152,27 @@ fn update_connect_end(state : CanvasState, target : NodeId?) -> CanvasState {
       let mut new_state = state
       match target {
         Some(t) if t != conn.from_node => {
-          let already = state.edges
-            .iter()
-            .any(fn(e) { e.source == conn.from_node && e.target == t })
-          if !already {
-            let edge : Edge = {
-              id: EdgeId(state.next_edge_id),
-              source: conn.from_node,
-              target: t,
+          match (find_node(state.nodes, conn.from_node), find_node(state.nodes, t)) {
+            (Some(_), Some(_)) => {
+              let already = state.edges
+                .iter()
+                .any(fn(e) { e.source == conn.from_node && e.target == t })
+              if !already {
+                let edge : Edge = {
+                  id: EdgeId(state.next_edge_id),
+                  source: conn.from_node,
+                  target: t,
+                }
+                let new_edges = state.edges.copy()
+                new_edges.push(edge)
+                new_state = {
+                  ..state,
+                  edges: new_edges,
+                  next_edge_id: state.next_edge_id + 1,
+                }
+              }
             }
-            let new_edges = state.edges.copy()
-            new_edges.push(edge)
-            new_state = {
-              ..state,
-              edges: new_edges,
-              next_edge_id: state.next_edge_id + 1,
-            }
+            _ => ()
           }
         }
         _ => ()

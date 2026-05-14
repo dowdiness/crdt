@@ -300,6 +300,23 @@ test "connect_end deduplicates existing edges" {
 }
 
 ///|
+test "connect_end ignores unknown endpoints" {
+  let state = make_test_state()
+  let missing_target = update_connect_end(
+    update_connect_start(state, NodeId(1), 0.0, 0.0),
+    Some(NodeId(99)),
+  )
+  assert_eq(missing_target.edges.length(), 0)
+  assert_eq(missing_target.next_edge_id, 1)
+  let missing_source = update_connect_end(
+    update_connect_start(state, NodeId(99), 0.0, 0.0),
+    Some(NodeId(2)),
+  )
+  assert_eq(missing_source.edges.length(), 0)
+  assert_eq(missing_source.next_edge_id, 1)
+}
+
+///|
 test "get_render_state returns correct JSON shape" {
   // create_canvas returns handle 0 on first call in test process
   let handle = create_canvas()

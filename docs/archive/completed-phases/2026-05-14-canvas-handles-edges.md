@@ -180,6 +180,7 @@ moon test
 cd examples/canvas/web && npm run build
 cd examples/canvas/web && npm exec tsc -- --noEmit
 git diff --cached --check
+markdownlint-cli2 docs/README.md docs/archive/completed-phases/2026-05-14-canvas-handles-edges.md
 ```
 
 All passed on 2026-05-14. `npm install` in `examples/canvas/web` reported three
