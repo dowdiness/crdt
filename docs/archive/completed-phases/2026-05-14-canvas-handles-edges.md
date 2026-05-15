@@ -171,6 +171,15 @@ Whitebox tests cover:
 - duplicate source/target edges are rejected
 - render JSON includes seeded demo edges
 
+Playwright smoke coverage in `examples/canvas/web/e2e/canvas-handles.spec.ts`
+drives the actual browser UI and verifies:
+
+- output-handle drag shows a pending SVG edge
+- background release cancels without adding an edge
+- valid handle-to-handle release creates an edge
+- duplicate and self-edge gestures are rejected
+- input-handle drag is inert and does not pan the viewport
+
 Validation run for the implementation:
 
 ```bash
@@ -188,7 +197,6 @@ moderate npm audit warnings, but produced no tracked changes.
 
 ## Follow-Ups
 
-- Browser interaction smoke test with Playwright or agent-browser.
 - Edge deletion and selection.
 - Node add/delete UI and edge cleanup for removed nodes.
 - Persist canvas graph state.
