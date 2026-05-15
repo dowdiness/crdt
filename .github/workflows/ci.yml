@@ -373,7 +373,7 @@ jobs:
         run: npm ci
 
       - name: Run canvas Playwright suite
-        run: make test-canvas-e2e
+        run: ./scripts/test-canvas-e2e.sh
 
   all-checks-passed:
     name: All Checks Passed
