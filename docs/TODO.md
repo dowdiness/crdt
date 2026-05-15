@@ -133,8 +133,16 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
 
 ## 7. Code Cleanup
 
+- [ ] Upgrade `rle` consumers to `dowdiness/rle` 0.2.1 and constructor-style APIs.
+  Why: the stale `feature/container-phase3-blockdoc-sync` branch only bumped the `rle` submodule pointer to v0.2.1. The actual consumer modules still pin `dowdiness/rle` 0.2.0, and rle 0.2.1 deprecates `Rle::new()` / `PrefixSums::new()`.
+  Exit: `lib/btree`, `event-graph-walker`, and `order-tree` resolve the intended `dowdiness/rle` version, downstream code uses custom constructors such as `Rle()` / `PrefixSums()`, and CI passes.
+
 - [ ] Tighten `ActionRecord` visibility (GitHub #97).
   Exit: `ActionRecord` fields use appropriate visibility modifiers.
+
+- [ ] Extend the aggregator-trim audit from `lang/{lambda,json}` (PR #265) to the rest of the canopy module.
+  Why: `moon ide analyze` flagged ~55 truly-unused `pub` fns across `core/`, `protocol/`, `projection/`, and `editor/` — the same drift pattern PR #265 fixed for the language facades. Higher caller-miss risk than #265 because these packages have many more dependents.
+  Exit: each candidate verified via cross-grep over `examples/{ideal,canvas,block-editor}/`, `ffi/*/moon.pkg`, and every in-repo importer (the example subprojects are separate `moon.mod.json` modules and are NOT visible to workspace-scoped `moon ide`). Either trimmed with rationale in commit message, or kept with a note explaining why it must remain public. `moon test` + every per-module test in `.github/workflows/ci.yml` still pass.
 
 - [ ] DRY seam's three `build_tree` variants (`seam/event.mbt`).
   Why: `build_tree`, `build_tree_interned`, `build_tree_fully_interned` are ~80 lines each of near-identical stack-based tree construction, differing only in token creation and node wrapping. Discovered during error handling audit (loom PR #75).

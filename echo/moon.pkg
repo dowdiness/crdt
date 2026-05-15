@@ -5,11 +5,11 @@ import {
 
 import {
   "moonbitlang/core/debug",
-} for "wbtest"
+} for "test"
 
 import {
   "moonbitlang/core/debug",
-} for "test"
+} for "wbtest"
 
 options(
   is_main: false,
