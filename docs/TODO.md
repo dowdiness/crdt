@@ -137,9 +137,6 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
   Why: the stale `feature/container-phase3-blockdoc-sync` branch only bumped the `rle` submodule pointer to v0.2.1. The actual consumer modules still pin `dowdiness/rle` 0.2.0, and rle 0.2.1 deprecates `Rle::new()` / `PrefixSums::new()`.
   Exit: `lib/btree`, `event-graph-walker`, and `order-tree` resolve the intended `dowdiness/rle` version, downstream code uses custom constructors such as `Rle()` / `PrefixSums()`, and CI passes.
 
-- [ ] Tighten `ActionRecord` visibility (GitHub #97).
-  Exit: `ActionRecord` fields use appropriate visibility modifiers.
-
 - [ ] Extend the aggregator-trim audit from `lang/{lambda,json}` (PR #265) to the rest of the canopy module.
   Why: `moon ide analyze` flagged ~55 truly-unused `pub` fns across `core/`, `protocol/`, `projection/`, and `editor/` — the same drift pattern PR #265 fixed for the language facades. Higher caller-miss risk than #265 because these packages have many more dependents.
   Exit: each candidate verified via cross-grep over `examples/{ideal,canvas,block-editor}/`, `ffi/*/moon.pkg`, and every in-repo importer (the example subprojects are separate `moon.mod.json` modules and are NOT visible to workspace-scoped `moon ide`). Either trimmed with rationale in commit message, or kept with a note explaining why it must remain public. `moon test` + every per-module test in `.github/workflows/ci.yml` still pass.
@@ -152,13 +149,14 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
   Why: `moon ide find-references` shows only the definition site — flagged during 2026-05-09 cohesion audit (Q4, PR #236). Currently `pub`. Either delete the function or downgrade visibility to `priv` if a downstream consumer turns up that I missed.
   Exit: function is deleted, or visibility narrowed; `moon test` and `moon info` clean.
 
-- [ ] Fix `markdown_export_text` blind ZWSP `replace_all` (`ffi/markdown/markdown_ffi.mbt:42–47`).
-  Why: blind string replace `\n​\n` → `\n\n` corrupts legitimate user lines that contain only U+200B between newlines (typed/pasted into a code block, e.g.). Pre-existing from #196; flagged by CodeRabbit on PR #236 and skipped there as out-of-scope for the cohesion audit.
-  Exit: `markdown_export_text` walks block nodes via `ed.get_proj_node()` and drops only paragraph/block nodes whose text content is exactly the ZWSP sentinel; serialize the survivors back to text. Regression test from a document with a legitimately-ZWSP-only line passes.
-
 - [ ] Narrow `merge_to_edits` visibility in `editor/sync_editor_parser.mbt`.
   Why: Codex confirmed during 2026-05-09 cohesion audit (Q2, PR #236) that the only callers are `sync_editor_parser.mbt` itself and `edit_bridge_test.mbt`. Currently `pub`. Note: blackbox `*_test.mbt` files compile in a separate package, so simply dropping `pub` may not work — verify before changing.
   Exit: visibility downgraded as far as MoonBit blackbox-test rules allow; `moon test` still passes.
+
+- [ ] Consolidate the markdown ZWSP empty-paragraph sentinel into a three-layer split: moji owns the codepoint + Unicode predicate, the new canopy package `lang/markdown/sentinel/` owns the role name, the TS adapter receives the value through a `BlockInput` option wired by the consuming example from the MoonBit FFI JS bundle.
+  Why: the U+200B sentinel literal is hardcoded six times across MoonBit and TypeScript with no shared definition. moji already owns Unicode-property work but lacks the `Default_Ignorable_Code_Point` predicate and the named codepoint constant the sentinel role should alias.
+  Plan: `docs/plans/2026-05-16-moji-zwsp-consolidation.md`
+  Exit: moji exports `ZERO_WIDTH_SPACE` + `is_default_ignorable_code_point`; new canopy package `lang/markdown/sentinel/` exports `EMPTY_PARAGRAPH_SENTINEL` aliasing the moji constant; `ffi/markdown/` exports `markdown_empty_paragraph_sentinel` accessor; `adapters/editor-adapter` exposes a `BlockInput.stripParagraphSentinels` option wired via `examples/web/src/markdown-sentinels.ts`. Plan §Step 6 audit greps (all three U+200B spellings) pass.
 
 ---
 
