@@ -33,8 +33,6 @@ pub fn encode_sync_request(target~ : String, request_id~ : String, version_json~
 
 pub fn encode_sync_response(target~ : String, request_id~ : String, sync_json~ : String) -> Bytes
 
-pub fn merge_to_edits(String, String) -> Array[@dowdiness/loom/core.Edit]
-
 // Errors
 pub(all) suberror EphemeralError {
   UnexpectedEndOfInput
