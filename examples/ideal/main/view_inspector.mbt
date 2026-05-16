@@ -78,7 +78,7 @@ fn view_node_details(
   model : Model,
 ) -> Html {
   let kind_css = @lambda_proj.term_css_class(node.kind)
-  let kind_tag = @loomcore.Renderable::kind_tag(node.kind)
+  let kind_tag = @lambda_proj.term_kind_tag(node.kind)
   let items : Array[Html] = [
     span(class="panel-label", [text("NODE")]),
     // Kind gets a color class, so it can't use the generic helper

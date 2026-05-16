@@ -10,7 +10,6 @@ import {
   "dowdiness/canopy/lang/lambda/edits" @lambda_edits,
   "dowdiness/canopy/lang/lambda/proj" @lambda_proj,
   "dowdiness/lambda/ast" @ast,
-  "dowdiness/loom/core" @loomcore,
   "moonbitlang/core/strconv",
   "moonbitlang/core/string",
   "moonbitlang/core/json",

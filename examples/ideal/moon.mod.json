@@ -15,9 +15,6 @@
     "dowdiness/lambda": {
       "path": "../../loom/examples/lambda"
     },
-    "dowdiness/loom": {
-      "path": "../../loom/loom"
-    },
     "dowdiness/event-graph-walker": {
       "path": "../../event-graph-walker"
     }

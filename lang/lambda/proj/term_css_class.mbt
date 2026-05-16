@@ -28,3 +28,13 @@ pub fn term_css_class(t : @ast.Term) -> String {
     Hole(_) => "hole"
   }
 }
+
+///|
+/// Render the `Term`'s variant tag (`"Lam"`, `"App"`, ...) via the
+/// `Renderable::kind_tag` impl in loom. Provided here so consumers
+/// outside this package don't have to import `@loomcore` directly —
+/// `lang/lambda/proj` is the seam for lambda-specific projection
+/// metadata.
+pub fn term_kind_tag(t : @ast.Term) -> String {
+  @loomcore.Renderable::kind_tag(t)
+}
