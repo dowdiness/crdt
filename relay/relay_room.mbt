@@ -52,12 +52,10 @@ fn RelayRoom::has_peer(self : RelayRoom, peer_id : String) -> Bool {
 
 ///|
 /// Send data to a specific peer by ID. Silent no-op if peer not found.
-/// Public API — used by on_message routing and crdt_relay.mbt FFI.
-pub fn RelayRoom::send_to(
-  self : RelayRoom,
-  peer_id : String,
-  data : Bytes,
-) -> Unit {
+/// Internal helper for `on_message` routing of point-to-point messages
+/// (SyncRequest/SyncResponse). Not part of the relay's public API
+/// (see relay/README.md for the public surface).
+fn RelayRoom::send_to(self : RelayRoom, peer_id : String, data : Bytes) -> Unit {
   for peer in self.peers {
     if peer.peer_id == peer_id {
       (peer.send_fn)(data)
