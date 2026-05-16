@@ -27,6 +27,16 @@ pub enum SyncErrorReason {
 } derive(Debug, Eq)
 
 ///|
+/// Stub Show — currently a Debug dump. Cluster awaiting Collaboration panel
+/// adoption (see docs/TODO.md §9 "Inspector — Collaboration panel"): the
+/// following 11 types share this pattern and all need real short-label Show
+/// impls when the panel is built — SyncStatus, SyncErrorReason, SyncMessage
+/// (this file + sync_protocol.mbt); PeerCursor (cursor_view.mbt);
+/// PeerPresence, PresenceStatus, DragState, EditModeState (presence_types.mbt);
+/// EphemeralValue, EphemeralEventTrigger (ephemeral.mbt); EphemeralNamespace
+/// (ephemeral_hub.mbt). Per the §15 Show-unification workstream pattern, real
+/// impls should produce short structural labels (e.g. SyncStatus →
+/// `"connected"`, PeerPresence → `"alice (editing)"`).
 pub impl Show for SyncStatus with output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
