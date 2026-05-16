@@ -30,12 +30,60 @@ pub(all) struct SpanEdit {
 } derive(Debug, Eq)
 
 ///|
-/// Stub Show — currently a Debug dump. To be replaced with a compact patch
-/// label like "@<pos> -<delete_len> +«<inserted>»" for the Patch panel.
-/// See docs/TODO.md §9 "Inspector — Intent + Patch panels" and §15 Show
-/// unification (Inspector traceability workstream).
+/// Compact patch label for the Patch panel and debug traces:
+/// `"@<start> -<delete_len> +«<escaped_inserted>»"`. The `inserted` string
+/// is run through `escape_for_show` so control characters and the
+/// guillemet delimiters don't break the single-line trace alignment.
+/// See docs/plans/2026-05-16-show-unification.md.
 pub impl Show for SpanEdit with output(self, logger) {
-  logger.write_string(@debug.to_string(self))
+  logger.write_string(
+    "@\{self.start} -\{self.delete_len} +«\{escape_for_show(self.inserted)}»",
+  )
+}
+
+///|
+/// Escape a string for inclusion between `«` and `»` delimiters in `Show`
+/// output. Backslash-escapes:
+/// - delimiters: `\`, `«`, `»`
+/// - common whitespace controls: `\n`, `\r`, `\t`
+/// - C0 controls (U+0000..U+001F) + DEL (U+007F): `\u{XX}`
+/// - C1 controls (U+0080..U+009F, incl. NEL U+0085): `\u{XX}`
+/// - line/paragraph separators (U+2028/U+2029): `\u{2028}` / `\u{2029}`
+///
+/// Other Unicode (BMP letters, emoji, non-BMP) passes through unchanged
+/// — this is a display escape, not a wire-format escape.
+fn escape_for_show(s : String) -> String {
+  let buf = StringBuilder::new()
+  for ch in s {
+    match ch {
+      '\\' => buf.write_string("\\\\")
+      '«' => buf.write_string("\\«")
+      '»' => buf.write_string("\\»")
+      '\n' => buf.write_string("\\n")
+      '\r' => buf.write_string("\\r")
+      '\t' => buf.write_string("\\t")
+      _ => {
+        let code = ch.to_int()
+        let needs_unicode = code < 0x20 ||
+          code == 0x7F ||
+          (code >= 0x80 && code <= 0x9F) ||
+          code == 0x2028 ||
+          code == 0x2029
+        if needs_unicode {
+          buf.write_string("\\u{")
+          let hex = code.to_string(radix=16)
+          if hex.length() < 2 {
+            buf.write_char('0')
+          }
+          buf.write_string(hex)
+          buf.write_char('}')
+        } else {
+          buf.write_char(ch)
+        }
+      }
+    }
+  }
+  buf.to_string()
 }
 
 ///|
@@ -92,10 +140,77 @@ pub(all) enum GenericTreeOp {
 } derive(Debug)
 
 ///|
-/// Stub Show — currently a Debug dump. To be replaced with a verb-first label
-/// like "Drop(#11→#12 After)" for the Intent panel. See docs/TODO.md §9
-/// "Inspector — Intent + Patch panels" and §15 Show unification (Inspector
-/// traceability workstream).
+/// Verb-first label for the Intent panel and debug traces, e.g.
+/// `"Drop(#11→#12 After)"`. Node IDs are rendered as `#N` directly
+/// (not via `Show for NodeId`, which still emits `"NodeId(N)"`).
+/// String payloads (`CommitEdit.new_value`) are escaped via
+/// `escape_for_show`. See docs/plans/2026-05-16-show-unification.md.
 pub impl Show for GenericTreeOp with output(self, logger) {
-  logger.write_string(@debug.to_string(self))
+  let label = match self {
+    Select(node_id~) => {
+      let NodeId(n) = node_id
+      "Select(#\{n})"
+    }
+    SelectRange(start~, end~) => {
+      let NodeId(a) = start
+      let NodeId(b) = end
+      "SelectRange(#\{a}..#\{b})"
+    }
+    StartEdit(node_id~) => {
+      let NodeId(n) = node_id
+      "StartEdit(#\{n})"
+    }
+    CommitEdit(node_id~, new_value~) => {
+      let NodeId(n) = node_id
+      "CommitEdit(#\{n} «\{escape_for_show(new_value)}»)"
+    }
+    CancelEdit => "CancelEdit"
+    Delete(node_id~) => {
+      let NodeId(n) = node_id
+      "Delete(#\{n})"
+    }
+    StructuralEdit(node_id~) => {
+      let NodeId(n) = node_id
+      "StructuralEdit(#\{n})"
+    }
+    StructuralEditKeepSelected(node_id~) => {
+      let NodeId(n) = node_id
+      "StructuralEditKeepSelected(#\{n})"
+    }
+    InsertChild(parent~, index~) => {
+      let NodeId(p) = parent
+      "InsertChild(#\{p}, \{index})"
+    }
+    StartDrag(node_id~) => {
+      let NodeId(n) = node_id
+      "StartDrag(#\{n})"
+    }
+    DragOver(target~, position~) => {
+      let NodeId(t) = target
+      "DragOver(#\{t}, \{drop_position_label(position)})"
+    }
+    Drop(source~, target~, position~) => {
+      let NodeId(src) = source
+      let NodeId(tgt) = target
+      "Drop(#\{src}→#\{tgt} \{drop_position_label(position)})"
+    }
+    Collapse(node_id~) => {
+      let NodeId(n) = node_id
+      "Collapse(#\{n})"
+    }
+    Expand(node_id~) => {
+      let NodeId(n) = node_id
+      "Expand(#\{n})"
+    }
+  }
+  logger.write_string(label)
+}
+
+///|
+fn drop_position_label(p : DropPosition) -> String {
+  match p {
+    Before => "Before"
+    After => "After"
+    Inside => "Inside"
+  }
 }

@@ -29,6 +29,7 @@ pub struct InteractiveTreeNode[T] {
   text_range : @dowdiness/loom/core.Range
 } derive(@debug.Debug)
 pub fn[T : @dowdiness/loom/core.Renderable] InteractiveTreeNode::from_term_node(@dowdiness/canopy/core.ProjNode[T], @dowdiness/canopy/core.SourceMap) -> Self[T]
+pub impl[T : @dowdiness/loom/core.Renderable] Show for InteractiveTreeNode[T]
 
 pub struct TreeEditorState[T] {
   tree : InteractiveTreeNode[T]?

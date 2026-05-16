@@ -706,3 +706,49 @@ test "TreeEditorState::refresh preserves unchanged sibling subtree through publi
   )
   inspect(refreshed_right_children[1].label, content="5")
 }
+
+///|
+test "InteractiveTreeNode Show — depth-1 format with Renderable::kind_tag" {
+  let node : InteractiveTreeNode[@ast.Term] = {
+    id: NodeId::from_int(9),
+    kind: @ast.Term::Int(42),
+    label: "42",
+    children: Loaded([]),
+    selected: false,
+    editing: false,
+    collapsed: false,
+    drop_target: false,
+    text_range: Range::new(25, 27),
+  }
+  inspect(node, content="#9 Int [25..27]")
+}
+
+///|
+test "InteractiveTreeNode Show — does not recurse into children or label" {
+  // A Lam node with non-trivial body — verify Show stays depth-1.
+  let child : InteractiveTreeNode[@ast.Term] = {
+    id: NodeId::from_int(2),
+    kind: @ast.Term::Var("x"),
+    label: "x",
+    children: Loaded([]),
+    selected: false,
+    editing: false,
+    collapsed: false,
+    drop_target: false,
+    text_range: Range::new(3, 4),
+  }
+  let parent : InteractiveTreeNode[@ast.Term] = {
+    id: NodeId::from_int(1),
+    kind: @ast.Term::Lam("x", @ast.Term::Var("x")),
+    // Renderable::label for Lam is "λx" — but Show ignores it,
+    // showing only the kind_tag.
+    label: "λx",
+    children: Loaded([child]),
+    selected: false,
+    editing: false,
+    collapsed: false,
+    drop_target: false,
+    text_range: Range::new(0, 5),
+  }
+  inspect(parent, content="#1 Lam [0..5]")
+}
