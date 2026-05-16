@@ -77,14 +77,12 @@ fn view_node_details(
   node : @proj.InteractiveTreeNode[@ast.Term],
   model : Model,
 ) -> Html {
-  let kind_css = @lambda_proj.term_css_class(node.kind)
   let kind_tag = @lambda_proj.term_kind_tag(node.kind)
   let items : Array[Html] = [
     span(class="panel-label", [text("NODE")]),
-    // Kind gets a color class, so it can't use the generic helper
     div(class="inspector-row", [
       span(class="inspector-key", [text("Kind")]),
-      span(class="inspector-value kind-\{kind_css}", [text(kind_tag)]),
+      span(class="inspector-value", [text(kind_tag)]),
     ]),
     inspector_row("Label", node.label),
     inspector_row("Children", children_count(node).to_string()),

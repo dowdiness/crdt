@@ -3,16 +3,15 @@
 // See docs/plans/2026-05-16-show-unification.md (Task 1, PR 2).
 
 ///|
-/// Map a `Term` to its CSS class fragment for the outline/inspector
-/// `kind-<X>` selectors in `examples/ideal/web/styles/editor.css`.
+/// Map a `Term` to its CSS class fragment for the outline
+/// `.tree-row.kind-<X>` selectors in `examples/ideal/web/styles/editor.css`.
 /// One-to-one with the 11 variants; lower-cased for consistency with the
 /// existing CSS taxonomy (`kind-lambda`, `kind-binop`, etc.).
 ///
-/// **Invariant:** every variant returns a non-empty string whose value
-/// matches a `.kind-<X>` selector in `editor.css`. Drift between this
-/// function and the CSS is a regression — the inspect tests below
-/// document the full enumeration so adding a new Term variant flags
-/// the missing case here as a non-exhaustive match.
+/// **Drift between this function and the CSS is not test-enforced** —
+/// the inspect tests below pin the returned strings, but not that
+/// every returned string has a matching CSS selector. Treat the CSS
+/// rule list as the contract; add a selector when adding a variant.
 pub fn term_css_class(t : @ast.Term) -> String {
   match t {
     Int(_) => "int"
