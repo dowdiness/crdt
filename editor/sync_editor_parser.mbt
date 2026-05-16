@@ -144,7 +144,7 @@ pub fn[T] SyncEditor::parser_syntax_tree(
 /// This is the fallback path for batch remote merges (Design §1).
 /// The direct Op → Edit path (O(1)) will be added in a later phase
 /// once event-graph-walker/text exposes lv_to_position and insert_with_op.
-pub fn merge_to_edits(
+fn merge_to_edits(
   old_text : String,
   new_text : String,
 ) -> Array[@loom_core.Edit] {
