@@ -274,7 +274,6 @@ pub fn[T : Eq] SyncEditor::apply_span_edits(Self[T], Array[@dowdiness/canopy/cor
 pub fn[T : Eq] SyncEditor::apply_sync(Self[T], @text.SyncMessage) -> Unit raise
 pub fn[T : Eq] SyncEditor::apply_text_edit(Self[T], Int, Int, String, Int) -> Unit
 pub fn[T : Eq] SyncEditor::apply_text_edit_exact(Self[T], Int, Int, String, Int) -> Bool
-pub fn[T : Eq] SyncEditor::apply_text_edit_internal(Self[T], Int, Int, String, Int, Bool, Bool) -> Unit
 pub fn[T : Eq] SyncEditor::apply_text_transform(Self[T], @dowdiness/canopy/core.NodeId, (String, Int, Int) -> Result[String, String], Int) -> Result[Unit, TreeEditError]
 pub fn[T : Eq] SyncEditor::backspace(Self[T]) -> Bool
 pub fn[T : Eq] SyncEditor::backspace_and_record(Self[T], Int) -> Bool

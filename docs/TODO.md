@@ -175,6 +175,14 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
   - Patch panel: scrollable log of recent `SpanEdit`s with back-reference to producing `GenericTreeOp`, each row uses `edit.to_string()` (e.g. `"@25 -3 +«add 3 5»"`).
   - Both panels live in `view_bottom.mbt` (new tab) or a new view file alongside outline/inspector/history.
 
+- [ ] Inspector — Collaboration panel. *Part of Inspector traceability workstream.*
+  Why: in a collaborative projectional editor, the connected-peers list, sync status, ephemeral broadcasts (drag state, presence updates), and sync errors are invisible from the main editor surface. Debugging "peer A and peer B disagree on text," "why didn't my drag preview show," or "sync stalled" requires a panel surfacing the collab-layer state. Stub `Show` impls already exist on the relevant types (`PeerCursor`, `PeerPresence`, `PresenceStatus`, `SyncStatus`, `SyncMessage`, `SyncErrorReason`, `DragState`, `EditModeState`, `EphemeralNamespace`, `EphemeralValue`, `EphemeralEventTrigger`) but currently delegate to `@debug.to_string` (verbose dump, not user-facing labels).
+  Exit:
+  - Connected-peers list: renders `PeerPresence` entries (each row uses `peer.to_string()` for a short label like `"alice (online, editing)"`).
+  - Sync status indicator: renders `SyncStatus` + recent `SyncErrorReason` via their `Show` impls.
+  - Recent ephemeral events stream: renders `EphemeralStoreEvent`s via `event.to_string()`.
+  - Lives in `view_bottom` or new tab alongside outline/inspector/history/intent/patch.
+
 - [ ] Wire `SourceMap` query API into editor click-path + fix ordering contract. *Part of Inspector traceability workstream.*
   Why: `core/source_map.mbt::SourceMap::nodes_at_position` and `SourceMap::nodes_in_range` are property-tested (`core/source_map_properties_wbtest.mbt`) but unconsumed by production code. Click-path in `examples/ideal/main/view_editor.mbt` reimplements similar text-position→node logic inline. Additionally, `nodes_at_position` documents "outermost to innermost" ordering but returns `Map.keys().to_array()` — ordering is not guaranteed, latent contract bug if any consumer ever depends on nesting order.
   Exit:
@@ -263,6 +271,14 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
 - [ ] Unify voice across architecture docs.
   Why: README and product-vision speak product language; projectional-bridge and structure-format-research speak academic language. One editing pass to make them consistent.
   Exit: all architecture docs feel like they were written by the same person for the same audience.
+
+- [ ] Canopy library API audit and documentation.
+  Why: canopy is currently used as an internal monorepo, but the aspirational direction is to publish it as a general projectional editor library consumable by external MoonBit modules. The audit framing — what's "unused" vs "library API surface" — depends on which direction is committed. Many `pub` symbols in `editor/`, `core/`, `projection/`, and `protocol/` are canonical library API (constructor methods, structural-edit operations, error accessors, query primitives, wire-protocol encoders) that look "unused" under an internal-tool lens because no in-tree consumer exercises them, but are exactly what external library users would call. Without a documented decision, every audit re-relitigates the framing.
+  Exit:
+  - Document the intended library boundary: which packages are public API for external consumers (`core`, `editor`, `projection`, `protocol`) vs internal implementation (`ffi/*`, `editor/*_internal` symbols, etc.).
+  - Establish convention: methods named `*_internal` (e.g. `apply_text_edit_internal`) are implementation-detail regardless of `pub`; library API gets explicit pub visibility, implementation gets private.
+  - Future `moon ide analyze` audits default to KEEP for canonical library API surface; "unused by in-tree consumers" stops being a deletion trigger for these packages.
+  - Optional: a release plan / milestone for first published canopy library version.
 
 ---
 
