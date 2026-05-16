@@ -1,5 +1,5 @@
-// Enumerate all 11 Term variants. Drift between this function and the
-// CSS classes in examples/ideal/web/styles/editor.css is a regression.
+// Enumerate all 11 Term variants — pins the return strings. CSS-selector
+// coverage in editor.css is a manually maintained contract (not test-enforced).
 // See docs/plans/2026-05-16-show-unification.md (Task 1, PR 2).
 
 ///|
@@ -74,4 +74,22 @@ test "term_css_class — Error" {
 ///|
 test "term_css_class — Hole" {
   inspect(term_css_class(@ast.Term::Hole(0)), content="hole")
+}
+
+///|
+/// Pin the contract that `term_kind_tag` forwards `Renderable::kind_tag`
+/// verbatim — `"Lam"`, `"App"`, etc. (capitalized variant tag), not the
+/// lowercased CSS fragment. If loom's `kind_tag` impl ever changes its
+/// output shape this test catches it.
+test "term_kind_tag — forwards Renderable::kind_tag verbatim" {
+  inspect(term_kind_tag(@ast.Term::Int(42)), content="Int")
+  inspect(
+    term_kind_tag(@ast.Term::Lam("x", @ast.Term::Var("x"))),
+    content="Lam",
+  )
+  inspect(
+    term_kind_tag(@ast.Term::App(@ast.Term::Var("f"), @ast.Term::Var("x"))),
+    content="App",
+  )
+  inspect(term_kind_tag(@ast.Term::Unit), content="Unit")
 }
