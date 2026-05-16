@@ -27,6 +27,24 @@ pub struct InteractiveTreeNode[T] {
 } derive(Debug)
 
 ///|
+/// Short structural label for inspector + debug traces. Format matches
+/// `Show for @core.ProjNode`: `"#<id> <kind_tag> [<range>]"`. Depth-1
+/// only — children, editing-state flags, and `text_range` field internals
+/// are not recursed. NodeId is destructured directly (not `id.to_string()`)
+/// because `Show for NodeId` still emits `"NodeId(N)"`.
+/// See docs/plans/2026-05-16-show-unification.md.
+pub impl[T : Renderable] Show for InteractiveTreeNode[T] with output(
+  self,
+  logger,
+) {
+  let NodeId(n) = self.id
+  let tag = Renderable::kind_tag(self.kind)
+  logger.write_string(
+    "#\{n} \{tag} [\{self.text_range.start}..\{self.text_range.end}]",
+  )
+}
+
+///|
 /// Create an interactive tree node from a ProjNode
 pub fn[T : Renderable] InteractiveTreeNode::from_term_node(
   node : ProjNode[T],

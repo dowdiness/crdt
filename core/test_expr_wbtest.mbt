@@ -86,6 +86,19 @@ test "ProjNode[TestExpr] — construction and field access" {
 }
 
 ///|
+test "ProjNode Show — depth-1 only, uses Renderable::kind_tag" {
+  let leaf = ProjNode::new(Leaf("x"), 0, 1, 0, [])
+  inspect(leaf, content="#0 Leaf [0..1]")
+}
+
+///|
+test "ProjNode Show — Branch with children does not recurse into kind/children" {
+  let child = ProjNode::new(Leaf("a"), 0, 1, 1, [])
+  let root = ProjNode::new(Branch("root", [Leaf("a")]), 0, 5, 7, [child])
+  inspect(root, content="#7 Branch [0..5]")
+}
+
+///|
 test "SourceMap::from_ast works with TestExpr" {
   let child = ProjNode::new(Leaf("a"), 0, 1, 1, [])
   let root = ProjNode::new(Branch("root", [Leaf("a")]), 0, 5, 0, [child])

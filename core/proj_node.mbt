@@ -13,13 +13,19 @@ pub struct ProjNode[T] {
 } derive(Debug, Eq)
 
 ///|
-/// Stub Show — currently a Debug dump. To be replaced with a short structural
-/// label like "#<node_id> <kind> [<start>..<end>]" once the inspector consumes it.
-/// See docs/TODO.md §15 "Route inspector kind-labels through Show" (Inspector
-/// traceability workstream) — tree-row rendering in view_outline.mbt will call
-/// node.to_string() through this impl.
-pub impl[T : Debug] Show for ProjNode[T] with output(self, logger) {
-  logger.write_string(@debug.to_string(self))
+/// Short structural label for inspector + debug traces:
+/// `"#<node_id> <kind_tag> [<start>..<end>]"`. Depth-1 only — children
+/// are not recursed. The kind tag comes from `Renderable::kind_tag` so
+/// it stays a short variant name regardless of how `T` chooses to
+/// implement its own `Show`. See docs/plans/2026-05-16-show-unification.md.
+pub impl[T : @loomcore.Renderable] Show for ProjNode[T] with output(
+  self,
+  logger,
+) {
+  let tag = @loomcore.Renderable::kind_tag(self.kind)
+  logger.write_string(
+    "\{self.id().short()} \{tag} [\{self.start}..\{self.end}]",
+  )
 }
 
 ///|
