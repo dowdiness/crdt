@@ -16,6 +16,17 @@ pub fn NodeId::from_int(n : Int) -> NodeId {
 }
 
 ///|
+/// Compact `#N` form used by `Show for ProjNode` / `Show for
+/// InteractiveTreeNode` / `Show for GenericTreeOp` to render node IDs
+/// without going through the longer `Show for NodeId` (which still emits
+/// the `"NodeId(N)"` Debug form for production callers in the lambda edit
+/// path). Package-private — does not expand the public API.
+fn NodeId::short(self : NodeId) -> String {
+  let NodeId(n) = self
+  "#\{n}"
+}
+
+///|
 pub impl ToJson for NodeId with to_json(self) {
   let NodeId(n) = self
   n.to_json()
@@ -64,21 +75,17 @@ fn escape_for_show(s : String) -> String {
       '\t' => buf.write_string("\\t")
       _ => {
         let code = ch.to_int()
-        let needs_unicode = code < 0x20 ||
-          code == 0x7F ||
-          (code >= 0x80 && code <= 0x9F) ||
-          code == 0x2028 ||
-          code == 0x2029
-        if needs_unicode {
-          buf.write_string("\\u{")
-          let hex = code.to_string(radix=16)
-          if hex.length() < 2 {
-            buf.write_char('0')
+        match code {
+          0..<0x20 | 0x7F | 0x80..<0xA0 | 0x2028 | 0x2029 => {
+            buf.write_string("\\u{")
+            let hex = code.to_string(radix=16)
+            if hex.length() < 2 {
+              buf.write_char('0')
+            }
+            buf.write_string(hex)
+            buf.write_char('}')
           }
-          buf.write_string(hex)
-          buf.write_char('}')
-        } else {
-          buf.write_char(ch)
+          _ => buf.write_char(ch)
         }
       }
     }
@@ -147,61 +154,26 @@ pub(all) enum GenericTreeOp {
 /// `escape_for_show`. See docs/plans/2026-05-16-show-unification.md.
 pub impl Show for GenericTreeOp with output(self, logger) {
   let label = match self {
-    Select(node_id~) => {
-      let NodeId(n) = node_id
-      "Select(#\{n})"
-    }
-    SelectRange(start~, end~) => {
-      let NodeId(a) = start
-      let NodeId(b) = end
-      "SelectRange(#\{a}..#\{b})"
-    }
-    StartEdit(node_id~) => {
-      let NodeId(n) = node_id
-      "StartEdit(#\{n})"
-    }
-    CommitEdit(node_id~, new_value~) => {
-      let NodeId(n) = node_id
-      "CommitEdit(#\{n} «\{escape_for_show(new_value)}»)"
-    }
+    Select(node_id~) => "Select(\{node_id.short()})"
+    SelectRange(start~, end~) =>
+      "SelectRange(\{start.short()}..\{end.short()})"
+    StartEdit(node_id~) => "StartEdit(\{node_id.short()})"
+    CommitEdit(node_id~, new_value~) =>
+      "CommitEdit(\{node_id.short()} «\{escape_for_show(new_value)}»)"
     CancelEdit => "CancelEdit"
-    Delete(node_id~) => {
-      let NodeId(n) = node_id
-      "Delete(#\{n})"
-    }
-    StructuralEdit(node_id~) => {
-      let NodeId(n) = node_id
-      "StructuralEdit(#\{n})"
-    }
-    StructuralEditKeepSelected(node_id~) => {
-      let NodeId(n) = node_id
-      "StructuralEditKeepSelected(#\{n})"
-    }
-    InsertChild(parent~, index~) => {
-      let NodeId(p) = parent
-      "InsertChild(#\{p}, \{index})"
-    }
-    StartDrag(node_id~) => {
-      let NodeId(n) = node_id
-      "StartDrag(#\{n})"
-    }
-    DragOver(target~, position~) => {
-      let NodeId(t) = target
-      "DragOver(#\{t}, \{drop_position_label(position)})"
-    }
-    Drop(source~, target~, position~) => {
-      let NodeId(src) = source
-      let NodeId(tgt) = target
-      "Drop(#\{src}→#\{tgt} \{drop_position_label(position)})"
-    }
-    Collapse(node_id~) => {
-      let NodeId(n) = node_id
-      "Collapse(#\{n})"
-    }
-    Expand(node_id~) => {
-      let NodeId(n) = node_id
-      "Expand(#\{n})"
-    }
+    Delete(node_id~) => "Delete(\{node_id.short()})"
+    StructuralEdit(node_id~) => "StructuralEdit(\{node_id.short()})"
+    StructuralEditKeepSelected(node_id~) =>
+      "StructuralEditKeepSelected(\{node_id.short()})"
+    InsertChild(parent~, index~) =>
+      "InsertChild(\{parent.short()}, \{index})"
+    StartDrag(node_id~) => "StartDrag(\{node_id.short()})"
+    DragOver(target~, position~) =>
+      "DragOver(\{target.short()}, \{drop_position_label(position)})"
+    Drop(source~, target~, position~) =>
+      "Drop(\{source.short()}→\{target.short()} \{drop_position_label(position)})"
+    Collapse(node_id~) => "Collapse(\{node_id.short()})"
+    Expand(node_id~) => "Expand(\{node_id.short()})"
   }
   logger.write_string(label)
 }

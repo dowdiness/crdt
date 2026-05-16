@@ -23,7 +23,9 @@ pub impl[T : @loomcore.Renderable] Show for ProjNode[T] with output(
   logger,
 ) {
   let tag = @loomcore.Renderable::kind_tag(self.kind)
-  logger.write_string("#\{self.node_id} \{tag} [\{self.start}..\{self.end}]")
+  logger.write_string(
+    "\{self.id().short()} \{tag} [\{self.start}..\{self.end}]",
+  )
 }
 
 ///|
