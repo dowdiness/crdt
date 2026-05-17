@@ -265,7 +265,6 @@ fn apply_structural_edit_request(
     "Delete" => @lambda_edits.Delete(node_id=nid)
     _ => return (none, model)
   }
-  push_intent(model, tree_op)
   match
     @lambda.apply_lambda_tree_edit(
       model.editor,
@@ -274,6 +273,7 @@ fn apply_structural_edit_request(
       model.next_timestamp,
     ) {
     Ok(_) => {
+      push_intent(model, tree_op)
       let new_model = refresh({
         ..model,
         next_timestamp: model.next_timestamp + 1,
@@ -632,7 +632,6 @@ fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       )
     }
     OutlineStructuralEdit(tree_op) => {
-      push_intent(model, tree_op)
       match
         @lambda.apply_lambda_tree_edit(
           model.editor,
@@ -641,6 +640,7 @@ fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           model.next_timestamp,
         ) {
         Ok(_) => {
+          push_intent(model, tree_op)
           let new_model = refresh({
             ..model,
             next_timestamp: model.next_timestamp + 1,
