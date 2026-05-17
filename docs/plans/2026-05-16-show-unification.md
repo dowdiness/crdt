@@ -22,6 +22,60 @@ debug-friendly and routing the inspector chip through the existing
 - Tasks 2 (`pretty_unparse` free function) and 3 (`Canonical` companion
   trait) are still open; see "Sequencing context" below.
 
+### Task 2 optional `Term::unparse` swap — declined 2026-05-17
+
+Task 2 (loom#121) shipped the `pretty_unparse` free function and swapped
+JSON's `Source::to_source` to it. The optional follow-on — swapping
+lambda's `Renderable::unparse for Term` from `print_term(self)` to
+`@pretty.pretty_unparse(self)` — is **declined**. `print_term` stays
+canonical. Reasons:
+
+1. **Outputs diverge on Lam/App/Bop.** `print_term` uses the local
+   `Pretty` struct interpretation (`sym.mbt`), which always wraps
+   `Lam`/`App`/`Bop` in parens (`(λx. x)`, `(f x)`, `(1 + 2)`).
+   `pretty_unparse` uses the `PrettyLayout` interpretation
+   (`pretty_traits.mbt`), which is precedence-aware via
+   `wrap_if_needed` and emits parens only when the parent context
+   demands them (`λx. x`, `f x`, `1 + 2`). Both parse-roundtrip; the
+   other nine Term variants render identically.
+2. **The two seams are intentionally aligned today.** Both
+   `@pretty.Source for Term with to_source(self)` and
+   `@loomcore.Renderable for Term with unparse(self)` delegate to
+   `print_term`. The "Out" section of this plan codified that
+   alignment: *"The compact source form is `print_term` /
+   `Renderable::unparse`."* Swapping only `Renderable::unparse` would
+   split the two seams — `Source::to_source(t) ≠ Renderable::unparse(t)`
+   for `Lam`/`App`/`Bop` — without aligning the broader strategy.
+3. **JSON's parallel case is misleading.** JSON's pre-swap
+   `json_unparse(value, 0)` was already a flat compact serializer; for
+   JSON, `print_term`-equivalent and `pretty_unparse` produce the same
+   output (no precedence layer, no group/nest decisions). Lambda has
+   two deliberately different serializers — `print_term` for
+   deterministic compact serialization (debug snapshots, diff
+   inspection), `PrettyLayout` for precedence-aware
+   syntax-annotated layout. The one-line swap is not equivalence-
+   preserving for lambda the way it was for JSON.
+4. **No caller exercises the seam today.** A canopy-wide search shows
+   zero call sites of `Renderable::unparse(term)`. The swap would
+   change a theoretical seam, not observed behavior, while introducing
+   the seam-divergence in point 2.
+5. **The correct canonicalization is bigger than this optional swap.**
+   If we want a single Term-text serializer, the right refactor is to
+   delete the local `Pretty` struct interpretation in `sym.mbt`,
+   redefine `print_term(t) = @pretty.pretty_unparse(t)`, and accept
+   the snapshot churn across `resolve_wbtest`, `parse_tree_test`,
+   `phase4_correctness_test`, `lens_test`, and the inline `print_term`
+   tests in `ast.mbt`. That's plan-worthy scope (precedence-aware
+   parens flip in ~30+ inspect snapshots), not a one-line optional
+   swap, and it's not currently motivated by a consumer.
+
+`print_term` stays the canonical compact source form for Term;
+`PrettyLayout` / `pretty_print(term)` remain available for any caller
+that wants precedence-aware width-formatted output. The decision is not
+provisional — if a future consumer needs the smaller-output behavior
+from `Renderable::unparse`, the right move is the full canonicalization
+in point 5, not the partial swap.
+
 The trace below describes the plan as written before implementation and
 is retained as the design record.
 
