@@ -319,9 +319,18 @@ fn bottom_panel_attrs(tab : BottomTab) -> @html.Attrs {
 /// aria-label, never user-supplied text.
 #warnings("-alert_xss_vulnerable")
 fn view_history_panel(model : Model) -> Html {
+  // When the bottom panel is collapsed, the entire <section> is CSS-hidden
+  // but `view()` still runs on every model change. Skip the DOT/SVG layout
+  // pipeline (cache key changes on every edit) and emit empty innerHTML;
+  // the cache stays valid for the next open.
+  let html = if model.workspace.bottom_visible {
+    render_history_html(model)
+  } else {
+    ""
+  }
   @html.section(
     class="bottom-content history-content",
-    attrs=bottom_panel_attrs(History).inner_html(render_history_html(model)),
+    attrs=bottom_panel_attrs(History).inner_html(html),
     ([] : Array[Html]),
   )
 }
@@ -329,12 +338,17 @@ fn view_history_panel(model : Model) -> Html {
 ///|
 /// Render the Graphviz panel. See `view_history_panel` for why this is
 /// a `<section>` with `inner_html` rather than a `<div>` with vdom
-/// children.
+/// children, and for the `bottom_visible` gate.
 #warnings("-alert_xss_vulnerable")
 fn view_graphviz_panel(model : Model) -> Html {
+  let html = if model.workspace.bottom_visible {
+    render_graphviz_html(model)
+  } else {
+    ""
+  }
   @html.section(
     class="bottom-content graphviz-content",
-    attrs=bottom_panel_attrs(Graphviz).inner_html(render_graphviz_html(model)),
+    attrs=bottom_panel_attrs(Graphviz).inner_html(html),
     ([] : Array[Html]),
   )
 }
@@ -345,7 +359,9 @@ fn view_op_log(model : Model) -> Html {
   if log.is_empty() {
     @html.div(class="bottom-content", attrs=bottom_panel_attrs(OpLog), [
       @html.span(class="no-problems", [
-        @html.text("No structural edits yet — try the action overlay or drag."),
+        @html.text(
+          "No structural edits yet — try the action overlay or drag.",
+        ),
       ]),
     ])
   } else {

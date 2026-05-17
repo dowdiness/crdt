@@ -68,7 +68,16 @@ const MAX_INTENT_LOG = 50
 
 ///|
 fn push_intent(model : Model, op : @lambda_edits.TreeEditOp) -> Unit {
-  model.intent_log.push(op.to_generic().to_string())
+  push_intent_label(model, op.to_generic().to_string())
+}
+
+///|
+/// Record a structural intent that arrived as `(op_string, node_id)` from
+/// the TS side. The lambda-typed payload has already been consumed by
+/// `handle_structural_intent` FFI by the time we get here, so we record
+/// the raw label rather than rebuilding the op.
+fn push_intent_label(model : Model, label : String) -> Unit {
+  model.intent_log.push(label)
   while model.intent_log.length() > MAX_INTENT_LOG {
     model.intent_log.remove(0) |> ignore
   }
@@ -403,6 +412,7 @@ fn execute_action(
           model.next_timestamp,
         ) {
         Ok(_) => {
+          push_intent(model, op)
           js_set_overlay_open(false)
           let cmd = @rabbita.effect(fn() { js_reconcile_after_tree_edit() })
           let new_model = refresh({
@@ -899,6 +909,7 @@ fn update(_dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         (none, model)
       } else {
         // The edit was already applied by TS calling handle_structural_intent FFI.
+        push_intent_label(model, "\{resolved_op}(node=\{resolved_node_id})")
         let new_model = refresh({
           ..model,
           next_timestamp: model.next_timestamp + 1,
