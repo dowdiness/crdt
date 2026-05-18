@@ -29,8 +29,6 @@ pub fn raw_extension(@moonbit-community/rabbita/js.Value) -> Extension
 // Errors
 
 // Types and methods
-pub struct CmState(@moonbit-community/rabbita/js.Value)
-
 pub struct CmView(@moonbit-community/rabbita/js.Value)
 
 pub struct Compartment(@moonbit-community/rabbita/js.Value)
@@ -39,8 +37,6 @@ pub struct Disposable(() -> Unit)
 pub fn Disposable::dispose(Self) -> Unit
 
 pub struct Extension(@moonbit-community/rabbita/js.Value)
-
-pub struct Transaction(@moonbit-community/rabbita/js.Value)
 
 pub struct TransactionSpec(@moonbit-community/rabbita/js.Value)
 

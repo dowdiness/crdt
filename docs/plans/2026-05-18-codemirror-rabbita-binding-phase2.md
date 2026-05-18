@@ -171,17 +171,22 @@ tagger).
 **Scope.** All `extern "js"` for CM6. No Rabbita imports.
 
 **Deliverables.**
-- Opaque newtypes: `CmView`, `CmState`, `Transaction`, `TransactionSpec`,
-  `Compartment`, `Extension`. Each as `struct T(@js.Value)`.
+- Opaque newtypes: `CmView`, `TransactionSpec`, `Compartment`, `Extension`.
+  Each as `struct T(@js.Value)`.
 - `Disposable(() -> Unit)` with `pub fn dispose(self)`.
-- `extern "js" async fn load_codemirror(source~ : String = "https://esm.sh/codemirror@6") -> @js.Promise`.
+- `extern "js" fn load_codemirror(source? : String = "https://esm.sh/codemirror@6") -> @js.Promise`
+  (MoonBit 0.9.2 rejects `async` on `extern`; the JS arrow is async,
+  matching `rabbita/rabbita/dom/clipboard.mbt:42`).
 - FFI primitives mirroring CM6's API: `js_create_view`, `js_dispatch`
   (synchronous, wraps in applying-flag try/finally), `js_view_destroy`,
   `js_state_doc`, `js_state_selection_main`, `js_compartment_new`,
   `js_compartment_of`, `js_compartment_reconfigure`,
   `js_extension_combine`.
-- Per-view applying flag: `js_view_set_applying`, `js_view_is_applying`
-  (internal — used by `js_dispatch` and the listener installers).
+- Per-view applying flag: JS-internal ref-cell keyed by
+  `Symbol.for("dowdiness.rabbita_codemirror")`'s `WeakMap<view, cell>`.
+  Set/cleared synchronously by `js_dispatch_raw`'s try/finally and
+  consulted by the update listener's `isApplying()` closure. No
+  MoonBit-side wrappers — the flag never crosses the FFI boundary.
 - Listener installers returning `Disposable`:
   `js_add_update_listener(view, on_doc, on_selection, on_focus_change) -> Disposable`.
   Single underlying CM6 updateListener fires the three callbacks based on
@@ -513,6 +518,21 @@ across workspace-root and `examples/ideal`.
 ---
 
 ## Revision history
+
+**rev 3.1 (2026-05-18)** — Post-P2.1 alignment. Pruned three over-specified
+items from §P2.1 deliverables once the shipped FFI revealed them as dead:
+(a) `CmState` and `Transaction` newtypes (never appear in any function
+signature in the shipped `js/` — `TransactionSpec` is the only
+transaction-shaped type the API needs, and `CmState` reads happen JS-side
+inside the extern bodies); (b) MoonBit-side `js_view_set_applying` /
+`js_view_is_applying` wrappers (the applying flag is JS-internal —
+`js_dispatch_raw`'s try/finally and the listener installer's local
+`isApplying()` closure already provide synchronous read/write inside JS,
+so MoonBit wrappers would just be dead crossings of the FFI boundary);
+(c) `async` on `extern "js" fn load_codemirror` (MoonBit 0.9.2 parser
+rejects it — the async lives in the JS arrow). Source-of-truth precedence:
+the shipped code in `lib/rabbita_codemirror/js/codemirror.mbt` is canonical;
+this paragraph documents the diff for future readers of rev 3.
 
 **rev 3 (2026-05-18)** — Pivot to function-based API after reading rabbita's
 own docs/examples. Removed the entire State/Action/Event managed layer

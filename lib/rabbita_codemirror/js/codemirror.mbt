@@ -9,14 +9,6 @@
 pub struct CmView(@js_value.Value)
 
 ///|
-#warnings("-unused_constructor")
-pub struct CmState(@js_value.Value)
-
-///|
-#warnings("-unused_constructor")
-pub struct Transaction(@js_value.Value)
-
-///|
 pub struct TransactionSpec(@js_value.Value)
 
 ///|
@@ -225,45 +217,6 @@ extern "js" fn js_extension_combine_raw(
 pub fn js_extension_combine(extensions : Array[Extension]) -> Extension {
   js_extension_combine_raw(extensions.map(fn(extension) { extension.0 }))
   |> Extension
-}
-
-///|
-extern "js" fn js_view_set_applying_raw(
-  view : @js_value.Value,
-  applying : Bool,
-) -> Unit =
-  #| (view, applying) => {
-  #|   const key = Symbol.for("dowdiness.rabbita_codemirror");
-  #|   const slot = globalThis[key] ?? (globalThis[key] = {
-  #|     modules: new Map(),
-  #|     applying: new WeakMap(),
-  #|   });
-  #|   let cell = slot.applying.get(view);
-  #|   if (!cell) {
-  #|     cell = { value: false };
-  #|     slot.applying.set(view, cell);
-  #|   }
-  #|   cell.value = !!applying;
-  #| }
-
-///|
-#warnings("-unused_value")
-fn js_view_set_applying(view : CmView, applying : Bool) -> Unit {
-  js_view_set_applying_raw(view.0, applying)
-}
-
-///|
-extern "js" fn js_view_is_applying_raw(view : @js_value.Value) -> Bool =
-  #| (view) => {
-  #|   const key = Symbol.for("dowdiness.rabbita_codemirror");
-  #|   const cell = globalThis[key]?.applying?.get(view);
-  #|   return !!cell?.value;
-  #| }
-
-///|
-#warnings("-unused_value")
-fn js_view_is_applying(view : CmView) -> Bool {
-  js_view_is_applying_raw(view.0)
 }
 
 ///|
