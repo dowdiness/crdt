@@ -6,6 +6,25 @@
 /// re-exported to the managed layer.
 
 ///|
+/// Opaque handle to a loaded CodeMirror ES module. Returned (boxed) by
+/// `load_codemirror`'s resolved Promise; threaded explicitly to every op
+/// that needs to reach into the module (`js_create_view`,
+/// `js_compartment_new`). Binding the module per-view eliminates the
+/// "multiple `@codemirror/state` instances" hazard you get from a global.
+pub struct CmModule(@js_value.Value)
+
+///|
+/// Construct a `CmModule` from the resolved value of
+/// `load_codemirror`'s Promise. Use it like:
+///
+/// ```moonbit nocheck
+/// let cm = cm_module_of(load_codemirror(source~).wait())
+/// ```
+pub fn cm_module_of(value : @js_value.Value) -> CmModule {
+  CmModule(value)
+}
+
+///|
 pub struct CmView(@js_value.Value)
 
 ///|
@@ -35,37 +54,41 @@ pub fn raw_extension(value : @js_value.Value) -> Extension {
 }
 
 ///|
+/// Dynamically import the CodeMirror 6 ES module from `source`. The
+/// returned Promise resolves to the CM6 namespace object; wrap it with
+/// `cm_module_of` to get a `CmModule` handle and thread that to view /
+/// compartment ops.
+///
+/// Module loads are memoized per `source` so concurrent calls during
+/// startup share a single import. Rejected imports are evicted from the
+/// cache so a transient CDN failure does not poison every later call.
 pub extern "js" fn load_codemirror(
   source? : String = "https://esm.sh/codemirror@6",
 ) -> @js_value.Promise =
   #| async (source) => {
   #|   const key = Symbol.for("dowdiness.rabbita_codemirror");
-  #|   const root = globalThis;
-  #|   const slot = root[key] ?? (root[key] = {
+  #|   const slot = globalThis[key] ?? (globalThis[key] = {
   #|     modules: new Map(),
   #|     applying: new WeakMap(),
   #|   });
   #|   if (!slot.modules.has(source)) {
-  #|     slot.modules.set(source, import(/* @vite-ignore */ source));
+  #|     const p = import(/* @vite-ignore */ source).catch(err => {
+  #|       slot.modules.delete(source);
+  #|       throw err;
+  #|     });
+  #|     slot.modules.set(source, p);
   #|   }
-  #|   const cm = await slot.modules.get(source);
-  #|   slot.current = cm;
-  #|   return cm;
+  #|   return await slot.modules.get(source);
   #| }
 
 ///|
 extern "js" fn js_create_view_raw(
+  cm : @js_value.Value,
   host_id : String,
   init_doc : String,
   extension : @js_value.Value,
 ) -> @js_value.Value =
-  #| (hostId, initDoc, extension) => {
-  #|   const key = Symbol.for("dowdiness.rabbita_codemirror");
-  #|   const slot = globalThis[key];
-  #|   const cm = slot?.current;
-  #|   if (!cm) {
-  #|     throw new Error("CodeMirror modules not loaded; call load_codemirror first");
-  #|   }
+  #| (cm, hostId, initDoc, extension) => {
   #|   const parent = document.getElementById(hostId);
   #|   if (!parent) {
   #|     throw new Error(`CodeMirror host not found: ${hostId}`);
@@ -78,6 +101,12 @@ extern "js" fn js_create_view_raw(
   #|       extensions: extension,
   #|     }),
   #|   });
+  #|   view._cmModule = cm;
+  #|   const key = Symbol.for("dowdiness.rabbita_codemirror");
+  #|   const slot = globalThis[key] ?? (globalThis[key] = {
+  #|     modules: new Map(),
+  #|     applying: new WeakMap(),
+  #|   });
   #|   if (!slot.applying.has(view)) {
   #|     slot.applying.set(view, { value: false });
   #|   }
@@ -86,11 +115,12 @@ extern "js" fn js_create_view_raw(
 
 ///|
 pub fn js_create_view(
+  cm : CmModule,
   host_id : String,
   init_doc : String,
   extension : Extension,
 ) -> CmView {
-  CmView(js_create_view_raw(host_id, init_doc, extension.0))
+  CmView(js_create_view_raw(cm.0, host_id, init_doc, extension.0))
 }
 
 ///|
@@ -160,19 +190,12 @@ pub fn js_state_selection_main(view : CmView) -> @js_value.Value {
 }
 
 ///|
-extern "js" fn js_compartment_new_raw() -> @js_value.Value =
-  #| () => {
-  #|   const key = Symbol.for("dowdiness.rabbita_codemirror");
-  #|   const cm = globalThis[key]?.current;
-  #|   if (!cm) {
-  #|     throw new Error("CodeMirror modules not loaded; call load_codemirror first");
-  #|   }
-  #|   return new cm.Compartment();
-  #| }
+extern "js" fn js_compartment_new_raw(cm : @js_value.Value) -> @js_value.Value =
+  #| (cm) => new cm.Compartment()
 
 ///|
-pub fn js_compartment_new() -> Compartment {
-  Compartment(js_compartment_new_raw())
+pub fn js_compartment_new(cm : CmModule) -> Compartment {
+  Compartment(js_compartment_new_raw(cm.0))
 }
 
 ///|
@@ -229,9 +252,9 @@ extern "js" fn js_add_update_listener_raw(
   #| (view, onDoc, onSelection, onFocusChange) => {
   #|   const key = Symbol.for("dowdiness.rabbita_codemirror");
   #|   const slot = globalThis[key];
-  #|   const cm = slot?.current;
+  #|   const cm = view._cmModule;
   #|   if (!cm) {
-  #|     throw new Error("CodeMirror modules not loaded; call load_codemirror first");
+  #|     throw new Error("Listener attach requires a view created via js_create_view");
   #|   }
   #|   const isApplying = () => !!slot.applying.get(view)?.value;
   #|   const compartment = new cm.Compartment();

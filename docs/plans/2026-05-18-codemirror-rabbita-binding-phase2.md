@@ -171,17 +171,29 @@ tagger).
 **Scope.** All `extern "js"` for CM6. No Rabbita imports.
 
 **Deliverables.**
-- Opaque newtypes: `CmView`, `TransactionSpec`, `Compartment`, `Extension`.
-  Each as `struct T(@js.Value)`.
+- Opaque newtypes: `CmModule`, `CmView`, `TransactionSpec`, `Compartment`,
+  `Extension`. Each as `struct T(@js.Value)`. `CmModule` wraps the loaded
+  CM6 ES module namespace; the consumer threads it explicitly to every op
+  that needs to reach into the module (`js_create_view`,
+  `js_compartment_new`). No global "current module" — see Codex #2
+  resolution below.
+- `pub fn cm_module_of(value : @js.Value) -> CmModule` — wraps the value
+  resolved from `load_codemirror`'s Promise.
 - `Disposable(() -> Unit)` with `pub fn dispose(self)`.
 - `extern "js" fn load_codemirror(source? : String = "https://esm.sh/codemirror@6") -> @js.Promise`
   (MoonBit 0.9.2 rejects `async` on `extern`; the JS arrow is async,
-  matching `rabbita/rabbita/dom/clipboard.mbt:42`).
-- FFI primitives mirroring CM6's API: `js_create_view`, `js_dispatch`
-  (synchronous, wraps in applying-flag try/finally), `js_view_destroy`,
-  `js_state_doc`, `js_state_selection_main`, `js_compartment_new`,
+  matching `rabbita/rabbita/dom/clipboard.mbt:42`). Module loads are
+  memoized per `source` in `slot.modules`; rejected imports are evicted
+  from the cache so a transient CDN failure does not poison every later
+  call (Codex #1 resolution).
+- FFI primitives mirroring CM6's API: `js_create_view(cm, host_id,
+  init_doc, extension)`, `js_dispatch` (synchronous, wraps in
+  applying-flag try/finally), `js_view_destroy`, `js_state_doc`,
+  `js_state_selection_main`, `js_compartment_new(cm)`,
   `js_compartment_of`, `js_compartment_reconfigure`,
-  `js_extension_combine`.
+  `js_extension_combine`. `js_create_view` stashes the module on the
+  returned view's JS object as `view._cmModule` so the listener installer
+  can read it back without a global lookup.
 - Per-view applying flag: JS-internal ref-cell keyed by
   `Symbol.for("dowdiness.rabbita_codemirror")`'s `WeakMap<view, cell>`.
   Set/cleared synchronously by `js_dispatch_raw`'s try/finally and
@@ -191,7 +203,9 @@ tagger).
   `js_add_update_listener(view, on_doc, on_selection, on_focus_change) -> Disposable`.
   Single underlying CM6 updateListener fires the three callbacks based on
   what changed in `ViewUpdate`. Each callback is `(@js.Value) -> Unit` for
-  doc / SelRange-ish payload / Bool. Skips when `applying` is true.
+  doc / SelRange-ish payload / Bool. Skips when `applying` is true. Reads
+  `cm` from `view._cmModule`, so multiple views loaded from different
+  sources cannot cross-contaminate (Codex #2 resolution).
 - `pub fn raw_extension(@js.Value) -> Extension` — Q5 plug-in escape hatch.
 
 **Verification.**
@@ -518,6 +532,21 @@ across workspace-root and `examples/ideal`.
 ---
 
 ## Revision history
+
+**rev 3.2 (2026-05-18)** — Post-P2.1 PR feedback. Acted on two of Codex's
+review comments on #296 by reworking the loader / view-creation FFI:
+(a) `load_codemirror`'s JS body now evicts a `source` entry from the
+memoization map if its `import()` Promise rejects, so a transient CDN
+failure no longer poisons every later call (#1); (b) introduce a
+`CmModule` opaque newtype + `cm_module_of` helper and pass it
+explicitly to `js_create_view(cm, …)` and `js_compartment_new(cm)`. The
+view stashes the module on itself as `view._cmModule`, which the
+listener installer reads back. Eliminates the previous `slot.current`
+mutable global, which couldn't safely support views from different
+sources (#2). Also migrates `examples/ideal` off `@rabbita.Dispatch[Msg]`
+and `@rabbita_cmd.raw_effect` (deprecated in the rabbita commit the
+submodule points at) to `Emit[Msg]` and `custom_cmd` respectively —
+CI was failing on the deprecation cascade.
 
 **rev 3.1 (2026-05-18)** — Post-P2.1 alignment. Pruned three over-specified
 items from §P2.1 deliverables once the shipped FFI revealed them as dead:
