@@ -271,11 +271,12 @@ pub fn js_extension_combine(extensions : Array[Extension]) -> Extension {
 ///|
 extern "js" fn js_add_update_listener_raw(
   view : @js_value.Value,
+  compartment : @js_value.Value,
   on_doc : (@js_value.Value) -> Unit,
   on_selection : (@js_value.Value) -> Unit,
   on_focus_change : (@js_value.Value) -> Unit,
 ) -> () -> Unit =
-  #| (view, onDoc, onSelection, onFocusChange) => {
+  #| (view, compartment, onDoc, onSelection, onFocusChange) => {
   #|   const key = Symbol.for("dowdiness.rabbita_codemirror");
   #|   const slot = globalThis[key];
   #|   const cm = view._cmModule;
@@ -283,7 +284,6 @@ extern "js" fn js_add_update_listener_raw(
   #|     throw new Error("Listener attach requires a view created via js_create_view");
   #|   }
   #|   const isApplying = () => !!slot.applying.get(view)?.value;
-  #|   const compartment = new cm.Compartment();
   #|   const listener = cm.EditorView.updateListener.of(update => {
   #|     if (update.docChanged && !isApplying()) {
   #|       onDoc(update.state.doc.toString());
@@ -303,7 +303,7 @@ extern "js" fn js_add_update_listener_raw(
   #|   });
   #|   js_apply_guarded(view, () => {
   #|     view.dispatch({
-  #|       effects: cm.StateEffect.appendConfig.of([compartment.of(listener)]),
+  #|       effects: compartment.reconfigure(listener),
   #|     });
   #|   });
   #|   let disposed = false;
@@ -333,11 +333,18 @@ extern "js" fn js_add_update_listener_raw(
 ///|
 pub fn js_add_update_listener(
   view : CmView,
+  compartment : Compartment,
   on_doc : (@js_value.Value) -> Unit,
   on_selection : (@js_value.Value) -> Unit,
   on_focus_change : (@js_value.Value) -> Unit,
 ) -> Disposable {
   Disposable(
-    js_add_update_listener_raw(view.0, on_doc, on_selection, on_focus_change),
+    js_add_update_listener_raw(
+      view.0,
+      compartment.0,
+      on_doc,
+      on_selection,
+      on_focus_change,
+    ),
   )
 }

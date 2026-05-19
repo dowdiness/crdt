@@ -616,6 +616,10 @@ across workspace-root and `examples/ideal`.
 
 ## Revision history
 
+**rev 3.9 (2026-05-19)** — Listener compartment persistence fix. The
+update listener now reconfigures a mount-created `CmEntry` slot instead
+of appendConfig-appending fresh compartments on listen toggles.
+
 **rev 3.8 (2026-05-19)** — Post-P2.4 demo + P2.1.5 FFI fix. Codex
 implemented `examples/codemirror_demo/` per the handoff
 (`2026-05-19-codemirror-rabbita-binding-phase2-p24-codex-handoff.md`),
