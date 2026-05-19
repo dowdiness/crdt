@@ -616,6 +616,31 @@ across workspace-root and `examples/ideal`.
 
 ## Revision history
 
+**rev 3.6 (2026-05-19)** — Pre-P2.3 dispatch. Narrowing the original
+§P2.3 deliverables list from six factories (`dark`, `light`, `custom`,
+`default_keymap`, `vim`, `from_raw`) to two (`Theme::custom`,
+`Keymap::from_raw`). The four deferred factories all require
+synchronous access to the loaded CM6 module to construct their
+extensions, which collides with three P2.1/P2.2 invariants stacked
+together: (a) FFI in `lib/rabbita_codemirror/js/` is frozen, (b) the
+`Theme(@js_ffi.Extension)` newtype shape and `to_extension(self) ->
+Extension` signature are frozen, (c) `addon/*` packages can import
+only `@js_ffi` — not `@js_value`, so they cannot reach
+`globalThis[Symbol.for(...)].modules` to look up a pre-loaded module
+synchronously. Three resolution options surfaced: (A) ship only the
+trivial Extension-wrapping factories and defer the ecosystem ones,
+(B) take a `CmModule` parameter and re-export `load_codemirror`,
+(C) factories return `@cmd.Cmd` and resolve to `Theme`/`Keymap` via a
+tagger. Adopted (A): preserves all future paths at ~10 LOC, doesn't
+commit to a particular ecosystem-factory shape, and lets the P2.4
+demo surface concrete evidence about whether dark/default_keymap are
+needed before flag-day. The Q5-style ESM-mapping table for the
+deferred factories is recorded in
+`docs/plans/2026-05-19-codemirror-rabbita-binding-phase2-p23-codex-handoff.md`.
+Plan §P2.3 prose remains the original aspirational target; the handoff
+doc is the actual P2.3 spec. Rev 3.7 (post-Codex) will record any
+deviations Codex's design-review pass surfaces.
+
 **rev 3.5 (2026-05-19)** — Post-P2.2 ship (PR #297). Codex implemented
 the spec verbatim; three notable deviations + one pre-PR cleanup landed
 versus rev 3.4's handoff doc:
