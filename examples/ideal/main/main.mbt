@@ -48,6 +48,7 @@ fn init_model() -> Model {
     outline_state,
     cm_id: "canopy-text-editor",
     use_cm_binding,
+    mounted: false,
     mode: Text,
     workspace: {
       outline_visible: true,
@@ -75,6 +76,7 @@ fn cm_mount_cmd(emit : Emit[Msg], model : Model) -> Cmd {
     model.cm_id,
     "canopy-text-editor",
     init_doc=model.editor.get_text(),
+    on_mounted=emit(CmMounted),
     failed=emit.map(message => {
       ignore(message)
       SyncStatusChanged("")
@@ -97,7 +99,7 @@ fn sync_editor_after_text_change(
 
 ///|
 fn subscriptions(emit : Emit[Msg], model : Model) -> Sub {
-  guard model.use_cm_binding else { return @sub.none }
+  guard model.use_cm_binding && model.mounted else { return @sub.none }
   @cm.listen(
     model.cm_id,
     doc=emit.map(text => CmDocChanged(text)),
@@ -968,9 +970,14 @@ fn update(_dispatch : Emit[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         (none, new_model)
       }
     }
+    CmMounted => (none, { ..model, mounted: true })
     CmDocChanged(text) => {
-      model.editor.set_text(text)
-      let new_model = refresh(model)
+      // Binding listen sends the full document; use the recording variant so undo keeps working.
+      set_text_and_record(1, text, model.next_timestamp)
+      let new_model = refresh({
+        ..model,
+        next_timestamp: model.next_timestamp + 1,
+      })
       let actual_text = new_model.editor.get_text()
       let cmd = if actual_text != text {
         @cm.set_doc(model.cm_id, actual_text)

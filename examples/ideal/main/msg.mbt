@@ -44,6 +44,7 @@ pub enum Msg {
   EditorTextChanged
   EditorNodeSelected(String)
   EditorStructuralEdit(op~ : String, node_id~ : String)
+  CmMounted
   CmDocChanged(String)
   CmSelectionChanged(@cm.SelRange)
   CmFocusChanged(Bool)
