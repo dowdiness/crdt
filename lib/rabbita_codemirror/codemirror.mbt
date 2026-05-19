@@ -27,6 +27,7 @@ priv struct CmEntry {
   keymap_comp : @js_ffi.Compartment
   line_numbers_comp : @js_ffi.Compartment
   line_wrapping_comp : @js_ffi.Compartment
+  listener_comp : @js_ffi.Compartment
   update_disposable : @js_ffi.Disposable
 }
 
@@ -151,8 +152,11 @@ fn line_wrapping_extension(
 
 ///|
 #cfg(target="js")
-fn no_op_update_listener(view : @js_ffi.CmView) -> @js_ffi.Disposable {
-  @js_ffi.js_add_update_listener(view, _ => (), _ => (), _ => ())
+fn no_op_update_listener(
+  view : @js_ffi.CmView,
+  compartment : @js_ffi.Compartment,
+) -> @js_ffi.Disposable {
+  @js_ffi.js_add_update_listener(view, compartment, _ => (), _ => (), _ => ())
 }
 
 ///|
@@ -230,6 +234,7 @@ fn build_initial_extension(
   keymap_comp : @js_ffi.Compartment,
   line_numbers_comp : @js_ffi.Compartment,
   line_wrapping_comp : @js_ffi.Compartment,
+  listener_comp : @js_ffi.Compartment,
   initial_theme : @theme.Theme?,
   initial_readonly : Bool,
   initial_keymap : @keymap.Keymap?,
@@ -251,6 +256,7 @@ fn build_initial_extension(
       line_wrapping_comp,
       line_wrapping_extension(cm_value, initial_line_wrapping),
     ),
+    @js_ffi.js_compartment_of(listener_comp, empty_extension()),
   ])
 }
 
@@ -295,6 +301,7 @@ fn cm_sub_loader(
       entry.update_disposable.dispose()
       let disposable = @js_ffi.js_add_update_listener(
         entry.view,
+        entry.listener_comp,
         on_doc,
         on_selection,
         on_focus,
@@ -357,12 +364,14 @@ pub fn mount(
       let keymap_comp = @js_ffi.js_compartment_new(cm)
       let line_numbers_comp = @js_ffi.js_compartment_new(cm)
       let line_wrapping_comp = @js_ffi.js_compartment_new(cm)
+      let listener_comp = @js_ffi.js_compartment_new(cm)
       let extension = build_initial_extension(
         cm_value, theme_comp, readonly_comp, keymap_comp, line_numbers_comp, line_wrapping_comp,
-        initial_theme, initial_readonly, initial_keymap, initial_line_numbers, initial_line_wrapping,
+        listener_comp, initial_theme, initial_readonly, initial_keymap, initial_line_numbers,
+        initial_line_wrapping,
       )
       let view = @js_ffi.js_create_view(cm, host_id, init_doc, extension)
-      let update_disposable = no_op_update_listener(view)
+      let update_disposable = no_op_update_listener(view, listener_comp)
       editors[id] = {
         view,
         theme_comp,
@@ -370,6 +379,7 @@ pub fn mount(
         keymap_comp,
         line_numbers_comp,
         line_wrapping_comp,
+        listener_comp,
         update_disposable,
       }
       match on_mounted {

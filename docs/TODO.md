@@ -386,6 +386,16 @@ The [moji API spec](plans/2026-05-10-moji-api-spec.md) is now
 
 ---
 
+## 18. Rabbita CodeMirror Binding: load_codemirror source query handling
+
+Why: The doc comment at `lib/rabbita_codemirror/js/codemirror.mbt:71-78` mentions `?deps=@codemirror/state@6` as the future multi-version mitigation, but the current `endsWith('/') ? source : source + '/'` concatenation can't handle query-bearing `source` values — `https://esm.sh/?deps=...` would produce `https://esm.sh/?deps=.../@codemirror/state@6` (path appended after the query). Codex flagged in PR #300 review as a misleading doc example.
+
+Plan: GitHub issue or inline ~5 LOC fix. Two options: (a) tighten the doc to say "query-free base URL only" and remove the `?deps=` example; (b) switch URL construction to the `URL` API so query params survive package-path append.
+
+Exit: doc comment matches actual behavior; either query-bearing `source` works OR the doc explicitly says it doesn't.
+
+---
+
 ## Shipped history
 
 Completed items (with PR references and shipping notes) are preserved in
