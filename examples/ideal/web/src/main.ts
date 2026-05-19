@@ -23,6 +23,7 @@ type CanopyGlobal = typeof globalThis & {
   __canopy_pending_action_overlay_node?: string | null;
   __canopy_overlay_open?: boolean;
   __canopy_pending_action_key?: string | null;
+  __canopy_trigger_autosave?: () => void;
 };
 
 const canopyGlobal = globalThis as CanopyGlobal;
@@ -103,6 +104,19 @@ function saveNow(handle: number, roomId: string, crdt: CrdtModule) {
   }
 }
 
+function triggerAutosave() {
+  if (canopyGlobal.__canopy_crdt && canopyGlobal.__canopy_crdt_handle != null) {
+    const roomId = location.hash.slice(1);
+    if (roomId) {
+      saveToLocalStorage(
+        canopyGlobal.__canopy_crdt_handle,
+        roomId,
+        canopyGlobal.__canopy_crdt,
+      );
+    }
+  }
+}
+
 /** Generate a deterministic color from agent ID (hash -> HSL with fixed S/L). */
 function agentColor(agentId: string): string {
   let hash = 0;
@@ -142,26 +156,15 @@ function wireEditorEvents(el: CanopyEditor) {
   editorEventsController = new AbortController();
   const { signal } = editorEventsController;
 
-  if (!USE_CM_BINDING) {
-    el.addEventListener(CanopyEvents.TEXT_CHANGE, () => {
-      // Text was already applied by canopy-editor.ts via handle_text_intent FFI.
-      // Trigger Rabbita outline refresh via the protocol-based trigger.
-      recordPerfSpan("textChangedToRabbitaTrigger", () => {
-        clickTrigger('canopy-editor-text-changed');
-      });
-      // Debounced save to localStorage
-      if (canopyGlobal.__canopy_crdt && canopyGlobal.__canopy_crdt_handle != null) {
-        const roomId = location.hash.slice(1);
-        if (roomId) {
-          saveToLocalStorage(
-            canopyGlobal.__canopy_crdt_handle,
-            roomId,
-            canopyGlobal.__canopy_crdt,
-          );
-        }
-      }
-    }, { signal });
-  }
+  el.addEventListener(CanopyEvents.TEXT_CHANGE, () => {
+    // Text was already applied by canopy-editor.ts via handle_text_intent FFI
+    // or by remote sync. Trigger Rabbita outline refresh via the protocol trigger.
+    recordPerfSpan("textChangedToRabbitaTrigger", () => {
+      clickTrigger('canopy-editor-text-changed');
+    });
+    // Debounced save to localStorage
+    (canopyGlobal.__canopy_trigger_autosave ?? triggerAutosave)();
+  }, { signal });
   el.addEventListener(CanopyEvents.NODE_SELECTED, ((event: Event) => {
     const { nodeId } = (event as CustomEvent<NodeSelectedDetail>).detail ?? {};
     canopyGlobal.__canopy_pending_node_selection = nodeId ?? null;
@@ -319,6 +322,7 @@ function doMount(el: CanopyEditor, crdt: CrdtModule) {
   canopyGlobal.__canopy_crdt_handle = handle;
   canopyGlobal.__canopy_pending_node_selection = null;
   canopyGlobal.__canopy_pending_structural_edit = null;
+  canopyGlobal.__canopy_trigger_autosave = triggerAutosave;
 
   // Restore from localStorage if available
   try {

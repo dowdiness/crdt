@@ -930,7 +930,12 @@ fn update(_dispatch : Emit[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       js_perf_begin("editorTextChangedTotal")
       let new_model = refresh(model)
       js_perf_end("editorTextChangedTotal")
-      (none, new_model)
+      let cmd = if model.use_cm_binding {
+        @cm.set_doc(model.cm_id, new_model.editor.get_text())
+      } else {
+        none
+      }
+      (cmd, new_model)
     }
     EditorNodeSelected(node_id) => {
       let resolved_node_id = if node_id == "" {
@@ -979,11 +984,15 @@ fn update(_dispatch : Emit[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         next_timestamp: model.next_timestamp + 1,
       })
       let actual_text = new_model.editor.get_text()
-      let cmd = if actual_text != text {
+      let sync_cmd = if actual_text != text {
         @cm.set_doc(model.cm_id, actual_text)
       } else {
         none
       }
+      let cmd = @rabbita.batch([
+        sync_cmd,
+        @rabbita.effect(fn() { js_after_binding_local_edit(actual_text) }),
+      ])
       (cmd, new_model)
     }
     CmSelectionChanged(_range) =>

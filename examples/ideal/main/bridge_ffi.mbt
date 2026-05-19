@@ -49,6 +49,19 @@ extern "js" fn js_sync_and_broadcast(_new_text : String) -> Unit =
   #| }
 
 ///|
+/// Broadcast and autosave after a local edit handled by the CM binding.
+extern "js" fn js_after_binding_local_edit(text : String) -> Unit =
+  #| function(text) {
+  #|   var el = document.querySelector('canopy-editor');
+  #|   if (el && typeof el.notifyLocalChange === 'function') {
+  #|     el.notifyLocalChange();
+  #|   }
+  #|   if (typeof globalThis.__canopy_trigger_autosave === 'function') {
+  #|     globalThis.__canopy_trigger_autosave();
+  #|   }
+  #| }
+
+///|
 /// Set the editor mode on the Web Component ('text' or 'structure').
 extern "js" fn js_set_editor_mode(mode : String) -> Unit =
   #| function(mode) {

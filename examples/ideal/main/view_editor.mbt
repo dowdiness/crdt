@@ -45,6 +45,7 @@ fn view_editor(dispatch : @rabbita.Emit[Msg], model : Model) -> @rabbita.Html {
         "canopy-action-key-trigger",
       ),
       hidden_trigger(dispatch, LongPressTriggered, "canopy-long-press-trigger"),
+      hidden_trigger(dispatch, EditorTextChanged, "canopy-editor-text-changed"),
       hidden_trigger(
         dispatch,
         EditorNodeSelected(""),
