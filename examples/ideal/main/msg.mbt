@@ -1,4 +1,5 @@
 ///|
+#warnings("-unused_constructor")
 pub enum Msg {
   // Mode & layout
   SetMode(EditorMode)
@@ -43,4 +44,7 @@ pub enum Msg {
   EditorTextChanged
   EditorNodeSelected(String)
   EditorStructuralEdit(op~ : String, node_id~ : String)
+  CmDocChanged(String)
+  CmSelectionChanged(@cm.SelRange)
+  CmFocusChanged(Bool)
 }

@@ -9,6 +9,8 @@ import type { CrdtModule } from './types';
 import { peerCursors, updatePeerCursors } from "./cm6-peer-cursors";
 import type { PeerCursor } from "./cm6-peer-cursors";
 
+const USE_CM_BINDING = (globalThis as any).__canopy_use_cm_binding === true;
+
 /** Syntax highlighting colors matching the Canopy design tokens */
 const lambdaHighlightStyle = HighlightStyle.define([
   { tag: t.keyword, color: "#c792ea" },                        // --canopy-keyword
@@ -111,7 +113,7 @@ export class CanopyEditor extends HTMLElement {
       if (this.structureSession) {
         this.structureSession.setReadonly(ro);
       }
-      if (this.cmView) {
+      if (this.cmView && !USE_CM_BINDING) {
         // Remount CM6 to apply readonly (no hot reconfigure API for editable)
         this.destroyCm();
         this.editorContainer.innerHTML = '';
@@ -163,6 +165,7 @@ export class CanopyEditor extends HTMLElement {
   // ── Text Mode: single CM6 showing raw source text ──────
 
   private mountTextMode(): void {
+    if (USE_CM_BINDING) return;
     this.destroyPm();
     if (this.cmView) return; // already mounted
 
