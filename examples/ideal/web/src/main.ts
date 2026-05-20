@@ -206,30 +206,28 @@ function wireEditorEvents(el: CanopyEditor) {
     canopyGlobal.__canopy_pending_structural_edit = { op, nodeId };
     clickTrigger('canopy-editor-structural-edit');
   }) as EventListener, { signal });
-  if (!USE_CM_BINDING) {
-    el.addEventListener(CanopyEvents.REQUEST_UNDO, () => {
-      if (!canopyGlobal.__canopy_crdt || canopyGlobal.__canopy_crdt_handle == null) return;
-      const crdt = canopyGlobal.__canopy_crdt;
-      const handle = canopyGlobal.__canopy_crdt_handle;
-      const didUndo = crdt.handle_undo(handle);
-      if (didUndo) {
-        el.syncAfterExternalChange();
-        el.notifyLocalChange();
-        clickTrigger('canopy-editor-text-changed');
-      }
-    }, { signal });
-    el.addEventListener(CanopyEvents.REQUEST_REDO, () => {
-      if (!canopyGlobal.__canopy_crdt || canopyGlobal.__canopy_crdt_handle == null) return;
-      const crdt = canopyGlobal.__canopy_crdt;
-      const handle = canopyGlobal.__canopy_crdt_handle;
-      const didRedo = crdt.handle_redo(handle);
-      if (didRedo) {
-        el.syncAfterExternalChange();
-        el.notifyLocalChange();
-        clickTrigger('canopy-editor-text-changed');
-      }
-    }, { signal });
-  }
+  el.addEventListener(CanopyEvents.REQUEST_UNDO, () => {
+    if (!canopyGlobal.__canopy_crdt || canopyGlobal.__canopy_crdt_handle == null) return;
+    const crdt = canopyGlobal.__canopy_crdt;
+    const handle = canopyGlobal.__canopy_crdt_handle;
+    const didUndo = crdt.handle_undo(handle);
+    if (didUndo) {
+      el.syncAfterExternalChange();
+      el.notifyLocalChange();
+      clickTrigger('canopy-editor-text-changed');
+    }
+  }, { signal });
+  el.addEventListener(CanopyEvents.REQUEST_REDO, () => {
+    if (!canopyGlobal.__canopy_crdt || canopyGlobal.__canopy_crdt_handle == null) return;
+    const crdt = canopyGlobal.__canopy_crdt;
+    const handle = canopyGlobal.__canopy_crdt_handle;
+    const didRedo = crdt.handle_redo(handle);
+    if (didRedo) {
+      el.syncAfterExternalChange();
+      el.notifyLocalChange();
+      clickTrigger('canopy-editor-text-changed');
+    }
+  }, { signal });
   el.addEventListener(CanopyEvents.ACTION_OVERLAY_OPEN, ((event: Event) => {
     const { nodeId } = (event as CustomEvent).detail ?? {};
     canopyGlobal.__canopy_pending_action_overlay_node = nodeId ?? null;

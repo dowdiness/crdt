@@ -21,12 +21,24 @@ fn hidden_trigger(
 ///|
 fn view_editor(dispatch : @rabbita.Emit[Msg], model : Model) -> @rabbita.Html {
   let attrs = @html.Attrs::build().id("canopy-editor")
+  let hidden_attrs = @html.Attrs::build()
+    .id("canopy-editor")
+    .class("hidden-trigger")
+    .aria_hidden("true")
+    .tabindex(-1)
+  let cm_attrs = @html.Attrs::build().id("canopy-text-editor")
+  let hidden_cm_attrs = @html.Attrs::build()
+    .id("canopy-text-editor")
+    .class("hidden-trigger")
+    .aria_hidden("true")
+    .tabindex(-1)
   let main_attrs = @html.Attrs::build().role("main").aria_label("Code editor")
   if model.use_cm_binding {
-    // Web Component owns structure mode + non-text events; binding owns text-mode CM6 via `#canopy-text-editor`.
+    let text_attrs = if model.mode == Text { cm_attrs } else { hidden_cm_attrs }
+    let host_attrs = if model.mode == Text { hidden_attrs } else { attrs }
     div(class="editor-wrapper", attrs=main_attrs, [
-      div(attrs=@html.Attrs::build().id("canopy-text-editor"), nothing),
-      node("canopy-editor", attrs, [@html.text("")]),
+      div(attrs=text_attrs, nothing),
+      node("canopy-editor", host_attrs, [@html.text("")]),
       // Hidden buttons clicked by JS for non-text-mode paths.
       // aria-hidden + tabindex=-1 keeps them out of a11y flow.
       hidden_trigger(
