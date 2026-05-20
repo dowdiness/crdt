@@ -10,7 +10,12 @@ extern "js" fn js_get_agent_id() -> String =
 /// Current wall-clock time in milliseconds for CRDT undo grouping.
 extern "js" fn js_now_ms() -> Int =
   #| function() {
-  #|   return Date.now();
+  #|   const key = "__canopy_session_start_ms";
+  #|   if (typeof globalThis[key] !== "number") {
+  #|     globalThis[key] = Date.now();
+  #|   }
+  #|   const elapsed = Math.floor(Date.now() - globalThis[key]);
+  #|   return Math.max(0, Math.min(2147483647, elapsed));
   #| }
 
 ///|
