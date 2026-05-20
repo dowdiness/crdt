@@ -1,4 +1,7 @@
 import './canopy-editor';
+import * as cmCommands from '@codemirror/commands';
+import * as cmState from '@codemirror/state';
+import * as cmView from '@codemirror/view';
 import type { CanopyEditor } from './canopy-editor';
 import { peerCursors, updatePeerCursorsFromJson } from './cm6-peer-cursors';
 import { CanopyEvents } from './events';
@@ -28,6 +31,7 @@ type CanopyGlobal = typeof globalThis & {
   __canopy_agent_name?: string;
   __canopy_agent_color?: string;
   __canopy_broadcast_ephemeral?: () => void;
+  __canopy_codemirror?: Record<string, any>;
   __canopy_create_cm_peer_cursor_extension?: (cm: Record<string, any>) => any[];
   __canopy_update_cm_peer_cursors?: () => void;
 };
@@ -48,6 +52,7 @@ function loadCrdtModule(): Promise<CrdtModule> {
     // Set agent ID globally BEFORE importing the MoonBit module.
     // MoonBit's init_model reads this to create the CRDT editor with a unique agent.
     canopyGlobal.__canopy_agent_id = getSessionAgentId();
+    canopyGlobal.__canopy_codemirror = { ...cmState, ...cmView, ...cmCommands };
     canopyGlobal.__canopy_create_cm_peer_cursor_extension = peerCursors;
     // Loading the MoonBit module also runs Rabbita's main(), which renders <canopy-editor>.
     crdtPromise = import('@moonbit/ideal-editor') as Promise<CrdtModule>;

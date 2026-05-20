@@ -154,6 +154,12 @@ test.describe('Persistence', () => {
 // ── CodeMirror Rendering ─────────────────────────────────────
 
 test.describe('CodeMirror Rendering', () => {
+  test('CM6 mounts without CDN access', async ({ page }) => {
+    await page.route('https://esm.sh/**', (route) => route.abort());
+    await waitForEditor(page);
+    await expect(page.locator('#canopy-text-editor .cm-editor')).toBeVisible();
+  });
+
   test('CM6 renders source lines', async ({ page }) => {
     await waitForEditor(page);
     const hasSource = await page.evaluate(() => {
@@ -170,6 +176,43 @@ test.describe('CodeMirror Rendering', () => {
       return (gutters?.length ?? 0) > 0;
     });
     expect(hasLineNumbers).toBe(true);
+  });
+});
+
+// ── External Sync ────────────────────────────────────────────
+
+test.describe('External Sync', () => {
+  test('preserves local cursor when CRDT text is refreshed', async ({ page }) => {
+    await waitForEditor(page);
+    await page.getByRole('button', { name: 'Basics' }).click();
+    await page.waitForFunction(() => {
+      return document.querySelector('#canopy-text-editor .cm-content')?.textContent?.includes('double') ?? false;
+    });
+
+    await page.evaluate(() => {
+      const cm = document.querySelector('#canopy-text-editor .cm-content') as HTMLElement;
+      cm?.focus();
+    });
+    await page.keyboard.press('Control+End');
+
+    await page.evaluate(() => {
+      const g = globalThis as any;
+      const handle = g.__canopy_crdt_handle;
+      const text = g.__canopy_crdt.get_text(handle);
+      g.__canopy_crdt.set_text(handle, `let remote = 0\n${text}`);
+      document.getElementById('canopy-external-crdt-changed-trigger')?.click();
+    });
+    await page.waitForFunction(() => {
+      return document.querySelector('#canopy-text-editor .cm-content')?.textContent?.includes('remote') ?? false;
+    });
+
+    await page.keyboard.type('z');
+    const text = await page.evaluate(() => {
+      const g = globalThis as any;
+      return g.__canopy_crdt.get_text(g.__canopy_crdt_handle) as string;
+    });
+    expect(text.startsWith('let remote = 0\n')).toBe(true);
+    expect(text.endsWith('z')).toBe(true);
   });
 });
 

@@ -74,6 +74,7 @@ fn cm_mount_cmd(emit : Emit[Msg], model : Model) -> Cmd {
     model.cm_id,
     "canopy-text-editor",
     init_doc=model.editor.get_text(),
+    source="global:__canopy_codemirror",
     initial_line_wrapping=true,
     on_mounted=emit(CmMounted),
     failed=emit.map(message => {

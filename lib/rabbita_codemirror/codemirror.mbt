@@ -439,8 +439,8 @@ pub fn unmount(id : String, failed? : @cmd.Emit[String]) -> @cmd.Cmd {
 }
 
 ///|
-/// Replace the full document, skipping echo dispatches when the document is
-/// already current.
+/// Replace the document with a minimal single-range change, skipping echo
+/// dispatches when the document is already current.
 #cfg(target="js")
 pub fn set_doc(
   id : String,
@@ -451,10 +451,7 @@ pub fn set_doc(
     with_entry(id, failed, scheduler, entry => {
       let current = @js_ffi.js_state_doc(entry.view)
       if doc != current {
-        @js_ffi.js_dispatch(
-          entry.view,
-          change_spec(0, Some(current.length()), doc),
-        )
+        @js_ffi.js_replace_doc_minimal(entry.view, doc)
       }
     })
   })
