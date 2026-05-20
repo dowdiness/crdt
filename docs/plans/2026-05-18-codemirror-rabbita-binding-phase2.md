@@ -21,6 +21,7 @@ shape; the rabbita ecosystem's own conventions are different and simpler. See
 | Q4 Event surface | **(b)** Narrow: `listen(id, doc?, selection?, focus?) -> Sub`. |
 | Q5 Language packages | In scope, deferred — `raw_extension(@js.Value) -> Extension` is the plug-in point. |
 | Q6 Module pinning | Not pinning. `mount` carries a `source~ : String` default. |
+| P2.5 ideal migration | **Done.** PR #303 shipped additive wiring; PR #307 flipped the default path and deleted the legacy text-mode owner. |
 
 ## Architecture overview
 
@@ -453,10 +454,15 @@ addon's `.mbti` shows the payload type + `to_extension` (shipped P2.2)
 
 **Owner.** Codex implements; Claude does the manual browser smoke test.
 
-### P2.5 — Migrate `examples/ideal` to the binding (behind feature flag)
+### P2.5 — Migrate `examples/ideal` to the binding (merged)
 
-**Scope.** Replace `canopy-editor.ts`'s text-mode CM6 ownership.
-Structure mode (PM) untouched. Behind `VITE_CANOPY_USE_CM_BINDING=1`.
+**Status.** Done. PR #303 shipped the additive ideal-editor wiring, and
+PR #307 (`3006d9748a1905064336b47e8c9a5609f8d15a2a`) flipped the default
+path and removed the legacy text-mode CodeMirror owner. Structure mode
+(PM) remains owned by the Web Component.
+
+**Scope.** Replace `canopy-editor.ts`'s text-mode CM6 ownership with the
+Rabbita CodeMirror binding. Structure mode (PM) untouched.
 
 **Deliverables.**
 
@@ -508,8 +514,21 @@ Structure mode (PM) untouched. Behind `VITE_CANOPY_USE_CM_BINDING=1`.
 - **B3.** Deleting `mountTextMode` breaks `canopy-editor.ts` attribute
   handler. Fix: handler becomes a no-op; binding mounts into the div.
 
-**Feature flag.** `VITE_CANOPY_USE_CM_BINDING=1` for one PR cycle. Both
-paths coexist until the flag flips default.
+**Feature flag.** Historical. `VITE_CANOPY_USE_CM_BINDING` existed for
+PR #303's additive cycle only. PR #307 removed the flag-aware split, so
+the binding-owned text editor is now the only ideal-editor text path.
+
+**PR #307 cleanup decisions.**
+- `CmDocChanged` owns text edits and calls the local broadcast/autosave
+  effect after the CRDT accepts the change.
+- `EditorTextChanged` and the hidden text-change trigger are gone; external
+  CRDT refresh uses the explicit external-change trigger.
+- `js_after_binding_local_edit`, `js_use_cm_binding`, and
+  `__canopy_use_cm_binding` are gone.
+- `__canopy_trigger_autosave` remains as the JS-side autosave callback used
+  by structure-mode and external sync wiring.
+- `__canopy_trigger_autosave` is not a binding flag; future cleanup should
+  treat it as an imperative boundary candidate, not as legacy CM ownership.
 
 **Verification.**
 - `cd examples/ideal && moon test` — 23/23.
@@ -606,8 +625,8 @@ output.
 | #2 | P2.2 public API + sub loader + theme/keymap scaffolds | grep no `extern "js"` outside `js/`; `priv suberror` count = 1; `@sub.custom_sub` count = 1; `let mut.*_tagger` count = 3; `Compartment`/`@cmd`/`@sub` absent under `addon/` | tagger rebind closure correctness vs websocket reference, `set_doc` no-op invariant, mount-replace semantics, addon `.mbti` purity |
 | #3 | P2.3 addon factories + Bool addon decision | per-addon `.mbti` no `Compartment`; factory constructors land on theme/keymap | addon isolation, Bool-toggle subpackage necessity |
 | #4 | P2.4 minimal example | six-behavior checklist (incl. swap-tagger) | demo correctness, manual smoke, P2.0 + binding end-to-end |
-| #5 | P2.5 ideal migration (behind flag) | E2E parity, microbenchmark | no perf regression, flag default = off |
-| #6 | flag flip + P2.6 cleanup | full §P2.6 verification | spec verification block green |
+| #5 | P2.5 ideal migration (done: #303 additive wiring + #307 flag flip/legacy deletion) | E2E parity, editor-response benchmark | no perf regression, default binding path |
+| #6 | P2.6 final verification cleanup | full §P2.6 verification | spec verification block green |
 
 Each PR ends on `moon check && moon fmt && moon info && moon test` clean
 across workspace-root and `examples/ideal`.
@@ -615,6 +634,13 @@ across workspace-root and `examples/ideal`.
 ---
 
 ## Revision history
+
+**rev 3.11 (2026-05-20)** — Post-merge cleanup after PR #307
+(`3006d9748a1905064336b47e8c9a5609f8d15a2a`). P2.5 is now complete:
+PR #303 provided the additive wiring and PR #307 made the Rabbita
+CodeMirror binding the only ideal-editor text path. Updated the status
+table, §P2.5 feature-flag wording, PR sequencing, and the PR #307
+cleanup-decision record. Remaining work is §P2.6 final verification.
 
 **rev 3.10 (2026-05-19)** — Tightened `load_codemirror` source docs to
 match query-free string-concat imports, and closed TODO §18.
