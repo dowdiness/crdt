@@ -7,6 +7,13 @@ extern "js" fn js_get_agent_id() -> String =
   #| }
 
 ///|
+/// Current wall-clock time in milliseconds for CRDT undo grouping.
+extern "js" fn js_now_ms() -> Int =
+  #| function() {
+  #|   return Date.now();
+  #| }
+
+///|
 /// Build the ideal editor's CodeMirror extension from the exact CM namespace
 /// passed by the rabbita binding.
 extern "js" fn js_make_ideal_cm_extension_raw(

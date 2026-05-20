@@ -105,11 +105,16 @@ fn select_text_node_cmd(model : Model, node_id : String) -> Cmd {
     Some(nid) => match model.editor.get_source_map().get_range(nid) {
       None => none
       Some(range) =>
-        @cm.set_selection(
-          model.cm_id,
-          @cm.SelRange::new(range.start, range.end),
-          scroll_into_view=true,
-        )
+        @rabbita.batch([
+          @cm.set_selection(
+            model.cm_id,
+            @cm.SelRange::new(range.start, range.end),
+            scroll_into_view=true,
+          ),
+          @rabbita.effect(fn() {
+            js_after_cm_selection_changed(range.start, range.end)
+          }),
+        ])
     }
   }
 }
@@ -987,7 +992,7 @@ fn update(_dispatch : Emit[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     }
     CmDocChanged(text) => {
       // Binding listen sends the full document; use the recording variant so undo keeps working.
-      model.editor.set_text_and_record(text, model.next_timestamp)
+      model.editor.set_text_and_record(text, js_now_ms())
       let new_model = refresh({
         ..model,
         next_timestamp: model.next_timestamp + 1,
