@@ -63,7 +63,9 @@ async function seedEditor(page: Page, source: string) {
 
   await page.waitForFunction((text) => {
     const content = document.querySelector('#canopy-text-editor .cm-content');
-    return (content?.textContent ?? '').includes(String(text).split('\n')[0]);
+    const visible = content?.textContent ?? '';
+    const lines = String(text).split('\n');
+    return visible.includes(lines[0]) || visible.includes(lines[lines.length - 1]);
   }, source);
   await page.evaluate(() => {
     const content = document.querySelector('#canopy-text-editor .cm-content') as HTMLElement | null;
