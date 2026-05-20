@@ -1,10 +1,13 @@
 import './canopy-editor';
 import * as cmCommands from '@codemirror/commands';
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import * as cmState from '@codemirror/state';
 import * as cmView from '@codemirror/view';
+import { tags as t } from '@lezer/highlight';
 import type { CanopyEditor } from './canopy-editor';
 import { peerCursors, updatePeerCursorsFromJson } from './cm6-peer-cursors';
 import { CanopyEvents } from './events';
+import { lambda } from './lang/lambda-language';
 import { SyncClient } from './sync';
 import type { CrdtModule } from './types';
 
@@ -33,6 +36,7 @@ type CanopyGlobal = typeof globalThis & {
   __canopy_broadcast_ephemeral?: () => void;
   __canopy_codemirror?: Record<string, any>;
   __canopy_create_cm_peer_cursor_extension?: (cm: Record<string, any>) => any[];
+  __canopy_create_lambda_cm_extensions?: (cm: Record<string, any>) => any[];
   __canopy_update_cm_peer_cursors?: () => void;
 };
 
@@ -47,12 +51,27 @@ let editorEventsController: AbortController | null = null;
 let beforeUnloadRegistered = false;
 let ephemeralCleanupTimer: ReturnType<typeof setInterval> | null = null;
 
+const lambdaHighlightStyle = HighlightStyle.define([
+  { tag: t.keyword, color: '#c792ea' },
+  { tag: t.definition(t.variableName), color: '#e4e4f0', fontWeight: '600' },
+  { tag: t.variableName, color: '#82aaff' },
+  { tag: t.number, color: '#f78c6c' },
+  { tag: t.arithmeticOperator, color: '#ff5370' },
+  { tag: t.punctuation, color: '#ff5370' },
+  { tag: t.paren, color: '#b8b8d0' },
+  { tag: t.definitionOperator, color: '#ff5370' },
+]);
+
 function loadCrdtModule(): Promise<CrdtModule> {
   if (!crdtPromise) {
     // Set agent ID globally BEFORE importing the MoonBit module.
     // MoonBit's init_model reads this to create the CRDT editor with a unique agent.
     canopyGlobal.__canopy_agent_id = getSessionAgentId();
     canopyGlobal.__canopy_codemirror = { ...cmState, ...cmView, ...cmCommands };
+    canopyGlobal.__canopy_create_lambda_cm_extensions = () => [
+      lambda(),
+      syntaxHighlighting(lambdaHighlightStyle),
+    ];
     canopyGlobal.__canopy_create_cm_peer_cursor_extension = peerCursors;
     // Loading the MoonBit module also runs Rabbita's main(), which renders <canopy-editor>.
     crdtPromise = import('@moonbit/ideal-editor') as Promise<CrdtModule>;

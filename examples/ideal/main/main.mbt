@@ -106,7 +106,11 @@ fn select_text_node_cmd(model : Model, node_id : String) -> Cmd {
   }
   match model.editor.get_source_map().get_range(nid) {
     Some(range) =>
-      @cm.set_selection(model.cm_id, @cm.SelRange::new(range.start, range.end))
+      @cm.set_selection(
+        model.cm_id,
+        @cm.SelRange::new(range.start, range.end),
+        scroll_into_view=true,
+      )
     None => none
   }
 }

@@ -103,10 +103,13 @@ extern "js" fn js_make_ideal_cm_extension_raw(
   #|     },
   #|     ...defaultKeymap,
   #|   ]);
+  #|   const languageFactory = globalThis.__canopy_create_lambda_cm_extensions;
+  #|   const language = typeof languageFactory === 'function' ? languageFactory(cm) : [];
+  #|   const languageExtensions = Array.isArray(language) ? language : [language];
   #|   const peerFactory = globalThis.__canopy_create_cm_peer_cursor_extension;
   #|   const peers = typeof peerFactory === 'function' ? peerFactory(cm) : [];
   #|   const peerExtensions = Array.isArray(peers) ? peers : [peers];
-  #|   return [theme, keymap, ...peerExtensions];
+  #|   return [theme, ...languageExtensions, keymap, ...peerExtensions];
   #| }
 
 ///|

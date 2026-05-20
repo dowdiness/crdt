@@ -177,6 +177,18 @@ test.describe('CodeMirror Rendering', () => {
     });
     expect(hasLineNumbers).toBe(true);
   });
+
+  test('CM6 renders lambda syntax highlighting', async ({ page }) => {
+    await waitForEditor(page);
+    const hasKeywordHighlight = await page.evaluate(() => {
+      const spans = Array.from(document.querySelectorAll('#canopy-text-editor .cm-line span'));
+      return spans.some((span) => {
+        return span.textContent === 'let'
+          && getComputedStyle(span as HTMLElement).color === 'rgb(199, 146, 234)';
+      });
+    });
+    expect(hasKeywordHighlight).toBe(true);
+  });
 });
 
 // ── External Sync ────────────────────────────────────────────
