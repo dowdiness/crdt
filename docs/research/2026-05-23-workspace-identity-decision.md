@@ -74,7 +74,7 @@ The CRDT, transport, and presence layers treat `agent_id` as an opaque string. N
 | Question | Verdict | Confidence |
 |----------|---------|------------|
 | Q1: Separation required? | Yes — three independent failure modes | High (A1/A2/A3 all pass) |
-| Q2: Two axes enough? | **No.** Two axes break under mixed-variant divergence (B1''). A third identity axis is required for cross-replica `NodeIdQ` references. | High (B1' null finding + B1'' positive divergence, byte-snapshot verified) |
+| Q2: Two axes enough? | **No.** Three failure shapes confirmed: B1''-swap on mixed-variant, C2-swap on nested same-variant (at base-inherited NodeIds), C4-swap on object-member mixed variant, C3-key-asymmetry on delete+modify. Refined recommendation: option (c) scope-reduction is now the principled near-term path; option (a) Grove-level identity remains the principled long-term path. See §"Q2 follow-through" below. | High (B1' null + B1'' positive + gate #4: 4 additional cases) |
 | Q3: DocumentId shape? | Opaque string; any stable scheme works at the editor layer. (Persistence shape choice deferred to Phase 2.) | Medium (C×3 in-memory pass; serialization not exercised) |
 
 ---
@@ -112,3 +112,105 @@ B's registry: 0 → Number(1), 1 → Array, 5 → Bool(true),    10 → String("
 ```
 
 **Implication.** NodeIds preserve structural-position identity *post-reconcile within one replica*, NOT cross-replica logical-node identity. A workspace design that exposes `NodeIdQ { doc_id, node_id }` as "the same node across replicas" cannot rest on the current per-editor counter + reconcile pipeline alone — it needs either a Grove-level structural id (mint a content/position-stable id separate from the counter), a deterministic-seed scheme (canonical traversal of the post-merge tree determines counter assignments), or a scope reduction (only intra-replica references are durable; cross-replica anchors use a different mechanism).
+
+---
+
+## Q2 follow-through — P0a gate #4 (2026-05-23)
+
+Gate #4 probed the three open follow-up cases B1'' did not cover, plus an
+object-member case added on Codex review. Probe file:
+`workspace/probe/gate4_divergence_wbtest.mbt`. All 4 tests pass.
+
+### Verdict table (gate #4)
+
+| ID | Scenario | `kind_mismatches` | `keys_only_in_a` / `keys_only_in_b` | Verdict |
+|----|----------|-------------------|--------------------------------------|---------|
+| C1 | Asymmetric position, same variant (A appends `,4` / B prepends `0,` to `[1,2,3]`) | **0** | 0 / 0 | **NULL FINDING.** Flat same-variant asymmetric-position divergence preserves NodeId identity. |
+| C2 | Nested-array divergence, same variant (A inserts `,9` in inner[0] / B in inner[1] of `[[1],[2]]`) | **2** | 0 / 0 | **POSITIVE DIVERGENCE.** Inner-leaf NodeIds 11 and 19 swap meanings (A: 11=Num(1), 19=Num(2); B: 11=Num(2), 19=Num(1)). Outer Array containers stable. |
+| C3 | Delete + insert (A deletes `,2` from `[1,2,3]` / B inserts `,9` after 2) | **0** | 1 / 1 | **REGISTRY-KEY ASYMMETRY.** Converges to `[1,9,3]`. A has NodeId(11)=Num(1); B has NodeId(0)=Num(1). Same logical value, different NodeIds across replicas — distinct failure mode from C2/B1''. |
+| C4 | Object-member, mixed variant (A inserts `"x":"foo",` / B inserts `"y":true,` into `{"a":1,"b":2}`) | **2** | 0 / 0 | **POSITIVE DIVERGENCE.** NodeIds 12 and 22 swap variants (A: 12=String, 22=Bool; B: 12=Bool, 22=String). Same B1''-style swap, now inside object members where `same_kind` ignores keys entirely. |
+
+### Refined Q2 verdict
+
+The Q2 third-axis requirement is **confirmed** and is now characterized at higher
+resolution:
+
+1. **The breakage surface is broader than B1''.** B1'' showed mixed-variant
+   produces a swap (NodeIds 5/10). C2 shows that *even same-variant divergence*
+   produces a swap when the edits are *nested* — the swapped NodeIds (11/19)
+   are **base-inherited** (created during the common base setup, before any
+   divergence). This is a strictly stronger failure mode than B1''.
+2. **Object-member identity is as fragile as array identity, possibly more.**
+   C4 confirmed Codex's pre-implementation prediction: `same_kind` for `Object`
+   ignores keys entirely (`loom/examples/json/src/proj_traits.mbt:14-25`), so
+   object members swap by *value variant* across replicas. This is directly
+   load-bearing for the §3.2 design — spec anchors are likely to be object
+   members (e.g. `{"id": "node-42", "kind": "definition"}`).
+3. **Delete + insert is a different failure shape.** C3 produced registry-key
+   asymmetry (`keys_only_in_a = keys_only_in_b = 1`) rather than a swap. The
+   "same logical value" Num(1) carries NodeId(11) on A and NodeId(0) on B.
+   `kind_mismatches = 0` on shared keys, but the shared-key set itself is
+   missing entries on each side. A `NodeIdQ`-keyed cache would silently miss
+   on lookups across replicas even when both replicas hold the value.
+4. **C1 narrows the breakage surface.** Flat same-variant asymmetric-position
+   divergence is a **null finding** — identity preserved. So same-variant
+   divergence in itself is not the trigger; the combination of *same-variant*
+   with *nesting* (C2) is.
+
+### Updated third-axis option recommendations
+
+The three options from §Q2 above remain on the table; gate #4 changes their
+relative scope:
+
+- **(a) Grove-level structural identity.** Now the most clearly load-bearing
+  path because it would address all four failure shapes simultaneously
+  (B1'', C2, C3, C4). Required for any workspace feature that wants
+  `(doc_id, node_id)` to refer to the same logical node across replicas
+  including object members and through delete-plus-modify history.
+- **(b) Deterministic-seed scheme.** Plausible for B1''/C2/C4 (re-seed
+  counter from canonical post-merge traversal so both replicas produce the
+  same NodeId for the same post-merge position). Does not solve C3
+  (registry-key asymmetry across delete histories) on its own.
+- **(c) Scope reduction (intra-replica references only).** Cheapest option.
+  Cross-document anchors become *content-addressed* references resolved at
+  query-time (e.g. `[ref:doc.json#a]` resolved by walking the document) rather
+  than `NodeIdQ` lookups. Avoids the third-axis problem entirely at the cost
+  of giving up "stable handle to a node" as a workspace primitive.
+
+**Recommendation update (post gate #4):** the case for (c) — scope reduction —
+strengthens. C2 shows that even base-inherited NodeIds drift under nested
+edits; C3 shows that delete histories produce key-set asymmetry. Any cache or
+graph keyed on `NodeIdQ` will produce surprising query results across replicas.
+A content-addressed anchor scheme (option c) sidesteps the entire failure
+surface and is implementable without a Grove-level rewrite of identity. Option
+(a) remains the principled long-term answer; option (c) is the principled
+*near-term* answer.
+
+### Notes on the C2 mechanism
+
+The C2 swap is at NodeIds **11 and 19** — these were minted during the common
+base setup `[[1],[2]]` (before any divergent edits). On A: NodeId 11 was the
+inner-array `[1]`'s child Number(1); NodeId 19 was the inner-array `[2]`'s
+child Number(2). After A's local edit + B's local edit + cross-sync, the
+positions of those original leaves swap in the post-reconcile registry.
+
+The exact LCS mechanism producing the swap depends on the right-biased
+backtrack in `core/reconcile.mbt:62-75` interacting with variant-only
+`same_kind` (`loom/examples/json/src/proj_traits.mbt:14-25`) across the
+divergent intermediate trees on each replica. The empirical observable
+(`kind_mismatches = 2` at base-inherited NodeIds) is the load-bearing
+finding; the detailed LCS step-by-step is not.
+
+### Out of scope for gate #4 (not run)
+
+- Concurrent edits at the SAME node (e.g. both replicas modify the same
+  value). Unrelated to nesting/divergence; covered by FugueMax's tombstone
+  + insert anchoring semantics.
+- Structural restructuring (e.g. wrap a node in another container). Higher
+  cost to test; the same_kind variant change would dominate the result
+  and not add a new failure mode beyond B1''.
+- Core-level synthetic unit test (Codex's Q-D suggestion: construct two
+  fake `old` trees with shared NodeIds and reconcile against same `new`).
+  Treated as nice-to-have; the four scenario probes above demonstrate the
+  failure through the real sync+parse+reconcile pipeline, which is more
+  convincing.
