@@ -1,7 +1,12 @@
 import {
   "dowdiness/canopy/editor",
   "dowdiness/canopy/core",
+  "dowdiness/canopy/protocol" @protocol,
   "dowdiness/canopy/lang/json/companion" @json_companion,
-  "dowdiness/json",
+  "dowdiness/canopy/lang/lambda/edits" @lambda_edits,
+  "dowdiness/json" @_json_lang,
+  "dowdiness/lambda/ast" @ast,
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
   "moonbitlang/core/debug",
 } for "wbtest"
