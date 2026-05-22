@@ -177,18 +177,15 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
   - `TreeEditOp.to_generic().to_string()` for direct-apply paths (`apply_structural_edit_request`, `execute_action`, `OutlineStructuralEdit`)
   - `"{op}(node={id})"` ad-hoc label for the TS-applied `EditorStructuralEdit` path (the typed `TreeEditOp` is already consumed by `handle_structural_intent` FFI before MoonBit sees the message; reconstruction would duplicate the op-string→TreeEditOp dispatch from `apply_structural_edit_request`).
 
-- [ ] Inspector — Patch panel. *Part of Inspector traceability workstream.*
-  Why: same motivation as the Intent panel — the layer between user action and CRDT op is currently invisible. The Patch panel surfaces `SpanEdit`s with back-reference to the producing `GenericTreeOp`.
-  Exit:
-  - Scrollable log of recent `SpanEdit`s with back-reference to producing `GenericTreeOp`, each row uses `edit.to_string()` (e.g. `"@25 -3 +«add 3 5»"`).
-  - Lives in `view_bottom.mbt` as a new tab (sits alongside the shipped Op Log / Intent panel).
+- [x] Inspector — Patch panel. *Part of Inspector traceability workstream.* Shipped in PR #323 (2026-05-22, commit `0c093ac`).
+  Scrollable log of recent `SpanEdit`s with back-reference to producing `GenericTreeOp` (each row uses `edit.to_string()`), rendered by `view_patch_log` in `view_bottom.mbt`.
 
 - [ ] Inspector — unify Op Log label format across direct-apply and FFI paths.
   Why: PR #293 left two row shapes in `Model.intent_log` (`TreeEditOp.to_generic().to_string()` vs `"{op}(node={id})"`). Minor UX inconsistency; distinguishable but not ideal once the panel becomes a debugging surface.
   Exit: rebuild a `TreeEditOp` in the `EditorStructuralEdit` arm using `apply_structural_edit_request`'s op-string dispatch (extract the `"WrapInLambda" | "Delete" | ...` match into a helper), then route through `push_intent`. `push_intent_label` can stay for cases where rebuilding is genuinely impossible.
 
-- [ ] Inspector — guard `view_op_log` allocation when bottom panel collapsed.
-  Why: PR #293 gated the heavy DOT/SVG pipeline (`render_history_html` / `render_graphviz_html`) on `model.workspace.bottom_visible`, but `view_op_log` still allocates up to 50 Html nodes per render even while the panel is hidden via CSS. Sub-millisecond today; revisit if MAX_INTENT_LOG grows past ~500 or if profiling shows hot.
+- [x] Inspector — guard `view_op_log` / `view_patch_log` allocation when bottom panel collapsed. Shipped in PR #324 (2026-05-23).
+  PR #293 gated the heavy DOT/SVG pipeline (`render_history_html` / `render_graphviz_html`) on `model.workspace.bottom_visible`, but `view_op_log` (up to 50 row nodes) and the new `view_patch_log` from PR #323 (header + N `SpanEdit` rows per entry, capped at MAX_PATCH_LOG=50) still allocated on every render while the panel was hidden via CSS. Both now early-return an empty `<div>` with the appropriate `bottom_panel_attrs(tab)` when the panel is collapsed.
 
 - [ ] Inspector — Collaboration panel. *Part of Inspector traceability workstream.*
   Why: in a collaborative projectional editor, the connected-peers list, sync status, ephemeral broadcasts (drag state, presence updates), and sync errors are invisible from the main editor surface. Debugging "peer A and peer B disagree on text," "why didn't my drag preview show," or "sync stalled" requires a panel surfacing the collab-layer state. Stub `Show` impls already exist on the relevant types (`PeerCursor`, `PeerPresence`, `PresenceStatus`, `SyncStatus`, `SyncMessage`, `SyncErrorReason`, `DragState`, `EditModeState`, `EphemeralNamespace`, `EphemeralValue`, `EphemeralEventTrigger`) but currently delegate to `@debug.to_string` (verbose dump, not user-facing labels).

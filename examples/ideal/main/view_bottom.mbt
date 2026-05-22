@@ -413,6 +413,16 @@ fn view_incr_graph_panel(model : Model) -> Html {
 
 ///|
 fn view_op_log(model : Model) -> Html {
+  // When the bottom panel is collapsed, the whole <section> is CSS-hidden but
+  // `view()` still re-runs on every model change. Skip the log iteration and
+  // emit an empty container; vdom diff repopulates it when the panel reopens.
+  if !model.workspace.bottom_visible {
+    return @html.div(
+      class="bottom-content",
+      attrs=bottom_panel_attrs(OpLog),
+      ([] : Array[Html]),
+    )
+  }
   let log = model.intent_log
   if log.is_empty() {
     @html.div(class="bottom-content", attrs=bottom_panel_attrs(OpLog), [
@@ -450,6 +460,15 @@ fn view_op_log(model : Model) -> Html {
 /// so the user can cross-reference the matching Op Log entry, then each
 /// `SpanEdit` renders via its `Show` impl (`@<start> -<delete_len> +«…»`).
 fn view_patch_log(model : Model) -> Html {
+  // See `view_op_log` for the rationale; Patch panel rows are heavier
+  // (header + N `SpanEdit` rows per entry), so guarding here matters more.
+  if !model.workspace.bottom_visible {
+    return @html.div(
+      class="bottom-content",
+      attrs=bottom_panel_attrs(Patch),
+      ([] : Array[Html]),
+    )
+  }
   let log = model.patch_log
   if log.is_empty() {
     @html.div(class="bottom-content", attrs=bottom_panel_attrs(Patch), [
