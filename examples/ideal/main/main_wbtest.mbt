@@ -105,6 +105,7 @@ test "event_detail_structural_edit rejects non-object detail" {
 ///|
 test "event target selector is centralized" {
   inspect(EditorHost.selector(), content="#canopy-editor")
+  inspect(TextEditor.selector(), content="#canopy-text-editor")
 }
 
 ///|
@@ -114,6 +115,8 @@ test "event names are centralized" {
   inspect(ExternalCrdtChange.event_type(), content="external-crdt-changed")
   inspect(LongPress.event_type(), content="long-press")
   inspect(NodeSelected.event_type(), content="node-selected")
+  inspect(RequestUndo.event_type(), content="request-undo")
+  inspect(RequestRedo.event_type(), content="request-redo")
   inspect(StructuralEditApplied.event_type(), content="structural-edit-applied")
   inspect(SyncStatus.event_type(), content="sync-status")
 }

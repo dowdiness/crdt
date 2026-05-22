@@ -25,9 +25,16 @@ extern "js" fn js_make_ideal_cm_extension_raw(
   cm : @js_value.Value,
 ) -> @js_value.Value =
   #| function(cm) {
-  #|   const click = (id) => {
-  #|     const btn = document.getElementById(id);
-  #|     if (btn && typeof btn.click === 'function') btn.click();
+  #|   const CANOPY_EVENT_REQUEST_UNDO = "request-undo";
+  #|   const CANOPY_EVENT_REQUEST_REDO = "request-redo";
+  #|   const dispatchTextEditorEvent = (eventType) => {
+  #|     const target = document.getElementById("canopy-text-editor");
+  #|     if (target && typeof target.dispatchEvent === "function") {
+  #|       target.dispatchEvent(new CustomEvent(eventType, {
+  #|         bubbles: true,
+  #|         composed: true,
+  #|       }));
+  #|     }
   #|   };
   #|   const normalizeExtensions = (factory) => {
   #|     const provided = typeof factory === 'function' ? factory(cm) : [];
@@ -99,21 +106,21 @@ extern "js" fn js_make_ideal_cm_extension_raw(
   #|     {
   #|       key: "Mod-z",
   #|       run: () => {
-  #|         click("canopy-editor-undo-trigger");
+  #|         dispatchTextEditorEvent(CANOPY_EVENT_REQUEST_UNDO);
   #|         return true;
   #|       },
   #|     },
   #|     {
   #|       key: "Mod-Shift-z",
   #|       run: () => {
-  #|         click("canopy-editor-redo-trigger");
+  #|         dispatchTextEditorEvent(CANOPY_EVENT_REQUEST_REDO);
   #|         return true;
   #|       },
   #|     },
   #|     {
   #|       key: "Mod-y",
   #|       run: () => {
-  #|         click("canopy-editor-redo-trigger");
+  #|         dispatchTextEditorEvent(CANOPY_EVENT_REQUEST_REDO);
   #|         return true;
   #|       },
   #|     },

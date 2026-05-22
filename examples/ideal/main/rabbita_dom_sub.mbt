@@ -1,6 +1,7 @@
 ///|
 priv enum EventTarget {
   EditorHost
+  TextEditor
 }
 
 ///|
@@ -10,6 +11,8 @@ priv enum EventName {
   ExternalCrdtChange
   LongPress
   NodeSelected
+  RequestRedo
+  RequestUndo
   StructuralEditApplied
   SyncStatus
 }
@@ -18,6 +21,7 @@ priv enum EventName {
 fn EventTarget::selector(self : EventTarget) -> String {
   match self {
     EditorHost => "#canopy-editor"
+    TextEditor => "#canopy-text-editor"
   }
 }
 
@@ -25,6 +29,7 @@ fn EventTarget::selector(self : EventTarget) -> String {
 fn EventTarget::key(self : EventTarget) -> String {
   match self {
     EditorHost => "editor-host"
+    TextEditor => "text-editor"
   }
 }
 
@@ -36,6 +41,8 @@ fn EventName::event_type(self : EventName) -> String {
     ExternalCrdtChange => "external-crdt-changed"
     LongPress => "long-press"
     NodeSelected => "node-selected"
+    RequestRedo => "request-redo"
+    RequestUndo => "request-undo"
     StructuralEditApplied => "structural-edit-applied"
     SyncStatus => "sync-status"
   }
@@ -49,6 +56,8 @@ fn EventName::key(self : EventName) -> String {
     ExternalCrdtChange => "external-crdt-changed"
     LongPress => "long-press"
     NodeSelected => "node-selected"
+    RequestRedo => "request-redo"
+    RequestUndo => "request-undo"
     StructuralEditApplied => "structural-edit-applied"
     SyncStatus => "sync-status"
   }
@@ -158,6 +167,8 @@ fn editor_dom_event_subscriptions(emit : @rabbita.Emit[Msg]) -> @sub.Sub {
       NodeSelected,
       emit.map(detail => StructureNodeSelected(event_detail_node_id(detail))),
     ),
+    custom_event_sub(TextEditor, RequestUndo, emit.map(_ => Undo)),
+    custom_event_sub(TextEditor, RequestRedo, emit.map(_ => Redo)),
     custom_event_sub(
       EditorHost,
       StructuralEditApplied,

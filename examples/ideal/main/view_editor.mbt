@@ -2,24 +2,7 @@
 using @html {node, nothing}
 
 ///|
-fn hidden_trigger(
-  dispatch : @rabbita.Emit[Msg],
-  msg : Msg,
-  id : String,
-) -> @rabbita.Html {
-  @html.button(
-    on_click=dispatch(msg),
-    attrs=@html.Attrs::build()
-      .class("hidden-trigger")
-      .id(id)
-      .aria_hidden("true")
-      .tabindex(-1),
-    [@html.text("")],
-  )
-}
-
-///|
-fn view_editor(dispatch : @rabbita.Emit[Msg], model : Model) -> @rabbita.Html {
+fn view_editor(_dispatch : @rabbita.Emit[Msg], model : Model) -> @rabbita.Html {
   let attrs = @html.Attrs::build().id("canopy-editor")
   let hidden_attrs = @html.Attrs::build()
     .id("canopy-editor")
@@ -38,10 +21,5 @@ fn view_editor(dispatch : @rabbita.Emit[Msg], model : Model) -> @rabbita.Html {
   div(class="editor-wrapper", attrs=main_attrs, [
     div(attrs=text_attrs, nothing),
     node("canopy-editor", host_attrs, [@html.text("")]),
-    // Hidden buttons clicked by JS for undo/redo paths not yet moved to DOM
-    // custom-event subscriptions.
-    // aria-hidden + tabindex=-1 keeps them out of a11y flow.
-    hidden_trigger(dispatch, Undo, "canopy-editor-undo-trigger"),
-    hidden_trigger(dispatch, Redo, "canopy-editor-redo-trigger"),
   ])
 }
