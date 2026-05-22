@@ -34,9 +34,7 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+        uses: ./.github/actions/setup-moonbit
 
       - name: Verify MoonBit installation
         run: moon version --all
@@ -77,9 +75,7 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+        uses: ./.github/actions/setup-moonbit
 
       - name: Verify MoonBit installation
         run: moon version --all
@@ -109,9 +105,7 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+        uses: ./.github/actions/setup-moonbit
 
       - name: Verify MoonBit installation
         run: moon version --all
@@ -129,9 +123,7 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+        uses: ./.github/actions/setup-moonbit
 
       - name: Cache opam switch
         id: opam-cache
@@ -178,9 +170,7 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+        uses: ./.github/actions/setup-moonbit
 
       - name: Update dependencies
         run: ./scripts/update-moon-deps.sh
@@ -204,9 +194,7 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+        uses: ./.github/actions/setup-moonbit
 
       - name: Check formatting
         run: |
@@ -223,9 +211,7 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+        uses: ./.github/actions/setup-moonbit
 
       - name: Update dependencies
         run: ./scripts/update-moon-deps.sh
@@ -271,9 +257,7 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+        uses: ./.github/actions/setup-moonbit
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -306,9 +290,7 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+        uses: ./.github/actions/setup-moonbit
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -336,6 +318,10 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
+        # Container jobs can't use the pinned composite action — hustcer/setup-moonbit
+        # depends on nushell installed on the host runner, which isn't visible inside
+        # the Docker container. This job runs on the unpinned (post-moon#1716) compiler
+        # but doesn't trigger the bug, so the upstream installer is safe here.
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
@@ -370,6 +356,7 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
+        # See web-e2e job — container jobs use the upstream installer.
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
@@ -404,6 +391,7 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
+        # See web-e2e job — container jobs use the upstream installer.
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
