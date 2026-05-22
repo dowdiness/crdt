@@ -318,7 +318,13 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
-        uses: ./.github/actions/setup-moonbit
+        # Container jobs can't use the pinned composite action — hustcer/setup-moonbit
+        # depends on nushell installed on the host runner, which isn't visible inside
+        # the Docker container. This job runs on the unpinned (post-moon#1716) compiler
+        # but doesn't trigger the bug, so the upstream installer is safe here.
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -350,7 +356,10 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
-        uses: ./.github/actions/setup-moonbit
+        # See web-e2e job — container jobs use the upstream installer.
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -382,7 +391,10 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
-        uses: ./.github/actions/setup-moonbit
+        # See web-e2e job — container jobs use the upstream installer.
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
