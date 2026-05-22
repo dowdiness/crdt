@@ -44,6 +44,15 @@ let graphviz_cache : RenderCache = {
 }
 
 ///|
+let incr_graph_cache : RenderCache = {
+  identity: -1,
+  op_count: 0,
+  frontier_hash: 0,
+  html: "",
+  valid: false,
+}
+
+///|
 /// Snapshot identity hash for cache lookup. Frontier is small (1-3 LVs in
 /// practice); the multiply-by-31 fold collides only on adversarial inputs
 /// that callers don't construct.
@@ -139,23 +148,33 @@ fn render_graphviz_html(model : Model) -> String {
 }
 
 ///|
-/// Render the IncrGraph tab's HTML. Walks the model-owned `IncrMemoEventTap`
-/// snapshot — captures the parser runtime's dependency graph plus recent
-/// memo events, then runs the same DOT → layout → SVG pipeline as the
-/// Graphviz tab. Not cached yet: every keystroke recomputes. The
-/// `bottom_visible` gate keeps the cost off the render path when the
-/// bottom panel is collapsed.
+/// Render the IncrGraph tab's HTML (cached). Keyed on the same triple as
+/// the Graphviz tab: the incr dependency graph only changes when text
+/// edits advance `op_count`, so cache hits skip the snapshot copy + DOT
+/// pipeline. On cache miss we also `drain_events()` on the tap — the
+/// snapshot we just took already captured a copy of the events for
+/// status coloring, so draining bounds `tap.events` growth to one
+/// inter-text-edit gap.
 fn render_incr_graph_html(model : Model) -> String {
-  let snapshot = model.incr_tap.snapshot()
-  if snapshot.nodes.is_empty() {
-    "<span class=\"no-problems\">No incr cells observed yet</span>"
+  let snap = model.editor.causal_snapshot()
+  let key = render_cache_key(model.editor.identity(), snap)
+  if cache_hit(incr_graph_cache, key) {
+    incr_graph_cache.html
   } else {
-    let svg = snapshot
-      .to_visual_graph()
-      .to_svg_with_config(bottom_tab_svg_config)
-    "<div role=\"img\" aria-label=\"Incr runtime dependency graph\">" +
-    svg +
-    "</div>"
+    let snapshot = model.incr_tap.snapshot()
+    let _ = model.incr_tap.drain_events()
+    let html = if snapshot.nodes.is_empty() {
+      "<span class=\"no-problems\">No incr cells observed yet</span>"
+    } else {
+      let svg = snapshot
+        .to_visual_graph()
+        .to_svg_with_config(bottom_tab_svg_config)
+      "<div role=\"img\" aria-label=\"Incr runtime dependency graph\">" +
+      svg +
+      "</div>"
+    }
+    cache_store(incr_graph_cache, key, html)
+    html
   }
 }
 
