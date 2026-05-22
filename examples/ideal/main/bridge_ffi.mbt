@@ -25,6 +25,8 @@ extern "js" fn js_make_ideal_cm_extension_raw(
   cm : @js_value.Value,
 ) -> @js_value.Value =
   #| function(cm) {
+  #|   const CANOPY_EVENT_REQUEST_UNDO = "request-undo";
+  #|   const CANOPY_EVENT_REQUEST_REDO = "request-redo";
   #|   const dispatchTextEditorEvent = (eventType) => {
   #|     const target = document.getElementById("canopy-text-editor");
   #|     if (target && typeof target.dispatchEvent === "function") {
@@ -104,21 +106,21 @@ extern "js" fn js_make_ideal_cm_extension_raw(
   #|     {
   #|       key: "Mod-z",
   #|       run: () => {
-  #|         dispatchTextEditorEvent("request-undo");
+  #|         dispatchTextEditorEvent(CANOPY_EVENT_REQUEST_UNDO);
   #|         return true;
   #|       },
   #|     },
   #|     {
   #|       key: "Mod-Shift-z",
   #|       run: () => {
-  #|         dispatchTextEditorEvent("request-redo");
+  #|         dispatchTextEditorEvent(CANOPY_EVENT_REQUEST_REDO);
   #|         return true;
   #|       },
   #|     },
   #|     {
   #|       key: "Mod-y",
   #|       run: () => {
-  #|         dispatchTextEditorEvent("request-redo");
+  #|         dispatchTextEditorEvent(CANOPY_EVENT_REQUEST_REDO);
   #|         return true;
   #|       },
   #|     },
