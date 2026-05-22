@@ -254,7 +254,11 @@ test "B2 Drop — FIT-TOKENIZED (Int + Enum tags + duplicated node_id)" {
     "target": nodeid_str(tgt),
     "position": pos_tag,
   }
-  let wire = @protocol.UserIntent::StructuralEdit(node_id=src, op="Drop", params~)
+  let wire = @protocol.UserIntent::StructuralEdit(
+    node_id=src,
+    op="Drop",
+    params~,
+  )
 
   let decoded_wire : @protocol.UserIntent = @json.from_json(wire.to_json())
   let restored : @lambda_edits.TreeEditOp = match decoded_wire {
