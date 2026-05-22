@@ -115,23 +115,23 @@ test "B1: distinct agent_ids + sync — NodeIds are identical post-sync" {
 }
 
 ///|
-/// B1' (NodeId stability with same-variant divergence — NULL FINDING, meaningful).
+/// B1' (NodeId stability with same-variant divergence — NULL FINDING).
 /// Both editors start from "[1]", A appends ",2", B appends ",3", then cross-sync.
 ///
 /// FINDING: kind_mismatches = 0.  After convergence, both A and B map every
 /// NodeId to the same JsonValue.  Identity is STABLE for same-variant edits.
 ///
 /// WHY: reconcile_children uses same_kind() for LCS matching.  For JsonValue,
-/// same_kind(Number(x), Number(y)) = true regardless of x/y.  This means the
-/// LCS step matches by VARIANT only and the backtrack is right-biased — both
-/// replicas produce the identical matching pattern regardless of the numeric
-/// values they divergently inserted.
+/// same_kind(Number(x), Number(y)) = true regardless of x/y.  The LCS matches
+/// by VARIANT only and the backtrack is right-biased — both replicas produce
+/// the identical matching pattern when both old trees contain the same variant
+/// at the divergent position.
 ///
-/// IMPLICATION FOR Q1/Q2: The identity threat (Appendix C #8) is real for
-/// STRUCTURAL changes (adding an Array where a Number was) but NOT for
-/// same-variant value changes.  This narrows the scope of Grove-level identity
-/// tracking required in a workspace: only structural edits (variant-level
-/// changes) need cross-document identity stabilization, not value edits.
+/// SCOPE WARNING: This null finding holds ONLY for same-variant divergence.
+/// B1'' below exercises the mixed-variant case and observes positive divergence
+/// — `kind_mismatches = 2`.  Do NOT generalize this B1' result into "Grove-level
+/// identity needed only for structural edits"; the symmetry that produces this
+/// null finding is fragile.  See decision doc Q2 verdict.
 ///
 /// NOTE: get_registry() must be called after EACH divergent insert to force
 /// the projection memo to evaluate the intermediate state before cross-sync.
@@ -178,13 +178,116 @@ test "B1': same-variant divergence — NodeId→kind mapping is stable" {
   }
   // Assert the NULL FINDING: no NodeId maps to different content.
   // Both replicas agree on every NodeId→kind mapping after convergence.
-  let kind_mismatches = ids_a.iter().filter(fn(id) {
-    match (reg_a.get(id), reg_b.get(id)) {
-      (Some(node_a), Some(node_b)) => node_a.kind != node_b.kind
-      _ => false
-    }
-  }).count()
+  let kind_mismatches = ids_a
+    .iter()
+    .filter(fn(id) {
+      match (reg_a.get(id), reg_b.get(id)) {
+        (Some(node_a), Some(node_b)) => node_a.kind != node_b.kind
+        _ => false
+      }
+    })
+    .count()
   inspect(kind_mismatches, content="0")
+  // Verified via diagnostic snapshot (session 2026-05-22): both editors converge
+  // to identical NodeId→JsonValue maps including the integer NodeId values.
+  // A and B observed:
+  //   [(0, Number(3)), (1, Array([Number(1), Number(2), Number(3)])),
+  //    (5, Number(2)), (10, Number(1))]
+  // Right-biased LCS with variant-only same_kind() produces deterministic
+  // identical NodeId assignments across divergent same-variant edits *in this
+  // specific scenario* (same-variant siblings, same cursor position, no
+  // nesting). NOT proven for mixed-variant, asymmetric-position, or nested
+  // divergence — see decision doc §B1' scope notes.
+}
+
+///|
+/// B1'' (mixed-variant divergence — REFUTES the broad B1' generalization).
+/// Both editors start from "[1]".  A appends `,"abc"` (String variant);
+/// B appends `,true` (Bool variant) — DIFFERENT variants at the same
+/// cursor position.  Cross-sync.
+///
+/// FINDING (verified 2026-05-22 session): NodeIds 5 and 10 are SWAPPED
+/// between replicas.  Each editor's old tree contained its own divergent
+/// variant; reconcile_children LCS preserves the OLD NodeId at the
+/// matched position, but each replica's old NodeId attaches to a
+/// different post-merge logical node.
+///
+///   A's registry: 5 = String("abc"),  10 = Bool(true)
+///   B's registry: 5 = Bool(true),     10 = String("abc")
+///
+/// IMPLICATION FOR Q2: Two identity axes (DocumentId, ReplicaId) are
+/// NOT sufficient for cross-replica node identity under mixed-variant
+/// divergence.  A third axis (Grove-level structural identity, or a
+/// reconciliation-aware id scheme) is needed for any workspace feature
+/// that relies on `(doc_id, node_id)` referring to the same logical node
+/// across replicas.  This narrows Sonnet's earlier B1' narrative.
+test "B1pp: mixed-variant divergence — NodeId mapping diverges across replicas" {
+  let editor_a = @json_companion.new_json_editor("replica_a")
+  let editor_b = @json_companion.new_json_editor("replica_b")
+  // Common base
+  try! editor_a.insert("[1]")
+  try! editor_b.apply_sync(try! editor_a.export_all())
+  inspect(editor_a.get_text(), content="[1]")
+  inspect(editor_b.get_text(), content="[1]")
+  // Force projection memo on the shared base
+  ignore(editor_a.get_registry())
+  ignore(editor_b.get_registry())
+  // Mixed-variant divergence at the same cursor position
+  editor_a.move_cursor(2)
+  try! editor_a.insert(",\"abc\"")
+  editor_b.move_cursor(2)
+  try! editor_b.insert(",true")
+  // Force memo at each divergent state
+  ignore(editor_a.get_registry())
+  ignore(editor_b.get_registry())
+  // Cross-sync
+  try! editor_a.apply_sync(try! editor_b.export_all())
+  try! editor_b.apply_sync(try! editor_a.export_all())
+  // Text converges
+  inspect(editor_a.get_text() == editor_b.get_text(), content="true")
+  // Compare NodeId→JsonValue mappings
+  let reg_a = editor_a.get_registry()
+  let reg_b = editor_b.get_registry()
+  let ids_a : Array[@core.NodeId] = reg_a.keys().to_array()
+  let ids_b : Array[@core.NodeId] = reg_b.keys().to_array()
+  ids_a.sort_by(fn(a, b) { @core.NodeId::compare(a, b) })
+  ids_b.sort_by(fn(a, b) { @core.NodeId::compare(a, b) })
+  let dump_a = ids_a.map(fn(id) {
+    (id.0, @debug.to_string(reg_a.get(id).unwrap().kind))
+  })
+  let dump_b = ids_b.map(fn(id) {
+    (id.0, @debug.to_string(reg_b.get(id).unwrap().kind))
+  })
+  let expected_a =
+    #|[
+    #|  (0, "Number(1)"),
+    #|  (1, "Array([Number(1), String(\"abc\"), Bool(true)])"),
+    #|  (5, "String(\"abc\")"),
+    #|  (10, "Bool(true)"),
+    #|]
+  let expected_b =
+    #|[
+    #|  (0, "Number(1)"),
+    #|  (1, "Array([Number(1), String(\"abc\"), Bool(true)])"),
+    #|  (5, "Bool(true)"),
+    #|  (10, "String(\"abc\")"),
+    #|]
+  inspect(@debug.to_string(dump_a), content=expected_a)
+  inspect(@debug.to_string(dump_b), content=expected_b)
+  inspect(editor_a.get_text(), content="[1,\"abc\",true]")
+  // Positive assertion of the divergence: across all shared NodeIds,
+  // count how many carry DIFFERENT JsonValues between A and B.
+  // Snapshot above showed NodeIds 5 and 10 are SWAPPED (String<->Bool).
+  let kind_mismatches = ids_a
+    .iter()
+    .filter(fn(id) {
+      match (reg_a.get(id), reg_b.get(id)) {
+        (Some(node_a), Some(node_b)) => node_a.kind != node_b.kind
+        _ => false
+      }
+    })
+    .count()
+  inspect(kind_mismatches, content="2")
 }
 
 ///|

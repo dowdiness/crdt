@@ -25,26 +25,31 @@ All three failures are structural — they cannot be worked around without addin
 
 ### Q2 — Are two identity axes (DocumentId, ReplicaId) enough?
 
-**Answer: YES for the currently tested scope; structural-edit identity needs a third axis (Grove-level).**
+**Answer: NO. Two axes suffice ONLY for same-variant divergence; mixed-variant divergence breaks `(doc_id, node_id)` identity across replicas.**
 
 Evidence from Part B assertions:
 
 | Assertion | Finding |
 |-----------|---------|
-| B1 | After A→B sync from a common base, NodeId sets are identical on both replicas. Two axes suffice for stable identity in the sync case. |
-| B1' | After divergent same-variant edits (both replicas insert Number elements) and cross-sync, NodeId→kind mappings are IDENTICAL on both replicas (`kind_mismatches = 0`). |
-| B2 | Standard multi-session convergence passes. Two axes are sufficient for the edit→sync→converge cycle. |
+| B1 | After A→B sync from a common base, NodeId sets are identical on both replicas. Two axes suffice for the no-divergence case. |
+| B1' | Divergent SAME-VARIANT edits (both replicas insert `Number` elements) converge to IDENTICAL `NodeId → JsonValue` maps on both replicas (`kind_mismatches = 0`, verified by byte-identical diagnostic snapshot). |
+| B1'' | Divergent MIXED-VARIANT edits (A inserts `String`, B inserts `Bool` at the same cursor) **diverge**: `kind_mismatches = 2`. NodeIds 5 and 10 are *swapped* between replicas (A: 5=String, 10=Bool; B: 5=Bool, 10=String). |
+| B2 | Standard multi-session convergence passes (text only — does not address NodeId identity). |
 
-**B1' null finding — scope and implication:**  
-The identity divergence predicted by Appendix C #8 does NOT occur for same-variant divergence. The `reconcile_children` LCS uses `same_kind()` (variant-only comparison, not value comparison), and the backtrack is right-biased and deterministic. Both replicas produce identical `NodeId → kind` assignments even after divergent numeric-value edits.
+**B1' / B1'' juxtaposed.** B1' is a null finding that depends on a structural symmetry: when both replicas' old trees contain children of the SAME variant in matching positions, the right-biased LCS in `reconcile_children` (`core/reconcile.mbt`) preserves NodeIds symmetrically. The moment that symmetry breaks — and any mixed-variant divergence breaks it — each replica's old NodeId stays attached to the position its LOCAL old variant matched, leaving the *same logical post-merge node* with different NodeIds on each replica.
 
-The threat in Appendix C #8 is real but narrower than originally scoped: it applies to **structural edits** (edits that change a node's variant — e.g., replacing a `Number` with an `Array`) not to value edits within the same variant. Structural edits are uncommon in typical JSON editing. For the current canopy scope (text-based CRDT + projection reconciliation), two axes are sufficient.
+**Implication for Q2.** The workspace's `NodeIdQ { doc_id, node_id }` design assumes `(doc_id, n)` refers to the same logical node across replicas. B1'' refutes this for the realistic mixed-variant case. A third identity axis is required — concretely:
 
-A third axis (Grove-level structural identity) is only required when:
-- A user replaces a node's structural type across replicas concurrently
-- The workspace needs to track "this JSON node was an Array, then became an Object" as a named identity, not just a new node
+- **Option a (Grove-level structural identity):** mint a content-/position-stable identity per logical node, separate from the per-editor counter. Costly but principled.
+- **Option b (reconciliation-aware id scheme):** seed the per-editor counter from a canonical traversal of the post-merge tree, so all replicas mint identical NodeIds regardless of intermediate divergence. Cheaper but fragile under further edits.
+- **Option c (don't claim cross-replica identity):** scope `NodeIdQ` to *local* references only; require a separate cross-replica anchor mechanism (e.g. text-position-based) for any cross-document link the workspace exposes to users.
 
-This can be addressed as a separate workstream after the workspace concept ships.
+**What B1'' did NOT test (named follow-ups, not blockers for the Q2 verdict above):**
+- Asymmetric insertion positions (A inserts at start, B at end of array)
+- Nested-array divergence (edits within a sub-array, both replicas mutate the same parent)
+- Delete + insert combinations (one replica deletes a node the other replica modifies)
+
+These cases can produce additional failure modes (e.g. divergence of structural NodeIds for the array itself, not just leaf children). Promote to P0a gate #4 alongside the option-a/b/c decision before any production workspace work.
 
 ### Q3 — What shape should DocumentId take?
 
@@ -69,8 +74,8 @@ The CRDT, transport, and presence layers treat `agent_id` as an opaque string. N
 | Question | Verdict | Confidence |
 |----------|---------|------------|
 | Q1: Separation required? | Yes — three independent failure modes | High (A1/A2/A3 all pass) |
-| Q2: Two axes enough? | Yes for current scope; Grove-level id needed only for structural edits | Medium-high (B1' null finding narrows the threat) |
-| Q3: DocumentId shape? | Opaque string; any stable scheme works | High (C×3 all pass) |
+| Q2: Two axes enough? | **No.** Two axes break under mixed-variant divergence (B1''). A third identity axis is required for cross-replica `NodeIdQ` references. | High (B1' null finding + B1'' positive divergence, byte-snapshot verified) |
+| Q3: DocumentId shape? | Opaque string; any stable scheme works at the editor layer. (Persistence shape choice deferred to Phase 2.) | Medium (C×3 in-memory pass; serialization not exercised) |
 
 ---
 
@@ -83,6 +88,7 @@ The CRDT, transport, and presence layers treat `agent_id` as an opaque string. N
 | A3 | `shared agent_id — presence is silently overwritten` | PASS | Hash collision in EphemeralHub; only 1 presence slot per agent |
 | B1 | `distinct agent_ids + sync — NodeIds are identical post-sync` | PASS | Synced replicas produce identical projection identity |
 | B1' | `same-variant divergence — NodeId→kind mapping is stable` | PASS (null finding) | No kind mismatch after divergent number inserts; reconcile is deterministically right-biased |
+| B1'' | `mixed-variant divergence — NodeId mapping diverges across replicas` | PASS (positive divergence) | `kind_mismatches = 2`. NodeIds 5 and 10 swap variants between A and B (A: 5=String, 10=Bool; B: 5=Bool, 10=String) |
 | B2 | `multi-session convergence — text matches after B→A sync` | PASS | Standard Fugue convergence works with distinct replica IDs |
 | C_uuid | `UUID-shaped DocumentId is shape-agnostic` | PASS | UUID string accepted without error |
 | C_hash | `content-hash-shaped DocumentId is shape-agnostic` | PASS | Hash string accepted without error |
@@ -90,8 +96,19 @@ The CRDT, transport, and presence layers treat `agent_id` as an opaque string. N
 
 ---
 
-## Notable Finding: B1' reconcile_children behavior
+## Notable Finding: B1' / B1'' juxtaposition
 
-The LCS in `reconcile_children` (core/reconcile.mbt) uses `same_kind()` which compares variant names only. For `JsonValue::Number(x)` vs `JsonValue::Number(y)`, `same_kind` returns `true` regardless of x/y. Combined with the right-biased backtrack (matching from the end), the algorithm always produces the same NodeId assignment pattern for same-variant siblings regardless of their values or which replica inserted them. This is by design for structural stability, but it means value-level divergence in identity is not observable via `kind`.
+`reconcile_children` (`core/reconcile.mbt`) uses an LCS over `same_kind()`, which for `JsonValue` compares variant only (`Number(x) ~ Number(y) = true` regardless of values), with a right-biased backtrack.
 
-This finding has a follow-up implication: the reconcile algorithm does **not** preserve value-identity (NodeId N does not stably refer to "the node whose value was originally X"). It preserves structural-position identity (NodeId N refers to "the node at structural position P after LCS alignment"). This is the correct behavior for a projectional editor, but callers should not rely on NodeIds for value-tracking across divergent edits.
+**B1' (same-variant, null finding).** When BOTH replicas' old trees contain children of the same variant, LCS preserves NodeIds symmetrically across replicas. Diagnostic snapshot showed A and B converge to byte-identical NodeId→JsonValue maps including the integer NodeId values.
+
+**B1'' (mixed-variant, positive divergence).** When each replica's old tree contains a DIFFERENT variant at the divergent position, LCS preserves each replica's old NodeId at the structural position that matches its OWN local variant — leaving the same logical post-merge node with a *different* NodeId on each replica. Concrete observation for `A.insert(",\"abc\"")` + `B.insert(",true")` from base `[1]`, converging to `[1,"abc",true]`:
+
+```
+A's registry: 0 → Number(1), 1 → Array, 5 → String("abc"), 10 → Bool(true)
+B's registry: 0 → Number(1), 1 → Array, 5 → Bool(true),    10 → String("abc")
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                          NodeId 5 and 10 swapped
+```
+
+**Implication.** NodeIds preserve structural-position identity *post-reconcile within one replica*, NOT cross-replica logical-node identity. A workspace design that exposes `NodeIdQ { doc_id, node_id }` as "the same node across replicas" cannot rest on the current per-editor counter + reconcile pipeline alone — it needs either a Grove-level structural id (mint a content/position-stable id separate from the counter), a deterministic-seed scheme (canonical traversal of the post-merge tree determines counter assignments), or a scope reduction (only intra-replica references are durable; cross-replica anchors use a different mechanism).
