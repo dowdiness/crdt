@@ -26,18 +26,13 @@
 //   4. force memo again
 //   5. cross-sync both ways
 //   6. assert text convergence
-//   7. dump sorted (NodeId.0, kind) snapshots
-//   8. count kind_mismatches
-
-///|
-fn dump_registry(
-  editor : @editor.SyncEditor[@_json_lang.JsonValue],
-) -> Array[(Int, String)] {
-  let reg = editor.get_registry()
-  let ids : Array[@core.NodeId] = reg.keys().to_array()
-  ids.sort_by(fn(a, b) { @core.NodeId::compare(a, b) })
-  ids.map(fn(id) { (id.0, @debug.to_string(reg.get(id).unwrap().kind)) })
-}
+//   7. count kind_mismatches + key-set asymmetries — load-bearing verdict
+//      metrics. (Earlier revisions also inspect()-asserted full
+//      (NodeId, kind) registry dumps; Codex review on PR #326 flagged that
+//      as brittle since NodeId integers + LCS tie-breaking are
+//      implementation-defined per the header. The dump assertions have
+//      been removed; B1'' in identity_probe_wbtest.mbt:255-276 keeps the
+//      foundational dump as documented evidence of the original swap.)
 
 ///|
 fn count_kind_mismatches(
@@ -100,53 +95,11 @@ test "C1: asymmetric position (same variant) — NodeId mapping" {
   try! editor_a.apply_sync(try! editor_b.export_all())
   try! editor_b.apply_sync(try! editor_a.export_all())
   inspect(editor_a.get_text() == editor_b.get_text(), content="true")
-  // Snapshots (diagnostic — actual NodeId integers are
-  // implementation-defined; do not load-bear on them).
-  inspect(
-    @debug.to_string(dump_registry(editor_a)),
-    content=(
-      #|[
-      #|  (0, "Number(2)"),
-      #|  (1, "Number(3)"),
-      #|  (2, "Number(4)"),
-      #|  (3, "Array([Number(0), Number(1), Number(2), Number(3), Number(4)])"),
-      #|  (9, "Number(1)"),
-      #|  (16, "Number(0)"),
-      #|]
-    ),
-  )
-  inspect(
-    @debug.to_string(dump_registry(editor_b)),
-    content=(
-      #|[
-      #|  (0, "Number(2)"),
-      #|  (1, "Number(3)"),
-      #|  (2, "Number(4)"),
-      #|  (3, "Array([Number(0), Number(1), Number(2), Number(3), Number(4)])"),
-      #|  (9, "Number(1)"),
-      #|  (16, "Number(0)"),
-      #|]
-    ),
-  )
-  // Verdict-level assertions.
-  inspect(
-    count_kind_mismatches(editor_a, editor_b),
-    content=(
-      #|0
-    ),
-  )
-  inspect(
-    count_keys_only_in_a(editor_a, editor_b),
-    content=(
-      #|0
-    ),
-  )
-  inspect(
-    count_keys_only_in_a(editor_b, editor_a),
-    content=(
-      #|0
-    ),
-  )
+  // Verdict (per the file header: load-bear only on count metrics, not on
+  // exact NodeId integers — LCS tie-breaking is implementation-defined).
+  inspect(count_kind_mismatches(editor_a, editor_b), content="0")
+  inspect(count_keys_only_in_a(editor_a, editor_b), content="0")
+  inspect(count_keys_only_in_a(editor_b, editor_a), content="0")
 }
 
 ///|
@@ -185,60 +138,10 @@ test "C2: nested-array divergence — NodeId mapping" {
   try! editor_a.apply_sync(try! editor_b.export_all())
   try! editor_b.apply_sync(try! editor_a.export_all())
   inspect(editor_a.get_text() == editor_b.get_text(), content="true")
-  // Snapshots.
-  inspect(
-    @debug.to_string(dump_registry(editor_a)),
-    content=(
-      #|[
-      #|  (0, "Number(9)"),
-      #|  (1, "Array([Number(1), Number(9)])"),
-      #|  (2, "Number(9)"),
-      #|  (3, "Array([Number(2), Number(9)])"),
-      #|  (
-      #|    4,
-      #|    "Array([Array([Number(1), Number(9)]), Array([Number(2), Number(9)])])",
-      #|  ),
-      #|  (11, "Number(1)"),
-      #|  (19, "Number(2)"),
-      #|]
-    ),
-  )
-  inspect(
-    @debug.to_string(dump_registry(editor_b)),
-    content=(
-      #|[
-      #|  (0, "Number(9)"),
-      #|  (1, "Array([Number(1), Number(9)])"),
-      #|  (2, "Number(9)"),
-      #|  (3, "Array([Number(2), Number(9)])"),
-      #|  (
-      #|    4,
-      #|    "Array([Array([Number(1), Number(9)]), Array([Number(2), Number(9)])])",
-      #|  ),
-      #|  (11, "Number(2)"),
-      #|  (19, "Number(1)"),
-      #|]
-    ),
-  )
-  // Verdict-level assertions.
-  inspect(
-    count_kind_mismatches(editor_a, editor_b),
-    content=(
-      #|2
-    ),
-  )
-  inspect(
-    count_keys_only_in_a(editor_a, editor_b),
-    content=(
-      #|0
-    ),
-  )
-  inspect(
-    count_keys_only_in_a(editor_b, editor_a),
-    content=(
-      #|0
-    ),
-  )
+  // Verdict.
+  inspect(count_kind_mismatches(editor_a, editor_b), content="2")
+  inspect(count_keys_only_in_a(editor_a, editor_b), content="0")
+  inspect(count_keys_only_in_a(editor_b, editor_a), content="0")
 }
 
 ///|
@@ -284,54 +187,11 @@ test "C3: delete + insert — NodeId mapping" {
   try! editor_b.apply_sync(try! editor_a.export_all())
   inspect(editor_a.get_text() == editor_b.get_text(), content="true")
   // Capture the converged text so the verdict reflects the FugueMax order.
-  inspect(
-    editor_a.get_text(),
-    content=(
-      #|[1,9,3]
-    ),
-  )
-  // Snapshots.
-  inspect(
-    @debug.to_string(dump_registry(editor_a)),
-    content=(
-      #|[
-      #|  (1, "Number(9)"),
-      #|  (2, "Number(3)"),
-      #|  (3, "Array([Number(1), Number(9), Number(3)])"),
-      #|  (11, "Number(1)"),
-      #|]
-    ),
-  )
-  inspect(
-    @debug.to_string(dump_registry(editor_b)),
-    content=(
-      #|[
-      #|  (0, "Number(1)"),
-      #|  (1, "Number(9)"),
-      #|  (2, "Number(3)"),
-      #|  (3, "Array([Number(1), Number(9), Number(3)])"),
-      #|]
-    ),
-  )
-  // Verdict-level assertions.
-  inspect(
-    count_kind_mismatches(editor_a, editor_b),
-    content=(
-      #|0
-    ),
-  )
-  inspect(
-    count_keys_only_in_a(editor_a, editor_b),
-    content=(
-      #|1
-    ),
-  )
-  inspect(
-    count_keys_only_in_a(editor_b, editor_a),
-    content=(
-      #|1
-    ),
-  )
+  inspect(editor_a.get_text(), content="[1,9,3]")
+  // Verdict.
+  inspect(count_kind_mismatches(editor_a, editor_b), content="0")
+  inspect(count_keys_only_in_a(editor_a, editor_b), content="1")
+  inspect(count_keys_only_in_a(editor_b, editor_a), content="1")
 }
 
 ///|
@@ -381,48 +241,10 @@ test "C4: object-member mixed variant — NodeId mapping" {
   // Capture the converged text so the verdict reflects the FugueMax order.
   inspect(
     editor_a.get_text(),
-    content=(
-      #|{"x":"foo","y":true,"a":1,"b":2}
-    ),
+    content="{\"x\":\"foo\",\"y\":true,\"a\":1,\"b\":2}",
   )
-  // Snapshots.
-  inspect(
-    @debug.to_string(dump_registry(editor_a)),
-    content=(
-      #|[
-      #|  (1, "Number(1)"),
-      #|  (3, "Number(2)"),
-      #|  (
-      #|    4,
-      #|    "Object(\n  [\n    (\"x\", String(\"foo\")),\n    (\"y\", Bool(true)),\n    (\"a\", Number(1)),\n    (\"b\", Number(2)),\n  ],\n)",
-      #|  ),
-      #|  (12, "String(\"foo\")"),
-      #|  (22, "Bool(true)"),
-      #|]
-    ),
-  )
-  inspect(
-    @debug.to_string(dump_registry(editor_b)),
-    content=(
-      #|[
-      #|  (1, "Number(1)"),
-      #|  (3, "Number(2)"),
-      #|  (
-      #|    4,
-      #|    "Object(\n  [\n    (\"x\", String(\"foo\")),\n    (\"y\", Bool(true)),\n    (\"a\", Number(1)),\n    (\"b\", Number(2)),\n  ],\n)",
-      #|  ),
-      #|  (12, "Bool(true)"),
-      #|  (22, "String(\"foo\")"),
-      #|]
-    ),
-  )
-  // Verdict-level assertions.
-  inspect(
-    count_kind_mismatches(editor_a, editor_b),
-    content=(
-      #|2
-    ),
-  )
+  // Verdict.
+  inspect(count_kind_mismatches(editor_a, editor_b), content="2")
   inspect(
     count_keys_only_in_a(editor_a, editor_b),
     content=(

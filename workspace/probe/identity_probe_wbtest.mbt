@@ -54,24 +54,47 @@ test "A2: shared agent_id — duplicate RawVersion is silently dropped" {
 }
 
 ///|
-/// A3 (presence collision): Both editors share agent_id = "shared_agent".
-/// Calling set_local_presence on A then on B silently overwrites A's entry
-/// because both hash to the same wire_peer_id key in the Presence store.
-/// Observable: get_online_peers() length stays 1 on A's hub; the surviving
-/// entry carries B's display name (last writer wins).
-test "A3: shared agent_id — presence is silently overwritten" {
+/// A3 (presence collision): Two editors sharing agent_id = "shared_agent"
+/// hash to the same `wire_peer_id` (`EphemeralHub::set_presence` keys the
+/// store on `to_wire_peer_id(peer_id)` — `editor/ephemeral_hub_readers.mbt:68`).
+/// Two distinct users cannot coexist: the presence store has one slot for
+/// the shared wire key, so cross-broadcast collapses both entries into one.
+///
+/// Test: each editor sets its own local presence (Alice on A, Bob on B),
+/// then cross-broadcast via the public ephemeral surface
+/// (`encode_ephemeral_all` + `apply_ephemeral`, `editor/sync_editor.mbt:167-177`).
+/// With shared agent_id each hub's presence map collapses to length 1.
+/// Paired with the A3 control below, which shows distinct agent_ids yield
+/// length 2 under the same broadcast — confirming the collision is the
+/// shared agent_id, not a broken broadcast path. Per Codex review on
+/// PR #326 (the previous A3 never propagated presence between editors,
+/// so length=1 was satisfied by absence of broadcast rather than collision).
+test "A3: shared agent_id — cross-broadcast collapses two presences into one" {
   let editor_a = @json_companion.new_json_editor("shared_agent")
   let editor_b = @json_companion.new_json_editor("shared_agent")
   editor_a.set_local_presence("Alice", "#ff0000")
   editor_b.set_local_presence("Bob", "#0000ff")
-  // A's own hub should show only 1 entry (B overwrote A's slot locally on B,
-  // but each editor writes to its own hub — so A's hub still shows Alice).
-  // The key insight: two editors with the same agent_id write to the SAME
-  // wire key; whichever hub you inspect, it has exactly 1 presence slot.
-  let online_on_a = editor_a.get_hub().get_online_peers()
-  inspect(online_on_a.length(), content="1")
-  let online_on_b = editor_b.get_hub().get_online_peers()
-  inspect(online_on_b.length(), content="1")
+  // Cross-broadcast both directions through the public ephemeral path.
+  editor_b.apply_ephemeral(editor_a.encode_ephemeral_all())
+  editor_a.apply_ephemeral(editor_b.encode_ephemeral_all())
+  // Single wire_peer_id → single slot per hub, even after broadcast.
+  inspect(editor_a.get_hub().get_online_peers().length(), content="1")
+  inspect(editor_b.get_hub().get_online_peers().length(), content="1")
+}
+
+///|
+/// A3 control: distinct agent_ids — same broadcast yields TWO presence
+/// entries per hub. Confirms the A3 collapse is the shared-agent_id
+/// collision specifically, not a bug in `apply_ephemeral` / `encode_ephemeral_all`.
+test "A3 control: distinct agent_ids — cross-broadcast preserves both presences" {
+  let editor_a = @json_companion.new_json_editor("replica_a")
+  let editor_b = @json_companion.new_json_editor("replica_b")
+  editor_a.set_local_presence("Alice", "#ff0000")
+  editor_b.set_local_presence("Bob", "#0000ff")
+  editor_b.apply_ephemeral(editor_a.encode_ephemeral_all())
+  editor_a.apply_ephemeral(editor_b.encode_ephemeral_all())
+  inspect(editor_a.get_hub().get_online_peers().length(), content="2")
+  inspect(editor_b.get_hub().get_online_peers().length(), content="2")
 }
 
 ///|
