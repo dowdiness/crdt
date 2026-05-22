@@ -139,6 +139,27 @@ fn render_graphviz_html(model : Model) -> String {
 }
 
 ///|
+/// Render the IncrGraph tab's HTML. Walks the model-owned `IncrMemoEventTap`
+/// snapshot — captures the parser runtime's dependency graph plus recent
+/// memo events, then runs the same DOT → layout → SVG pipeline as the
+/// Graphviz tab. Not cached yet: every keystroke recomputes. The
+/// `bottom_visible` gate keeps the cost off the render path when the
+/// bottom panel is collapsed.
+fn render_incr_graph_html(model : Model) -> String {
+  let snapshot = model.incr_tap.snapshot()
+  if snapshot.nodes.is_empty() {
+    "<span class=\"no-problems\">No incr cells observed yet</span>"
+  } else {
+    let svg = snapshot
+      .to_visual_graph()
+      .to_svg_with_config(bottom_tab_svg_config)
+    "<div role=\"img\" aria-label=\"Incr runtime dependency graph\">" +
+    svg +
+    "</div>"
+  }
+}
+
+///|
 /// Render the causal-graph History tab's HTML (legend + SVG, cached).
 /// See `render_graphviz_html` for the vdom-mount rationale.
 fn render_history_html(model : Model) -> String {
@@ -190,6 +211,7 @@ fn bottom_tab_slug(tab : BottomTab) -> String {
     History => "history"
     CrdtState => "crdt"
     Graphviz => "graphviz"
+    IncrGraph => "incr"
   }
 }
 
@@ -206,6 +228,7 @@ fn bottom_tab_panel_id(tab : BottomTab) -> String {
   match tab {
     History => "canopy-history-container"
     Graphviz => "canopy-graphviz-container"
+    IncrGraph => "canopy-incr-container"
     _ => "canopy-bottom-panel-" + bottom_tab_slug(tab)
   }
 }
@@ -218,6 +241,7 @@ fn view_bottom_tabs(dispatch : Emit[Msg], model : Model) -> Html {
     (History, "History"),
     (CrdtState, "CRDT State"),
     (Graphviz, "Graphviz"),
+    (IncrGraph, "Incr Graph"),
   ]
   // Build buttons with WAI-ARIA tabs keyboard support: arrow keys
   // navigate, Home/End jump to ends, and roving tabindex keeps the focus
@@ -350,6 +374,23 @@ fn view_graphviz_panel(model : Model) -> Html {
 }
 
 ///|
+/// Render the IncrGraph panel. See `view_history_panel` for the
+/// `<section>` + `inner_html` rationale and the `bottom_visible` gate.
+#warnings("-alert_xss_vulnerable")
+fn view_incr_graph_panel(model : Model) -> Html {
+  let html = if model.workspace.bottom_visible {
+    render_incr_graph_html(model)
+  } else {
+    ""
+  }
+  @html.section(
+    class="bottom-content incr-graph-content",
+    attrs=bottom_panel_attrs(IncrGraph).inner_html(html),
+    ([] : Array[Html]),
+  )
+}
+
+///|
 fn view_op_log(model : Model) -> Html {
   let log = model.intent_log
   if log.is_empty() {
@@ -434,6 +475,7 @@ fn view_bottom_content(dispatch : Emit[Msg], model : Model) -> Html {
       )
     History => view_history_panel(model)
     Graphviz => view_graphviz_panel(model)
+    IncrGraph => view_incr_graph_panel(model)
   }
   @html.fragment([view_bottom_tabs(dispatch, model), content])
 }
