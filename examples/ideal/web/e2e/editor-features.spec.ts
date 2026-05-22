@@ -329,11 +329,9 @@ test.describe('Bottom Panel Tabs', () => {
 test.describe('Sync Status', () => {
   test('shows connection status in PEERS section', async ({ page }) => {
     await waitForEditor(page);
-    // Should show Connecting or Offline (no server running)
+    // Full E2E starts the relay server; focused/local runs may skip it.
     const peersText = await page.locator('.peer-item').innerText();
-    expect(
-      peersText.includes('Connecting') || peersText.includes('Offline'),
-    ).toBe(true);
+    expect(peersText).toMatch(/Connecting|Offline|connected/i);
   });
 
   test('peer dot is visible', async ({ page }) => {
