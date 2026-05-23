@@ -148,7 +148,11 @@ fn edge_exists(edges : Array[Edge], source : NodeId, target : NodeId) -> Bool {
 }
 
 ///|
-fn can_commit_edge(state : CanvasState, source : NodeId, target : NodeId) -> Bool {
+fn can_commit_edge(
+  state : CanvasState,
+  source : NodeId,
+  target : NodeId,
+) -> Bool {
   source != target &&
   find_node(state.nodes, source) is Some(_) &&
   find_node(state.nodes, target) is Some(_) &&
@@ -156,19 +160,15 @@ fn can_commit_edge(state : CanvasState, source : NodeId, target : NodeId) -> Boo
 }
 
 ///|
-fn append_edge(state : CanvasState, source : NodeId, target : NodeId) -> CanvasState {
-  let edge : Edge = {
-    id: EdgeId(state.next_edge_id),
-    source,
-    target,
-  }
+fn append_edge(
+  state : CanvasState,
+  source : NodeId,
+  target : NodeId,
+) -> CanvasState {
+  let edge : Edge = { id: EdgeId(state.next_edge_id), source, target }
   let edges = state.edges.copy()
   edges.push(edge)
-  {
-    ..state,
-    edges,
-    next_edge_id: state.next_edge_id + 1,
-  }
+  { ..state, edges, next_edge_id: state.next_edge_id + 1 }
 }
 
 ///|
