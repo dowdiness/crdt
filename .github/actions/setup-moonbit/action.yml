@@ -8,7 +8,7 @@ runs:
   using: composite
   steps:
     - name: Install MoonBit (pinned)
-      uses: hustcer/setup-moonbit@v1.21
+      uses: hustcer/setup-moonbit@v1.22
       with:
         version: "0.9.2+bbe2b338f"
         core-version: "0.9.2+bbe2b338f"
