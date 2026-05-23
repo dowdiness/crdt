@@ -16,7 +16,7 @@ pub(all) enum Confidence[T] {
 } derive(Eq, Debug)
 
 ///|
-pub impl[T : Debug] Show for Confidence[T] with output(self, logger) {
+pub impl[T : Debug] Show for Confidence[T] with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -27,7 +27,7 @@ pub(all) suberror InvalidConfidence {
 } derive(Debug)
 
 ///|
-pub impl Show for InvalidConfidence with output(self, logger) {
+pub impl Show for InvalidConfidence with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 

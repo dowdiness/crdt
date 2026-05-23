@@ -22,7 +22,7 @@ pub(all) struct RoseNode[T] {
 } derive(Debug, Eq)
 
 ///|
-pub impl[T : Debug] Show for RoseNode[T] with output(self, logger) {
+pub impl[T : Debug] Show for RoseNode[T] with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -49,7 +49,7 @@ pub(all) struct RoseCtx[T] {
 } derive(Debug, Eq)
 
 ///|
-pub impl[T : Debug] Show for RoseCtx[T] with output(self, logger) {
+pub impl[T : Debug] Show for RoseCtx[T] with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -64,7 +64,7 @@ pub(all) struct RoseZipper[T] {
 } derive(Debug, Eq)
 
 ///|
-pub impl[T : Debug] Show for RoseZipper[T] with output(self, logger) {
+pub impl[T : Debug] Show for RoseZipper[T] with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 

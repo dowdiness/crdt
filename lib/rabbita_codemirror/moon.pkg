@@ -1,10 +1,10 @@
 import {
   "moonbit-community/rabbita/js" @js_value,
-  "moonbit-community/rabbita/cmd" @cmd,
-  "moonbit-community/rabbita/sub" @sub,
+  "moonbit-community/rabbita/cmd",
+  "moonbit-community/rabbita/sub",
   "dowdiness/rabbita_codemirror/js" @js_ffi,
-  "dowdiness/rabbita_codemirror/addon/theme" @theme,
-  "dowdiness/rabbita_codemirror/addon/keymap" @keymap,
+  "dowdiness/rabbita_codemirror/addon/theme",
+  "dowdiness/rabbita_codemirror/addon/keymap",
 }
 
 supported_targets = "js"

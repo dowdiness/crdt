@@ -1,5 +1,5 @@
 import {
-  "moonbitlang/async/js_async" @js_async,
+  "moonbitlang/async/js_async",
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }

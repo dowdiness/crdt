@@ -37,11 +37,11 @@ pub enum SyncErrorReason {
 /// (ephemeral_hub.mbt). Per the §15 Show-unification workstream pattern, real
 /// impls should produce short structural labels (e.g. SyncStatus →
 /// `"connected"`, PeerPresence → `"alice (editing)"`).
-pub impl Show for SyncStatus with output(self, logger) {
+pub impl Show for SyncStatus with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
 ///|
-pub impl Show for SyncErrorReason with output(self, logger) {
+pub impl Show for SyncErrorReason with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }

@@ -1,8 +1,8 @@
 ///|
 pub(open) trait SyncTransport {
-  send(Self, Bytes) -> Unit
-  on_receive(Self, (Bytes) -> Unit) -> Unit
-  close(Self) -> Unit
+  fn send(Self, Bytes) -> Unit
+  fn on_receive(Self, (Bytes) -> Unit) -> Unit
+  fn close(Self) -> Unit
 }
 
 ///|
@@ -17,7 +17,7 @@ pub(all) enum SyncMessage {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for SyncMessage with output(self, logger) {
+pub impl Show for SyncMessage with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 

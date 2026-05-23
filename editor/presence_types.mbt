@@ -4,7 +4,7 @@ pub(all) struct EditModeState {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for EditModeState with output(self, logger) {
+pub impl Show for EditModeState with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -22,7 +22,7 @@ pub(all) struct DragState {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for DragState with output(self, logger) {
+pub impl Show for DragState with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -33,7 +33,7 @@ pub(all) enum PresenceStatus {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for PresenceStatus with output(self, logger) {
+pub impl Show for PresenceStatus with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -46,7 +46,7 @@ pub(all) struct PeerPresence {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for PeerPresence with output(self, logger) {
+pub impl Show for PeerPresence with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 

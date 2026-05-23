@@ -340,7 +340,7 @@ pub fn SourceMap::get_all_token_spans(
 }
 
 ///|
-pub impl ToJson for SourceMap with to_json(self) {
+pub impl ToJson for SourceMap with fn to_json(self) {
   let entries : Array[Json] = []
   for node_id, range in self.node_to_range {
     let entry : Map[String, Json] = {}

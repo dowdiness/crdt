@@ -11,7 +11,7 @@ pub(all) enum EphemeralValue {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for EphemeralValue with output(self, logger) {
+pub impl Show for EphemeralValue with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -23,7 +23,7 @@ pub(all) enum EphemeralEventTrigger {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for EphemeralEventTrigger with output(self, logger) {
+pub impl Show for EphemeralEventTrigger with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 

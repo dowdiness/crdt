@@ -4,7 +4,7 @@
 pub struct NodeId(Int) derive(Debug, Eq, ToJson)
 
 ///|
-pub impl Show for NodeId with output(self, logger) {
+pub impl Show for NodeId with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -18,7 +18,7 @@ pub enum NodeKind {
 } derive(Debug, Eq, ToJson)
 
 ///|
-pub impl Show for NodeKind with output(self, logger) {
+pub impl Show for NodeKind with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -32,7 +32,7 @@ pub(all) struct Viewport {
 } derive(Debug, Eq, ToJson)
 
 ///|
-pub impl Show for Viewport with output(self, logger) {
+pub impl Show for Viewport with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -48,7 +48,7 @@ pub(all) struct CanvasNode {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for CanvasNode with output(self, logger) {
+pub impl Show for CanvasNode with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -62,7 +62,7 @@ pub(all) struct DragState {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for DragState with output(self, logger) {
+pub impl Show for DragState with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -76,7 +76,7 @@ pub(all) struct PanState {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for PanState with output(self, logger) {
+pub impl Show for PanState with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -84,7 +84,7 @@ pub impl Show for PanState with output(self, logger) {
 pub struct EdgeId(Int) derive(Debug, Eq, ToJson)
 
 ///|
-pub impl Show for EdgeId with output(self, logger) {
+pub impl Show for EdgeId with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -99,7 +99,7 @@ pub(all) struct Edge {
 } derive(Debug, Eq, ToJson)
 
 ///|
-pub impl Show for Edge with output(self, logger) {
+pub impl Show for Edge with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -113,7 +113,7 @@ pub(all) struct ConnectState {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for ConnectState with output(self, logger) {
+pub impl Show for ConnectState with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -130,7 +130,7 @@ pub(all) struct InteractionState {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for InteractionState with output(self, logger) {
+pub impl Show for InteractionState with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -145,14 +145,14 @@ pub(all) struct CanvasState {
 } derive(Debug)
 
 ///|
-pub impl Show for CanvasState with output(self, logger) {
+pub impl Show for CanvasState with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
 ///|
 /// Default state centers the world origin in a 1440×800 browser viewport
 /// and seeds six demo nodes.
-pub impl Default for CanvasState with default() -> CanvasState {
+pub impl Default for CanvasState with fn default() -> CanvasState {
   {
     viewport: { x: 520.0, y: 300.0, scale: 1.0 },
     nodes: [

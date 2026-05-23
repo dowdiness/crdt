@@ -20,7 +20,7 @@ pub(all) struct VersionedFlatProj {
 }
 
 ///|
-pub impl @incr.HasChangedAt for VersionedFlatProj with changed_at(self) -> @incr.Revision {
+pub impl @incr.HasChangedAt for VersionedFlatProj with fn changed_at(self) -> @incr.Revision {
   self.changed_at
 }
 

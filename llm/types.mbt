@@ -7,14 +7,14 @@ pub(all) enum EditAction {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for EditAction with output(self, logger) {
+pub impl Show for EditAction with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
 ///|
 /// Manual ToJson: uses object-based wire format matching Gemini API response format.
 /// One JSON schema flows end-to-end (Gemini -> MoonBit -> TypeScript).
-pub impl ToJson for EditAction with to_json(self) -> Json {
+pub impl ToJson for EditAction with fn to_json(self) -> Json {
   match self {
     FixTypos(original~, fixed~) =>
       Json::object({
@@ -48,7 +48,7 @@ pub(all) enum Role {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for Role with output(self, logger) {
+pub impl Show for Role with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -88,6 +88,6 @@ pub suberror LlmError {
 } derive(Debug)
 
 ///|
-pub impl Show for LlmError with output(self, logger) {
+pub impl Show for LlmError with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }

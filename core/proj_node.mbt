@@ -18,7 +18,7 @@ pub struct ProjNode[T] {
 /// are not recursed. The kind tag comes from `Renderable::kind_tag` so
 /// it stays a short variant name regardless of how `T` chooses to
 /// implement its own `Show`. See docs/plans/2026-05-16-show-unification.md.
-pub impl[T : @loomcore.Renderable] Show for ProjNode[T] with output(
+pub impl[T : @loomcore.Renderable] Show for ProjNode[T] with fn output(
   self,
   logger,
 ) {
@@ -100,7 +100,7 @@ pub fn[T] assign_fresh_ids(
 }
 
 ///|
-pub impl[T : ToJson] ToJson for ProjNode[T] with to_json(self) {
+pub impl[T : ToJson] ToJson for ProjNode[T] with fn to_json(self) {
   let children_json : Array[Json] = self.children.map(c => c.to_json())
   {
     "node_id": self.node_id,
