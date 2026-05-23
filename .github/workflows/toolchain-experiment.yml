@@ -1,0 +1,70 @@
+name: Toolchain Setup Experiment
+
+# Compares three MoonBit toolchain setups to inform the long-term choice
+# between staying on the pin and dropping it once moon#1716 has known
+# workarounds. Non-blocking: all jobs and steps continue-on-error so the
+# full failure surface is visible per setup.
+#
+# Triggers: push to the experiment branch, plus workflow_dispatch for
+# re-runs without code change.
+
+on:
+  push:
+    branches:
+      - worktree-workspace-add-members
+  workflow_dispatch:
+
+jobs:
+  experiment:
+    name: ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: "A · latest compiler + NEW_MOON_MOD=0"
+            moonbit_version: "latest"
+            new_moon_mod: "0"
+          - label: "B · latest compiler, no env opt-out"
+            moonbit_version: "latest"
+            new_moon_mod: ""
+          - label: "C · v0.9.2 pin + NEW_MOON_MOD=0"
+            moonbit_version: "0.9.2+bbe2b338f"
+            new_moon_mod: "0"
+    env:
+      NEW_MOON_MOD: ${{ matrix.new_moon_mod }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MoonBit (${{ matrix.moonbit_version }})
+        uses: hustcer/setup-moonbit@v1.22
+        with:
+          version: ${{ matrix.moonbit_version }}
+          core-version: ${{ matrix.moonbit_version }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Show toolchain
+        run: |
+          moon version --all
+          echo "NEW_MOON_MOD=${NEW_MOON_MOD:-<unset>}"
+
+      - name: moon check
+        run: moon check
+        continue-on-error: true
+
+      - name: moon test
+        run: moon test
+        continue-on-error: true
+
+      - name: moon fmt --check
+        run: moon fmt --check
+        continue-on-error: true
+
+      - name: moon info
+        run: moon info
+        continue-on-error: true
