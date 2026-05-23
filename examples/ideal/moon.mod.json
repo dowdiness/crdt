@@ -3,31 +3,40 @@
   "version": "0.1.0",
   "deps": {
     "moonbit-community/rabbita": {
-      "path": "../../rabbita/rabbita"
+      "path": "../../rabbita/rabbita",
+      "version": "0.12.2"
     },
     "dowdiness/rabbita_codemirror": {
-      "path": "../../lib/rabbita_codemirror"
+      "path": "../../lib/rabbita_codemirror",
+      "version": "0.0.1"
     },
     "dowdiness/dom_boundary": {
-      "path": "../../lib/dom-boundary"
+      "path": "../../lib/dom-boundary",
+      "version": "0.1.0"
     },
     "dowdiness/canopy": {
-      "path": "../.."
+      "path": "../..",
+      "version": "0.1.0"
     },
     "dowdiness/text_change": {
-      "path": "../../lib/text-change"
+      "path": "../../lib/text-change",
+      "version": "0.1.0"
     },
     "dowdiness/graphviz": {
-      "path": "../../graphviz"
+      "path": "../../graphviz",
+      "version": "0.1.0"
     },
     "dowdiness/lambda": {
-      "path": "../../loom/examples/lambda"
+      "path": "../../loom/examples/lambda",
+      "version": "0.1.0"
     },
     "dowdiness/event-graph-walker": {
-      "path": "../../event-graph-walker"
+      "path": "../../event-graph-walker",
+      "version": "0.3.0"
     },
     "dowdiness/visualizer": {
-      "path": "../../lib/visualizer"
+      "path": "../../lib/visualizer",
+      "version": "0.1.0"
     }
   },
   "source": ".",

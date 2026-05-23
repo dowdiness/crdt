@@ -7,4 +7,9 @@ members = [
   "./lib/rabbita_codemirror",
   "./lib/dom-boundary",
   "./lib/visualizer",
+  "./lib/semantic",
+  "./examples/ideal",
+  "./examples/block-editor",
+  "./examples/canvas",
+  "./examples/codemirror_demo",
 ]

@@ -4,11 +4,17 @@
   "deps": {
     "moonbitlang/quickcheck": "0.11.2",
     "dowdiness/markdown": {
-      "path": "../../loom/examples/markdown"
+      "path": "../../loom/examples/markdown",
+      "version": "0.1.0"
     }
   },
   "repository": "https://github.com/dowdiness/canopy",
   "license": "Apache-2.0",
-  "keywords": ["semantic", "annotation", "lattice", "moonbit"],
+  "keywords": [
+    "semantic",
+    "annotation",
+    "lattice",
+    "moonbit"
+  ],
   "description": "Semantic annotation library — Confidence lattice and symbolic analysis for Markdown ASTs"
 }
