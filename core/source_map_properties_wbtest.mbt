@@ -225,6 +225,42 @@ test "property: innermost_node_at returns minimal containing node" {
 }
 
 ///|
+/// Property 6b: nodes_at_position returns nodes ordered outermost→innermost.
+/// For any two consecutive nodes in the returned array, the earlier node's
+/// range must contain (or equal) the later node's range — equivalently,
+/// `prev.length() >= curr.length()`. The two formulations agree on properly
+/// nested AST trees, where any two ranges containing the same point are in
+/// a containment relationship.
+fn prop_nodes_at_position_outermost_first(expr : TestExpr) -> Bool {
+  let counter = Ref(0)
+  let offset = Ref(0)
+  let root = to_proj_node_with_ranges(expr, counter, offset)
+  let sm = SourceMap::from_ast(root)
+  guard sm.get_range(root.id()) is Some(root_range) else { return true }
+  let positions = [
+    root_range.start,
+    (root_range.start + root_range.end) / 2,
+    (root_range.end - 1).max(root_range.start),
+  ]
+  for pos in positions {
+    let ids = sm.nodes_at_position(pos)
+    for i in 1..<ids.length() {
+      guard sm.get_range(ids[i - 1]) is Some(prev) else { return false }
+      guard sm.get_range(ids[i]) is Some(curr) else { return false }
+      if prev.start > curr.start || prev.end < curr.end {
+        return false
+      }
+    }
+  }
+  true
+}
+
+///|
+test "property: nodes_at_position returns outermost first" {
+  @qc.quick_check_fn(prop_nodes_at_position_outermost_first)
+}
+
+///|
 /// Property 7: rebuild() clears token spans.
 /// Set token spans on the SourceMap, then rebuild from the same tree.
 /// All token spans should be gone after rebuild (as documented in

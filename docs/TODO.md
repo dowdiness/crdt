@@ -194,13 +194,9 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
   - Recent ephemeral events stream: renders `EphemeralStoreEvent`s via `event.to_string()`.
   - Lives in `view_bottom` or new tab alongside outline/inspector/history/intent/patch.
 
-- [ ] Wire `SourceMap` query API into editor click-path + fix ordering contract. *Part of Inspector traceability workstream.*
-  Why: `core/source_map.mbt::SourceMap::nodes_at_position` and `SourceMap::nodes_in_range` are property-tested (`core/source_map_properties_wbtest.mbt`) but unconsumed by production code. Click-path in `examples/ideal/main/view_editor.mbt` reimplements similar text-position→node logic inline. Additionally, `nodes_at_position` documents "outermost to innermost" ordering but returns `Map.keys().to_array()` — ordering is not guaranteed, latent contract bug if any consumer ever depends on nesting order.
-  Exit:
-  - `SourceMap::nodes_at_position` returns guaranteed outermost→innermost order (sort by `(end - start)` descending) with a property test pinning the contract.
-  - Click-path in `view_editor.mbt` consumes `nodes_at_position`.
-  - Selection-extend command consumes `nodes_in_range`.
-  - `SourceMap::rebuild` annotated as recovery API (see comment in source); not bundled into this TODO's exit since no UI consumer is currently committed.
+- [x] Enforce `SourceMap::nodes_at_position` ordering contract. *Part of Inspector traceability workstream.*
+  Why: the doc-comment promised "outermost to innermost" but the body returned `Map.keys().to_array()` — no ordering guarantee. Latent contract bug if any consumer ever depended on nesting order. The earlier framing ("wire into editor click-path") was stale: `examples/ideal/main/view_editor.mbt` is 25 lines of DOM mount only; the position→node lookup already routes through `SyncEditor::node_at_position` (which uses `innermost_node_at`). The "selection-extend command consumes `nodes_in_range`" sub-bullet had no committed consumer either.
+  Shipped: `SourceMap::nodes_at_position` now sorts by range length descending (outermost first, innermost last — matches `innermost_node_at`'s `minimum_by_length` semantics). Property test in `core/source_map_properties_wbtest.mbt` pins the contract — for any two consecutive returned nodes, the earlier's range contains (or equals) the later's. `SourceMap::rebuild` remains annotated in source as recovery API; no UI consumer committed, not bundled into this entry.
 
 ---
 

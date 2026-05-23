@@ -121,18 +121,26 @@ fn SourceMap::node_to_range_at_position(
 }
 
 ///|
-/// Find all nodes that contain a given position
-/// Returns nodes from outermost to innermost (parent to child)
+/// Find all nodes that contain a given position.
+/// Returns nodes sorted by containing-range length descending — outermost
+/// (largest range) first, innermost (smallest range) last. Agrees with
+/// `innermost_node_at`'s `minimum_by_length` semantics: the last element is
+/// the innermost node.
 ///
-/// Contract NOT YET ENFORCED — implementation returns `Map.keys().to_array()`
-/// which does not guarantee any particular order. Fix as part of click-path
-/// wiring (docs/TODO.md §9 "Wire SourceMap query API into editor click-path"):
-/// sort by `(range.end - range.start)` descending and add a property test.
+/// Among nodes of equal range length, relative order is unspecified.
+/// Strict containment of consecutive ranges (parent encloses child) further
+/// relies on the input being a tree of non-overlapping sibling ranges — the
+/// invariant satisfied by `SourceMap::from_ast`.
 pub fn SourceMap::nodes_at_position(
   self : SourceMap,
   position : Int,
 ) -> Array[NodeId] {
-  self.node_to_range_at_position(position).keys().to_array()
+  let pairs : Array[(NodeId, Range)] = []
+  for id, range in self.node_to_range_at_position(position) {
+    pairs.push((id, range))
+  }
+  pairs.sort_by((a, b) => b.1.length().compare(a.1.length()))
+  pairs.map(p => p.0)
 }
 
 ///|
