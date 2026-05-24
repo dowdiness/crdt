@@ -30,7 +30,7 @@ fn Reader::read_bytes(self : Reader, n : Int) -> Bytes raise EphemeralError {
 }
 
 ///|
-fn write_uvarint(buf : @buffer.Buffer, value : UInt64) -> Unit {
+fn write_uvarint(buf : Buffer, value : UInt64) -> Unit {
   let mut v = value
   while v >= 0x80UL {
     buf.write_byte((v.to_byte().to_int() | 0x80).to_byte())
@@ -63,7 +63,7 @@ fn safe_uvarint_to_int(v : UInt64) -> Int raise EphemeralError {
 }
 
 ///|
-fn write_ivarint(buf : @buffer.Buffer, value : Int64) -> Unit {
+fn write_ivarint(buf : Buffer, value : Int64) -> Unit {
   // zigzag encoding: (value << 1) ^ (value >> 63)
   let zigzag = ((value << 1) ^ (value >> 63)).reinterpret_as_uint64()
   write_uvarint(buf, zigzag)
@@ -79,9 +79,9 @@ fn read_ivarint(reader : Reader) -> Int64 raise EphemeralError {
 }
 
 ///|
-fn write_string(buf : @buffer.Buffer, s : String) -> Unit {
-  let tmp = @buffer.new()
-  tmp.write_string(s)
+fn write_string(buf : Buffer, s : String) -> Unit {
+  let tmp = Buffer()
+  tmp.write_string_utf16le(s.view())
   let bytes = tmp.to_bytes()
   write_uvarint(buf, bytes.length().to_uint64())
   buf.write_bytes(bytes)
@@ -91,15 +91,15 @@ fn write_string(buf : @buffer.Buffer, s : String) -> Unit {
 fn read_string(reader : Reader) -> String raise EphemeralError {
   let len = safe_uvarint_to_int(read_uvarint(reader))
   let bytes = reader.read_bytes(len)
-  // Wire data originates from our own write_string (valid UTF-8), but
-  // to_unchecked_string is used because MoonBit Bytes has no checked
-  // UTF-8-to-String conversion in the public API. Callers should treat
-  // decoded strings as untrusted display data, not executable content.
+  // Wire data is written via Buffer.write_string_utf16le (matching MoonBit's
+  // internal String encoding), and Bytes.to_unchecked_string round-trips that
+  // same UTF-16LE representation. Callers should treat decoded strings as
+  // untrusted display data, not executable content.
   bytes.to_unchecked_string()
 }
 
 ///|
-fn write_len_bytes(buf : @buffer.Buffer, b : Bytes) -> Unit {
+fn write_len_bytes(buf : Buffer, b : Bytes) -> Unit {
   write_uvarint(buf, b.length().to_uint64())
   buf.write_bytes(b)
 }
@@ -135,7 +135,7 @@ let tag_map : Byte = b'\x06'
 let tag_bytes : Byte = b'\x08'
 
 ///|
-fn write_ephemeral_value(buf : @buffer.Buffer, value : EphemeralValue) -> Unit {
+fn write_ephemeral_value(buf : Buffer, value : EphemeralValue) -> Unit {
   match value {
     EphemeralValue::Null => buf.write_byte(tag_null)
     EphemeralValue::Bool(v) => {
@@ -220,7 +220,7 @@ fn read_ephemeral_value(reader : Reader) -> EphemeralValue raise EphemeralError 
 }
 
 ///|
-fn write_f64_le(buf : @buffer.Buffer, value : Double) -> Unit {
+fn write_f64_le(buf : Buffer, value : Double) -> Unit {
   let bits = value.reinterpret_as_uint64()
   for i = 0; i < 8; i = i + 1 {
     buf.write_byte(((bits >> (i * 8)) & 0xFFUL).to_byte())
@@ -279,8 +279,8 @@ fn to_wire_peer_id(key : String) -> String {
 
 ///|
 fn stable_peer_hash(key : String) -> UInt64 {
-  let buf = @buffer.new()
-  buf.write_string(key)
+  let buf = Buffer()
+  buf.write_string_utf16le(key.view())
   let bytes = buf.to_bytes()
   let mut hash = 14695981039346656037UL
   for i = 0; i < bytes.length(); i = i + 1 {
@@ -305,7 +305,7 @@ fn encode_entries(entries : Array[(String, EphemeralRecord)]) -> Bytes {
   if filtered.length() == 0 {
     return Bytes::new(0)
   }
-  let buf = @buffer.new()
+  let buf = Buffer()
   write_uvarint(buf, filtered.length().to_uint64())
   for entry in filtered {
     let (peer, clock, value) = entry
