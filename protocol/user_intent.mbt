@@ -23,12 +23,12 @@ pub(all) enum UserIntent {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for UserIntent with output(self, logger) {
+pub impl Show for UserIntent with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
 ///|
-pub impl ToJson for UserIntent with to_json(self) {
+pub impl ToJson for UserIntent with fn to_json(self) {
   let m : Map[String, Json] = {}
   match self {
     TextEdit(from~, to~, insert~) => {
@@ -67,7 +67,7 @@ pub impl ToJson for UserIntent with to_json(self) {
 }
 
 ///|
-pub impl @json.FromJson for UserIntent with from_json(json, path) {
+pub impl @json.FromJson for UserIntent with fn from_json(json, path) {
   let m = match json {
     Json::Object(m) => m
     _ => raise @json.JsonDecodeError((path, "UserIntent: expected JSON object"))

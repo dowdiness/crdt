@@ -5,7 +5,7 @@
 
 ///|
 /// Arbitrary impl for TestExpr — generates bounded random trees.
-impl @quickcheck.Arbitrary for TestExpr with arbitrary(size, rs) {
+impl @quickcheck.Arbitrary for TestExpr with fn arbitrary(size, rs) {
   gen_test_expr(rs, if size < 1 { 1 } else if size > 4 { 4 } else { size })
 }
 
@@ -20,12 +20,12 @@ struct TestExprPair {
 } derive(Debug)
 
 ///|
-impl Show for TestExprPair with output(self, logger) {
+impl Show for TestExprPair with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
 ///|
-impl @quickcheck.Arbitrary for TestExprPair with arbitrary(size, rs) {
+impl @quickcheck.Arbitrary for TestExprPair with fn arbitrary(size, rs) {
   let depth = if size < 1 { 1 } else if size > 4 { 4 } else { size }
   {
     old: gen_test_expr(rs.split(), depth),

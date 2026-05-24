@@ -1,8 +1,8 @@
 import {
-  "dowdiness/canopy/core" @core,
-  "dowdiness/incr" @incr,
-  "dowdiness/markdown" @markdown,
-  "dowdiness/loom" @loom,
+  "dowdiness/canopy/core",
+  "dowdiness/incr",
+  "dowdiness/markdown",
+  "dowdiness/loom",
   "dowdiness/loom/core" @loomcore,
-  "dowdiness/seam" @seam,
+  "dowdiness/seam",
 }

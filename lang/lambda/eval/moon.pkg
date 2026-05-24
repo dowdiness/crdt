@@ -1,10 +1,10 @@
 import {
   "dowdiness/egglog/examples/lambda-eval" @egglog_eval,
   "dowdiness/egglog/src" @egglog,
-  "dowdiness/incr" @incr,
-  "dowdiness/lambda/ast" @ast,
+  "dowdiness/incr",
+  "dowdiness/lambda/ast",
   "dowdiness/lambda/eval" @lambda_eval,
-  "dowdiness/loom" @loom,
-  "dowdiness/pretty" @pretty,
+  "dowdiness/loom",
+  "dowdiness/pretty",
   "moonbitlang/core/debug",
 }

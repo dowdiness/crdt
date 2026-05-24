@@ -8,7 +8,7 @@ pub(all) struct PeerCursor {
 } derive(Debug)
 
 ///|
-pub impl Show for PeerCursor with output(self, logger) {
+pub impl Show for PeerCursor with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 

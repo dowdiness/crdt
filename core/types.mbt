@@ -6,7 +6,7 @@
 pub struct NodeId(Int) derive(Debug, Eq, Hash, Compare)
 
 ///|
-pub impl Show for NodeId with output(self, logger) {
+pub impl Show for NodeId with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -27,7 +27,7 @@ fn NodeId::short(self : NodeId) -> String {
 }
 
 ///|
-pub impl ToJson for NodeId with to_json(self) {
+pub impl ToJson for NodeId with fn to_json(self) {
   let NodeId(n) = self
   n.to_json()
 }
@@ -46,7 +46,7 @@ pub(all) struct SpanEdit {
 /// is run through `escape_for_show` so control characters and the
 /// guillemet delimiters don't break the single-line trace alignment.
 /// See docs/plans/2026-05-16-show-unification.md.
-pub impl Show for SpanEdit with output(self, logger) {
+pub impl Show for SpanEdit with fn output(self, logger) {
   logger.write_string(
     "@\{self.start} -\{self.delete_len} +«\{escape_for_show(self.inserted)}»",
   )
@@ -102,7 +102,7 @@ pub(all) enum FocusHint {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for FocusHint with output(self, logger) {
+pub impl Show for FocusHint with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -152,7 +152,7 @@ pub(all) enum GenericTreeOp {
 /// (not via `Show for NodeId`, which still emits `"NodeId(N)"`).
 /// String payloads (`CommitEdit.new_value`) are escaped via
 /// `escape_for_show`. See docs/plans/2026-05-16-show-unification.md.
-pub impl Show for GenericTreeOp with output(self, logger) {
+pub impl Show for GenericTreeOp with fn output(self, logger) {
   let label = match self {
     Select(node_id~) => "Select(\{node_id.short()})"
     SelectRange(start~, end~) => "SelectRange(\{start.short()}..\{end.short()})"

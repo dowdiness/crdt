@@ -52,12 +52,12 @@ pub fn InMemoryTransport::new(
 }
 
 ///|
-pub impl SyncTransport for InMemoryTransport with send(self, data) {
+pub impl SyncTransport for InMemoryTransport with fn send(self, data) {
   self.room.broadcast(self.peer_id, data)
 }
 
 ///|
-pub impl SyncTransport for InMemoryTransport with on_receive(self, handler) {
+pub impl SyncTransport for InMemoryTransport with fn on_receive(self, handler) {
   match self.room.peers.get(self.peer_id) {
     Some(handlers) => handlers.push(handler)
     None => ()
@@ -65,6 +65,6 @@ pub impl SyncTransport for InMemoryTransport with on_receive(self, handler) {
 }
 
 ///|
-pub impl SyncTransport for InMemoryTransport with close(self) {
+pub impl SyncTransport for InMemoryTransport with fn close(self) {
   self.room.unregister(self.peer_id)
 }

@@ -3,7 +3,7 @@
 /// Each middleware receives `next` (the inner handler) and can
 /// short-circuit or delegate — SuperOOP's `super` pattern.
 priv trait EditMiddleware {
-  apply(
+  fn apply(
     Self,
     (TreeEditOp, EditContext[@ast.Term]) -> EditResult,
     TreeEditOp,
@@ -17,7 +17,7 @@ priv trait EditMiddleware {
 priv struct ValidateNodeExists {}
 
 ///|
-impl EditMiddleware for ValidateNodeExists with apply(_self, next, op, ctx) {
+impl EditMiddleware for ValidateNodeExists with fn apply(_self, next, op, ctx) {
   match extract_primary_node_id(op) {
     Some(id) =>
       if ctx.registry.contains(id) {

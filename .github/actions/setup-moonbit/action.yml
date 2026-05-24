@@ -1,16 +1,20 @@
 name: 'Set up MoonBit'
 description: >-
-  Install MoonBit pinned to a known-good version. Workaround for
-  https://github.com/moonbitlang/moon/issues/1716 — remove this composite
-  and restore the upstream installer once that issue is resolved.
+  Install the latest MoonBit toolchain and export NEW_MOON_MOD=0 for
+  every downstream step. NEW_MOON_MOD=0 opts out of the rr_moon_mod
+  TOML migration (moonbitlang/moon#1716), which otherwise drops path
+  fields from cross-repo deps that have no valid TOML expression.
+  Setup chosen after comparing three candidates on 2026-05-23 (run
+  26330483536); see docs/2026-05-22-upstream-moonbit-rr-moon-mod-issue.md.
 
 runs:
   using: composite
   steps:
-    - name: Install MoonBit (pinned)
+    - name: Export NEW_MOON_MOD opt-out
+      shell: bash
+      run: echo "NEW_MOON_MOD=0" >> "$GITHUB_ENV"
+
+    - name: Install MoonBit (latest)
       uses: hustcer/setup-moonbit@v1.22
-      with:
-        version: "0.9.2+bbe2b338f"
-        core-version: "0.9.2+bbe2b338f"
       env:
         GITHUB_TOKEN: ${{ github.token }}

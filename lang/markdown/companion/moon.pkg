@@ -1,9 +1,9 @@
 import {
-  "dowdiness/canopy/core" @core,
-  "dowdiness/canopy/editor" @editor,
+  "dowdiness/canopy/core",
+  "dowdiness/canopy/editor",
   "dowdiness/canopy/lang/markdown/edits" @md_edits,
   "dowdiness/canopy/lang/markdown/proj" @md_proj,
   "dowdiness/canopy/lang/markdown/sentinel" @md_sentinel,
-  "dowdiness/markdown" @markdown,
-  "dowdiness/loom" @loom,
+  "dowdiness/markdown",
+  "dowdiness/loom",
 }

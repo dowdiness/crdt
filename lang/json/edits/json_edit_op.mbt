@@ -27,6 +27,6 @@ pub(all) enum JsonEditOp {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for JsonEditOp with output(self, logger) {
+pub impl Show for JsonEditOp with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }

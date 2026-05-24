@@ -1,10 +1,10 @@
 import {
-  "dowdiness/canopy/core" @core,
+  "dowdiness/canopy/core",
   "dowdiness/lambda" @parser,
-  "dowdiness/lambda/ast" @ast,
-  "dowdiness/lambda/syntax" @syntax,
+  "dowdiness/lambda/ast",
+  "dowdiness/lambda/syntax",
   "dowdiness/loom/core" @loomcore,
-  "dowdiness/seam" @seam,
+  "dowdiness/seam",
   "moonbitlang/core/cmp",
 }
 

@@ -20,9 +20,16 @@ fi
 
 cd "$PROJECT_ROOT/$MODULE_DIR"
 
+# Warning [20] = "Use Debug instead of Show for debugging purposes". The latest
+# MoonBit compiler reports this on ~150 sites across canopy core (relay/,
+# editor/, …) that pre-date the Show-on-container deprecation. Cleanup is
+# tracked in #334; suppress here so CI stays green on the latest compiler
+# under --deny-warn. Other warnings remain hard errors.
+DENY_WARN_FLAGS=(--deny-warn --warn-list "-20")
+
 case "$ACTION" in
     check)
-        moon check --deny-warn
+        moon check "${DENY_WARN_FLAGS[@]}"
         ;;
     test)
         moon test --release
@@ -32,7 +39,7 @@ case "$ACTION" in
         ;;
     ci)
         moon update
-        moon check --deny-warn
+        moon check "${DENY_WARN_FLAGS[@]}"
         moon test --release
         ;;
     bench)

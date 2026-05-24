@@ -2,7 +2,7 @@
 // Verifies: commutativity, associativity, idempotency, identity.
 
 ///|
-impl @quickcheck.Arbitrary for Role with arbitrary(_size, rs) {
+impl @quickcheck.Arbitrary for Role with fn arbitrary(_size, rs) {
   let n = rs.split().next_positive_int() % 5
   match n {
     0 => Abstract
@@ -14,7 +14,7 @@ impl @quickcheck.Arbitrary for Role with arbitrary(_size, rs) {
 }
 
 ///|
-impl @quickcheck.Arbitrary for Confidence[Role] with arbitrary(size, rs) {
+impl @quickcheck.Arbitrary for Confidence[Role] with fn arbitrary(size, rs) {
   let n = rs.split().next_positive_int() % 5
   let role : Role = @quickcheck.Arbitrary::arbitrary(size, rs.split())
   match n {
@@ -40,12 +40,12 @@ struct Pair {
 } derive(Debug)
 
 ///|
-impl Show for Pair with output(self, logger) {
+impl Show for Pair with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
 ///|
-impl @quickcheck.Arbitrary for Pair with arbitrary(size, rs) {
+impl @quickcheck.Arbitrary for Pair with fn arbitrary(size, rs) {
   {
     a: @quickcheck.Arbitrary::arbitrary(size, rs.split()),
     b: @quickcheck.Arbitrary::arbitrary(size, rs.split()),
@@ -64,12 +64,12 @@ struct Triple {
 } derive(Debug)
 
 ///|
-impl Show for Triple with output(self, logger) {
+impl Show for Triple with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
 ///|
-impl @quickcheck.Arbitrary for Triple with arbitrary(size, rs) {
+impl @quickcheck.Arbitrary for Triple with fn arbitrary(size, rs) {
   {
     a: @quickcheck.Arbitrary::arbitrary(size, rs.split()),
     b: @quickcheck.Arbitrary::arbitrary(size, rs.split()),

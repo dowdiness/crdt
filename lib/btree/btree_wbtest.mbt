@@ -10,35 +10,36 @@ struct TItem {
 } derive(Debug, Eq)
 
 ///|
-impl Show for TItem with output(self, logger) {
+impl Show for TItem with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
 ///|
-impl @rle.HasLength for TItem with length(self) -> Int {
+impl @rle.HasLength for TItem with fn length(self) -> Int {
   self.span
 }
 
 ///|
-impl @rle.Spanning for TItem with span(self) -> Int {
+impl @rle.Spanning for TItem with fn span(self) -> Int {
   self.span
 }
 
 ///|
-impl @rle.Mergeable for TItem with can_merge(a : TItem, b : TItem) -> Bool {
+impl @rle.Mergeable for TItem with fn can_merge(a : TItem, b : TItem) -> Bool {
   a.id == b.id
 }
 
 ///|
-impl @rle.Mergeable for TItem with merge(a : TItem, b : TItem) -> TItem {
+impl @rle.Mergeable for TItem with fn merge(a : TItem, b : TItem) -> TItem {
   { id: a.id, span: a.span + b.span }
 }
 
 ///|
-impl @rle.Sliceable for TItem with slice(self : TItem, start~ : Int, end~ : Int) -> Result[
-  TItem,
-  @rle.RleError,
-] {
+impl @rle.Sliceable for TItem with fn slice(
+  self : TItem,
+  start~ : Int,
+  end~ : Int,
+) -> Result[TItem, @rle.RleError] {
   if start < 0 || end > self.span || start >= end {
     Err(@rle.RleError::InvalidSlice(reason=@rle.SliceError::InvalidIndex))
   } else {
@@ -1503,12 +1504,12 @@ struct DeleteRangeCase {
 } derive(Debug)
 
 ///|
-impl Show for DeleteRangeCase with output(self, logger) {
+impl Show for DeleteRangeCase with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
 ///|
-impl @quickcheck.Arbitrary for DeleteRangeCase with arbitrary(size, rs) {
+impl @quickcheck.Arbitrary for DeleteRangeCase with fn arbitrary(size, rs) {
   let capped = if size < 0 { 0 } else if size > 32 { 32 } else { size }
   let item_count = rs.split().next_positive_int() % (capped + 1)
   let items : Array[(Int, Int)] = []
@@ -2103,12 +2104,12 @@ struct FromSortedCase {
 } derive(Debug)
 
 ///|
-impl Show for FromSortedCase with output(self, logger) {
+impl Show for FromSortedCase with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
 ///|
-impl @quickcheck.Arbitrary for FromSortedCase with arbitrary(size, rs) {
+impl @quickcheck.Arbitrary for FromSortedCase with fn arbitrary(size, rs) {
   let capped = if size < 0 { 0 } else if size > 50 { 50 } else { size }
   let item_count = rs.split().next_positive_int() % (capped + 1)
   let min_degree = 2 + rs.split().next_positive_int() % 4

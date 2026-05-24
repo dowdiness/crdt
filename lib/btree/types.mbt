@@ -24,6 +24,6 @@ pub(all) struct FindResult[T] {
 } derive(Debug, Eq)
 
 ///|
-pub impl[T : Debug] Show for FindResult[T] with output(self, logger) {
+pub impl[T : Debug] Show for FindResult[T] with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }

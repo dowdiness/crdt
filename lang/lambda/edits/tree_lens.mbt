@@ -53,7 +53,7 @@ pub(all) enum TreeEditOp {
 } derive(Debug)
 
 ///|
-pub impl Show for TreeEditOp with output(self, logger) {
+pub impl Show for TreeEditOp with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 

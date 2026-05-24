@@ -18,9 +18,7 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+        uses: ./.github/actions/setup-moonbit
 
       - name: Run PR benchmarks
         run: |
@@ -166,9 +164,7 @@ jobs:
           submodules: recursive
 
       - name: Set up MoonBit
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+        uses: ./.github/actions/setup-moonbit
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -191,4 +187,10 @@ jobs:
 
       - name: Run realistic editor response benchmark
         working-directory: examples/ideal/web
+        env:
+          # examples/ideal is a moon.work member; workspace mode emits wasm-gc
+          # only when vite-plugin-moonbit builds, so the JS bundle vite expects
+          # at _build/js/release/build/main/main.js is never produced. Same
+          # treatment as scripts/test-canvas-e2e.sh. Tracked as #335.
+          MOON_WORK: off
         run: npm run test:perf

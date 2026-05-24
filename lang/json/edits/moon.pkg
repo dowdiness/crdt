@@ -1,6 +1,6 @@
 import {
-  "dowdiness/canopy/core" @core,
+  "dowdiness/canopy/core",
   "dowdiness/canopy/lang/json/proj" @json_proj,
-  "dowdiness/json" @json,
+  "dowdiness/json",
   "moonbitlang/core/debug",
 }

@@ -50,36 +50,48 @@ test "guessed constructor accepts valid range" {
 
 ///|
 test "guessed constructor rejects NaN" {
-  let r : Result[Confidence[Role], _] = Ok(
-    Confidence::guessed(@float.not_a_number, Abstract),
-  ) catch {
-    e => Err(e)
+  let raised = try {
+    let _ = Confidence::guessed(@float.not_a_number, Abstract)
+    None
+  } catch {
+    BadConfidence(f) => Some(f)
   }
-  inspect(r, content="Err(BadConfidence(NaN))")
+  guard raised is Some(f) else { fail("expected BadConfidence") }
+  assert_true(f.is_nan())
 }
 
 ///|
 test "guessed constructor rejects infinity" {
-  let r : Result[Confidence[Role], _] = Ok(
-    Confidence::guessed(@float.infinity, Abstract),
-  ) catch {
-    e => Err(e)
+  let raised = try {
+    let _ = Confidence::guessed(@float.infinity, Abstract)
+    None
+  } catch {
+    BadConfidence(f) => Some(f)
   }
-  inspect(r, content="Err(BadConfidence(Infinity))")
+  guard raised is Some(f) else { fail("expected BadConfidence") }
+  assert_eq(f, @float.infinity)
 }
 
 ///|
 test "guessed constructor rejects negative" {
-  let r : Result[Confidence[Role], _] = Ok(Confidence::guessed(-0.1F, Abstract)) catch {
-    e => Err(e)
+  let raised = try {
+    let _ = Confidence::guessed(-0.1F, Abstract)
+    None
+  } catch {
+    BadConfidence(f) => Some(f)
   }
-  inspect(r, content="Err(BadConfidence(-0.10000000149011612))")
+  guard raised is Some(f) else { fail("expected BadConfidence") }
+  assert_eq(f, -0.1F)
 }
 
 ///|
 test "guessed constructor rejects > 1" {
-  let r : Result[Confidence[Role], _] = Ok(Confidence::guessed(1.1F, Abstract)) catch {
-    e => Err(e)
+  let raised = try {
+    let _ = Confidence::guessed(1.1F, Abstract)
+    None
+  } catch {
+    BadConfidence(f) => Some(f)
   }
-  inspect(r, content="Err(BadConfidence(1.100000023841858))")
+  guard raised is Some(f) else { fail("expected BadConfidence") }
+  assert_eq(f, 1.1F)
 }

@@ -17,12 +17,12 @@ priv enum TestExpr {
 } derive(Debug, Eq)
 
 ///|
-impl Show for TestExpr with output(self, logger) {
+impl Show for TestExpr with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
 ///|
-impl @loomcore.TreeNode for TestExpr with children(self) {
+impl @loomcore.TreeNode for TestExpr with fn children(self) {
   match self {
     Leaf(_) => []
     Branch(_, cs) => cs
@@ -30,7 +30,7 @@ impl @loomcore.TreeNode for TestExpr with children(self) {
 }
 
 ///|
-impl @loomcore.TreeNode for TestExpr with same_kind(self, other) {
+impl @loomcore.TreeNode for TestExpr with fn same_kind(self, other) {
   match (self, other) {
     (Leaf(_), Leaf(_)) => true
     (Branch(_, _), Branch(_, _)) => true
@@ -39,7 +39,7 @@ impl @loomcore.TreeNode for TestExpr with same_kind(self, other) {
 }
 
 ///|
-impl Renderable for TestExpr with kind_tag(self) {
+impl Renderable for TestExpr with fn kind_tag(self) {
   match self {
     Leaf(_) => "Leaf"
     Branch(_, _) => "Branch"
@@ -47,7 +47,7 @@ impl Renderable for TestExpr with kind_tag(self) {
 }
 
 ///|
-impl Renderable for TestExpr with label(self) {
+impl Renderable for TestExpr with fn label(self) {
   match self {
     Leaf(s) => s
     Branch(tag, _) => tag
@@ -55,12 +55,12 @@ impl Renderable for TestExpr with label(self) {
 }
 
 ///|
-impl Renderable for TestExpr with placeholder(_self) {
+impl Renderable for TestExpr with fn placeholder(_self) {
   "?"
 }
 
 ///|
-impl Renderable for TestExpr with unparse(self) {
+impl Renderable for TestExpr with fn unparse(self) {
   match self {
     Leaf(s) => s
     Branch(tag, cs) =>
@@ -69,7 +69,7 @@ impl Renderable for TestExpr with unparse(self) {
 }
 
 ///|
-impl ToJson for TestExpr with to_json(self) {
+impl ToJson for TestExpr with fn to_json(self) {
   match self {
     Leaf(s) => Json::string(s)
     Branch(tag, _) => Json::string(tag)

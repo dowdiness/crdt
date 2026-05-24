@@ -33,7 +33,7 @@ pub struct InteractiveTreeNode[T] {
 /// are not recursed. NodeId is destructured directly (not `id.to_string()`)
 /// because `Show for NodeId` still emits `"NodeId(N)"`.
 /// See docs/plans/2026-05-16-show-unification.md.
-pub impl[T : Renderable] Show for InteractiveTreeNode[T] with output(
+pub impl[T : Renderable] Show for InteractiveTreeNode[T] with fn output(
   self,
   logger,
 ) {

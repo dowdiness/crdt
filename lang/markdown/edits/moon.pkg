@@ -1,12 +1,12 @@
 import {
-  "dowdiness/canopy/core" @core,
+  "dowdiness/canopy/core",
   "dowdiness/canopy/lang/markdown/sentinel" @md_sentinel,
-  "dowdiness/markdown" @markdown,
-  "dowdiness/moji" @moji,
+  "dowdiness/markdown",
+  "dowdiness/moji",
 }
 
 import {
   "dowdiness/canopy/lang/markdown/proj" @md_proj,
   "dowdiness/loom/core" @loomcore,
-  "dowdiness/seam" @seam,
+  "dowdiness/seam",
 } for "wbtest"

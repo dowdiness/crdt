@@ -12,6 +12,6 @@ pub(all) enum Role {
 } derive(Eq, Debug)
 
 ///|
-pub impl Show for Role with output(self, logger) {
+pub impl Show for Role with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }

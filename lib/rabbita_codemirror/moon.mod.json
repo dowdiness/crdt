@@ -3,11 +3,12 @@
   "version": "0.0.1",
   "deps": {
     "moonbit-community/rabbita": {
-      "path": "../../rabbita/rabbita"
+      "path": "../../rabbita/rabbita",
+      "version": "0.12.2"
     }
   },
-  "repository": "https://github.com/dowdiness/canopy",
   "readme": "README.md",
+  "repository": "https://github.com/dowdiness/canopy",
   "license": "Apache-2.0",
   "keywords": [
     "rabbita",

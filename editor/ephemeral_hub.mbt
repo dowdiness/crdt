@@ -7,7 +7,7 @@ pub(all) enum EphemeralNamespace {
 } derive(Debug, Eq, Compare, Hash)
 
 ///|
-pub impl Show for EphemeralNamespace with output(self, logger) {
+pub impl Show for EphemeralNamespace with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 

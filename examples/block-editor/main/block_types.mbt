@@ -6,7 +6,7 @@ pub enum ListStyle {
 } derive(Eq, Debug)
 
 ///|
-pub impl Show for ListStyle with output(self, logger) {
+pub impl Show for ListStyle with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -22,7 +22,7 @@ pub enum BlockType {
 } derive(Eq, Debug)
 
 ///|
-pub impl Show for BlockType with output(self, logger) {
+pub impl Show for BlockType with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 

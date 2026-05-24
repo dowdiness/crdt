@@ -1,10 +1,10 @@
 import {
   "moonbit-community/rabbita",
-  "moonbit-community/rabbita/cmd" @cmd,
-  "moonbit-community/rabbita/sub" @sub,
-  "moonbit-community/rabbita/html" @html,
+  "moonbit-community/rabbita/cmd",
+  "moonbit-community/rabbita/sub",
+  "moonbit-community/rabbita/html",
   "dowdiness/rabbita_codemirror" @cm,
-  "dowdiness/rabbita_codemirror/addon/theme" @theme,
+  "dowdiness/rabbita_codemirror/addon/theme",
   "dowdiness/rabbita_codemirror/js" @js_ffi,
 }
 

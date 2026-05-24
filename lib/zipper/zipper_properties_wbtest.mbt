@@ -23,7 +23,7 @@ fn gen_rose_node(rs : @splitmix.RandomState, depth : Int) -> RoseNode[Int] {
 }
 
 ///|
-impl @quickcheck.Arbitrary for RoseNode[Int] with arbitrary(size, rs) {
+impl @quickcheck.Arbitrary for RoseNode[Int] with fn arbitrary(size, rs) {
   gen_rose_node(rs, if size < 1 { 1 } else if size > 4 { 4 } else { size })
 }
 

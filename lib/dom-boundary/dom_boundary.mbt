@@ -63,7 +63,7 @@ pub struct CustomEventSubscription {
 }
 
 ///|
-pub impl Show for DomBoundaryError with output(self, logger) {
+pub impl Show for DomBoundaryError with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 

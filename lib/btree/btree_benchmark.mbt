@@ -4,27 +4,27 @@ priv struct BItem {
 }
 
 ///|
-impl @rle.HasLength for BItem with length(_self) {
+impl @rle.HasLength for BItem with fn length(_self) {
   1
 }
 
 ///|
-impl @rle.Spanning for BItem with span(_self) {
+impl @rle.Spanning for BItem with fn span(_self) {
   1
 }
 
 ///|
-impl @rle.Mergeable for BItem with can_merge(_self, _other) -> Bool {
+impl @rle.Mergeable for BItem with fn can_merge(_self, _other) -> Bool {
   false
 }
 
 ///|
-impl @rle.Mergeable for BItem with merge(_self, _other) -> BItem {
+impl @rle.Mergeable for BItem with fn merge(_self, _other) -> BItem {
   abort("unreachable")
 }
 
 ///|
-impl @rle.Sliceable for BItem with slice(self, start~ : Int, end~ : Int) -> Result[
+impl @rle.Sliceable for BItem with fn slice(self, start~ : Int, end~ : Int) -> Result[
   BItem,
   @rle.RleError,
 ] {

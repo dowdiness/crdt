@@ -15,23 +15,20 @@ git submodule update --init --recursive
 
 ### Test & Build
 ```bash
-# Workspace-root commands cover the canopy module + lib/text-change + lib/zipper +
-# lib/btree + lib/moji (the five `moon.work` members).
+# Workspace-root commands cover all in-repo modules listed in `moon.work`:
+# canopy + lib/{text-change,zipper,btree,moji,rabbita_codemirror,dom-boundary,
+# visualizer,semantic} + examples/{ideal,block-editor,canvas,codemirror_demo}.
 moon test                           # All workspace members
 moon check                          # Lint across workspace
 moon info && moon fmt               # Format & update interfaces
 
-# Submodules and example modules are NOT workspace members — still need fanout:
+# Submodules are NOT workspace members — still need fanout:
 cd event-graph-walker && moon test  # CRDT library tests
 cd loom/loom && moon test           # Parser framework tests
 cd loom/seam && moon test           # CST library tests
 cd loom/examples/lambda && moon test # Lambda parser tests
 cd loom/examples/json && moon test
 cd loom/examples/markdown && moon test
-cd lib/semantic && moon test        # Semantic annotation tests (not a workspace member)
-cd examples/ideal && moon test      # Ideal editor example (PR-gated in CI)
-cd examples/block-editor && moon test
-cd examples/canvas && moon test
 ```
 
 The canonical CI fan-out is described in `.github/workflows/ci.yml`. Use that

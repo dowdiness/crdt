@@ -1,5 +1,5 @@
 import {
-  "dowdiness/moji" @moji,
+  "dowdiness/moji",
 }
 
 options(

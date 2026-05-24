@@ -9,7 +9,7 @@ pub(all) enum EvalResult {
 } derive(Debug, Eq)
 
 ///|
-pub impl Show for EvalResult with output(self, logger) {
+pub impl Show for EvalResult with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 

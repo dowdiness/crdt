@@ -1,18 +1,18 @@
 import {
-  "dowdiness/text_change" @text_change,
-  "dowdiness/moji" @moji,
+  "dowdiness/text_change",
+  "dowdiness/moji",
   "dowdiness/event-graph-walker/text",
   "dowdiness/event-graph-walker/undo",
   "dowdiness/event-graph-walker/history",
-  "dowdiness/incr" @incr,
-  "dowdiness/loom" @loom,
-  "dowdiness/canopy/core" @core,
+  "dowdiness/incr",
+  "dowdiness/loom",
+  "dowdiness/canopy/core",
   "dowdiness/loom/core" @loom_core,
   "dowdiness/seam",
-  "dowdiness/pretty" @pretty,
-  "dowdiness/canopy/protocol" @protocol,
+  "dowdiness/pretty",
+  "dowdiness/canopy/protocol",
   "moonbitlang/core/bench",
-  "moonbitlang/core/debug" @debug,
+  "moonbitlang/core/debug",
   "moonbitlang/core/quickcheck",
   "moonbitlang/core/buffer",
   "moonbitlang/core/strconv",
@@ -25,12 +25,12 @@ import {
 import {
   "moonbitlang/quickcheck" @qc,
   "dowdiness/lambda" @parser,
-  "dowdiness/lambda/ast" @ast,
-  "dowdiness/canopy/lang/lambda" @lambda,
+  "dowdiness/lambda/ast",
+  "dowdiness/canopy/lang/lambda",
 } for "test"
 
 import {
-  "dowdiness/canopy/lang/lambda" @lambda,
+  "dowdiness/canopy/lang/lambda",
 } for "wbtest"
 
 warnings = "-7-29"

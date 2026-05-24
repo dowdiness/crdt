@@ -39,7 +39,7 @@ pub(all) enum Severity {
 } derive(Debug, Eq)
 
 ///|
-pub impl ToJson for Severity with to_json(self) {
+pub impl ToJson for Severity with fn to_json(self) {
   match self {
     SevError => "error".to_json()
     SevWarning => "warning".to_json()
@@ -95,7 +95,7 @@ pub(all) enum ViewPatch {
 } derive(Debug, Eq)
 
 ///|
-pub impl ToJson for Decoration with to_json(self) {
+pub impl ToJson for Decoration with fn to_json(self) {
   let m : Map[String, Json] = {}
   m["from"] = self.from.to_json()
   m["to"] = self.to.to_json()
@@ -109,7 +109,7 @@ pub impl ToJson for Decoration with to_json(self) {
 }
 
 ///|
-pub impl ToJson for Diagnostic with to_json(self) {
+pub impl ToJson for Diagnostic with fn to_json(self) {
   let m : Map[String, Json] = {}
   m["from"] = self.from.to_json()
   m["to"] = self.to.to_json()
@@ -119,7 +119,7 @@ pub impl ToJson for Diagnostic with to_json(self) {
 }
 
 ///|
-pub impl ToJson for ViewPatch with to_json(self) {
+pub impl ToJson for ViewPatch with fn to_json(self) {
   let m : Map[String, Json] = {}
   match self {
     TextChange(from~, to~, insert~) => {
