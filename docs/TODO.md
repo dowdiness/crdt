@@ -380,6 +380,14 @@ The [moji API spec](plans/2026-05-10-moji-api-spec.md) is now
   Plan: `docs/plans/2026-04-26-lambda-typecheck-pipeline-evolution.md`
   Exit: 6/6 plan steps shipped — type diagnostics carry ranges, wire is typed (no JSON round-trip), `query_type_at_offset` exposed and consumed by hover, diagnostic updates are subscription-driven, per-def memo isolation verified by test, and `@typecheck.attach` is the single shared attachment abstraction used by both canopy and the loom example.
 
+## 18. Shared-Runtime Workspace (§P0b prep)
+
+- [ ] Resume §P0b design with grounded substrate.
+  Why: §P0a research shipped (PR #326); the tracked observer-discipline contract now pins the editor-side rooting obligations. 2026-05-24 PR-shape brainstorm paused after 5 Codex rounds + 17 substantive findings without convergence — root cause: jumped to coordinator-API design without grounding in actual call flow.
+  Grounding: `docs/research/2026-05-24-shared-runtime-call-flow-grounding.md` (this branch, 2026-05-24) — maps the new-editor construction call flow, full cell construction inventory (10-cell protected surface; only 1 persistent Observer today on `TypecheckBundle.output`), scope ownership graph, destroy flow, five atomic-boundary candidates with tradeoffs, ten constraints the coordinator must respect.
+  Contract: `docs/research/2026-05-23-observer-discipline-contract.md`.
+  Next: open a fresh brainstorm session using the grounding doc as substrate. Pick an atomic-boundary candidate (§5) before sketching coordinator API.
+
 ## Shipped history
 
 Completed items (with PR references and shipping notes) are preserved in
