@@ -277,6 +277,7 @@ pub fn[T : Eq] SyncEditor::apply_text_edit_exact(Self[T], Int, Int, String, Int)
 pub fn[T : Eq] SyncEditor::apply_text_transform(Self[T], @dowdiness/canopy/core.NodeId, (String, Int, Int) -> Result[String, String], Int) -> Result[Unit, TreeEditError]
 pub fn[T : Eq] SyncEditor::backspace(Self[T]) -> Bool
 pub fn[T : Eq] SyncEditor::backspace_and_record(Self[T], Int) -> Bool
+pub fn[T] SyncEditor::cached_proj_node(Self[T]) -> @cells.Derived[@dowdiness/canopy/core.ProjNode[T]?]
 pub fn[T] SyncEditor::can_redo(Self[T]) -> Bool
 pub fn[T] SyncEditor::can_undo(Self[T]) -> Bool
 pub fn[T] SyncEditor::causal_snapshot(Self[T]) -> @history.CausalSnapshot
@@ -322,11 +323,14 @@ pub fn[T : Eq + @dowdiness/loom/core.Renderable] SyncEditor::move_node(Self[T], 
 pub fn[T] SyncEditor::new_generic(String, (String) -> @pipeline.Parser[T], (@pipeline.Parser[T]) -> (@cells.Derived[@dowdiness/canopy/core.ProjNode[T]?], @cells.Derived[Map[@dowdiness/canopy/core.NodeId, @dowdiness/canopy/core.ProjNode[T]]], @cells.Derived[@dowdiness/canopy/core.SourceMap]), capture_timeout_ms? : Int, capabilities? : LanguageCapabilities[T]) -> Self[T]
 pub fn[T] SyncEditor::node_at_position(Self[T], Int) -> @dowdiness/canopy/core.NodeId?
 pub fn[T] SyncEditor::on_watchdog_fire(Self[T], Int) -> Unit
+pub fn[T] SyncEditor::parser_ast(Self[T]) -> @cells.Derived[T]
+pub fn[T] SyncEditor::parser_diagnostics(Self[T]) -> @cells.Derived[@dowdiness/loom/core.DiagnosticSet]
 pub fn[T] SyncEditor::parser_runtime(Self[T]) -> @cells.Runtime
 pub fn[T] SyncEditor::parser_syntax_tree(Self[T]) -> @cells.Derived[@seam.SyntaxNode]
 pub fn[T : Eq] SyncEditor::redo(Self[T]) -> Bool
 pub fn[T : Eq] SyncEditor::redo_and_export(Self[T]) -> @text.SyncMessage?
 pub fn[T] SyncEditor::refresh(Self[T]) -> Unit
+pub fn[T] SyncEditor::registry_memo(Self[T]) -> @cells.Derived[Map[@dowdiness/canopy/core.NodeId, @dowdiness/canopy/core.ProjNode[T]]]
 pub fn[T] SyncEditor::remove_ephemeral_outdated(Self[T]) -> Unit
 pub fn[T] SyncEditor::set_local_presence(Self[T], String, String, selection? : (Int, Int)?) -> Unit
 pub fn[T] SyncEditor::set_on_status_change(Self[T], ((SyncStatus) -> Unit)?) -> Unit
@@ -335,6 +339,7 @@ pub fn[T : Eq] SyncEditor::set_text_and_record(Self[T], String, Int) -> Unit
 pub fn[T] SyncEditor::set_tracking(Self[T], Bool) -> Unit
 pub fn[T] SyncEditor::set_watchdog_scheduler(Self[T], ((Int, Int) -> Unit)?) -> Unit
 pub fn[T] SyncEditor::set_watchdog_timeout(Self[T], Int) -> Unit
+pub fn[T] SyncEditor::source_map_memo(Self[T]) -> @cells.Derived[@dowdiness/canopy/core.SourceMap]
 pub fn[T] SyncEditor::subscribe_ephemeral_local(Self[T], (Bytes) -> Bool) -> EphemeralSubscription
 pub fn[T : Eq] SyncEditor::undo(Self[T]) -> Bool
 pub fn[T : Eq] SyncEditor::undo_and_export(Self[T]) -> @text.SyncMessage?

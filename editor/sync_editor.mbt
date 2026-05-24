@@ -310,6 +310,32 @@ pub fn[T] SyncEditor::get_registry(
 }
 
 ///|
+/// Reactive view of the cached ProjNode tree, or `None` on empty source.
+/// Returns the underlying Derived cell for use by workspace-coordinator
+/// subscribers that need to react to changes rather than read eagerly.
+pub fn[T] SyncEditor::cached_proj_node(
+  self : SyncEditor[T],
+) -> @incr.Derived[@core.ProjNode[T]?] {
+  self.cached_proj_node
+}
+
+///|
+/// Reactive view of the node-id → projection-node registry.
+pub fn[T] SyncEditor::registry_memo(
+  self : SyncEditor[T],
+) -> @incr.Derived[Map[@core.NodeId, @core.ProjNode[T]]] {
+  self.registry_memo
+}
+
+///|
+/// Reactive view of the source-position → node-id map.
+pub fn[T] SyncEditor::source_map_memo(
+  self : SyncEditor[T],
+) -> @incr.Derived[@core.SourceMap] {
+  self.source_map_memo
+}
+
+///|
 /// Returns the parsed AST tree (language-specific type T).
 /// Always `Some(_)` — the Parser primes its AST cell in the constructor
 /// and malformed input propagates through recovered syntax plus diagnostics,

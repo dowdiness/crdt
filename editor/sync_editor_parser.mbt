@@ -134,6 +134,29 @@ pub fn[T] SyncEditor::parser_syntax_tree(
 }
 
 ///|
+/// Reactive view of the parser's recovered AST. Tracked when read via
+/// `.get_or_abort()` inside a memo closure.
+pub fn[T] SyncEditor::parser_ast(self : SyncEditor[T]) -> @incr.Derived[T] {
+  self.parser.ast()
+}
+
+///|
+/// Reactive view of the parser's source text.
+pub fn[T] SyncEditor::parser_source(
+  self : SyncEditor[T],
+) -> @incr.Derived[String] {
+  self.parser.source()
+}
+
+///|
+/// Reactive view of the parser's diagnostic set.
+pub fn[T] SyncEditor::parser_diagnostics(
+  self : SyncEditor[T],
+) -> @incr.Derived[@loom.DiagnosticSet] {
+  self.parser.diagnostics()
+}
+
+///|
 /// Convert an (old_text, new_text) pair into parser Edits using loom's
 /// TextDelta API instead of a bespoke string diff.
 ///

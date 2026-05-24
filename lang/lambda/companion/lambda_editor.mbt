@@ -13,6 +13,24 @@ pub struct LambdaCompanion {
 }
 
 ///|
+/// Reactive view of the versioned flat projection cell.
+/// Returns the underlying Derived so workspace-coordinator subscribers
+/// can react to changes rather than polling eagerly.
+pub fn LambdaCompanion::proj_memo(
+  self : LambdaCompanion,
+) -> @incr.Derived[@lambda_flat.VersionedFlatProj] {
+  self.proj_memo
+}
+
+///|
+/// Reactive view of the escalation-memo cell (Tier 1 + Tier 2 merged results).
+pub fn LambdaCompanion::escalation_memo(
+  self : LambdaCompanion,
+) -> @incr.Derived[Array[@lambda_eval.EvalResult]] {
+  self.escalation_memo
+}
+
+///|
 pub fn LambdaCompanion::get_flat_proj(
   self : LambdaCompanion,
 ) -> @lambda_proj.FlatProj? {
