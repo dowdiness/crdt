@@ -19,7 +19,9 @@ test "SyncEditor exposes typed accessors for protected cells" {
   let _ = diag_cell.read_or_abort()
   let proj_cell : @incr.Derived[@core.ProjNode[@ast.Term]?] = editor.cached_proj_node()
   let _ = proj_cell.read_or_abort()
-  let registry_cell : @incr.Derived[Map[@core.NodeId, @core.ProjNode[@ast.Term]]] = editor.registry_memo()
+  let registry_cell : @incr.Derived[
+    Map[@core.NodeId, @core.ProjNode[@ast.Term]],
+  ] = editor.registry_memo()
   let _ = registry_cell.read_or_abort()
   let source_map_cell : @incr.Derived[@core.SourceMap] = editor.source_map_memo()
   let _ = source_map_cell.read_or_abort()
