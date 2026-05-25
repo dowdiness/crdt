@@ -6,17 +6,21 @@ import {
 }
 
 // Values
+pub fn add_node(Int, String, Double, Double) -> Unit
+
 pub fn create_canvas() -> Int
+
+pub fn get_action_log(Int) -> String
 
 pub fn get_render_state(Int) -> String
 
 pub fn pointer_down(Int, Int, Double, Double) -> Unit
 
-pub fn pointer_down_handle(Int, Int, Double, Double) -> Unit
+pub fn pointer_down_handle(Int, Int, String, Double, Double) -> Unit
 
 pub fn pointer_move(Int, Double, Double) -> Unit
 
-pub fn pointer_up(Int, Int) -> Unit
+pub fn pointer_up(Int, Int, String, Bool) -> Unit
 
 pub fn zoom(Int, Double, Double, Double) -> Unit
 
@@ -30,21 +34,29 @@ pub(all) struct CanvasNode {
   w : Double
   h : Double
   kind : NodeKind
-} derive(Eq, @debug.Debug)
+  title : String
+  subtitle : String
+  inputs : Array[PortDef]
+  outputs : Array[PortDef]
+  configured : Bool
+} derive(Eq, ToJson, @debug.Debug)
 pub impl Show for CanvasNode
 
 pub(all) struct CanvasState {
   viewport : Viewport
   nodes : Array[CanvasNode]
   edges : Array[Edge]
+  next_node_id : Int
   next_edge_id : Int
   interaction : InteractionState
+  action_log : Array[WorkflowAction]
 } derive(@debug.Debug)
 pub impl Default for CanvasState
 pub impl Show for CanvasState
 
 pub(all) struct ConnectState {
   from_node : NodeId
+  from_port : String
   cursor_x : Double
   cursor_y : Double
 } derive(Eq, @debug.Debug)
@@ -52,17 +64,25 @@ pub impl Show for ConnectState
 
 type ConnectingJson derive(ToJson)
 
-pub(all) struct DragState {
+pub(all) struct DragOrigin {
   node_id : NodeId
   offset_x : Double
   offset_y : Double
+} derive(Eq, @debug.Debug)
+pub impl Show for DragOrigin
+
+pub(all) struct DragState {
+  node_id : NodeId
+  origins : Array[DragOrigin]
 } derive(Eq, @debug.Debug)
 pub impl Show for DragState
 
 pub(all) struct Edge {
   id : EdgeId
   source : NodeId
+  source_port : String
   target : NodeId
+  target_port : String
 } derive(Eq, ToJson, @debug.Debug)
 pub impl Show for Edge
 
@@ -76,6 +96,7 @@ pub(all) struct InteractionState {
   panning : PanState?
   connecting : ConnectState?
   selected : NodeId?
+  selected_nodes : Array[NodeId]
   pointer_down : Bool
   did_move : Bool
 } derive(Eq, @debug.Debug)
@@ -87,10 +108,16 @@ pub impl Show for NodeId
 type NodeJson derive(ToJson)
 
 pub enum NodeKind {
-  Shape(String)
-  Text(String)
+  Workflow(WorkflowNodeKind)
 } derive(Eq, ToJson, @debug.Debug)
 pub impl Show for NodeKind
+
+pub(all) struct NodePosition {
+  node_id : NodeId
+  x : Double
+  y : Double
+} derive(Eq, ToJson, @debug.Debug)
+pub impl Show for NodePosition
 
 pub(all) struct PanState {
   start_screen_x : Double
@@ -100,7 +127,26 @@ pub(all) struct PanState {
 } derive(Eq, @debug.Debug)
 pub impl Show for PanState
 
+pub(all) struct PortDef {
+  id : String
+  label : String
+  port_type : PortType
+} derive(Eq, ToJson, @debug.Debug)
+pub impl Show for PortDef
+
+pub enum PortType {
+  Flow
+  Text
+  Number
+  Boolean
+  Json
+  Any
+} derive(Eq, ToJson, @debug.Debug)
+pub impl Show for PortType
+
 type RenderStateJson derive(ToJson)
+
+type ValidationJson derive(ToJson)
 
 pub(all) struct Viewport {
   x : Double
@@ -108,6 +154,26 @@ pub(all) struct Viewport {
   scale : Double
 } derive(Eq, ToJson, @debug.Debug)
 pub impl Show for Viewport
+
+pub enum WorkflowAction {
+  AddNode(CanvasNode)
+  MoveNodes(Array[NodePosition])
+  ConnectPorts(NodeId, String, NodeId, String)
+  SelectNodes(Array[NodeId])
+  SetViewport(Viewport)
+} derive(Eq, ToJson, @debug.Debug)
+pub impl Show for WorkflowAction
+
+pub enum WorkflowNodeKind {
+  TimerTrigger
+  HttpRequest
+  DataFormatter
+  ConditionalBranch
+  Loop
+  Parallel
+  Custom(String)
+} derive(Eq, ToJson, @debug.Debug)
+pub impl Show for WorkflowNodeKind
 
 // Type aliases
 
