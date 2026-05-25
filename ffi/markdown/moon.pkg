@@ -6,7 +6,6 @@ import {
   "dowdiness/canopy/lang/markdown/sentinel" @md_sentinel,
   "dowdiness/canopy/protocol",
   "dowdiness/canopy/workspace/coordinator" @workspace,
-  "dowdiness/incr/cells",
   "dowdiness/loom/core" @loom,
   "dowdiness/seam",
   "dowdiness/markdown" @md,
