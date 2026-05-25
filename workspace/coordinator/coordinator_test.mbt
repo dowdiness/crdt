@@ -8,14 +8,20 @@ test "Coordinator types are constructible" {
 
 ///|
 /// `Runtime::set_on_change` is single-occupancy (spec §6.1, claimed by
-/// `Coordinator::new`). Later tests in this file MUST NOT install their own
-/// on_change listeners or they will overwrite the coordinator's stub.
-test "Coordinator::new claims the on_change slot without aborting" {
+/// `Coordinator::new`). This test pins observable behavior: after
+/// construction, an input mutation fires the slot exactly once (because
+/// the slot is populated, even if with a stub). It also exercises the
+/// overwrite path: a downstream caller can replace the stub and the
+/// new callback fires instead. Phase 2 will multiplex registered
+/// listeners through a coordinator-owned dispatcher.
+test "Coordinator::new populates on_change; downstream can override" {
   let coord = Coordinator::new()
   let rt = coord.runtime()
-  // No assertion: this just verifies the slot is in use and the second
-  // assignment overwrites cleanly. Phase 2 multiplexes registered listeners.
-  rt.set_on_change(fn() {  })
+  let probe = Ref(0)
+  rt.set_on_change(fn() { probe.val = probe.val + 1 })
+  let input = @incr.Input(rt, 0, label="probe_input")
+  input.set(1)
+  assert_eq(probe.val, 1)
 }
 
 ///|
@@ -59,7 +65,11 @@ test "read_protected rejects a cell not in editor's protected set" {
 }
 
 ///|
-test "register_dep + unregister_dep round trip" {
+/// Asserts dep-edge state via the observable destroy gateway: after
+/// `register_dep`, destroy must refuse with `DestroyWhileDependedUpon`;
+/// after `unregister_dep`, destroy must succeed. Also exercises
+/// idempotency of both register_dep and unregister_dep.
+test "register_dep + unregister_dep round trip — observable via destroy gate" {
   let coord = Coordinator::new()
   let rt = coord.runtime()
   let editor_cell = @incr.Derived::Derived(rt, fn() { 1 }, label="ec")
@@ -67,11 +77,19 @@ test "register_dep + unregister_dep round trip" {
   let pe = ProtectedCell::from_derived("ec", editor_cell)
   let id = coord.register_editor("agent", [pe.erase()])
   coord.register_dep(ws_cell.id(), id, editor_cell.id())
-  // Idempotent: a second call with the same edge is a no-op.
+  // Idempotent: a second call with the same edge is a no-op (still 1 edge).
   coord.register_dep(ws_cell.id(), id, editor_cell.id())
+  match coord.destroy_editor(id) {
+    Ok(_) => fail("expected DestroyWhileDependedUpon after register_dep")
+    Err(r) => assert_eq(r.kind, DestroyWhileDependedUpon)
+  }
   coord.unregister_dep(ws_cell.id(), id, editor_cell.id())
-  // Idempotent: a second remove is a no-op.
+  // Idempotent: a second remove on an empty edge set is a no-op.
   coord.unregister_dep(ws_cell.id(), id, editor_cell.id())
+  match coord.destroy_editor(id) {
+    Ok(_) => ()
+    Err(r) => fail("expected Ok after unregister_dep, got \{r}")
+  }
 }
 
 ///|
@@ -92,6 +110,8 @@ test "destroy_editor refuses while a dep edge points at this editor" {
     Ok(_) => ()
     Err(r) => fail("expected Ok after unregister_dep, got \{r}")
   }
+  // Destroy disposed the protected Watch (spec §7 lines 425-427).
+  assert_true((pe.is_disposed)())
 }
 
 ///|
@@ -112,6 +132,8 @@ test "read_protected after destroy returns EditorDestroyed with full context" {
     Err(r) => {
       assert_eq(r.kind, EditorDestroyed)
       assert_eq(r.agent_id, "test_agent")
+      @debug.assert_eq(r.cell_id, Some(d.id()))
+      @debug.assert_eq(r.cell_label, Some("ec"))
     }
   }
 }

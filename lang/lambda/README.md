@@ -12,7 +12,7 @@ Re-exported from `lang/lambda/edits`:
 
 Re-exported from `lang/lambda/companion`:
 - type `LambdaCompanion`
-- `new_lambda_editor(source) -> (SyncEditor[Term], LambdaCompanion)`
+- `new_lambda_editor(agent_id, capture_timeout_ms?, parent_runtime?) -> (SyncEditor[Term], LambdaCompanion)`
 - `apply_lambda_tree_edit(editor, companion, op, cursor)`
 - `get_lambda_ast`, `get_lambda_ast_pretty`, `get_lambda_resolution`, `get_lambda_dot_resolved`
 - `parse_tree_edit_op`
