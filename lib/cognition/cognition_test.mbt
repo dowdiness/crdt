@@ -64,6 +64,41 @@ test "QueryContext depends on RepoSummary" {
 }
 
 ///|
+test "new FileSummary invalidates existing repo context" {
+  let store = CognitionStore::new()
+  store.set_input(FileText("a.mbt"), Text("one"))
+  let _ = store.compute(FileSummary("a.mbt"))
+  let _ = store.compute(RepoSummary)
+  let _ = store.compute(QueryContext("what changed?"))
+
+  store.set_input(FileText("b.mbt"), Text("two"))
+  store.mark_dirty(FileSummary("b.mbt"))
+  let recomputed = store.recompute_dirty()
+
+  inspect(recomputed.contains(FileSummary("b.mbt")), content="true")
+  inspect(recomputed.contains(RepoSummary), content="true")
+  inspect(recomputed.contains(QueryContext("what changed?")), content="true")
+}
+
+///|
+test "returned ContextBundle cannot mutate stored value" {
+  let store = CognitionStore::new()
+  store.set_input(FileText("a.mbt"), Text("hello"))
+  let _ = store.compute(FileSummary("a.mbt"))
+  let _ = store.compute(RepoSummary)
+  let _ = store.compute(QueryContext("what changed?"))
+  match store.get_value(QueryContext("what changed?")) {
+    Some(ContextBundle(items)) => items.push("external mutation")
+    _ => fail("expected context bundle")
+  }
+  match store.get_value(QueryContext("what changed?")) {
+    Some(ContextBundle(items)) =>
+      inspect(items.contains("external mutation"), content="false")
+    _ => fail("expected context bundle")
+  }
+}
+
+///|
 test "demo trace shows selective recomputation" {
   inspect(
     demo_trace().join("\n"),

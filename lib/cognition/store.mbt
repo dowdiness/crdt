@@ -30,7 +30,7 @@ pub fn CognitionStore::set_input(
   key : CognitionKey,
   value : CognitionValue,
 ) -> Unit {
-  self.values[key] = value
+  self.values[key] = value.copy_value()
   self.bump_revision(key)
   self.dirty.remove(key)
   let _ = self.dirty_dependents(key)
@@ -41,7 +41,10 @@ pub fn CognitionStore::get_value(
   self : CognitionStore,
   key : CognitionKey,
 ) -> CognitionValue? {
-  self.values.get(key)
+  match self.values.get(key) {
+    Some(value) => Some(value.copy_value())
+    None => None
+  }
 }
 
 ///|
@@ -276,10 +279,25 @@ fn CognitionStore::store_recomputed(
   value : CognitionValue,
   inputs : Array[CognitionKey],
 ) -> Unit {
-  self.values[key] = value
+  let was_new = !self.values.contains(key)
+  self.values[key] = value.copy_value()
   self.set_dependencies(key, inputs)
   self.bump_revision(key)
   self.recompute_counts[key] = self.recompute_count(key) + 1
+  self.after_recompute(key, was_new~)
+}
+
+///|
+fn CognitionStore::after_recompute(
+  self : CognitionStore,
+  key : CognitionKey,
+  was_new~ : Bool,
+) -> Unit {
+  match key {
+    FileSummary(_) if was_new && self.values.contains(RepoSummary) =>
+      self.mark_dirty(RepoSummary)
+    _ => ()
+  }
 }
 
 ///|
@@ -346,6 +364,15 @@ fn CognitionStore::known_file_summary_keys(
   }
   keys.sort_by(fn(a, b) { a.compare(b) })
   keys
+}
+
+///|
+fn CognitionValue::copy_value(self : CognitionValue) -> CognitionValue {
+  match self {
+    Text(value) => Text(value)
+    Summary(value) => Summary(value)
+    ContextBundle(items) => ContextBundle(items.copy())
+  }
 }
 
 ///|

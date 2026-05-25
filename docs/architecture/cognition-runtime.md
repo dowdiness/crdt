@@ -16,31 +16,27 @@ recomputation uses deterministic mock functions.
 
 ## Minimal model
 
-The initial package is `lib/cognition`.
+The runtime is intentionally small and separate from the editor pipeline. It
+stores named workspace inputs and derived cognition artifacts, records the
+revision assigned to each stored artifact, and maintains both dependency and
+reverse-dependency edges. Reverse edges make invalidation cheap: when an input
+changes, all transitive dependents can be marked dirty without scanning every
+artifact.
 
-- `CognitionKey` names inputs and derived artifacts:
-  - `FileText(path)`
-  - `FileSummary(path)`
-  - `RepoSummary`
-  - `QueryContext(query)`
-- `CognitionValue` stores simple artifact values:
-  - `Text(value)`
-  - `Summary(value)`
-  - `ContextBundle(items)`
-- `Revision` is a store-local monotonic integer.
-- `Dependency` is a directed edge from a derived key to the input key it reads.
-- `CognitionStore` stores values, revisions, dependency edges, reverse edges,
-  dirty keys, and recomputation counts for tests/demo traces.
+The current implementation lives in `lib/cognition`; its generated package
+interface is the source of truth for concrete API names.
 
 ## Mock recomputation rules
 
-- `FileSummary(path)` depends on `FileText(path)`.
-- `RepoSummary` depends on all known `FileSummary(path)` values.
-- `QueryContext(query)` depends on `RepoSummary`.
+The first mock graph has three layers: file text, file-level summaries, and
+repo/query context. File-level summaries read one file input. Repo context reads
+all known file summaries. Query context reads repo context. When a new
+file-level summary appears after repo context already exists, repo context is
+invalidated so it can adopt the new dependency on the next recomputation.
 
-When an input changes, the store marks transitive dependents dirty. Calling
-`recompute_dirty()` recomputes dirty artifacts whose dependencies are clean, so
-unrelated summaries are not recomputed when another file changes.
+When an input changes, the store marks transitive dependents dirty. Recomputing
+dirty artifacts proceeds only when their dependencies are clean, so unrelated
+summaries are not recomputed when another file changes.
 
 ## Non-goals for this milestone
 
