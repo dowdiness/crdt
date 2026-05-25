@@ -117,3 +117,104 @@ test "spec §12 #4 (md): read_protected rejects cells from a different editor" {
   destroy_markdown_editor(handle_a)
   destroy_markdown_editor(handle_b)
 }
+
+///|
+/// Phase 1b workstream 2 — `markdown_compute_view_patches_json` migration
+/// regressions. Each test corresponds to one behavioral risk called out in
+/// spec §7.2.
+///
+/// Initial-render path: a fresh editor with non-empty source should emit a
+/// FullTree patch carrying a non-null root. Regression check that the
+/// `coordinator.read_protected(cached_proj_node)` → assemble manually →
+/// FullTree pipeline produces the same Some-root shape that the
+/// pre-migration `@editor.compute_view_patches` did.
+test "workstream 2 (md): compute_view_patches initial render emits FullTree with root" {
+  reset_markdown_coordinator_for_phase1_tests()
+  let handle = create_markdown_editor("md_view_initial_agent")
+  markdown_set_text(handle, "# Hello\n\nWorld\n")
+  let out = markdown_compute_view_patches_json(handle)
+  if !out.contains("\"FullTree\"") {
+    fail(
+      "expected initial render to emit FullTree patch, got \{out}",
+    )
+  }
+  // The root should not be null — a populated markdown document projects to
+  // a ViewNode. (Empty doc would be {"FullTree":{"root":null}}; we just
+  // wrote two blocks.)
+  if out.contains("\"root\":null") {
+    fail("expected non-null root on initial render of non-empty doc, got \{out}")
+  }
+  destroy_markdown_editor(handle)
+}
+
+///|
+/// Incremental-diff path: a second call after a structural change must emit
+/// targeted patches (`UpdateNode` / `ReplaceNode` / `InsertChild` /
+/// `RemoveChild`), not a fresh `FullTree`. The `state.previous` carry-over
+/// from the first call is what makes this possible; if the rewrite ever
+/// loses the carry-over, this test catches it.
+test "workstream 2 (md): compute_view_patches second call emits incremental patches" {
+  reset_markdown_coordinator_for_phase1_tests()
+  let handle = create_markdown_editor("md_view_incr_agent")
+  markdown_set_text(handle, "# Hello\n")
+  let _ = markdown_compute_view_patches_json(handle)
+  markdown_set_text(handle, "# Hello world\n")
+  let second = markdown_compute_view_patches_json(handle)
+  // Second call must NOT be a FullTree — that would mean the diff path
+  // didn't trigger.
+  if second.contains("\"FullTree\"") {
+    fail(
+      "expected incremental patch on second call after edit, got FullTree: \{second}",
+    )
+  }
+  // At least one of the incremental patch tags must appear.
+  let has_incremental = second.contains("\"UpdateNode\"") ||
+    second.contains("\"ReplaceNode\"") ||
+    second.contains("\"InsertChild\"") ||
+    second.contains("\"RemoveChild\"")
+  if !has_incremental {
+    fail(
+      "expected UpdateNode / ReplaceNode / InsertChild / RemoveChild patch, got \{second}",
+    )
+  }
+  destroy_markdown_editor(handle)
+}
+
+///|
+/// Post-destroy path: after `coordinator.destroy_editor`, the accessor must
+/// collapse to "[]" via the Err arm of every `read_protected` call. The
+/// pre-migration body called `@editor.compute_view_patches` directly on
+/// `ed`, bypassing the coordinator — destroyed-editor reads would have
+/// returned stale Derived state. This test pins the new behavior.
+test "workstream 2 (md): compute_view_patches collapses to [] after coordinator destroy" {
+  reset_markdown_coordinator_for_phase1_tests()
+  let handle = create_markdown_editor("md_view_destroy_agent")
+  markdown_set_text(handle, "# Pre-destroy\n")
+  let alive = markdown_compute_view_patches_json(handle)
+  // Sanity-check that we got something pre-destroy (FullTree from initial
+  // render); confirms the test setup is wired correctly.
+  if !alive.contains("\"FullTree\"") {
+    fail(
+      "expected pre-destroy initial render to emit FullTree, got \{alive}",
+    )
+  }
+  let h = markdown_handles.get(handle).unwrap()
+  let id = h.editor_id
+  match coordinator.destroy_editor(id) {
+    Ok(_) => ()
+    Err(report) => fail("coordinator destroy: \{report}")
+  }
+  // FFI bookkeeping retained — coordinator side is destroyed, but the
+  // handle entry stays so subsequent calls still hit the protected-read
+  // path (and that path's Err arm produces "[]").
+  match markdown_handles.get(handle) {
+    Some(_) => ()
+    None =>
+      fail(
+        "expected markdown_handles to retain handle after direct coordinator destroy",
+      )
+  }
+  assert_eq(markdown_compute_view_patches_json(handle), "[]")
+  markdown_handles.remove(handle)
+  markdown_view_states.remove(handle)
+}
