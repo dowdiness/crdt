@@ -12,6 +12,22 @@ pub fn ViewUpdateState::ViewUpdateState() -> ViewUpdateState {
 }
 
 ///|
+pub fn ViewUpdateState::set_previous(
+  self : ViewUpdateState,
+  value : @protocol.ViewNode?,
+) -> Unit {
+  self.previous = value
+}
+
+///|
+pub fn ViewUpdateState::set_had_errors(
+  self : ViewUpdateState,
+  value : Bool,
+) -> Unit {
+  self.had_errors = value
+}
+
+///|
 pub fn[T : @loom_core.Renderable] SyncEditor::get_view_tree(
   self : SyncEditor[T],
 ) -> @protocol.ViewNode? {

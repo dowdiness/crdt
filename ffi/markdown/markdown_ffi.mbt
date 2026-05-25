@@ -168,22 +168,96 @@ pub fn markdown_apply_edit(
 // ── View patches ─────────────────────────────────────────────────────────
 
 ///|
-/// Stub still calling the editor-pkg helper; rewritten in WS2 task B6 to
-/// route through `coordinator.read_protected`.
+/// Compute incremental view patches by reading the editor's projection +
+/// source-map + diagnostics through the coordinator's protected surface.
+/// Mirrors `@editor.compute_view_patches` shape but routes Derived reads
+/// through `coordinator.read_protected`; on any Err (EditorDestroyed,
+/// CellNotInProtectedSurface, etc.) collapses to "[]" rather than exposing
+/// partial/stale patches. Text state is read raw (`h.editor.get_text()`):
+/// per spec §3.4 / Codex round-2 #3 it backs the parser inputs, is not a
+/// Derived cell, and reading it raw doesn't violate any cell-protection
+/// invariant.
 pub fn markdown_compute_view_patches_json(handle : Int) -> String {
-  match markdown_handles.get(handle) {
-    Some(h) => {
-      let state = match markdown_view_states.get(handle) {
-        Some(s) => s
-        None => {
-          let s = @editor.ViewUpdateState::ViewUpdateState()
-          markdown_view_states[handle] = s
-          s
-        }
-      }
-      let patches = @editor.compute_view_patches(state, h.editor)
-      Json::array(patches.map(fn(p) { p.to_json() })).stringify()
-    }
-    None => "[]"
+  let h = match markdown_handles.get(handle) {
+    Some(v) => v
+    None => return "[]"
   }
+  let state = match markdown_view_states.get(handle) {
+    Some(s) => s
+    None => {
+      let s = @editor.ViewUpdateState::ViewUpdateState()
+      markdown_view_states[handle] = s
+      s
+    }
+  }
+  let proj_opt = match
+    coordinator.read_protected(h.editor_id, h.cells.cached_proj_node) {
+    Ok(p) => p
+    Err(report) => {
+      println("markdown_compute_view_patches_json proj read: \{report}")
+      return "[]"
+    }
+  }
+  let source_map = match
+    coordinator.read_protected(h.editor_id, h.cells.source_map_memo) {
+    Ok(m) => m
+    Err(report) => {
+      println("markdown_compute_view_patches_json source_map read: \{report}")
+      return "[]"
+    }
+  }
+  let parse_errors : Array[String] = if h.editor.get_text() == "" {
+    []
+  } else {
+    match coordinator.read_protected(h.editor_id, h.cells.parser_diagnostics) {
+      Ok(d) => d.format()
+      Err(report) => {
+        println(
+          "markdown_compute_view_patches_json diagnostics read: \{report}",
+        )
+        return "[]"
+      }
+    }
+  }
+  let source_text = h.editor.get_text()
+  let current : @protocol.ViewNode? = match proj_opt {
+    Some(proj) =>
+      Some(
+        @protocol.proj_to_view_node(
+          proj,
+          source_map,
+          source_text=Some(source_text),
+          annotations={},
+        ),
+      )
+    None => None
+  }
+  let patches : Array[@protocol.ViewPatch] = []
+  match (state.previous, current) {
+    (None, None) => patches.push(@protocol.ViewPatch::FullTree(root=None))
+    (None, Some(curr)) =>
+      patches.push(@protocol.ViewPatch::FullTree(root=Some(curr)))
+    (Some(_), None) => patches.push(@protocol.ViewPatch::FullTree(root=None))
+    (Some(prev), Some(curr)) => diff_view_nodes(prev, curr, patches)
+  }
+  if parse_errors.length() > 0 {
+    let diagnostics : Array[@protocol.Diagnostic] = []
+    for error in parse_errors {
+      diagnostics.push(
+        @protocol.Diagnostic(
+          from=0,
+          to=0,
+          severity=@protocol.SevError,
+          message=error,
+        ),
+      )
+    }
+    patches.push(@protocol.ViewPatch::SetDiagnostics(diagnostics~))
+    state.set_had_errors(true)
+  } else if state.had_errors {
+    patches.push(@protocol.ViewPatch::SetDiagnostics(diagnostics=[]))
+    state.set_had_errors(false)
+  }
+  state.set_previous(current)
+  Json::array(patches.map(fn(p) { p.to_json() })).stringify()
 }
