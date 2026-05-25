@@ -4,8 +4,22 @@ import {
   "dowdiness/canopy/lang/markdown/edits" @md_edits,
   "dowdiness/canopy/lang/markdown/companion" @md_companion,
   "dowdiness/canopy/lang/markdown/sentinel" @md_sentinel,
+  "dowdiness/canopy/protocol",
+  "dowdiness/canopy/workspace/coordinator" @workspace,
+  "dowdiness/loom/core" @loom,
+  "dowdiness/seam",
   "dowdiness/markdown" @md,
+  "moonbitlang/core/json",
 }
+
+// `cells` field of MarkdownHandle is read in production by
+// `markdown_compute_view_patches_json` (parser_diagnostics + cached_proj_node
+// + source_map_memo, via Phase 1b workstream 2) and by whitebox tests
+// (`lifecycle_phase1_wbtest.mbt`) for the remaining 4 cells. Until additional
+// Phase 1b workstreams migrate the other production accessors, per-field
+// unused warnings still fire on the rest of `MarkdownProtectedCells`.
+
+warnings = "-7"
 
 options(
   link: {
