@@ -6,8 +6,10 @@ import {
   "dowdiness/canopy/editor",
   "dowdiness/canopy/lang/lambda/edits",
   "dowdiness/canopy/lang/lambda/eval",
+  "dowdiness/canopy/lang/lambda/flat",
   "dowdiness/canopy/lang/lambda/proj",
   "dowdiness/canopy/protocol",
+  "dowdiness/incr/cells",
   "dowdiness/lambda",
   "dowdiness/lambda/ast",
 }
@@ -23,7 +25,7 @@ pub fn get_lambda_dot_resolved(@editor.SyncEditor[@ast.Term]) -> String
 
 pub fn get_lambda_resolution(@editor.SyncEditor[@ast.Term]) -> @lambda.Resolution
 
-pub fn new_lambda_editor(String, capture_timeout_ms? : Int) -> (@editor.SyncEditor[@ast.Term], LambdaCompanion)
+pub fn new_lambda_editor(String, capture_timeout_ms? : Int, parent_runtime? : @cells.Runtime) -> (@editor.SyncEditor[@ast.Term], LambdaCompanion)
 
 pub fn parse_tree_edit_op(Json) -> @edits.TreeEditOp raise @editor.TreeEditError
 
@@ -33,9 +35,11 @@ pub fn parse_tree_edit_op(Json) -> @edits.TreeEditOp raise @editor.TreeEditError
 pub struct LambdaCompanion {
   // private fields
 }
+pub fn LambdaCompanion::escalation_memo(Self) -> @cells.Derived[Array[@eval.EvalResult]]
 pub fn LambdaCompanion::get_eval_annotations(Self, @core.ProjNode[@ast.Term]?) -> Map[@core.NodeId, Array[@protocol.ViewAnnotation]]
 pub fn LambdaCompanion::get_eval_results(Self) -> Array[@eval.EvalResult]
 pub fn LambdaCompanion::get_flat_proj(Self) -> @proj.FlatProj?
+pub fn LambdaCompanion::proj_memo(Self) -> @cells.Derived[@flat.VersionedFlatProj]
 
 // Type aliases
 

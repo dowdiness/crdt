@@ -6,24 +6,44 @@
 /// Holds lambda-specific memos alongside a generic SyncEditor.
 /// The FFI layer stores this alongside the editor.
 pub struct LambdaCompanion {
-  // proj_memo stays @incr.Memo[VersionedFlatProj] because VersionedFlatProj
-  // uses BackdateEq (O(1) revision comparison) and the target facade Derived
-  // exposes only standard Eq backdating, which would trigger full structural
-  // equality on FlatProj on every recompute.
-  priv proj_memo : @incr.Memo[@lambda_flat.VersionedFlatProj]
+  priv proj_memo : @incr.Derived[@lambda_flat.VersionedFlatProj]
   // Escalation memo merges Tier 1 (direct) + Tier 2 (egglog) results.
   // Falls back to Tier 1 results when no definitions are Suppressed.
   priv escalation_memo : @incr.Derived[Array[@lambda_eval.EvalResult]]
 }
 
 ///|
+/// Reactive view of the versioned flat projection cell.
+/// Returns the underlying Derived so workspace-coordinator subscribers
+/// can react to changes rather than polling eagerly.
+pub fn LambdaCompanion::proj_memo(
+  self : LambdaCompanion,
+) -> @incr.Derived[@lambda_flat.VersionedFlatProj] {
+  self.proj_memo
+}
+
+///|
+/// Reactive view of the escalation-memo cell (Tier 1 + Tier 2 merged results).
+pub fn LambdaCompanion::escalation_memo(
+  self : LambdaCompanion,
+) -> @incr.Derived[Array[@lambda_eval.EvalResult]] {
+  self.escalation_memo
+}
+
+///|
+/// Returns the current FlatProj, or `None` when the source is empty.
+///
+/// Abort semantics: `Derived::read_or_abort` panics only if the underlying
+/// cell has been disposed or participates in a reactive cycle. The Phase 1
+/// projection memo is a linear data flow (source_text → syntax_tree →
+/// flat_proj), so a cycle would indicate a structural bug; disposal can
+/// only happen after the owning editor has been destroyed. Callers that
+/// hold a live `LambdaCompanion` are therefore safe to treat the `None`
+/// branch as "empty source" rather than "graceful failure."
 pub fn LambdaCompanion::get_flat_proj(
   self : LambdaCompanion,
 ) -> @lambda_proj.FlatProj? {
-  let obs = self.proj_memo.observe()
-  let v = obs.get().proj
-  obs.dispose()
-  v
+  self.proj_memo.read_or_abort().proj
 }
 
 ///|
@@ -96,11 +116,12 @@ fn build_eval_annotations(
 pub fn new_lambda_editor(
   agent_id : String,
   capture_timeout_ms? : Int = 500,
+  parent_runtime? : @incr.Runtime,
 ) -> (@editor.SyncEditor[@ast.Term], LambdaCompanion) {
   // Ref side-channels let the build_memos callback publish extra memos
   // (beyond the 3-tuple SyncEditor expects) back out to the enclosing
   // scope for companion construction + capabilities wiring.
-  let proj_memo_ref : Ref[@incr.Memo[@lambda_flat.VersionedFlatProj]?] = Ref(
+  let proj_memo_ref : Ref[@incr.Derived[@lambda_flat.VersionedFlatProj]?] = Ref(
     None,
   )
   let escalation_memo_ref : Ref[@incr.Derived[Array[@lambda_eval.EvalResult]]?] = Ref(
@@ -111,7 +132,7 @@ pub fn new_lambda_editor(
   )
   let editor = @editor.SyncEditor::new_generic(
     agent_id,
-    fn(s) { @loom.new_parser(s, @parser.lambda_grammar) },
+    fn(s, rt) { @loom.new_parser(s, @parser.lambda_grammar, runtime?=rt) },
     fn(parser) {
       let (proj_memo, cached_proj_node, registry_memo, source_map_memo) = @lambda_flat.build_lambda_projection_memos(
         parser,
@@ -127,6 +148,7 @@ pub fn new_lambda_editor(
       (cached_proj_node, registry_memo, source_map_memo)
     },
     capture_timeout_ms~,
+    parent_runtime?,
     capabilities=build_lambda_capabilities(
       cached_proj_node_ref, escalation_memo_ref,
     ),
