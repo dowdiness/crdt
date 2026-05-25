@@ -38,7 +38,7 @@ pub fn CognitionStore::mark_dirty(Self, CognitionKey) -> Unit
 pub fn CognitionStore::new() -> Self
 pub fn CognitionStore::recompute_count(Self, CognitionKey) -> Int
 pub fn CognitionStore::recompute_dirty(Self) -> Array[CognitionKey]
-pub fn CognitionStore::set_input(Self, CognitionKey, CognitionValue) -> Unit
+pub fn CognitionStore::set_input(Self, CognitionKey, CognitionValue) -> Bool
 
 pub(all) enum CognitionValue {
   Text(String)

@@ -30,6 +30,21 @@ pub fn CognitionStore::set_input(
   self : CognitionStore,
   key : CognitionKey,
   value : CognitionValue,
+) -> Bool {
+  match (key, value) {
+    (FileText(_), Text(_)) => {
+      self.store_input(key, value)
+      true
+    }
+    _ => false
+  }
+}
+
+///|
+fn CognitionStore::store_input(
+  self : CognitionStore,
+  key : CognitionKey,
+  value : CognitionValue,
 ) -> Unit {
   self.values[key] = value.copy_value()
   self.bump_revision(key)

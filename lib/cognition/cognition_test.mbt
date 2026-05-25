@@ -1,7 +1,7 @@
 ///|
 test "FileSummary depends on FileText" {
   let store = CognitionStore::new()
-  store.set_input(FileText("a.mbt"), Text("hello\nworld"))
+  let _ = store.set_input(FileText("a.mbt"), Text("hello\nworld"))
   let _ = store.compute(FileSummary("a.mbt"))
   let deps = store.dependencies_of(FileSummary("a.mbt"))
   assert_true(deps.contains(FileText("a.mbt")))
@@ -11,14 +11,14 @@ test "FileSummary depends on FileText" {
 test "revision clock is incr backed" {
   let store = CognitionStore::new()
   inspect(store.current_revision().to_int(), content="0")
-  store.set_input(FileText("a.mbt"), Text("hello"))
+  let _ = store.set_input(FileText("a.mbt"), Text("hello"))
   inspect(store.current_revision().to_int(), content="1")
 }
 
 ///|
 test "dependency edge snapshot is incr backed" {
   let store = CognitionStore::new()
-  store.set_input(FileText("a.mbt"), Text("hello"))
+  let _ = store.set_input(FileText("a.mbt"), Text("hello"))
   let _ = store.compute(FileSummary("a.mbt"))
   let edges = store.dependency_edges()
   assert_true(
@@ -27,18 +27,27 @@ test "dependency edge snapshot is incr backed" {
 }
 
 ///|
+test "set_input only accepts FileText Text pairs" {
+  let store = CognitionStore::new()
+  inspect(store.set_input(RepoSummary, Summary("bad")), content="false")
+  inspect(store.set_input(FileText("a.mbt"), Summary("bad")), content="false")
+  inspect(store.get_value(RepoSummary) is None, content="true")
+  inspect(store.get_value(FileText("a.mbt")) is None, content="true")
+}
+
+///|
 test "changing one FileText marks its FileSummary dirty" {
   let store = CognitionStore::new()
-  store.set_input(FileText("a.mbt"), Text("hello"))
+  let _ = store.set_input(FileText("a.mbt"), Text("hello"))
   let _ = store.compute(FileSummary("a.mbt"))
-  store.set_input(FileText("a.mbt"), Text("hello again"))
+  let _ = store.set_input(FileText("a.mbt"), Text("hello again"))
   inspect(store.is_dirty(FileSummary("a.mbt")), content="true")
 }
 
 ///|
 test "RepoSummary becomes dirty when a FileSummary changes" {
   let store = CognitionStore::new()
-  store.set_input(FileText("a.mbt"), Text("hello"))
+  let _ = store.set_input(FileText("a.mbt"), Text("hello"))
   let _ = store.compute(FileSummary("a.mbt"))
   let _ = store.compute(RepoSummary)
   store.mark_dirty(FileSummary("a.mbt"))
@@ -48,15 +57,15 @@ test "RepoSummary becomes dirty when a FileSummary changes" {
 ///|
 test "unrelated FileSummary is not recomputed when another file changes" {
   let store = CognitionStore::new()
-  store.set_input(FileText("a.mbt"), Text("one"))
-  store.set_input(FileText("b.mbt"), Text("two"))
+  let _ = store.set_input(FileText("a.mbt"), Text("one"))
+  let _ = store.set_input(FileText("b.mbt"), Text("two"))
   let _ = store.compute(FileSummary("a.mbt"))
   let _ = store.compute(FileSummary("b.mbt"))
   let _ = store.compute(RepoSummary)
   let a_before = store.recompute_count(FileSummary("a.mbt"))
   let b_before = store.recompute_count(FileSummary("b.mbt"))
 
-  store.set_input(FileText("a.mbt"), Text("one changed"))
+  let _ = store.set_input(FileText("a.mbt"), Text("one changed"))
   let recomputed = store.recompute_dirty()
 
   inspect(recomputed.contains(FileSummary("a.mbt")), content="true")
@@ -74,7 +83,7 @@ test "unrelated FileSummary is not recomputed when another file changes" {
 ///|
 test "QueryContext depends on RepoSummary" {
   let store = CognitionStore::new()
-  store.set_input(FileText("a.mbt"), Text("hello"))
+  let _ = store.set_input(FileText("a.mbt"), Text("hello"))
   let _ = store.compute(FileSummary("a.mbt"))
   let _ = store.compute(RepoSummary)
   let _ = store.compute(QueryContext("what changed?"))
@@ -85,12 +94,12 @@ test "QueryContext depends on RepoSummary" {
 ///|
 test "new FileSummary invalidates existing repo context" {
   let store = CognitionStore::new()
-  store.set_input(FileText("a.mbt"), Text("one"))
+  let _ = store.set_input(FileText("a.mbt"), Text("one"))
   let _ = store.compute(FileSummary("a.mbt"))
   let _ = store.compute(RepoSummary)
   let _ = store.compute(QueryContext("what changed?"))
 
-  store.set_input(FileText("b.mbt"), Text("two"))
+  let _ = store.set_input(FileText("b.mbt"), Text("two"))
   let recomputed = store.recompute_dirty()
 
   inspect(recomputed.contains(FileSummary("b.mbt")), content="true")
@@ -105,7 +114,7 @@ test "new FileText invalidates query context before RepoSummary exists" {
   let store = CognitionStore::new()
   let _ = store.compute(QueryContext("what changed?"))
 
-  store.set_input(FileText("a.mbt"), Text("one"))
+  let _ = store.set_input(FileText("a.mbt"), Text("one"))
   let recomputed = store.recompute_dirty()
 
   inspect(recomputed.contains(FileSummary("a.mbt")), content="true")
@@ -118,7 +127,7 @@ test "new FileText invalidates query context before RepoSummary exists" {
 ///|
 test "dirty traversal skips already dirty subtrees" {
   let store = CognitionStore::new()
-  store.set_input(FileText("a.mbt"), Text("one"))
+  let _ = store.set_input(FileText("a.mbt"), Text("one"))
   let _ = store.compute(FileSummary("a.mbt"))
   let _ = store.compute(RepoSummary)
   let _ = store.compute(QueryContext("what changed?"))
@@ -134,7 +143,7 @@ test "dirty traversal skips already dirty subtrees" {
 ///|
 test "returned ContextBundle cannot mutate stored value" {
   let store = CognitionStore::new()
-  store.set_input(FileText("a.mbt"), Text("hello"))
+  let _ = store.set_input(FileText("a.mbt"), Text("hello"))
   let _ = store.compute(FileSummary("a.mbt"))
   let _ = store.compute(RepoSummary)
   let _ = store.compute(QueryContext("what changed?"))
