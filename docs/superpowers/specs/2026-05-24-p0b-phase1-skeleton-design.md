@@ -277,19 +277,26 @@ pub fn[T] ProtectedCell::from_derived(label : String, d : @incr.Derived[T]) -> P
   )
 }
 
-pub fn[T : Eq] ProtectedCell::from_reachable_derived(
-  label : String, r : @incr.ReachableDerived[T],
-) -> ProtectedCell[T] {
-  let watch = r.watch()
-  let _ = watch.read()
-  ProtectedCell(
-    cell_id=r.id(),
-    label~,
-    read=fn() { watch.read() },
-    is_disposed=fn() { watch.is_disposed() },
-    dispose=fn() { watch.dispose() },
-  )
-}
+// SPEC GAP — DEFERRED PAST PR3 (2026-05-25):
+//   `ReachableDerived::id()` is not exposed in incr v0.6.x's public surface
+//   (only `Derived::id`). The factory below cannot compile against current
+//   incr. The §P0b Phase 1 Lambda protected surface uses only Derived (10
+//   cells, all `from_derived`), so the factory was dropped from PR3 (commit
+//   `11479b1`). When a Phase 1b ReachableDerived cell needs protection, add
+//   `ReachableDerived::id()` upstream first, then re-introduce this factory.
+// pub fn[T : Eq] ProtectedCell::from_reachable_derived(
+//   label : String, r : @incr.ReachableDerived[T],
+// ) -> ProtectedCell[T] {
+//   let watch = r.watch()
+//   let _ = watch.read()
+//   ProtectedCell(
+//     cell_id=r.id(),
+//     label~,
+//     read=fn() { watch.read() },
+//     is_disposed=fn() { watch.is_disposed() },
+//     dispose=fn() { watch.dispose() },
+//   )
+// }
 
 pub fn[T] ProtectedCell::erase(self : ProtectedCell[T]) -> ProtectedRead {
   let c = self
