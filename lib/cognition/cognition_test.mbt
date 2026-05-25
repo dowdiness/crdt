@@ -92,6 +92,37 @@ test "QueryContext depends on RepoSummary" {
 }
 
 ///|
+test "RepoSummary first build seeds summaries from FileText inputs" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("a.mbt"), Text("one"))
+  let _ = store.set_input(FileText("b.mbt"), Text("two\nlines"))
+
+  let _ = store.compute(RepoSummary)
+
+  let deps = store.dependencies_of(RepoSummary)
+  assert_true(deps.contains(FileSummary("a.mbt")))
+  assert_true(deps.contains(FileSummary("b.mbt")))
+  inspect(store.recompute_count(FileSummary("a.mbt")), content="1")
+  inspect(store.recompute_count(FileSummary("b.mbt")), content="1")
+}
+
+///|
+test "QueryContext first build seeds RepoSummary from FileText inputs" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("a.mbt"), Text("one"))
+
+  let _ = store.compute(QueryContext("what changed?"))
+
+  let deps = store.dependencies_of(RepoSummary)
+  assert_true(deps.contains(FileSummary("a.mbt")))
+  match store.get_value(QueryContext("what changed?")) {
+    Some(ContextBundle(items)) =>
+      inspect(items.join("\n").contains("a.mbt"), content="true")
+    _ => fail("expected context bundle")
+  }
+}
+
+///|
 test "new FileSummary invalidates existing repo context" {
   let store = CognitionStore::new()
   let _ = store.set_input(FileText("a.mbt"), Text("one"))

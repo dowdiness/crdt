@@ -348,6 +348,7 @@ fn CognitionStore::recompute_file_summary(
 
 ///|
 fn CognitionStore::recompute_repo_summary(self : CognitionStore) -> Unit {
+  self.ensure_file_summaries_for_known_texts()
   let summary_keys = self.known_file_summary_keys()
   let items : Array[String] = []
   for key in summary_keys {
@@ -369,6 +370,10 @@ fn CognitionStore::recompute_query_context(
   self : CognitionStore,
   query : String,
 ) -> Unit {
+  if !self.values.contains(RepoSummary) || self.dirty.contains(RepoSummary) {
+    self.recompute_repo_summary()
+    self.dirty.remove(RepoSummary)
+  }
   let repo_summary = match self.values.get(RepoSummary) {
     Some(Summary(value)) => value
     _ => "repo summary: <missing>"
@@ -378,6 +383,25 @@ fn CognitionStore::recompute_query_context(
     ContextBundle(["query: \{query}", repo_summary]),
     [RepoSummary],
   )
+}
+
+///|
+fn CognitionStore::ensure_file_summaries_for_known_texts(
+  self : CognitionStore,
+) -> Unit {
+  for key, _ in self.values {
+    match key {
+      FileText(path) => {
+        let summary_key = FileSummary(path)
+        if !self.values.contains(summary_key) ||
+          self.dirty.contains(summary_key) {
+          self.recompute_file_summary(path)
+          self.dirty.remove(summary_key)
+        }
+      }
+      _ => ()
+    }
+  }
 }
 
 ///|
