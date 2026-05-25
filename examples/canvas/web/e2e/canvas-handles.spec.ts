@@ -89,10 +89,10 @@ test('canvas handles create edges and reject invalid gestures', async ({ page })
   await expect(pendingEdgePaths(page)).toHaveCount(0);
   await expect(edgePaths(page)).toHaveCount(3);
 
-  await commitDrag(page, source, inputHandle(page, 5));
+  await commitDrag(page, outputHandle(page, 2), inputHandle(page, 5));
   await expect(edgePaths(page)).toHaveCount(4);
 
-  await commitDrag(page, source, inputHandle(page, 5));
+  await commitDrag(page, outputHandle(page, 2), inputHandle(page, 5));
   await expect(edgePaths(page)).toHaveCount(4);
 
   await commitDrag(page, outputHandle(page, 2), inputHandle(page, 2));

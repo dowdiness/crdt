@@ -66,7 +66,7 @@ fn update_zoom(
     x: cx + (state.viewport.x - cx) * ratio,
     y: cy + (state.viewport.y - cy) * ratio,
   }
-  { ..state, viewport: new_viewport }
+  record_action({ ..state, viewport: new_viewport }, SetViewport(new_viewport))
 }
 
 ///|
@@ -97,25 +97,36 @@ fn update_pointer_down(
 }
 
 ///|
-/// Start an edge-creation gesture from the output handle of `node_id`.
+/// Start an edge-creation gesture from a specific output port.
 fn update_connect_start(
   state : CanvasState,
   node_id : NodeId,
+  port_id : String,
   world_x : Double,
   world_y : Double,
 ) -> CanvasState {
-  let conn : ConnectState = {
-    from_node: node_id,
-    cursor_x: world_x,
-    cursor_y: world_y,
+  match find_node(state.nodes, node_id) {
+    None => state
+    Some(node) =>
+      match port_type_by_id(node.outputs, port_id) {
+        None => state
+        Some(_) => {
+          let conn : ConnectState = {
+            from_node: node_id,
+            from_port: port_id,
+            cursor_x: world_x,
+            cursor_y: world_y,
+          }
+          let new_interaction : InteractionState = {
+            ..state.interaction,
+            connecting: Some(conn),
+            pointer_down: true,
+            did_move: false,
+          }
+          { ..state, interaction: new_interaction }
+        }
+      }
   }
-  let new_interaction : InteractionState = {
-    ..state.interaction,
-    connecting: Some(conn),
-    pointer_down: true,
-    did_move: false,
-  }
-  { ..state, interaction: new_interaction }
 }
 
 ///|
@@ -143,53 +154,176 @@ fn update_connect_move(
 }
 
 ///|
-fn edge_exists(edges : Array[Edge], source : NodeId, target : NodeId) -> Bool {
-  edges.iter().any(fn(e) { e.source == source && e.target == target })
+fn edge_exists(
+  edges : Array[Edge],
+  source : NodeId,
+  source_port : String,
+  target : NodeId,
+  target_port : String,
+) -> Bool {
+  edges
+  .iter()
+  .any(fn(e) {
+    e.source == source &&
+    e.source_port == source_port &&
+    e.target == target &&
+    e.target_port == target_port
+  })
+}
+
+///|
+fn port_type_compatible(source : PortType, target : PortType) -> Bool {
+  source == target || source == Any || target == Any
+}
+
+///|
+fn port_type_by_id(ports : Array[PortDef], id : String) -> PortType? {
+  for port in ports {
+    if port.id == id {
+      return Some(port.port_type)
+    }
+  }
+  None
 }
 
 ///|
 fn can_commit_edge(
   state : CanvasState,
   source : NodeId,
+  source_port : String,
   target : NodeId,
+  target_port : String,
 ) -> Bool {
-  source != target &&
-  find_node(state.nodes, source) is Some(_) &&
-  find_node(state.nodes, target) is Some(_) &&
-  !edge_exists(state.edges, source, target)
+  if source == target ||
+    edge_exists(state.edges, source, source_port, target, target_port) {
+    false
+  } else {
+    match (find_node(state.nodes, source), find_node(state.nodes, target)) {
+      (Some(source_node), Some(target_node)) =>
+        match
+          (
+            port_type_by_id(source_node.outputs, source_port),
+            port_type_by_id(target_node.inputs, target_port),
+          ) {
+          (Some(source_type), Some(target_type)) =>
+            port_type_compatible(source_type, target_type)
+          _ => false
+        }
+      _ => false
+    }
+  }
 }
 
 ///|
 fn append_edge(
   state : CanvasState,
   source : NodeId,
+  source_port : String,
   target : NodeId,
+  target_port : String,
 ) -> CanvasState {
-  let edge : Edge = { id: EdgeId(state.next_edge_id), source, target }
+  let edge : Edge = {
+    id: EdgeId(state.next_edge_id),
+    source,
+    source_port,
+    target,
+    target_port,
+  }
   let edges = state.edges.copy()
   edges.push(edge)
   { ..state, edges, next_edge_id: state.next_edge_id + 1 }
 }
 
 ///|
-/// Commit an in-flight connection if released over a different node, otherwise drop it.
-/// Duplicate edges (same source and target) are not added.
-fn update_connect_end(state : CanvasState, target : NodeId?) -> CanvasState {
+fn append_history(state : CanvasState, action : WorkflowAction) -> CanvasState {
+  let action_log = state.action_log.copy()
+  action_log.push(action)
+  { ..state, action_log, }
+}
+
+///|
+fn apply_action(state : CanvasState, action : WorkflowAction) -> CanvasState {
+  match action {
+    AddNode(node) => {
+      let nodes = state.nodes.copy()
+      nodes.push(node)
+      { ..state, nodes, next_node_id: state.next_node_id + 1 }
+    }
+    MoveNodes(positions) => {
+      let nodes = state.nodes.map(fn(node) {
+        match find_position(positions, node.id) {
+          None => node
+          Some(pos) => { ..node, x: pos.x, y: pos.y }
+        }
+      })
+      { ..state, nodes, }
+    }
+    ConnectPorts(source, source_port, target, target_port) =>
+      if can_commit_edge(state, source, source_port, target, target_port) {
+        append_edge(state, source, source_port, target, target_port)
+      } else {
+        state
+      }
+    SelectNodes(nodes) => set_selection(state, nodes)
+    SetViewport(viewport) => { ..state, viewport, }
+  }
+}
+
+///|
+fn record_action(state : CanvasState, action : WorkflowAction) -> CanvasState {
+  append_history(apply_action(state, action), action)
+}
+
+///|
+fn workflow_add_node(
+  state : CanvasState,
+  kind_key : String,
+  world_x : Double,
+  world_y : Double,
+) -> CanvasState {
+  let node = make_workflow_node(
+    NodeId(state.next_node_id),
+    workflow_node_kind_from_key(kind_key),
+    world_x,
+    world_y,
+  )
+  record_action(state, AddNode(node))
+}
+
+///|
+/// Commit an in-flight connection if released over a compatible target port,
+/// otherwise drop it. Rejected connection attempts are still logged as actions.
+fn update_connect_end(
+  state : CanvasState,
+  target : NodeId?,
+  target_port : String?,
+) -> CanvasState {
   match state.interaction.connecting {
     None => state
     Some(conn) => {
-      let new_state = match target {
-        Some(t) if can_commit_edge(state, conn.from_node, t) =>
-          append_edge(state, conn.from_node, t)
+      let action_state = match (target, target_port) {
+        (Some(t), Some(port_id)) =>
+          match find_node(state.nodes, t) {
+            Some(target_node) =>
+              match port_type_by_id(target_node.inputs, port_id) {
+                Some(_) =>
+                  record_action(
+                    state,
+                    ConnectPorts(conn.from_node, conn.from_port, t, port_id),
+                  )
+                None => state
+              }
+            None => state
+          }
         _ => state
       }
       let new_interaction : InteractionState = {
-        ..new_state.interaction,
+        ..action_state.interaction,
         connecting: None,
         pointer_down: false,
         did_move: false,
       }
-      { ..new_state, interaction: new_interaction }
+      { ..action_state, interaction: new_interaction }
     }
   }
 }
@@ -229,6 +363,40 @@ fn find_node(nodes : Array[CanvasNode], id : NodeId) -> CanvasNode? {
 }
 
 ///|
+fn find_position(positions : Array[NodePosition], id : NodeId) -> NodePosition? {
+  for pos in positions {
+    if pos.node_id == id {
+      return Some(pos)
+    }
+  }
+  None
+}
+
+///|
+fn find_drag_origin(origins : Array[DragOrigin], id : NodeId) -> DragOrigin? {
+  for origin in origins {
+    if origin.node_id == id {
+      return Some(origin)
+    }
+  }
+  None
+}
+
+///|
+fn node_id_in_array(nodes : Array[NodeId], id : NodeId) -> Bool {
+  nodes.iter().any(fn(n) { n == id })
+}
+
+///|
+fn drag_ids_for_node(state : CanvasState, node_id : NodeId) -> Array[NodeId] {
+  if node_id_in_array(state.interaction.selected_nodes, node_id) {
+    state.interaction.selected_nodes.copy()
+  } else {
+    [node_id]
+  }
+}
+
+///|
 fn update_node_drag_start(
   state : CanvasState,
   node_id : NodeId,
@@ -237,12 +405,21 @@ fn update_node_drag_start(
 ) -> CanvasState {
   match find_node(state.nodes, node_id) {
     None => state
-    Some(node) => {
-      let drag : DragState = {
-        node_id,
-        offset_x: node.x - world_x,
-        offset_y: node.y - world_y,
+    Some(_) => {
+      let drag_ids = drag_ids_for_node(state, node_id)
+      let origins : Array[DragOrigin] = []
+      for drag_id in drag_ids {
+        match find_node(state.nodes, drag_id) {
+          None => ()
+          Some(node) =>
+            origins.push({
+              node_id: drag_id,
+              offset_x: node.x - world_x,
+              offset_y: node.y - world_y,
+            })
+        }
       }
+      let drag : DragState = { node_id, origins }
       let new_interaction : InteractionState = {
         ..state.interaction,
         dragging: Some(drag),
@@ -264,10 +441,14 @@ fn update_node_drag_move(
     None => state
     Some(drag) => {
       let new_nodes = state.nodes.map(fn(node) {
-        if node.id == drag.node_id {
-          { ..node, x: world_x + drag.offset_x, y: world_y + drag.offset_y }
-        } else {
-          node
+        match find_drag_origin(drag.origins, node.id) {
+          None => node
+          Some(origin) =>
+            {
+              ..node,
+              x: world_x + origin.offset_x,
+              y: world_y + origin.offset_y,
+            }
         }
       })
       let new_interaction : InteractionState = {
@@ -280,10 +461,69 @@ fn update_node_drag_move(
 }
 
 ///|
+fn final_drag_positions(
+  state : CanvasState,
+  drag : DragState,
+) -> Array[NodePosition] {
+  let positions : Array[NodePosition] = []
+  for origin in drag.origins {
+    match find_node(state.nodes, origin.node_id) {
+      None => ()
+      Some(node) => positions.push({ node_id: node.id, x: node.x, y: node.y })
+    }
+  }
+  positions
+}
+
+///|
+fn set_selection(state : CanvasState, nodes : Array[NodeId]) -> CanvasState {
+  let selected = if nodes.length() == 0 { None } else { Some(nodes[0]) }
+  let new_interaction : InteractionState = {
+    ..state.interaction,
+    selected,
+    selected_nodes: nodes,
+  }
+  { ..state, interaction: new_interaction }
+}
+
+///|
+fn toggle_selection(nodes : Array[NodeId], id : NodeId) -> Array[NodeId] {
+  if node_id_in_array(nodes, id) {
+    nodes.filter(fn(n) { n != id })
+  } else {
+    let next = nodes.copy()
+    next.push(id)
+    next
+  }
+}
+
+///|
+fn selection_after_click(
+  state : CanvasState,
+  hovered : NodeId?,
+  additive : Bool,
+) -> Array[NodeId] {
+  match hovered {
+    None => if additive { state.interaction.selected_nodes.copy() } else { [] }
+    Some(id) =>
+      if additive {
+        toggle_selection(state.interaction.selected_nodes, id)
+      } else {
+        [id]
+      }
+  }
+}
+
+///|
 /// Handle pointer release. `node_id_int` is the canvas node id under the pointer,
 /// or 0 if released over the background.
 /// A "click" = pointer_down was true AND no movement occurred → select the node.
-fn update_pointer_up(state : CanvasState, node_id_int : Int) -> CanvasState {
+fn update_pointer_up(
+  state : CanvasState,
+  node_id_int : Int,
+  target_port_id : String,
+  additive : Bool,
+) -> CanvasState {
   let hovered : NodeId? = if node_id_int <= 0 {
     None
   } else {
@@ -291,22 +531,46 @@ fn update_pointer_up(state : CanvasState, node_id_int : Int) -> CanvasState {
   }
   // If a connection gesture is in flight, commit/cancel it and exit.
   match state.interaction.connecting {
-    Some(_) => return update_connect_end(state, hovered)
+    Some(_) => {
+      let target_port = if target_port_id == "" {
+        None
+      } else {
+        Some(target_port_id)
+      }
+      return update_connect_end(state, hovered, target_port)
+    }
     None => ()
   }
-  let new_selected : NodeId? = if state.interaction.pointer_down &&
+  let moved_state = match state.interaction.dragging {
+    Some(drag) if state.interaction.did_move => {
+      let positions = final_drag_positions(state, drag)
+      if positions.length() == 0 {
+        state
+      } else {
+        record_action(state, MoveNodes(positions))
+      }
+    }
+    _ =>
+      match state.interaction.panning {
+        Some(_) if state.interaction.did_move =>
+          record_action(state, SetViewport(state.viewport))
+        _ => state
+      }
+  }
+  let selected_state = if state.interaction.pointer_down &&
     !state.interaction.did_move {
-    hovered
+    let nodes = selection_after_click(moved_state, hovered, additive)
+    record_action(moved_state, SelectNodes(nodes))
   } else {
-    state.interaction.selected
+    moved_state
   }
   let new_interaction : InteractionState = {
+    ..selected_state.interaction,
     dragging: None,
     panning: None,
     connecting: None,
     pointer_down: false,
     did_move: false,
-    selected: new_selected,
   }
-  { ..state, interaction: new_interaction }
+  { ..selected_state, interaction: new_interaction }
 }

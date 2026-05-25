@@ -9,12 +9,66 @@ pub impl Show for NodeId with fn output(self, logger) {
 }
 
 ///|
-/// Visual kind of a node.
+pub struct EdgeId(Int) derive(Debug, Eq, ToJson)
+
+///|
+pub impl Show for EdgeId with fn output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
+
+///|
+/// Logical data carried by workflow ports. `Any` is reserved for custom nodes
+/// and future adapters; built-in workflow nodes use concrete types.
+pub enum PortType {
+  Flow
+  Text
+  Number
+  Boolean
+  Json
+  Any
+} derive(Debug, Eq, ToJson)
+
+///|
+pub impl Show for PortType with fn output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
+
+///|
+pub(all) struct PortDef {
+  id : String
+  label : String
+  port_type : PortType
+} derive(Debug, Eq, ToJson)
+
+///|
+pub impl Show for PortDef with fn output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
+
+///|
+/// Built-in workflow templates. `Custom` keeps the canvas extensible without
+/// hard-coding application-specific integrations into the visual layer.
+pub enum WorkflowNodeKind {
+  TimerTrigger
+  HttpRequest
+  DataFormatter
+  ConditionalBranch
+  Loop
+  Parallel
+  Custom(String)
+} derive(Debug, Eq, ToJson)
+
+///|
+pub impl Show for WorkflowNodeKind with fn output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
+
+///|
+/// Visual kind of a node. The canvas stays generic by representing application
+/// behavior through workflow metadata rather than embedding executor logic here.
 pub enum NodeKind {
-  /// Filled rectangle. `color` is a CSS color string (e.g. "#8250df").
-  Shape(String)
-  /// Text label. `content` is the displayed string.
-  Text(String)
+  /// Workflow step rendered with typed ports and validation state.
+  Workflow(WorkflowNodeKind)
 } derive(Debug, Eq, ToJson)
 
 ///|
@@ -37,7 +91,9 @@ pub impl Show for Viewport with fn output(self, logger) {
 }
 
 ///|
-/// A single node on the canvas. Coordinates are in world space.
+/// A single node on the canvas. Coordinates are in world space. The visual
+/// editor owns layout and display state; executable behavior lives in a future
+/// compiler/execution layer keyed by `kind` and ports.
 pub(all) struct CanvasNode {
   id : NodeId
   x : Double
@@ -45,7 +101,12 @@ pub(all) struct CanvasNode {
   w : Double
   h : Double
   kind : NodeKind
-} derive(Debug, Eq)
+  title : String
+  subtitle : String
+  inputs : Array[PortDef]
+  outputs : Array[PortDef]
+  configured : Bool
+} derive(Debug, Eq, ToJson)
 
 ///|
 pub impl Show for CanvasNode with fn output(self, logger) {
@@ -53,12 +114,51 @@ pub impl Show for CanvasNode with fn output(self, logger) {
 }
 
 ///|
+pub(all) struct NodePosition {
+  node_id : NodeId
+  x : Double
+  y : Double
+} derive(Debug, Eq, ToJson)
+
+///|
+pub impl Show for NodePosition with fn output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
+
+///|
+/// Serializable user operations. UI event handlers translate pointer/menu
+/// events into these values before committing durable graph changes, which keeps
+/// undo/redo, logging, persistence, and collaboration on the same path.
+pub enum WorkflowAction {
+  AddNode(CanvasNode)
+  MoveNodes(Array[NodePosition])
+  ConnectPorts(NodeId, String, NodeId, String)
+  SelectNodes(Array[NodeId])
+  SetViewport(Viewport)
+} derive(Debug, Eq, ToJson)
+
+///|
+pub impl Show for WorkflowAction with fn output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
+
+///|
+pub(all) struct DragOrigin {
+  node_id : NodeId
+  offset_x : Double
+  offset_y : Double
+} derive(Debug, Eq)
+
+///|
+pub impl Show for DragOrigin with fn output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
+
+///|
 /// State captured at the start of a node drag gesture.
 pub(all) struct DragState {
   node_id : NodeId
-  /// Offset from cursor world position to node origin (node.x - cursor.x at drag start).
-  offset_x : Double
-  offset_y : Double
+  origins : Array[DragOrigin]
 } derive(Debug, Eq)
 
 ///|
@@ -81,21 +181,13 @@ pub impl Show for PanState with fn output(self, logger) {
 }
 
 ///|
-pub struct EdgeId(Int) derive(Debug, Eq, ToJson)
-
-///|
-pub impl Show for EdgeId with fn output(self, logger) {
-  logger.write_string(@debug.to_string(self))
-}
-
-///|
-/// A connection between two nodes. Each node has an implicit single output
-/// handle (right-center) and input handle (left-center), so handles are not
-/// stored explicitly in the prototype.
+/// A typed connection between two workflow ports.
 pub(all) struct Edge {
   id : EdgeId
   source : NodeId
+  source_port : String
   target : NodeId
+  target_port : String
 } derive(Debug, Eq, ToJson)
 
 ///|
@@ -108,6 +200,7 @@ pub impl Show for Edge with fn output(self, logger) {
 /// `cursor_x`/`cursor_y` are world coordinates of the pointer.
 pub(all) struct ConnectState {
   from_node : NodeId
+  from_port : String
   cursor_x : Double
   cursor_y : Double
 } derive(Debug, Eq)
@@ -123,6 +216,7 @@ pub(all) struct InteractionState {
   panning : PanState?
   connecting : ConnectState?
   selected : NodeId?
+  selected_nodes : Array[NodeId]
   /// True from pointerdown until pointerup.
   pointer_down : Bool
   /// True once pointermove fires during the current pointer session.
@@ -139,9 +233,11 @@ pub(all) struct CanvasState {
   viewport : Viewport
   nodes : Array[CanvasNode]
   edges : Array[Edge]
+  next_node_id : Int
   /// Monotonic counter used to mint EdgeIds for newly-created connections.
   next_edge_id : Int
   interaction : InteractionState
+  action_log : Array[WorkflowAction]
 } derive(Debug)
 
 ///|
@@ -150,74 +246,193 @@ pub impl Show for CanvasState with fn output(self, logger) {
 }
 
 ///|
-/// Default state centers the world origin in a 1440×800 browser viewport
-/// and seeds six demo nodes.
-pub impl Default for CanvasState with fn default() -> CanvasState {
+fn port(id : String, label : String, port_type : PortType) -> PortDef {
+  { id, label, port_type }
+}
+
+///|
+fn make_workflow_node(
+  id : NodeId,
+  kind : WorkflowNodeKind,
+  x : Double,
+  y : Double,
+) -> CanvasNode {
+  match kind {
+    TimerTrigger =>
+      {
+        id,
+        x,
+        y,
+        w: 244.0,
+        h: 132.0,
+        kind: NodeKind::Workflow(TimerTrigger),
+        title: "Timer trigger",
+        subtitle: "Starts a workflow on a schedule",
+        inputs: [],
+        outputs: [port("tick", "tick", Flow)],
+        configured: true,
+      }
+    HttpRequest =>
+      {
+        id,
+        x,
+        y,
+        w: 260.0,
+        h: 148.0,
+        kind: NodeKind::Workflow(HttpRequest),
+        title: "HTTP request",
+        subtitle: "Call an API and emit JSON",
+        inputs: [port("in", "flow", Flow)],
+        outputs: [port("json", "JSON", Json)],
+        configured: false,
+      }
+    DataFormatter =>
+      {
+        id,
+        x,
+        y,
+        w: 260.0,
+        h: 148.0,
+        kind: NodeKind::Workflow(DataFormatter),
+        title: "Format data",
+        subtitle: "Map JSON fields into text",
+        inputs: [port("json", "JSON", Json)],
+        outputs: [port("text", "text", Text)],
+        configured: true,
+      }
+    ConditionalBranch =>
+      {
+        id,
+        x,
+        y,
+        w: 270.0,
+        h: 156.0,
+        kind: NodeKind::Workflow(ConditionalBranch),
+        title: "Condition",
+        subtitle: "Route items by a boolean rule",
+        inputs: [port("text", "text", Text), port("rule", "rule", Boolean)],
+        outputs: [port("true", "true", Flow), port("false", "false", Flow)],
+        configured: true,
+      }
+    Loop =>
+      {
+        id,
+        x,
+        y,
+        w: 244.0,
+        h: 132.0,
+        kind: NodeKind::Workflow(Loop),
+        title: "Loop",
+        subtitle: "Repeat work over a collection",
+        inputs: [port("items", "items", Json)],
+        outputs: [port("each", "each", Json), port("count", "count", Number)],
+        configured: true,
+      }
+    Parallel =>
+      {
+        id,
+        x,
+        y,
+        w: 244.0,
+        h: 132.0,
+        kind: NodeKind::Workflow(Parallel),
+        title: "Parallel split",
+        subtitle: "Run independent branches together",
+        inputs: [port("in", "flow", Flow)],
+        outputs: [port("a", "A", Flow), port("b", "B", Flow)],
+        configured: true,
+      }
+    Custom(name) =>
+      {
+        id,
+        x,
+        y,
+        w: 250.0,
+        h: 138.0,
+        kind: NodeKind::Workflow(Custom(name)),
+        title: name,
+        subtitle: "Custom workflow step",
+        inputs: [port("in", "any", Any)],
+        outputs: [port("out", "any", Any)],
+        configured: false,
+      }
+  }
+}
+
+///|
+fn workflow_node_kind_from_key(key : String) -> WorkflowNodeKind {
+  if key == "timer" {
+    TimerTrigger
+  } else if key == "http" {
+    HttpRequest
+  } else if key == "formatter" {
+    DataFormatter
+  } else if key == "condition" {
+    ConditionalBranch
+  } else if key == "loop" {
+    Loop
+  } else if key == "parallel" {
+    Parallel
+  } else {
+    Custom("Custom step")
+  }
+}
+
+///|
+fn empty_interaction() -> InteractionState {
   {
-    viewport: { x: 520.0, y: 300.0, scale: 1.0 },
-    nodes: [
-      {
-        id: NodeId(1),
-        x: -320.0,
-        y: -160.0,
-        w: 200.0,
-        h: 120.0,
-        kind: NodeKind::Shape("#8250df"),
-      },
-      {
-        id: NodeId(2),
-        x: -60.0,
-        y: -160.0,
-        w: 200.0,
-        h: 120.0,
-        kind: NodeKind::Shape("#c792ea"),
-      },
-      {
-        id: NodeId(3),
-        x: 200.0,
-        y: -160.0,
-        w: 200.0,
-        h: 120.0,
-        kind: NodeKind::Shape("#82aaff"),
-      },
-      {
-        id: NodeId(4),
-        x: -320.0,
-        y: 20.0,
-        w: 200.0,
-        h: 60.0,
-        kind: NodeKind::Text("Canopy Canvas"),
-      },
-      {
-        id: NodeId(5),
-        x: -60.0,
-        y: 20.0,
-        w: 200.0,
-        h: 60.0,
-        kind: NodeKind::Text("Pan · Zoom · Drag"),
-      },
-      {
-        id: NodeId(6),
-        x: 200.0,
-        y: 20.0,
-        w: 200.0,
-        h: 60.0,
-        kind: NodeKind::Text("∞"),
-      },
-    ],
+    dragging: None,
+    panning: None,
+    connecting: None,
+    selected: None,
+    selected_nodes: [],
+    pointer_down: false,
+    did_move: false,
+  }
+}
+
+///|
+/// Default state centers the world origin in a 1440×800 browser viewport
+/// and seeds a typed workflow that exercises sequence, transformation, branch,
+/// loop, and parallel-flow concepts.
+pub impl Default for CanvasState with fn default() -> CanvasState {
+  let nodes = [
+    make_workflow_node(NodeId(1), TimerTrigger, -520.0, -190.0),
+    make_workflow_node(NodeId(2), HttpRequest, -190.0, -190.0),
+    make_workflow_node(NodeId(3), DataFormatter, 155.0, -190.0),
+    make_workflow_node(NodeId(4), ConditionalBranch, 500.0, -190.0),
+    make_workflow_node(NodeId(5), Loop, 150.0, 60.0),
+    make_workflow_node(NodeId(6), Parallel, 500.0, 70.0),
+  ]
+  {
+    viewport: { x: 760.0, y: 330.0, scale: 0.75 },
+    nodes,
     edges: [
-      { id: EdgeId(1), source: NodeId(1), target: NodeId(4) },
-      { id: EdgeId(2), source: NodeId(2), target: NodeId(5) },
-      { id: EdgeId(3), source: NodeId(3), target: NodeId(6) },
+      {
+        id: EdgeId(1),
+        source: NodeId(1),
+        source_port: "tick",
+        target: NodeId(2),
+        target_port: "in",
+      },
+      {
+        id: EdgeId(2),
+        source: NodeId(2),
+        source_port: "json",
+        target: NodeId(3),
+        target_port: "json",
+      },
+      {
+        id: EdgeId(3),
+        source: NodeId(3),
+        source_port: "text",
+        target: NodeId(4),
+        target_port: "text",
+      },
     ],
+    next_node_id: 7,
     next_edge_id: 4,
-    interaction: {
-      dragging: None,
-      panning: None,
-      connecting: None,
-      selected: None,
-      pointer_down: false,
-      did_move: false,
-    },
+    interaction: empty_interaction(),
+    action_log: [],
   }
 }
