@@ -7,6 +7,7 @@ import {
   "dowdiness/incr/cells",
   "dowdiness/json" @djson,
   "dowdiness/loom/core" @loom,
+  "dowdiness/seam" @seam,
   "moonbitlang/core/json" @core_json,
 }
 
