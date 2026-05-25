@@ -134,15 +134,15 @@ test "workstream 2 (md): compute_view_patches initial render emits FullTree with
   markdown_set_text(handle, "# Hello\n\nWorld\n")
   let out = markdown_compute_view_patches_json(handle)
   if !out.contains("\"FullTree\"") {
-    fail(
-      "expected initial render to emit FullTree patch, got \{out}",
-    )
+    fail("expected initial render to emit FullTree patch, got \{out}")
   }
   // The root should not be null — a populated markdown document projects to
   // a ViewNode. (Empty doc would be {"FullTree":{"root":null}}; we just
   // wrote two blocks.)
   if out.contains("\"root\":null") {
-    fail("expected non-null root on initial render of non-empty doc, got \{out}")
+    fail(
+      "expected non-null root on initial render of non-empty doc, got \{out}",
+    )
   }
   destroy_markdown_editor(handle)
 }
@@ -194,9 +194,7 @@ test "workstream 2 (md): compute_view_patches collapses to [] after coordinator 
   // Sanity-check that we got something pre-destroy (FullTree from initial
   // render); confirms the test setup is wired correctly.
   if !alive.contains("\"FullTree\"") {
-    fail(
-      "expected pre-destroy initial render to emit FullTree, got \{alive}",
-    )
+    fail("expected pre-destroy initial render to emit FullTree, got \{alive}")
   }
   let h = markdown_handles.get(handle).unwrap()
   let id = h.editor_id
