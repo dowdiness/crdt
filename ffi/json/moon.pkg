@@ -4,10 +4,9 @@ import {
   "dowdiness/canopy/lang/json/edits" @json_edits,
   "dowdiness/canopy/lang/json/companion" @json_companion,
   "dowdiness/canopy/workspace/coordinator" @workspace,
-  "dowdiness/incr/cells",
   "dowdiness/json" @djson,
   "dowdiness/loom/core" @loom,
-  "dowdiness/seam" @seam,
+  "dowdiness/seam",
   "moonbitlang/core/json" @core_json,
 }
 
