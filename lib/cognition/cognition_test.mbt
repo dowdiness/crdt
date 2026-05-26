@@ -386,6 +386,27 @@ test "pack_context truncates without splitting unicode characters" {
 }
 
 ///|
+test "pack_context does not emit empty truncated items" {
+  let provider : CognitionProvider = {
+    file_summary: fn(path, _text) { "\{path}: data" },
+    repo_summary: fn(_items) { "12345" },
+  }
+  let store = CognitionStore::new_with_provider(provider)
+  let _ = store.set_input(FileText("a.mbt"), Text("ignored"))
+
+  let (items, stats) = store.pack_context_with_stats(
+    "what changed?",
+    ContextPackOptions::new(max_items=2, max_chars=5, truncate_items=true),
+  )
+
+  inspect(items.length(), content="1")
+  inspect(items[0].payload, content="12345")
+  inspect(stats.selected_items, content="1")
+  inspect(stats.truncated_items, content="0")
+  inspect(stats.payload_chars, content="5")
+}
+
+///|
 test "pack_context stats do not infer truncation from ranker reason text" {
   let ranker : ContextRanker = {
     score_summary: fn(_query, _key) { 0 },
