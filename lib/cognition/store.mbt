@@ -1,7 +1,6 @@
 ///|
 priv struct ContextPackSelection {
   items : Array[ContextItem]
-  stats : ContextPackStats
 }
 
 ///|
@@ -244,8 +243,7 @@ pub fn CognitionStore::pack_context_with_options(
   options : ContextPackOptions,
 ) -> Array[ContextItem] {
   let key = context_key_for_options(query, options)
-  let _ = self.compute(key)
-  match self.get_value(key) {
+  match self.compute_if_missing_or_dirty(key) {
     Some(ContextItems(items)) => items
     _ => []
   }
@@ -258,12 +256,12 @@ pub fn CognitionStore::pack_context_with_stats(
   query : String,
   options : ContextPackOptions,
 ) -> (Array[ContextItem], ContextPackStats) {
-  let _ = self.compute(context_key_for_options(query, options))
-  let candidates : Array[ContextItem] = []
-  let inputs : Array[CognitionKey] = [RepoSummary]
-  self.build_context_candidates(query, candidates, inputs)
-  let selection = select_context_items(candidates, options)
-  (selection.items, selection.stats)
+  let key = context_key_for_options(query, options)
+  match self.compute_if_missing_or_dirty(key) {
+    Some(ContextItems(items)) =>
+      (items, self.context_pack_stats_for_stored_items(key, items))
+    _ => ([], context_pack_stats(0, [], 0))
+  }
 }
 
 ///|
@@ -331,6 +329,22 @@ pub fn CognitionStore::compute(
   self.mark_dirty(key)
   let _ = self.recompute_dirty()
   self.get_value(key)
+}
+
+///|
+fn CognitionStore::compute_if_missing_or_dirty(
+  self : CognitionStore,
+  key : CognitionKey,
+) -> CognitionValue? {
+  if self.values.contains(key) && !self.dirty.contains(key) {
+    self.get_value(key)
+  } else {
+    if !self.dirty.contains(key) {
+      self.mark_dirty(key)
+    }
+    let _ = self.recompute_dirty()
+    self.get_value(key)
+  }
 }
 
 ///|
@@ -732,10 +746,8 @@ fn select_context_items(
   match options.max_chars {
     Some(max_chars) =>
       select_context_items_with_char_budget(candidates, options, max_chars)
-    None => {
-      let items = select_context_items_by_count(candidates, options.max_items)
-      { items, stats: context_pack_stats(candidates.length(), items, 0) }
-    }
+    None =>
+      { items: select_context_items_by_count(candidates, options.max_items) }
   }
 }
 
@@ -764,11 +776,10 @@ fn select_context_items_with_char_budget(
   max_chars : Int,
 ) -> ContextPackSelection {
   if options.max_items <= 0 || max_chars <= 0 {
-    { items: [], stats: context_pack_stats(items.length(), [], 0) }
+    { items: [] }
   } else {
     let selected : Array[ContextItem] = []
     let mut used_chars = 0
-    let mut truncated_items = 0
     for item in items {
       if selected.length() >= options.max_items {
         break
@@ -780,14 +791,10 @@ fn select_context_items_with_char_budget(
         used_chars += item_chars
       } else if options.truncate_items && remaining_chars > 0 {
         selected.push(truncate_context_item(item, remaining_chars))
-        truncated_items += 1
         break
       }
     }
-    {
-      items: selected,
-      stats: context_pack_stats(items.length(), selected, truncated_items),
-    }
+    { items: selected }
   }
 }
 
@@ -815,6 +822,50 @@ fn safe_prefix_by_code_units(text : String, max_units : Int) -> String {
     used_units = next_units
   }
   chunks.join("")
+}
+
+///|
+fn CognitionStore::context_pack_stats_for_stored_items(
+  self : CognitionStore,
+  key : CognitionKey,
+  items : Array[ContextItem],
+) -> ContextPackStats {
+  let candidate_count = self.dependencies.get(key).unwrap_or([]).length()
+  let mut truncated_items = 0
+  for item in items {
+    if self.context_item_was_truncated(item) {
+      truncated_items += 1
+    }
+  }
+  context_pack_stats(candidate_count, items, truncated_items)
+}
+
+///|
+fn CognitionStore::context_item_was_truncated(
+  self : CognitionStore,
+  item : ContextItem,
+) -> Bool {
+  match self.context_source_payload(item.source) {
+    Some(payload) =>
+      item.payload.length() < payload.length() &&
+      payload.has_prefix(item.payload)
+    None => false
+  }
+}
+
+///|
+fn CognitionStore::context_source_payload(
+  self : CognitionStore,
+  source : CognitionKey,
+) -> String? {
+  match self.values.get(source) {
+    Some(Summary(payload)) => Some(payload)
+    Some(Text(payload)) => Some(payload)
+    Some(ContextBundle(lines)) => Some(lines.join("\n"))
+    Some(ContextItems(context_items)) =>
+      Some(context_items.map(fn(item) { item.payload }).join("\n"))
+    None => None
+  }
 }
 
 ///|
