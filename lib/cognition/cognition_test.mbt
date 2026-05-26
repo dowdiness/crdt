@@ -167,10 +167,38 @@ test "pack_context returns provenance-bearing budgeted items" {
   )
   inspect(items[1].source == FileSummary("a.mbt"), content="true")
   inspect(items[1].payload.contains("a.mbt"), content="true")
-  inspect(
-    items[1].reason,
-    content="file summary selected for query: what changed?",
-  )
+  inspect(items[1].reason, content="workspace file summary")
+}
+
+///|
+test "pack_context prefers file summaries that match the query" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("src/beta.mbt"), Text("beta"))
+  let _ = store.set_input(FileText("src/alpha.mbt"), Text("alpha"))
+  let _ = store.set_input(FileText("src/gamma.mbt"), Text("gamma"))
+
+  let items = store.pack_context("explain beta", 3)
+
+  inspect(items.length(), content="3")
+  inspect(items[0].source == RepoSummary, content="true")
+  inspect(items[1].source == FileSummary("src/beta.mbt"), content="true")
+  inspect(items[1].reason, content="name matched query: beta")
+  inspect(items[2].source == FileSummary("src/alpha.mbt"), content="true")
+  inspect(items[2].reason, content="workspace file summary")
+}
+
+///|
+test "pack_context ranks full path matches before filename matches" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("src/a.mbt"), Text("src a"))
+  let _ = store.set_input(FileText("test/a.mbt"), Text("test a"))
+
+  let items = store.pack_context("debug test/a.mbt and a.mbt", 3)
+
+  inspect(items[1].source == FileSummary("test/a.mbt"), content="true")
+  inspect(items[1].reason, content="path matched query: test/a.mbt")
+  inspect(items[2].source == FileSummary("src/a.mbt"), content="true")
+  inspect(items[2].reason, content="filename matched query: a.mbt")
 }
 
 ///|

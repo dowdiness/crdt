@@ -527,12 +527,12 @@ fn CognitionStore::recompute_packed_context(
     RepoSummary,
     reason="workspace overview for query: \{query}",
   )
-  for summary_key in self.known_file_summary_keys() {
+  for summary_key in self.selected_file_summary_keys(query) {
     inputs.push(summary_key)
     self.push_context_item(
       items,
       summary_key,
-      reason="file summary selected for query: \{query}",
+      reason=context_reason_for_summary(query, summary_key),
     )
   }
   self.store_recomputed(
@@ -614,6 +614,24 @@ fn CognitionStore::ensure_file_summaries_for_known_texts(
 }
 
 ///|
+fn CognitionStore::selected_file_summary_keys(
+  self : CognitionStore,
+  query : String,
+) -> Array[CognitionKey] {
+  let keys = self.known_file_summary_keys()
+  keys.sort_by(fn(a, b) {
+    let score_a = context_score_for_summary(query, a)
+    let score_b = context_score_for_summary(query, b)
+    if score_a != score_b {
+      score_b.compare(score_a)
+    } else {
+      a.compare(b)
+    }
+  })
+  keys
+}
+
+///|
 fn CognitionStore::known_file_summary_keys(
   self : CognitionStore,
 ) -> Array[CognitionKey] {
@@ -625,6 +643,78 @@ fn CognitionStore::known_file_summary_keys(
     }
   }
   keys
+}
+
+///|
+fn context_score_for_summary(query : String, key : CognitionKey) -> Int {
+  match key {
+    FileSummary(path) => context_score_for_path(query, path)
+    _ => 0
+  }
+}
+
+///|
+fn context_reason_for_summary(query : String, key : CognitionKey) -> String {
+  match key {
+    FileSummary(path) => context_reason_for_path(query, path)
+    _ => "workspace artifact"
+  }
+}
+
+///|
+fn context_score_for_path(query : String, path : String) -> Int {
+  let filename = file_name_from_path(path)
+  let stem = file_stem_from_name(filename)
+  if query_contains_non_empty(query, path) {
+    100
+  } else if query_contains_non_empty(query, filename) {
+    80
+  } else if query_contains_name(query, stem) {
+    60
+  } else {
+    0
+  }
+}
+
+///|
+fn context_reason_for_path(query : String, path : String) -> String {
+  let filename = file_name_from_path(path)
+  let stem = file_stem_from_name(filename)
+  if query_contains_non_empty(query, path) {
+    "path matched query: \{path}"
+  } else if query_contains_non_empty(query, filename) {
+    "filename matched query: \{filename}"
+  } else if query_contains_name(query, stem) {
+    "name matched query: \{stem}"
+  } else {
+    "workspace file summary"
+  }
+}
+
+///|
+fn query_contains_non_empty(query : String, needle : String) -> Bool {
+  needle.length() > 0 && query.contains(needle)
+}
+
+///|
+fn query_contains_name(query : String, name : String) -> Bool {
+  name.length() > 1 && query.contains(name)
+}
+
+///|
+fn file_name_from_path(path : String) -> String {
+  match path.rev_split_once("/") {
+    Some((_, name)) => name.to_owned()
+    None => path
+  }
+}
+
+///|
+fn file_stem_from_name(filename : String) -> String {
+  match filename.rev_split_once(".") {
+    Some((stem, _)) => stem.to_owned()
+    None => filename
+  }
 }
 
 ///|
