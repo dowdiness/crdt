@@ -7,6 +7,7 @@ priv enum GraphOp {
   ComputeQuery
   PackOne
   PackThree
+  PackBudget
   RecomputeDirty
 }
 
@@ -99,6 +100,10 @@ fn apply_graph_op(store : CognitionStore, op : GraphOp) -> Unit {
     }
     PackThree => {
       let _ = store.pack_context("what changed?", 3)
+      ()
+    }
+    PackBudget => {
+      let _ = store.pack_context_with_budget("what changed?", 3, 80)
       ()
     }
     RecomputeDirty => {
@@ -205,6 +210,8 @@ fn graph_key_is_live(store : CognitionStore, key : CognitionKey) -> Bool {
       store.get_value(key) is Some(ContextBundle(_)) || store.is_dirty(key)
     PackedContext(_, _) =>
       store.get_value(key) is Some(ContextItems(_)) || store.is_dirty(key)
+    BudgetedContext(_, _, _) =>
+      store.get_value(key) is Some(ContextItems(_)) || store.is_dirty(key)
   }
 }
 
@@ -216,6 +223,7 @@ fn graph_key_mentions_path(key : CognitionKey, path : String) -> Bool {
     RepoSummary => false
     QueryContext(_) => false
     PackedContext(_, _) => false
+    BudgetedContext(_, _, _) => false
   }
 }
 
@@ -230,6 +238,7 @@ fn graph_candidate_keys() -> Array[CognitionKey] {
     QueryContext("what changed?"),
     CognitionKey::PackedContext("what changed?", 1),
     CognitionKey::PackedContext("what changed?", 3),
+    CognitionKey::BudgetedContext("what changed?", 3, 80),
   ]
 }
 
@@ -255,7 +264,7 @@ fn graph_sequence_count(length : Int) -> Int {
 
 ///|
 fn graph_op_count() -> Int {
-  8
+  9
 }
 
 ///|
@@ -268,6 +277,7 @@ fn graph_op_from_code(code : Int) -> GraphOp {
     4 => ComputeQuery
     5 => PackOne
     6 => PackThree
+    7 => PackBudget
     _ => RecomputeDirty
   }
 }
@@ -282,6 +292,7 @@ fn graph_op_label(op : GraphOp) -> String {
     ComputeQuery => "ComputeQuery"
     PackOne => "PackOne"
     PackThree => "PackThree"
+    PackBudget => "PackBudget"
     RecomputeDirty => "RecomputeDirty"
   }
 }

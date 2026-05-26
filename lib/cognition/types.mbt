@@ -6,6 +6,7 @@ pub(all) enum CognitionKey {
   RepoSummary
   QueryContext(String)
   PackedContext(String, Int)
+  BudgetedContext(String, Int, Int)
 } derive(Debug, Eq, Hash, Compare)
 
 ///|
@@ -51,5 +52,7 @@ pub fn CognitionKey::label(self : CognitionKey) -> String {
     RepoSummary => "RepoSummary"
     QueryContext(query) => "QueryContext(\{query})"
     PackedContext(query, max_items) => "PackedContext(\{query}, \{max_items})"
+    BudgetedContext(query, max_items, max_chars) =>
+      "BudgetedContext(\{query}, \{max_items}, \{max_chars})"
   }
 }

@@ -146,6 +146,7 @@ fn cognition_key_mentions_path(key : CognitionKey, path : String) -> Bool {
     RepoSummary => false
     QueryContext(_) => false
     PackedContext(_, _) => false
+    BudgetedContext(_, _, _) => false
   }
 }
 
@@ -247,6 +248,51 @@ test "pack_context with non-positive budget returns no items but stays live" {
   inspect(
     store
     .dependencies_of(CognitionKey::PackedContext("what changed?", 0))
+    .contains(RepoSummary),
+    content="true",
+  )
+}
+
+///|
+test "pack_context_with_budget skips oversized items and preserves query ranking" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("src/alpha.mbt"), Text("alpha"))
+  let _ = store.set_input(FileText("src/beta.mbt"), Text("beta"))
+  let _ = store.set_input(FileText("src/gamma.mbt"), Text("gamma"))
+
+  let items = store.pack_context_with_budget("explain beta", 3, 40)
+
+  inspect(items.length(), content="1")
+  inspect(items[0].source == FileSummary("src/beta.mbt"), content="true")
+  inspect(items[0].reason, content="name matched query: beta")
+}
+
+///|
+test "pack_context_with_budget includes more items when budget allows" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("src/alpha.mbt"), Text("alpha"))
+  let _ = store.set_input(FileText("src/beta.mbt"), Text("beta"))
+
+  let items = store.pack_context_with_budget("explain beta", 3, 1000)
+
+  inspect(items.length(), content="3")
+  inspect(items[0].source == RepoSummary, content="true")
+  inspect(items[1].source == FileSummary("src/beta.mbt"), content="true")
+  inspect(items[2].source == FileSummary("src/alpha.mbt"), content="true")
+}
+
+///|
+test "pack_context_with_budget with non-positive char budget returns no items but stays live" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("a.mbt"), Text("one"))
+
+  inspect(
+    store.pack_context_with_budget("what changed?", 3, 0).length(),
+    content="0",
+  )
+  inspect(
+    store
+    .dependencies_of(CognitionKey::BudgetedContext("what changed?", 3, 0))
     .contains(RepoSummary),
     content="true",
   )

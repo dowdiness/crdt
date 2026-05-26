@@ -182,13 +182,30 @@ pub fn CognitionStore::recompute_count(
 }
 
 ///|
-/// Build a provenance-bearing, budgeted context bundle for `query`.
+/// Build a provenance-bearing, item-budgeted context bundle for `query`.
 pub fn CognitionStore::pack_context(
   self : CognitionStore,
   query : String,
   max_items : Int,
 ) -> Array[ContextItem] {
   let key = PackedContext(query, max_items)
+  let _ = self.compute(key)
+  match self.get_value(key) {
+    Some(ContextItems(items)) => items
+    _ => []
+  }
+}
+
+///|
+/// Build a provenance-bearing context bundle constrained by item count and
+/// cumulative payload character count.
+pub fn CognitionStore::pack_context_with_budget(
+  self : CognitionStore,
+  query : String,
+  max_items : Int,
+  max_chars : Int,
+) -> Array[ContextItem] {
+  let key = BudgetedContext(query, max_items, max_chars)
   let _ = self.compute(key)
   match self.get_value(key) {
     Some(ContextItems(items)) => items
@@ -423,6 +440,8 @@ fn CognitionStore::recompute_one(
     QueryContext(query) => self.recompute_query_context(query)
     PackedContext(query, max_items) =>
       self.recompute_packed_context(query, max_items)
+    BudgetedContext(query, max_items, max_chars) =>
+      self.recompute_budgeted_context(query, max_items, max_chars)
   }
 }
 
@@ -516,12 +535,46 @@ fn CognitionStore::recompute_packed_context(
   query : String,
   max_items : Int,
 ) -> Unit {
+  let items : Array[ContextItem] = []
+  let inputs : Array[CognitionKey] = [RepoSummary]
+  self.build_context_candidates(query, items, inputs)
+  self.store_recomputed(
+    PackedContext(query, max_items),
+    ContextItems(take_context_items(items, max_items)),
+    inputs,
+  )
+}
+
+///|
+fn CognitionStore::recompute_budgeted_context(
+  self : CognitionStore,
+  query : String,
+  max_items : Int,
+  max_chars : Int,
+) -> Unit {
+  let items : Array[ContextItem] = []
+  let inputs : Array[CognitionKey] = [RepoSummary]
+  self.build_context_candidates(query, items, inputs)
+  self.store_recomputed(
+    BudgetedContext(query, max_items, max_chars),
+    ContextItems(
+      take_context_items_with_char_budget(items, max_items, max_chars),
+    ),
+    inputs,
+  )
+}
+
+///|
+fn CognitionStore::build_context_candidates(
+  self : CognitionStore,
+  query : String,
+  items : Array[ContextItem],
+  inputs : Array[CognitionKey],
+) -> Unit {
   if !self.values.contains(RepoSummary) || self.dirty.contains(RepoSummary) {
     self.recompute_repo_summary()
     self.dirty.remove(RepoSummary)
   }
-  let items : Array[ContextItem] = []
-  let inputs : Array[CognitionKey] = [RepoSummary]
   self.push_context_item(
     items,
     RepoSummary,
@@ -535,11 +588,6 @@ fn CognitionStore::recompute_packed_context(
       reason=context_reason_for_summary(query, summary_key),
     )
   }
-  self.store_recomputed(
-    PackedContext(query, max_items),
-    ContextItems(take_context_items(items, max_items)),
-    inputs,
-  )
 }
 
 ///|
@@ -595,6 +643,31 @@ fn take_context_items(
     let selected : Array[ContextItem] = []
     for i in 0..<max_items {
       selected.push(items[i])
+    }
+    selected
+  }
+}
+
+///|
+fn take_context_items_with_char_budget(
+  items : Array[ContextItem],
+  max_items : Int,
+  max_chars : Int,
+) -> Array[ContextItem] {
+  if max_items <= 0 || max_chars <= 0 {
+    []
+  } else {
+    let selected : Array[ContextItem] = []
+    let mut used_chars = 0
+    for item in items {
+      if selected.length() >= max_items {
+        break
+      }
+      let next_chars = used_chars + item.payload.length()
+      if next_chars <= max_chars {
+        selected.push(item)
+        used_chars = next_chars
+      }
     }
     selected
   }
