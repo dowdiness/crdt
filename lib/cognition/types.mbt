@@ -39,6 +39,22 @@ pub(all) struct ContextItem {
 } derive(Debug, Eq)
 
 ///|
+/// Options for deterministic context packing.
+pub(all) struct ContextPackOptions {
+  max_items : Int
+  max_chars : Int?
+} derive(Debug, Eq)
+
+///|
+/// Create context packing options.
+pub fn ContextPackOptions::new(
+  max_items~ : Int,
+  max_chars? : Int,
+) -> ContextPackOptions {
+  { max_items, max_chars }
+}
+
+///|
 /// Monotonic store-local revision. The first stored value receives revision 1.
 pub struct Revision(Int) derive(Debug, Eq, Hash, Compare)
 

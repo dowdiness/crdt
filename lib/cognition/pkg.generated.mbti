@@ -48,6 +48,7 @@ pub fn CognitionStore::new() -> Self
 pub fn CognitionStore::new_with_provider(CognitionProvider) -> Self
 pub fn CognitionStore::pack_context(Self, String, Int) -> Array[ContextItem]
 pub fn CognitionStore::pack_context_with_budget(Self, String, Int, Int) -> Array[ContextItem]
+pub fn CognitionStore::pack_context_with_options(Self, String, ContextPackOptions) -> Array[ContextItem]
 pub fn CognitionStore::recompute_count(Self, CognitionKey) -> Int
 pub fn CognitionStore::recompute_dirty(Self) -> Array[CognitionKey]
 pub fn CognitionStore::remove_file(Self, String) -> Bool
@@ -66,6 +67,12 @@ pub(all) struct ContextItem {
   payload : String
   reason : String
 } derive(Eq, @debug.Debug)
+
+pub(all) struct ContextPackOptions {
+  max_items : Int
+  max_chars : Int?
+} derive(Eq, @debug.Debug)
+pub fn ContextPackOptions::new(max_items~ : Int, max_chars? : Int) -> Self
 
 pub(all) struct Dependency {
   from : CognitionKey

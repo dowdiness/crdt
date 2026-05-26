@@ -282,6 +282,27 @@ test "pack_context_with_budget includes more items when budget allows" {
 }
 
 ///|
+test "pack_context_with_options preserves wrapper behavior" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("src/alpha.mbt"), Text("alpha"))
+  let _ = store.set_input(FileText("src/beta.mbt"), Text("beta"))
+
+  let by_items = store.pack_context_with_options(
+    "explain beta",
+    ContextPackOptions::new(max_items=2),
+  )
+  let by_chars = store.pack_context_with_options(
+    "explain beta",
+    ContextPackOptions::new(max_items=3, max_chars=40),
+  )
+
+  inspect(by_items.length(), content="2")
+  inspect(by_items[1].source == FileSummary("src/beta.mbt"), content="true")
+  inspect(by_chars.length(), content="1")
+  inspect(by_chars[0].source == FileSummary("src/beta.mbt"), content="true")
+}
+
+///|
 test "pack_context_with_budget with non-positive char budget returns no items but stays live" {
   let store = CognitionStore::new()
   let _ = store.set_input(FileText("a.mbt"), Text("one"))

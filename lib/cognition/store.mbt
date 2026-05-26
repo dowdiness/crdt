@@ -198,12 +198,7 @@ pub fn CognitionStore::pack_context(
   query : String,
   max_items : Int,
 ) -> Array[ContextItem] {
-  let key = PackedContext(query, max_items)
-  let _ = self.compute(key)
-  match self.get_value(key) {
-    Some(ContextItems(items)) => items
-    _ => []
-  }
+  self.pack_context_with_options(query, ContextPackOptions::new(max_items~))
 }
 
 ///|
@@ -215,11 +210,35 @@ pub fn CognitionStore::pack_context_with_budget(
   max_items : Int,
   max_chars : Int,
 ) -> Array[ContextItem] {
-  let key = BudgetedContext(query, max_items, max_chars)
+  self.pack_context_with_options(
+    query,
+    ContextPackOptions::new(max_items~, max_chars~),
+  )
+}
+
+///|
+/// Build a provenance-bearing context bundle using explicit packing options.
+pub fn CognitionStore::pack_context_with_options(
+  self : CognitionStore,
+  query : String,
+  options : ContextPackOptions,
+) -> Array[ContextItem] {
+  let key = context_key_for_options(query, options)
   let _ = self.compute(key)
   match self.get_value(key) {
     Some(ContextItems(items)) => items
     _ => []
+  }
+}
+
+///|
+fn context_key_for_options(
+  query : String,
+  options : ContextPackOptions,
+) -> CognitionKey {
+  match options.max_chars {
+    Some(max_chars) => BudgetedContext(query, options.max_items, max_chars)
+    None => PackedContext(query, options.max_items)
   }
 }
 
