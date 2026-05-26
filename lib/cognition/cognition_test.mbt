@@ -304,6 +304,27 @@ test "pack_context_with_options preserves wrapper behavior" {
 }
 
 ///|
+test "pack_context_with_options reuses clean cached context" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("a.mbt"), Text("one"))
+  let options = ContextPackOptions::new(max_items=2)
+  let key = CognitionKey::PackedContext("what changed?", 2)
+
+  let first = store.pack_context_with_options("what changed?", options)
+  inspect(first.length(), content="2")
+  inspect(store.recompute_count(key), content="1")
+
+  let second = store.pack_context_with_options("what changed?", options)
+  inspect(second.length(), content="2")
+  inspect(store.recompute_count(key), content="1")
+
+  let _ = store.set_input(FileText("a.mbt"), Text("one changed"))
+  let refreshed = store.pack_context_with_options("what changed?", options)
+  inspect(refreshed.length(), content="2")
+  inspect(store.recompute_count(key), content="2")
+}
+
+///|
 test "pack_context_with_options truncates oversized selected items when enabled" {
   let store = CognitionStore::new()
   let _ = store.set_input(FileText("src/beta.mbt"), Text("beta"))
@@ -346,6 +367,39 @@ test "pack_context_with_stats reports selected skipped and payload counts" {
     stats.payload_chars == items[0].payload.length() + items[1].payload.length(),
     content="true",
   )
+}
+
+///|
+test "pack_context_with_stats reuses computed context items" {
+  let reason_calls = Ref::Ref(0)
+  let ranker : ContextRanker = {
+    score_summary: fn(_query, _key) { 0 },
+    reason_summary: fn(_query, _key) {
+      reason_calls.val += 1
+      "reason call \{reason_calls.val}"
+    },
+  }
+  let store = CognitionStore::new_with_provider_and_ranker(
+    CognitionProvider::mock(),
+    ranker,
+  )
+  let _ = store.set_input(FileText("a.mbt"), Text("one"))
+  let key = CognitionKey::PackedContext("what changed?", 2)
+
+  let (items, stats) = store.pack_context_with_stats(
+    "what changed?",
+    ContextPackOptions::new(max_items=2),
+  )
+
+  inspect(reason_calls.val, content="1")
+  inspect(items[1].reason, content="reason call 1")
+  match store.get_value(key) {
+    Some(ContextItems(stored)) =>
+      inspect(stored[1].reason == items[1].reason, content="true")
+    _ => fail("expected packed context")
+  }
+  inspect(stats.selected_items, content="2")
+  inspect(stats.skipped_items, content="0")
 }
 
 ///|
