@@ -212,6 +212,8 @@ fn graph_key_is_live(store : CognitionStore, key : CognitionKey) -> Bool {
       store.get_value(key) is Some(ContextItems(_)) || store.is_dirty(key)
     BudgetedContext(_, _, _) =>
       store.get_value(key) is Some(ContextItems(_)) || store.is_dirty(key)
+    TruncatedContext(_, _, _) =>
+      store.get_value(key) is Some(ContextItems(_)) || store.is_dirty(key)
   }
 }
 
@@ -224,6 +226,7 @@ fn graph_key_mentions_path(key : CognitionKey, path : String) -> Bool {
     QueryContext(_) => false
     PackedContext(_, _) => false
     BudgetedContext(_, _, _) => false
+    TruncatedContext(_, _, _) => false
   }
 }
 
@@ -239,6 +242,7 @@ fn graph_candidate_keys() -> Array[CognitionKey] {
     CognitionKey::PackedContext("what changed?", 1),
     CognitionKey::PackedContext("what changed?", 3),
     CognitionKey::BudgetedContext("what changed?", 3, 80),
+    CognitionKey::TruncatedContext("what changed?", 3, 80),
   ]
 }
 

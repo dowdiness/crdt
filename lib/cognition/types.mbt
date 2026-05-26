@@ -7,6 +7,7 @@ pub(all) enum CognitionKey {
   QueryContext(String)
   PackedContext(String, Int)
   BudgetedContext(String, Int, Int)
+  TruncatedContext(String, Int, Int)
 } derive(Debug, Eq, Hash, Compare)
 
 ///|
@@ -43,6 +44,7 @@ pub(all) struct ContextItem {
 pub(all) struct ContextPackOptions {
   max_items : Int
   max_chars : Int?
+  truncate_items : Bool
 } derive(Debug, Eq)
 
 ///|
@@ -50,8 +52,9 @@ pub(all) struct ContextPackOptions {
 pub fn ContextPackOptions::new(
   max_items~ : Int,
   max_chars? : Int,
+  truncate_items? : Bool = false,
 ) -> ContextPackOptions {
-  { max_items, max_chars }
+  { max_items, max_chars, truncate_items }
 }
 
 ///|
@@ -81,5 +84,7 @@ pub fn CognitionKey::label(self : CognitionKey) -> String {
     PackedContext(query, max_items) => "PackedContext(\{query}, \{max_items})"
     BudgetedContext(query, max_items, max_chars) =>
       "BudgetedContext(\{query}, \{max_items}, \{max_chars})"
+    TruncatedContext(query, max_items, max_chars) =>
+      "TruncatedContext(\{query}, \{max_items}, \{max_chars})"
   }
 }

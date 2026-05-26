@@ -18,6 +18,7 @@ pub(all) enum CognitionKey {
   QueryContext(String)
   PackedContext(String, Int)
   BudgetedContext(String, Int, Int)
+  TruncatedContext(String, Int, Int)
 } derive(Compare, Eq, Hash, @debug.Debug)
 pub fn CognitionKey::label(Self) -> String
 
@@ -71,8 +72,9 @@ pub(all) struct ContextItem {
 pub(all) struct ContextPackOptions {
   max_items : Int
   max_chars : Int?
+  truncate_items : Bool
 } derive(Eq, @debug.Debug)
-pub fn ContextPackOptions::new(max_items~ : Int, max_chars? : Int) -> Self
+pub fn ContextPackOptions::new(max_items~ : Int, max_chars? : Int, truncate_items? : Bool) -> Self
 
 pub(all) struct Dependency {
   from : CognitionKey

@@ -147,6 +147,7 @@ fn cognition_key_mentions_path(key : CognitionKey, path : String) -> Bool {
     QueryContext(_) => false
     PackedContext(_, _) => false
     BudgetedContext(_, _, _) => false
+    TruncatedContext(_, _, _) => false
   }
 }
 
@@ -300,6 +301,30 @@ test "pack_context_with_options preserves wrapper behavior" {
   inspect(by_items[1].source == FileSummary("src/beta.mbt"), content="true")
   inspect(by_chars.length(), content="1")
   inspect(by_chars[0].source == FileSummary("src/beta.mbt"), content="true")
+}
+
+///|
+test "pack_context_with_options truncates oversized selected items when enabled" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("src/beta.mbt"), Text("beta"))
+
+  let skipped = store.pack_context_with_options(
+    "explain beta",
+    ContextPackOptions::new(max_items=3, max_chars=10),
+  )
+  let truncated = store.pack_context_with_options(
+    "explain beta",
+    ContextPackOptions::new(max_items=3, max_chars=10, truncate_items=true),
+  )
+
+  inspect(skipped.length(), content="0")
+  inspect(truncated.length(), content="1")
+  inspect(truncated[0].source == RepoSummary, content="true")
+  inspect(truncated[0].payload.length(), content="10")
+  inspect(
+    truncated[0].reason,
+    content="workspace overview for query: explain beta; truncated",
+  )
 }
 
 ///|
