@@ -1,4 +1,10 @@
 ///|
+priv struct ContextPackSelection {
+  items : Array[ContextItem]
+  stats : ContextPackStats
+}
+
+///|
 /// Mutable store for cognition values, revisions, dependencies, and dirtiness.
 pub(all) struct CognitionStore {
   priv values : Map[CognitionKey, CognitionValue]
@@ -8,11 +14,33 @@ pub(all) struct CognitionStore {
   priv reverse_dependencies : Map[CognitionKey, Array[CognitionKey]]
   priv dirty : Map[CognitionKey, Bool]
   priv recompute_counts : Map[CognitionKey, Int]
+  priv provider : CognitionProvider
+  priv ranker : ContextRanker
   priv reactive : CognitionReactive
 }
 
 ///|
 pub fn CognitionStore::new() -> CognitionStore {
+  CognitionStore::new_with_provider(CognitionProvider::mock())
+}
+
+///|
+/// Create a cognition store with a deterministic summary provider.
+pub fn CognitionStore::new_with_provider(
+  provider : CognitionProvider,
+) -> CognitionStore {
+  CognitionStore::new_with_provider_and_ranker(
+    provider,
+    ContextRanker::path_match(),
+  )
+}
+
+///|
+/// Create a cognition store with deterministic summary and ranking policies.
+pub fn CognitionStore::new_with_provider_and_ranker(
+  provider : CognitionProvider,
+  ranker : ContextRanker,
+) -> CognitionStore {
   let dependencies : Map[CognitionKey, Array[CognitionKey]] = Map::default()
   {
     values: Map::default(),
@@ -22,6 +50,8 @@ pub fn CognitionStore::new() -> CognitionStore {
     reverse_dependencies: Map::default(),
     dirty: Map::default(),
     recompute_counts: Map::default(),
+    provider,
+    ranker,
     reactive: CognitionReactive::CognitionReactive(dependencies),
   }
 }
@@ -179,6 +209,74 @@ pub fn CognitionStore::recompute_count(
   key : CognitionKey,
 ) -> Int {
   self.recompute_counts.get(key).unwrap_or(0)
+}
+
+///|
+/// Build a provenance-bearing, item-budgeted context bundle for `query`.
+pub fn CognitionStore::pack_context(
+  self : CognitionStore,
+  query : String,
+  max_items : Int,
+) -> Array[ContextItem] {
+  self.pack_context_with_options(query, ContextPackOptions::new(max_items~))
+}
+
+///|
+/// Build a provenance-bearing context bundle constrained by item count and
+/// cumulative payload character count.
+pub fn CognitionStore::pack_context_with_budget(
+  self : CognitionStore,
+  query : String,
+  max_items : Int,
+  max_chars : Int,
+) -> Array[ContextItem] {
+  self.pack_context_with_options(
+    query,
+    ContextPackOptions::new(max_items~, max_chars~),
+  )
+}
+
+///|
+/// Build a provenance-bearing context bundle using explicit packing options.
+pub fn CognitionStore::pack_context_with_options(
+  self : CognitionStore,
+  query : String,
+  options : ContextPackOptions,
+) -> Array[ContextItem] {
+  let key = context_key_for_options(query, options)
+  let _ = self.compute(key)
+  match self.get_value(key) {
+    Some(ContextItems(items)) => items
+    _ => []
+  }
+}
+
+///|
+/// Build context and return deterministic selection telemetry.
+pub fn CognitionStore::pack_context_with_stats(
+  self : CognitionStore,
+  query : String,
+  options : ContextPackOptions,
+) -> (Array[ContextItem], ContextPackStats) {
+  let _ = self.compute(context_key_for_options(query, options))
+  let candidates : Array[ContextItem] = []
+  let inputs : Array[CognitionKey] = [RepoSummary]
+  self.build_context_candidates(query, candidates, inputs)
+  let selection = select_context_items(candidates, options)
+  (selection.items, selection.stats)
+}
+
+///|
+fn context_key_for_options(
+  query : String,
+  options : ContextPackOptions,
+) -> CognitionKey {
+  match options.max_chars {
+    Some(max_chars) if options.truncate_items =>
+      TruncatedContext(query, options.max_items, max_chars)
+    Some(max_chars) => BudgetedContext(query, options.max_items, max_chars)
+    None => PackedContext(query, options.max_items)
+  }
 }
 
 ///|
@@ -406,6 +504,12 @@ fn CognitionStore::recompute_one(
     FileSummary(path) => self.recompute_file_summary(path)
     RepoSummary => self.recompute_repo_summary()
     QueryContext(query) => self.recompute_query_context(query)
+    PackedContext(query, max_items) =>
+      self.recompute_packed_context(query, max_items)
+    BudgetedContext(query, max_items, max_chars) =>
+      self.recompute_budgeted_context(query, max_items, max_chars)
+    TruncatedContext(query, max_items, max_chars) =>
+      self.recompute_truncated_context(query, max_items, max_chars)
   }
 }
 
@@ -449,7 +553,7 @@ fn CognitionStore::recompute_file_summary(
   }
   self.store_recomputed(
     FileSummary(path),
-    Summary(mock_file_summary(path, text)),
+    Summary((self.provider.file_summary)(path, text)),
     [input],
   )
 }
@@ -465,12 +569,11 @@ fn CognitionStore::recompute_repo_summary(self : CognitionStore) -> Unit {
       _ => ()
     }
   }
-  let summary = if items.length() == 0 {
-    "repo summary: <empty>"
-  } else {
-    "repo summary:\n" + items.join("\n")
-  }
-  self.store_recomputed(RepoSummary, Summary(summary), summary_keys)
+  self.store_recomputed(
+    RepoSummary,
+    Summary((self.provider.repo_summary)(items.copy())),
+    summary_keys,
+  )
 }
 
 ///|
@@ -494,6 +597,245 @@ fn CognitionStore::recompute_query_context(
 }
 
 ///|
+fn CognitionStore::recompute_packed_context(
+  self : CognitionStore,
+  query : String,
+  max_items : Int,
+) -> Unit {
+  let items : Array[ContextItem] = []
+  let inputs : Array[CognitionKey] = [RepoSummary]
+  self.build_context_candidates(query, items, inputs)
+  self.store_recomputed(
+    PackedContext(query, max_items),
+    ContextItems(
+      select_context_items(items, ContextPackOptions::new(max_items~)).items,
+    ),
+    inputs,
+  )
+}
+
+///|
+fn CognitionStore::recompute_budgeted_context(
+  self : CognitionStore,
+  query : String,
+  max_items : Int,
+  max_chars : Int,
+) -> Unit {
+  let items : Array[ContextItem] = []
+  let inputs : Array[CognitionKey] = [RepoSummary]
+  self.build_context_candidates(query, items, inputs)
+  self.store_recomputed(
+    BudgetedContext(query, max_items, max_chars),
+    ContextItems(
+      select_context_items(
+        items,
+        ContextPackOptions::new(max_items~, max_chars~),
+      ).items,
+    ),
+    inputs,
+  )
+}
+
+///|
+fn CognitionStore::recompute_truncated_context(
+  self : CognitionStore,
+  query : String,
+  max_items : Int,
+  max_chars : Int,
+) -> Unit {
+  let items : Array[ContextItem] = []
+  let inputs : Array[CognitionKey] = [RepoSummary]
+  self.build_context_candidates(query, items, inputs)
+  self.store_recomputed(
+    TruncatedContext(query, max_items, max_chars),
+    ContextItems(
+      select_context_items(
+        items,
+        ContextPackOptions::new(max_items~, max_chars~, truncate_items=true),
+      ).items,
+    ),
+    inputs,
+  )
+}
+
+///|
+fn CognitionStore::build_context_candidates(
+  self : CognitionStore,
+  query : String,
+  items : Array[ContextItem],
+  inputs : Array[CognitionKey],
+) -> Unit {
+  if !self.values.contains(RepoSummary) || self.dirty.contains(RepoSummary) {
+    self.recompute_repo_summary()
+    self.dirty.remove(RepoSummary)
+  }
+  self.push_context_item(
+    items,
+    RepoSummary,
+    reason="workspace overview for query: \{query}",
+  )
+  for summary_key in self.selected_file_summary_keys(query) {
+    inputs.push(summary_key)
+    self.push_context_item(
+      items,
+      summary_key,
+      reason=(self.ranker.reason_summary)(query, summary_key),
+    )
+  }
+}
+
+///|
+fn CognitionStore::push_context_item(
+  self : CognitionStore,
+  items : Array[ContextItem],
+  source : CognitionKey,
+  reason~ : String,
+) -> Unit {
+  match self.values.get(source) {
+    Some(Summary(payload)) =>
+      items.push({
+        source,
+        source_revision: self.revisions.get(source).unwrap_or(Revision(0)),
+        payload,
+        reason,
+      })
+    Some(Text(payload)) =>
+      items.push({
+        source,
+        source_revision: self.revisions.get(source).unwrap_or(Revision(0)),
+        payload,
+        reason,
+      })
+    Some(ContextBundle(lines)) =>
+      items.push({
+        source,
+        source_revision: self.revisions.get(source).unwrap_or(Revision(0)),
+        payload: lines.join("\n"),
+        reason,
+      })
+    Some(ContextItems(context_items)) =>
+      items.push({
+        source,
+        source_revision: self.revisions.get(source).unwrap_or(Revision(0)),
+        payload: context_items.map(fn(item) { item.payload }).join("\n"),
+        reason,
+      })
+    None => ()
+  }
+}
+
+///|
+fn select_context_items(
+  candidates : Array[ContextItem],
+  options : ContextPackOptions,
+) -> ContextPackSelection {
+  match options.max_chars {
+    Some(max_chars) =>
+      select_context_items_with_char_budget(candidates, options, max_chars)
+    None => {
+      let items = select_context_items_by_count(candidates, options.max_items)
+      { items, stats: context_pack_stats(candidates.length(), items, 0) }
+    }
+  }
+}
+
+///|
+fn select_context_items_by_count(
+  items : Array[ContextItem],
+  max_items : Int,
+) -> Array[ContextItem] {
+  if max_items <= 0 {
+    []
+  } else if items.length() <= max_items {
+    items.copy()
+  } else {
+    let selected : Array[ContextItem] = []
+    for i in 0..<max_items {
+      selected.push(items[i])
+    }
+    selected
+  }
+}
+
+///|
+fn select_context_items_with_char_budget(
+  items : Array[ContextItem],
+  options : ContextPackOptions,
+  max_chars : Int,
+) -> ContextPackSelection {
+  if options.max_items <= 0 || max_chars <= 0 {
+    { items: [], stats: context_pack_stats(items.length(), [], 0) }
+  } else {
+    let selected : Array[ContextItem] = []
+    let mut used_chars = 0
+    let mut truncated_items = 0
+    for item in items {
+      if selected.length() >= options.max_items {
+        break
+      }
+      let remaining_chars = max_chars - used_chars
+      let item_chars = item.payload.length()
+      if item_chars <= remaining_chars {
+        selected.push(item)
+        used_chars += item_chars
+      } else if options.truncate_items && remaining_chars > 0 {
+        selected.push(truncate_context_item(item, remaining_chars))
+        truncated_items += 1
+        break
+      }
+    }
+    {
+      items: selected,
+      stats: context_pack_stats(items.length(), selected, truncated_items),
+    }
+  }
+}
+
+///|
+fn truncate_context_item(item : ContextItem, max_chars : Int) -> ContextItem {
+  {
+    source: item.source,
+    source_revision: item.source_revision,
+    payload: safe_prefix_by_code_units(item.payload, max_chars),
+    reason: item.reason + "; truncated",
+  }
+}
+
+///|
+fn safe_prefix_by_code_units(text : String, max_units : Int) -> String {
+  let chunks : Array[String] = []
+  let mut used_units = 0
+  for ch in text {
+    let chunk = "\{ch}"
+    let next_units = used_units + chunk.length()
+    if next_units > max_units {
+      break
+    }
+    chunks.push(chunk)
+    used_units = next_units
+  }
+  chunks.join("")
+}
+
+///|
+fn context_pack_stats(
+  candidate_count : Int,
+  items : Array[ContextItem],
+  truncated_items : Int,
+) -> ContextPackStats {
+  let mut payload_chars = 0
+  for item in items {
+    payload_chars += item.payload.length()
+  }
+  {
+    selected_items: items.length(),
+    skipped_items: candidate_count - items.length(),
+    truncated_items,
+    payload_chars,
+  }
+}
+
+///|
 fn CognitionStore::ensure_file_summaries_for_known_texts(
   self : CognitionStore,
 ) -> Unit {
@@ -504,6 +846,24 @@ fn CognitionStore::ensure_file_summaries_for_known_texts(
       self.dirty.remove(summary_key)
     }
   }
+}
+
+///|
+fn CognitionStore::selected_file_summary_keys(
+  self : CognitionStore,
+  query : String,
+) -> Array[CognitionKey] {
+  let keys = self.known_file_summary_keys()
+  keys.sort_by(fn(a, b) {
+    let score_a = (self.ranker.score_summary)(query, a)
+    let score_b = (self.ranker.score_summary)(query, b)
+    if score_a != score_b {
+      score_b.compare(score_a)
+    } else {
+      a.compare(b)
+    }
+  })
+  keys
 }
 
 ///|
@@ -526,22 +886,6 @@ fn CognitionValue::copy_value(self : CognitionValue) -> CognitionValue {
     Text(value) => Text(value)
     Summary(value) => Summary(value)
     ContextBundle(items) => ContextBundle(items.copy())
+    ContextItems(items) => ContextItems(items.copy())
   }
-}
-
-///|
-fn mock_file_summary(path : String, text : String) -> String {
-  let line_count = if text == "" { 0 } else { count_lines(text) }
-  "\{path}: \{line_count} lines, \{text.length()} chars"
-}
-
-///|
-fn count_lines(text : String) -> Int {
-  let mut lines = 1
-  for ch in text {
-    if ch == '\n' {
-      lines += 1
-    }
-  }
-  lines
 }

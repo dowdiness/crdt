@@ -25,7 +25,8 @@ engine. Reverse edges make invalidation cheap: when an input changes, all
 transitive dependents can be marked dirty without scanning every artifact.
 
 The current implementation lives in `lib/cognition`; its generated package
-interface is the source of truth for concrete API names.
+interface is the source of truth for concrete API names. Package-level examples
+live in `lib/cognition/README.mbt.md` and are checked by `moon test`.
 
 ## Mock recomputation rules
 
@@ -51,6 +52,23 @@ moves.
 When an input changes, the store marks transitive dependents dirty. Recomputing
 dirty artifacts proceeds only when their dependencies are clean, so unrelated
 summaries are not recomputed when another file changes.
+
+Packed context is modeled as another derived artifact. It depends on repo
+context plus the selected file-summary candidates, stores provenance-bearing
+`ContextItem` values, and keeps each item's source key, source revision,
+payload, and inclusion reason. Candidate summaries are selected by deterministic
+query/path matching before falling back to path order, then can be constrained by
+item count or cumulative payload character budget. Tests can explain why a
+context item was included without invoking a model, keeping AI-facing context
+inspectable before any real model provider is introduced.
+
+Summary generation and context ranking are routed through deterministic policy
+seams. The default provider preserves the mock summary strings, and the default
+ranker preserves query/path matching. Tests and future integrations can inject
+alternate synchronous providers or rankers without changing graph ownership or
+dependency tracking. Policies produce values and scores only; `CognitionStore`
+remains the source of truth for revisions, dirty state, dependencies, and
+artifact lifetime.
 
 ## Non-goals for this milestone
 
