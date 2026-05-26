@@ -390,10 +390,10 @@ The [moji API spec](plans/2026-05-10-moji-api-spec.md) is now
 
 ## 19. Cognition Runtime
 
-- [ ] Draft real provider-boundary design before adding LLM/network calls.
-  Why: PR #359 shipped deterministic synchronous provider/ranker seams and provenance-packed context; real provider integration needs explicit async, cancellation, error, and lifetime semantics before code changes.
+- [ ] Implement the provider-boundary contract before adding real LLM/network calls.
+  Why: PR #363 pinned the async/error/cancellation design; the next risk is landing request planning, explicit completion, typed status/errors, and deterministic driver tests without repurposing the synchronous provider/ranker policy seams for transport.
   Plan: `docs/plans/2026-05-26-cognition-provider-boundary-design.md`
-  Exit: the plan specifies provider call placement (graph artifact vs external effect), async shape, cancellation behavior, typed errors/retries, deterministic test doubles, and validation boundaries. No real network/LLM code lands in this step.
+  Exit: `lib/cognition` exposes an engine-agnostic request/completion contract with cancellation, stale-completion checks, typed provider errors/status, deterministic scripted driver coverage, and optional internal `@incr` planning/status cells. No real network/LLM code lands in this step.
 
 ## Shipped history
 

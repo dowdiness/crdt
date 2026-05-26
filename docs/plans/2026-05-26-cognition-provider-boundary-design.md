@@ -13,10 +13,14 @@ Design the provider boundary before implementation so future work does not
 smuggle network effects into `CognitionStore` recomputation or into the current
 plain callback seams.
 
-## Scope
+## Status
 
-This PR is design-only: it adds this canonical plan and the `docs/TODO.md`
-pointer. The implementation plan below is the intended follow-up surface.
+Design shipped in PR #363 (`07d4039`). This file remains the active
+implementation plan for the provider-boundary contract. Keep real provider
+clients, credentials, and network transport out of scope until the boundary
+implementation and deterministic driver tests land.
+
+## Scope
 
 In:
 - `docs/architecture/cognition-runtime.md`
@@ -356,22 +360,29 @@ and typed failures before transport code exists.
 
 ## Implementation Steps
 
-1. Write the concrete API design for request descriptors, result descriptors,
-   cancellation handles, option provenance, and typed provider errors.
-2. Add deterministic data types plus an internal `@incr` planning/status graph:
+Recommended PR slicing:
+
+1. Retarget the active TODO from design drafting to boundary implementation.
+2. Add pure domain types for request descriptors, result descriptors,
+   cancellation handles, option provenance, dependency fingerprints, typed
+   provider errors, and retry/status classification. Keep this PR free of driver
+   scheduling and network code.
+3. Add request planning, cancellation, and explicit completion APIs. Completion
+   must validate request id, option fingerprint, source revisions, and
+   dependency-set fingerprint.
+4. Add stale-completion tests for file edits, file removal, context budget/ranker
+   selection changes, user cancellation, and driver shutdown semantics.
+5. Add deterministic data types plus an internal `@incr` planning/status graph:
    inputs for request intent, cancellation, completion/error records, and fake
    time; derived cells for request descriptors, dependency fingerprints, status,
    retry classification, and next driver action.
-3. Add `Scope`/`Watch` lifecycle tests for long-lived keyed request-planning
+6. Add `Scope`/`Watch` lifecycle tests for long-lived keyed request-planning
    cells before exposing any driver surface.
-4. Add request planning, cancellation, and explicit completion APIs. Completion
-   must validate request id, option fingerprint, source revisions, and
-   dependency-set fingerprint.
-5. Add a scripted provider driver test harness with no HTTP client.
-6. Update architecture and README examples to show the boundary and reiterate
+7. Add a scripted provider driver test harness with no HTTP client.
+8. Update architecture and README examples to show the boundary and reiterate
    that current synchronous provider/ranker callbacks remain deterministic
    policy seams.
-7. Only after the boundary tests pass, open a separate provider-client plan for a
+9. Only after the boundary tests pass, open a separate provider-client plan for a
    specific backend/provider.
 
 ## Acceptance Criteria
