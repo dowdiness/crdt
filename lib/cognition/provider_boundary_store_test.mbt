@@ -70,6 +70,54 @@ test "provider request planning records pending descriptor and reuses clean id" 
 }
 
 ///|
+test "provider request re-planning resets failed status to pending" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("src/a.mbt"), Text("alpha"))
+  let target = CognitionKey::FileSummary("src/a.mbt")
+  let request = store.plan_provider_request(
+    target~,
+    options=provider_boundary_options_for_test(),
+  )
+
+  let failed = store.complete_provider_request(
+    provider_boundary_completion_for_test(
+      request,
+      ProviderResult::Failed(ProviderError::Timeout),
+    ),
+  )
+  inspect(
+    failed.status() == ProviderRequestStatus::Failed(ProviderError::Timeout),
+    content="true",
+  )
+
+  let repeated = store.plan_provider_request(
+    target~,
+    options=provider_boundary_options_for_test(),
+  )
+  inspect(repeated.id() == request.id(), content="true")
+  match store.get_provider_status(request.id()) {
+    Some(status) =>
+      inspect(status.status() == ProviderRequestStatus::Pending, content="true")
+    None => fail("expected provider status")
+  }
+
+  let retry_status = store.complete_provider_request(
+    provider_boundary_completion_for_test(
+      repeated,
+      ProviderResult::Succeeded(Summary("retry summary")),
+    ),
+  )
+  inspect(
+    retry_status.status() == ProviderRequestStatus::Succeeded,
+    content="true",
+  )
+  inspect(
+    provider_boundary_summary_for_test(store, target),
+    content="retry summary",
+  )
+}
+
+///|
 test "provider completion accepts matching success and stores artifact" {
   let store = CognitionStore::new()
   let _ = store.set_input(FileText("src/a.mbt"), Text("alpha"))
@@ -173,6 +221,57 @@ test "provider cancellation preserves last clean artifact and blocks completion"
 }
 
 ///|
+test "provider cancellation after success leaves terminal result intact" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("src/a.mbt"), Text("alpha"))
+  let _ = store.compute(FileSummary("src/a.mbt"))
+  let target = CognitionKey::FileSummary("src/a.mbt")
+  let request = store.plan_provider_request(
+    target~,
+    options=provider_boundary_options_for_test(),
+  )
+  let complete_status = store.complete_provider_request(
+    provider_boundary_completion_for_test(
+      request,
+      ProviderResult::Succeeded(Summary("provider summary")),
+    ),
+  )
+  inspect(
+    complete_status.status() == ProviderRequestStatus::Succeeded,
+    content="true",
+  )
+
+  match store.cancel_provider_request(request.id()) {
+    Some(status) =>
+      inspect(
+        status.status() == ProviderRequestStatus::Succeeded,
+        content="true",
+      )
+    None => fail("expected cancellation status")
+  }
+  inspect(
+    provider_boundary_summary_for_test(store, target),
+    content="provider summary",
+  )
+  match store.get_provider_result(request.id()) {
+    Some(result) =>
+      inspect(
+        result.status() == ProviderRequestStatus::Succeeded,
+        content="true",
+      )
+    None => fail("expected completion record")
+  }
+  match store.get_provider_status(request.id()) {
+    Some(status) =>
+      inspect(
+        status.status() == ProviderRequestStatus::Succeeded,
+        content="true",
+      )
+    None => fail("expected provider status")
+  }
+}
+
+///|
 test "provider completion rejects stale source revisions after edit" {
   let store = CognitionStore::new()
   let _ = store.set_input(FileText("src/a.mbt"), Text("alpha"))
@@ -232,6 +331,35 @@ test "provider completion for input target avoids self dependency" {
   match store.get_value(target) {
     Some(Text(text)) => inspect(text, content="provider text")
     _ => fail("expected provider text")
+  }
+}
+
+///|
+test "provider completion for new FileText registers workspace input" {
+  let store = CognitionStore::new()
+  let target = CognitionKey::FileText("generated.mbt")
+  let request = store.plan_provider_request(
+    target~,
+    options=provider_boundary_options_for_test(),
+  )
+
+  let status = store.complete_provider_request(
+    provider_boundary_completion_for_test(
+      request,
+      ProviderResult::Succeeded(Text("let generated = 1")),
+    ),
+  )
+
+  inspect(status.status() == ProviderRequestStatus::Succeeded, content="true")
+  inspect(store.known_files().contains("generated.mbt"), content="true")
+  match store.get_value(target) {
+    Some(Text(text)) => inspect(text, content="let generated = 1")
+    _ => fail("expected provider text")
+  }
+  match store.compute(RepoSummary) {
+    Some(Summary(summary)) =>
+      inspect(summary.contains("generated.mbt:"), content="true")
+    _ => fail("expected repo summary")
   }
 }
 

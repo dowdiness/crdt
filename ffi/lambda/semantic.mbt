@@ -10,7 +10,7 @@ fn semantic_node_allows_rename(
       anns
       .iter()
       .any(fn(ann) {
-        ann.kind == "semantic-ref" ||
+        (ann.kind == "semantic-ref" && ann.label.has_prefix("bound ")) ||
         (ann.kind == "semantic-binder" && ann.label.has_prefix("λ"))
       })
     None => false

@@ -19,7 +19,10 @@ pub fn CognitionStore::plan_provider_request(
     target, options, dependency_fingerprint,
   )
   match self.provider_requests.get(request_id) {
-    Some(request) => request
+    Some(request) => {
+      self.provider_statuses[request_id] = ProviderRequestStatus::Pending
+      request
+    }
     None => {
       let request = ProviderRequestDescriptor::new(
         id=request_id,
@@ -86,24 +89,37 @@ pub fn CognitionStore::cancel_provider_request(
 ) -> ProviderStatusDescriptor? {
   match self.provider_requests.get(request_id) {
     Some(request) => {
-      let status = ProviderRequestStatus::Failed(ProviderError::Cancelled)
-      self.provider_statuses[request_id] = status
-      let result = ProviderResultDescriptor::new(
-        request_id~,
-        target=request.target(),
-        options=request.options(),
-        source_revisions=request.source_revisions(),
-        dependency_fingerprint=request.dependency_fingerprint(),
-        result=ProviderResult::Failed(ProviderError::Cancelled),
-      )
-      self.provider_results[request_id] = result
-      Some(
-        ProviderStatusDescriptor::new(
+      let current_status = self.provider_statuses
+        .get(request_id)
+        .unwrap_or(ProviderRequestStatus::Planned)
+      if current_status == ProviderRequestStatus::Pending {
+        let status = ProviderRequestStatus::Failed(ProviderError::Cancelled)
+        self.provider_statuses[request_id] = status
+        let result = ProviderResultDescriptor::new(
           request_id~,
           target=request.target(),
-          status~,
-        ),
-      )
+          options=request.options(),
+          source_revisions=request.source_revisions(),
+          dependency_fingerprint=request.dependency_fingerprint(),
+          result=ProviderResult::Failed(ProviderError::Cancelled),
+        )
+        self.provider_results[request_id] = result
+        Some(
+          ProviderStatusDescriptor::new(
+            request_id~,
+            target=request.target(),
+            status~,
+          ),
+        )
+      } else {
+        Some(
+          ProviderStatusDescriptor::new(
+            request_id~,
+            target=request.target(),
+            status=current_status,
+          ),
+        )
+      }
     }
     None => None
   }
@@ -254,14 +270,20 @@ fn CognitionStore::store_provider_value(
   value : CognitionValue,
   dependencies : Array[CognitionKey],
 ) -> Unit {
-  self.values[target] = value.copy_value()
-  self.set_dependencies(
-    target,
-    dependencies.filter(fn(input) { input != target }),
-  )
-  self.bump_revision(target)
-  self.dirty.remove(target)
-  let _ = self.dirty_dependents(target)
+  let provider_dependencies = dependencies.filter(fn(input) { input != target })
+  match (target, value) {
+    (FileText(_), Text(_)) => {
+      self.store_input(target, value)
+      self.set_dependencies(target, provider_dependencies)
+    }
+    _ => {
+      self.values[target] = value.copy_value()
+      self.set_dependencies(target, provider_dependencies)
+      self.bump_revision(target)
+      self.dirty.remove(target)
+      let _ = self.dirty_dependents(target)
+    }
+  }
 }
 
 ///|
