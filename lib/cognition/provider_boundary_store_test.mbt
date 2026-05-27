@@ -70,6 +70,42 @@ test "provider request planning records pending descriptor and reuses clean id" 
 }
 
 ///|
+test "provider request ids are collision-safe for embedded separators" {
+  let store = CognitionStore::new()
+  let first_options = ProviderOptionProvenance::new(
+    task_kind="task",
+    provider_id="mock-provider",
+    model_id="mock-model",
+    option_identity=RedactedOptionIdentity::new("same-options"),
+  )
+  let second_options = ProviderOptionProvenance::new(
+    task_kind="shift)\ntask",
+    provider_id="mock-provider",
+    model_id="mock-model",
+    option_identity=RedactedOptionIdentity::new("same-options"),
+  )
+
+  let first = store.plan_provider_request(
+    target=FileText("a)\nshift"),
+    options=first_options,
+  )
+  let second = store.plan_provider_request(
+    target=FileText("a"),
+    options=second_options,
+  )
+
+  inspect(first.id() == second.id(), content="false")
+  inspect(first.target() == FileText("a)\nshift"), content="true")
+  inspect(second.target() == FileText("a"), content="true")
+  inspect(first.options().task_kind == "task", content="true")
+  inspect(second.options().task_kind == "shift)\ntask", content="true")
+  match store.get_provider_request(second.id()) {
+    Some(stored) => inspect(stored == second, content="true")
+    None => fail("expected second request")
+  }
+}
+
+///|
 test "provider request re-planning resets failed status to pending" {
   let store = CognitionStore::new()
   let _ = store.set_input(FileText("src/a.mbt"), Text("alpha"))

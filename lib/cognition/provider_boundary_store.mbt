@@ -498,14 +498,21 @@ fn provider_request_id_for(
   dependency_fingerprint : ProviderDependencyFingerprint,
 ) -> ProviderRequestId {
   ProviderRequestId::new(
+    "provider-request:v2:" +
     [
-      "provider-request",
       target.label(),
       options.task_kind,
       options.provider_id,
       options.model_id,
       options.option_identity.to_string(),
       dependency_fingerprint.to_string(),
-    ].join("\n"),
+    ]
+    .map(provider_request_id_component)
+    .join(""),
   )
+}
+
+///|
+fn provider_request_id_component(value : String) -> String {
+  "\{value.length()}:\{value}"
 }
