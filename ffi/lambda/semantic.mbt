@@ -11,7 +11,7 @@ fn semantic_node_allows_rename(
       .iter()
       .any(fn(ann) {
         (ann.kind == "semantic-ref" && ann.label.has_prefix("bound ")) ||
-        (ann.kind == "semantic-binder" && ann.label.has_prefix("λ"))
+        ann.kind == "semantic-binder"
       })
     None => false
   }
@@ -26,9 +26,10 @@ pub fn get_semantic_projection_json(handle : Int) -> String {
     Some(h) =>
       match h.editor.get_proj_node() {
         Some(root) =>
-          @lambda_semantic.build_semantic_projection(
+          @lambda_semantic.build_semantic_projection_with_flat_proj(
             root,
             h.editor.get_source_map(),
+            h.companion.get_flat_proj(),
           )
           .to_json()
           .stringify()
@@ -56,9 +57,10 @@ pub fn rename_semantic_node(
         Some(root) => root
         None => return "error: no projection"
       }
-      let projection = @lambda_semantic.build_semantic_projection(
+      let projection = @lambda_semantic.build_semantic_projection_with_flat_proj(
         root,
         h.editor.get_source_map(),
+        h.companion.get_flat_proj(),
       )
       if !semantic_node_allows_rename(projection, id) {
         return "error: node is not a semantic binder or reference"

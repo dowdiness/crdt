@@ -3,6 +3,7 @@ package "dowdiness/canopy/lang/lambda/semantic"
 
 import {
   "dowdiness/canopy/core",
+  "dowdiness/canopy/lang/lambda/proj",
   "dowdiness/canopy/protocol",
   "dowdiness/lambda/ast",
   "moonbitlang/core/debug",
@@ -10,6 +11,8 @@ import {
 
 // Values
 pub fn build_semantic_projection(@core.ProjNode[@ast.Term], @core.SourceMap) -> SemanticProjection
+
+pub fn build_semantic_projection_with_flat_proj(@core.ProjNode[@ast.Term], @core.SourceMap, @proj.FlatProj?) -> SemanticProjection
 
 // Errors
 

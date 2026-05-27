@@ -37,8 +37,17 @@ pub fn build_semantic_projection(
   root : @core.ProjNode[@ast.Term],
   source_map : @core.SourceMap,
 ) -> SemanticProjection {
+  build_semantic_projection_with_flat_proj(root, source_map, None)
+}
+
+///|
+pub fn build_semantic_projection_with_flat_proj(
+  root : @core.ProjNode[@ast.Term],
+  source_map : @core.SourceMap,
+  flat_proj : @lambda_proj.FlatProj?,
+) -> SemanticProjection {
   let projection = SemanticProjection::empty()
-  analyze_node(root, source_map, [], projection)
+  analyze_node(root, source_map, [], projection, flat_proj)
   projection
 }
 
@@ -48,21 +57,22 @@ fn analyze_node(
   source_map : @core.SourceMap,
   env : Array[String],
   projection : SemanticProjection,
+  flat_proj : @lambda_proj.FlatProj?,
 ) -> Unit {
   match node.kind {
     @ast.Term::Module(defs, _) =>
-      analyze_module(node, source_map, defs, env, projection)
+      analyze_module(node, source_map, defs, env, projection, flat_proj)
     @ast.Term::Lam(param, _) =>
       analyze_lambda(node, source_map, param, env, projection)
     @ast.Term::Var(name) | @ast.Term::Unbound(name) =>
       analyze_var(node, source_map, name, env, projection)
     @ast.Term::App(_, _) | @ast.Term::Bop(_, _, _) =>
       for child in node.children {
-        analyze_node(child, source_map, env, projection)
+        analyze_node(child, source_map, env, projection, None)
       }
     @ast.Term::If(_, _, _) =>
       for child in node.children {
-        analyze_node(child, source_map, env, projection)
+        analyze_node(child, source_map, env, projection, None)
       }
     @ast.Term::Int(_)
     | @ast.Term::Unit
@@ -78,13 +88,15 @@ fn analyze_module(
   defs : Array[(@ast.VarName, @ast.Term)],
   env : Array[String],
   projection : SemanticProjection,
+  flat_proj : @lambda_proj.FlatProj?,
 ) -> Unit {
   let scoped = env.copy()
   for i, def in defs {
     let name = def.0
+    let binder_id = module_binding_node_id(flat_proj, i).unwrap_or(node.id())
     add_annotation(
       projection,
-      node.id(),
+      binder_id,
       @protocol.ViewAnnotation(kind="semantic-binder", label="let " + name),
     )
     match source_map.get_token_span(node.id(), "name:" + i.to_string()) {
@@ -99,13 +111,30 @@ fn analyze_module(
       None => ()
     }
     if i < node.children.length() {
-      analyze_node(node.children[i], source_map, scoped, projection)
+      analyze_node(node.children[i], source_map, scoped, projection, None)
     }
     scoped.push(name)
   }
   let body_index = defs.length()
   if body_index < node.children.length() {
-    analyze_node(node.children[body_index], source_map, scoped, projection)
+    analyze_node(
+      node.children[body_index],
+      source_map,
+      scoped,
+      projection,
+      None,
+    )
+  }
+}
+
+///|
+fn module_binding_node_id(
+  flat_proj : @lambda_proj.FlatProj?,
+  def_index : Int,
+) -> @core.NodeId? {
+  match flat_proj {
+    Some(fp) if def_index < fp.defs.length() => Some(fp.defs[def_index].3)
+    _ => None
   }
 }
 
@@ -136,7 +165,7 @@ fn analyze_lambda(
   let scoped = env.copy()
   scoped.push(param)
   if node.children.length() > 0 {
-    analyze_node(node.children[0], source_map, scoped, projection)
+    analyze_node(node.children[0], source_map, scoped, projection, None)
   }
 }
 

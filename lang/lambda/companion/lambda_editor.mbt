@@ -188,7 +188,7 @@ pub fn new_lambda_editor(
     capture_timeout_ms~,
     parent_runtime?,
     capabilities=build_lambda_capabilities(
-      cached_proj_node_ref, source_map_memo_ref, escalation_memo_ref,
+      cached_proj_node_ref, source_map_memo_ref, proj_memo_ref, escalation_memo_ref,
     ),
   )
   let companion : LambdaCompanion = {
@@ -200,10 +200,21 @@ pub fn new_lambda_editor(
 }
 
 ///|
+fn lambda_flat_proj_for_capabilities(
+  proj_memo_ref : Ref[@incr.Derived[@lambda_flat.VersionedFlatProj]?],
+) -> @lambda_proj.FlatProj? {
+  match proj_memo_ref.val {
+    Some(memo) => memo.read_or_abort().proj
+    None => None
+  }
+}
+
+///|
 /// Build capabilities using the escalation memo (Tier 1 + Tier 2 merged results).
 fn build_lambda_capabilities(
   cached_proj_node_ref : Ref[@incr.Derived[@core.ProjNode[@ast.Term]?]?],
   source_map_memo_ref : Ref[@incr.Derived[@core.SourceMap]?],
+  proj_memo_ref : Ref[@incr.Derived[@lambda_flat.VersionedFlatProj]?],
   escalation_memo_ref : Ref[@incr.Derived[Array[@lambda_eval.EvalResult]]?],
 ) -> @editor.LanguageCapabilities[@ast.Term] {
   @editor.LanguageCapabilities::new(
@@ -221,9 +232,10 @@ fn build_lambda_capabilities(
         (Some(root), Some(source_map_memo)) =>
           append_annotation_map(
             annotations,
-            @lambda_semantic.build_semantic_projection(
+            @lambda_semantic.build_semantic_projection_with_flat_proj(
               root,
               source_map_memo.read_or_abort(),
+              lambda_flat_proj_for_capabilities(proj_memo_ref),
             ).annotations,
           )
         _ => ()
@@ -235,9 +247,10 @@ fn build_lambda_capabilities(
         (Some(proj_memo), Some(source_map_memo)) =>
           match proj_memo.read_or_abort() {
             Some(root) =>
-              @lambda_semantic.build_semantic_projection(
+              @lambda_semantic.build_semantic_projection_with_flat_proj(
                 root,
                 source_map_memo.read_or_abort(),
+                lambda_flat_proj_for_capabilities(proj_memo_ref),
               ).decorations
             None => []
           }

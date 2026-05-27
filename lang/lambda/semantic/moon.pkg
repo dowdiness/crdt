@@ -1,12 +1,12 @@
 import {
   "dowdiness/canopy/core",
+  "dowdiness/canopy/lang/lambda/proj" @lambda_proj,
   "dowdiness/canopy/protocol",
   "dowdiness/lambda/ast",
   "moonbitlang/core/json",
 }
 
 import {
-  "dowdiness/canopy/lang/lambda/proj" @lambda_proj,
   "dowdiness/lambda" @parser,
   "dowdiness/seam",
 } for "test"
