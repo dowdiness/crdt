@@ -261,3 +261,67 @@ test "panic wmh B4: registering with empty deps aborts" {
   let m : @incr.Derived[Int] = @incr.Derived(coordinator.runtime(), fn() { 0 })
   let _ = coordinator.register_workspace_memo(m, [])
 }
+
+///|
+test "wmh C: destroy refusal under live handle" {
+  reset_coordinator_for_phase1_tests()
+  let handle_a = create_editor("wmh_c_a")
+  let handle_b = create_editor("wmh_c_b")
+  let h_a = lambda_handles.get(handle_a).unwrap()
+  let h_b = lambda_handles.get(handle_b).unwrap()
+  let sum_d : @incr.Derived[Int] = @incr.Derived(coordinator.runtime(), fn() {
+    let sa = match
+      coordinator.read_protected(h_a.editor_id, h_a.cells.parser_source) {
+      Ok(s) => s
+      Err(r) => abort("wmh C read h_a: \{r}")
+    }
+    let sb = match
+      coordinator.read_protected(h_b.editor_id, h_b.cells.parser_source) {
+      Ok(s) => s
+      Err(r) => abort("wmh C read h_b: \{r}")
+    }
+    sa.length() + sb.length()
+  })
+  let handle = match coordinator.register_workspace_memo(sum_d, [
+    (h_a.editor_id, h_a.cells.parser_source.cell_id()),
+    (h_b.editor_id, h_b.cells.parser_source.cell_id()),
+  ]) {
+    Ok(h) => h
+    Err(r) => fail("register_workspace_memo: \{r}")
+  }
+  h_a.editor.set_text("hi")
+  h_b.editor.set_text("world")
+  let pre = handle.read().unwrap()
+  match coordinator.destroy_editor(h_a.editor_id) {
+    Ok(_) => fail("C expected DestroyWhileDependedUpon, got Ok")
+    Err(report) => {
+      assert_eq(report.kind, @workspace.DestroyWhileDependedUpon)
+      assert_eq(report.editor_id, h_a.editor_id)
+      @debug.assert_eq(report.cell_id, Some(handle.id()))
+    }
+  }
+  // Operational aliveness: editor A still accepts writes + propagates.
+  assert_eq(handle.read().unwrap(), pre)
+  h_a.editor.set_text("hello-after-refused-destroy")
+  assert_eq(handle.read().unwrap(), 27 + 5)
+  handle.dispose()
+  match coordinator.destroy_editor(h_a.editor_id) {
+    Ok(_) => ()
+    Err(r) => fail("teardown destroy h_a: \{r}")
+  }
+  match coordinator.destroy_editor(h_b.editor_id) {
+    Ok(_) => ()
+    Err(r) => fail("teardown destroy h_b: \{r}")
+  }
+  h_a.companion.dispose_analysis_attachment()
+  lambda_handles.remove(handle_a)
+  view_states.remove(handle_a)
+  pretty_view_states.remove(handle_a)
+  h_b.companion.dispose_analysis_attachment()
+  lambda_handles.remove(handle_b)
+  view_states.remove(handle_b)
+  pretty_view_states.remove(handle_b)
+  if last_created_handle.val == Some(handle_b) {
+    last_created_handle.val = None
+  }
+}
