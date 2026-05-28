@@ -1,5 +1,5 @@
 ---
-summary: "Canopy cognition/provider-boundary state: PR #379 merged, active docs, validation, and remaining unrelated dirty files"
+summary: "Canopy cognition/provider-boundary state: PR #379 merged; next is a provider-client integration plan before real network/LLM code"
 created: 2026-05-28
 status: resolved
 tags: [canopy, cognition, provider-boundary, incr, handoff]
@@ -8,7 +8,7 @@ related: [docs/plans/2026-05-26-cognition-provider-boundary-design.md, lib/cogni
 
 # Canopy Cognition Provider Boundary
 
-The active design/implementation plan is `docs/plans/2026-05-26-cognition-provider-boundary-design.md`. The active backlog entry is `docs/TODO.md` section 19. The architecture overview is `docs/architecture/cognition-runtime.md`, and package-facing examples live in `lib/cognition/README.mbt.md`.
+The shipped provider-boundary design/implementation record is `docs/plans/2026-05-26-cognition-provider-boundary-design.md`. The active backlog entry is `docs/TODO.md` section 19: plan a real provider-client integration before adding LLM/network calls. The architecture overview is `docs/architecture/cognition-runtime.md`, and package-facing examples live in `lib/cognition/README.mbt.md`.
 
 Core rule: keep `CognitionStore` synchronous and deterministic. It may plan provider work, store request/result/status data, and reject stale completions, but real provider clients, credentials, HTTP, retry loops, timers, and async scheduling stay outside the store. Do not run provider transport inside `@incr.Derived` bodies.
 
@@ -38,26 +38,18 @@ Validation run before merging PR #379:
 - `NEW_MOON_MOD=0 moon check --deny-warn`
 - `git diff --cached --check`
 
+Follow-up docs after PR #379 were pushed to `main` on 2026-05-28:
+
+- `b8f2aec docs: document cognition provider boundary follow-ups`
+- `92760db docs: refresh p0b runtime threading notes`
+- `66bfcb7 docs: add loom 147 migration design`
+
+Current dirty state after those commits: only the parent `loom` submodule is dirty because nested `loom/incr` is checked out at a different commit than `loom` records. That is unrelated to cognition and should be handled or preserved separately.
+
 Do not start incr Tier 2 `ReadError` widening unless there is a real Canopy consumer that needs `Err(Disposed)` instead of current abort/fail-closed behavior.
-
-Unrelated dirty files intentionally left out of PR #379:
-
-- `docs/research/2026-05-23-runtime-safety-decision.md`
-- `docs/research/2026-05-23-workspace-identity-decision.md`
-- `docs/research/2026-05-24-shared-runtime-call-flow-grounding.md`
-- `workspace/probe/gate1_runtime_safety_wbtest.mbt`
-- `workspace/probe/identity_probe_wbtest.mbt`
-- `docs/superpowers/specs/2026-05-24-loom-147-migration-design.md`
-- `loom` nested dirtiness from `loom/incr`
-
-Nested `loom/incr` dirty files:
-
-- `loom/incr/docs/README.md`
-- `loom/incr/docs/plans/2026-05-28-typed-spreadsheet-boundary.md`
-- `loom/incr/tests/typed_spreadsheet_spikes_test.mbt`
 
 Next likely actions:
 
-1. Handle the unrelated runtime/probe comment refresh separately, if still wanted.
+1. Write a provider-client integration plan before adding real provider clients, credentials, HTTP, timers, retry loops, or async runtime integration.
 2. Keep the loom #147 migration design and nested `loom/incr` spreadsheet work separate from cognition.
-3. Do not add real provider clients, credentials, HTTP, timers, or async runtime integration until a separate provider-client plan exists.
+3. Do not put provider transport in `CognitionStore` or in `@incr.Derived` compute closures; the driver/client layer owns wall-clock time, scheduling, credentials, and network effects.
