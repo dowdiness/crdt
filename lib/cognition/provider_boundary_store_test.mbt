@@ -489,6 +489,101 @@ test "provider cancellation after success leaves terminal result intact" {
 }
 
 ///|
+test "provider cancellation is request scoped and idempotent" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("src/a.mbt"), Text("alpha"))
+  let _ = store.set_input(FileText("src/b.mbt"), Text("beta"))
+  let target_a = CognitionKey::FileSummary("src/a.mbt")
+  let target_b = CognitionKey::FileSummary("src/b.mbt")
+  let request_a = store.plan_provider_request(
+    target=target_a,
+    options=provider_boundary_options_for_test(),
+  )
+  let request_b = store.plan_provider_request(
+    target=target_b,
+    options=provider_boundary_options_for_test(),
+  )
+
+  match store.cancel_provider_request(request_a.id()) {
+    Some(status) =>
+      inspect(
+        status.status() ==
+        ProviderRequestStatus::Failed(ProviderError::Cancelled),
+        content="true",
+      )
+    None => fail("expected first cancellation status")
+  }
+  match store.cancel_provider_request(request_a.id()) {
+    Some(status) =>
+      inspect(
+        status.status() ==
+        ProviderRequestStatus::Failed(ProviderError::Cancelled),
+        content="true",
+      )
+    None => fail("expected idempotent cancellation status")
+  }
+
+  let status_b = store.complete_provider_request(
+    provider_boundary_completion_for_test(
+      request_b,
+      ProviderResult::Succeeded(Summary("provider b summary")),
+    ),
+  )
+  let late_a = store.complete_provider_request(
+    provider_boundary_completion_for_test(
+      request_a,
+      ProviderResult::Succeeded(Summary("late provider a summary")),
+    ),
+  )
+
+  inspect(status_b.status() == ProviderRequestStatus::Succeeded, content="true")
+  inspect(
+    late_a.status() == ProviderRequestStatus::Failed(ProviderError::Cancelled),
+    content="true",
+  )
+  inspect(
+    provider_boundary_summary_for_test(store, target_b),
+    content="provider b summary",
+  )
+  inspect(store.get_value(target_a) is None, content="true")
+}
+
+///|
+test "provider driver shutdown leaves pending request observable" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("src/a.mbt"), Text("alpha"))
+  let target = CognitionKey::FileSummary("src/a.mbt")
+  let request = store.plan_provider_request(
+    target~,
+    options=provider_boundary_options_for_test(),
+  )
+
+  // Simulate provider-driver shutdown by dropping external work without
+  // recording either a completion or a cancellation.
+  let repeated = store.plan_provider_request(
+    target~,
+    options=provider_boundary_options_for_test(),
+  )
+
+  inspect(repeated.id() == request.id(), content="true")
+  inspect(store.get_provider_result(request.id()) is None, content="true")
+  match store.get_provider_request(request.id()) {
+    Some(stored) => inspect(stored == request, content="true")
+    None => fail("expected pending request to remain observable")
+  }
+  match store.get_provider_status(request.id()) {
+    Some(status) => {
+      inspect(status.status() == ProviderRequestStatus::Pending, content="true")
+      inspect(
+        status.classification() == ProviderStatusClassification::InFlight,
+        content="true",
+      )
+    }
+    None => fail("expected pending request status")
+  }
+}
+
+///|
 test "provider completion rejects stale source revisions after edit" {
   let store = CognitionStore::new()
   let _ = store.set_input(FileText("src/a.mbt"), Text("alpha"))
@@ -522,6 +617,124 @@ test "provider completion rejects stale source revisions after edit" {
         content="true",
       )
     None => fail("expected stale completion record")
+  }
+}
+
+///|
+test "provider completion rejects stale source revisions after file removal" {
+  let store = CognitionStore::new()
+  let _ = store.set_input(FileText("src/a.mbt"), Text("alpha"))
+  let _ = store.compute(FileSummary("src/a.mbt"))
+  let target = CognitionKey::FileSummary("src/a.mbt")
+  let request = store.plan_provider_request(
+    target~,
+    options=provider_boundary_options_for_test(),
+  )
+  inspect(store.remove_file("src/a.mbt"), content="true")
+
+  let status = store.complete_provider_request(
+    provider_boundary_completion_for_test(
+      request,
+      ProviderResult::Succeeded(Summary("stale provider summary")),
+    ),
+  )
+
+  inspect(
+    status.status() ==
+    ProviderRequestStatus::Failed(ProviderError::StaleCompletion),
+    content="true",
+  )
+  inspect(store.known_files().contains("src/a.mbt"), content="false")
+  inspect(store.get_value(FileText("src/a.mbt")) is None, content="true")
+  inspect(store.get_value(target) is None, content="true")
+  match store.get_provider_result(request.id()) {
+    Some(result) =>
+      inspect(
+        result.status() ==
+        ProviderRequestStatus::Failed(ProviderError::StaleCompletion),
+        content="true",
+      )
+    None => fail("expected stale completion record")
+  }
+}
+
+///|
+test "provider completion rejects stale budgeted context after ranker selection changes" {
+  let ranker : ContextRanker = {
+    score_summary: fn(_query, key) {
+      match key {
+        FileSummary("src/gamma.mbt") => 1000
+        FileSummary(_) => 0
+        _ => 0
+      }
+    },
+    reason_summary: fn(_query, key) {
+      match key {
+        FileSummary("src/gamma.mbt") => "custom preferred gamma"
+        FileSummary(path) => "custom fallback \{path}"
+        _ => "custom artifact"
+      }
+    },
+  }
+  let store = CognitionStore::new_with_provider_and_ranker(
+    CognitionProvider::mock(),
+    ranker,
+  )
+  let _ = store.set_input(FileText("src/alpha.mbt"), Text("alpha"))
+  let _ = store.set_input(FileText("src/beta.mbt"), Text("beta"))
+  let target = CognitionKey::BudgetedContext("focus", 3, 40)
+  let initial_items = store.pack_context_with_budget("focus", 3, 40)
+  let request = store.plan_provider_request(
+    target~,
+    options=provider_boundary_options_for_test(),
+  )
+
+  inspect(initial_items.length(), content="1")
+  inspect(
+    initial_items[0].source != FileSummary("src/gamma.mbt"),
+    content="true",
+  )
+  inspect(request.context().length(), content="1")
+  inspect(
+    request.context()[0].source == initial_items[0].source,
+    content="true",
+  )
+
+  let _ = store.set_input(FileText("src/gamma.mbt"), Text("gamma"))
+  let refreshed_items = store.pack_context_with_budget("focus", 3, 40)
+  inspect(refreshed_items.length(), content="1")
+  inspect(
+    refreshed_items[0].source == FileSummary("src/gamma.mbt"),
+    content="true",
+  )
+
+  let status = store.complete_provider_request(
+    provider_boundary_completion_for_test(
+      request,
+      ProviderResult::Succeeded(ContextItems(request.context())),
+    ),
+  )
+
+  inspect(
+    status.status() ==
+    ProviderRequestStatus::Failed(ProviderError::StaleCompletion),
+    content="true",
+  )
+  match store.get_value(target) {
+    Some(ContextItems(items)) => {
+      inspect(items.length(), content="1")
+      inspect(items[0].source == FileSummary("src/gamma.mbt"), content="true")
+    }
+    _ => fail("expected refreshed budgeted context")
+  }
+  match store.get_provider_result(request.id()) {
+    Some(result) =>
+      inspect(
+        result.status() ==
+        ProviderRequestStatus::Failed(ProviderError::StaleCompletion),
+        content="true",
+      )
+    None => fail("expected stale budgeted-context completion record")
   }
 }
 

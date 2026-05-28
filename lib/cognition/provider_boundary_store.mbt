@@ -11,50 +11,51 @@ pub fn CognitionStore::plan_provider_request(
 ) -> ProviderRequestDescriptor {
   let dependencies = self.provider_dependencies_for_target(target)
   let source_revisions = self.provider_source_snapshots_for(dependencies)
-  let dependency_fingerprint = provider_dependency_fingerprint_for_snapshots(
-    dependencies, source_revisions,
+  let request = self.reactive.plan_provider_request(
+    target~,
+    options~,
+    context=self.provider_context_for_target(target, dependencies),
+    source_revisions~,
+    dependencies~,
   )
-  let request_id = provider_request_id_for(
-    target, options, dependency_fingerprint,
-  )
+  let request_id = request.id()
   match self.provider_requests.get(request_id) {
     Some(request) => {
       let current_status = self.provider_statuses
         .get(request_id)
         .unwrap_or(ProviderRequestStatus::Planned)
-      if provider_status_should_replan(current_status) {
-        self.provider_statuses[request_id] = ProviderRequestStatus::Pending
-        self.provider_results.remove(request_id)
+      match current_status {
+        ProviderRequestStatus::Planned | ProviderRequestStatus::Pending =>
+          self.provider_statuses[request_id] = ProviderRequestStatus::Pending
+        ProviderRequestStatus::Failed(error) =>
+          match error.retry_classification() {
+            ProviderRetryClassification::RetryableLater(_) => {
+              self.provider_statuses[request_id] = ProviderRequestStatus::Pending
+              self.provider_results.remove(request_id)
+              self.reactive.clear_provider_events()
+            }
+            _ =>
+              match self.provider_results.get(request_id) {
+                Some(result) =>
+                  self.reactive.record_provider_completion(request, result)
+                None => ()
+              }
+          }
+        ProviderRequestStatus::Succeeded =>
+          match self.provider_results.get(request_id) {
+            Some(result) =>
+              self.reactive.record_provider_completion(request, result)
+            None => ()
+          }
       }
       request
     }
     None => {
-      let request = ProviderRequestDescriptor::new(
-        id=request_id,
-        target~,
-        options~,
-        context=self.provider_context_for_target(target, dependencies),
-        source_revisions~,
-        dependencies~,
-        dependency_fingerprint~,
-      )
+      self.reactive.clear_provider_events()
       self.provider_requests[request_id] = request
       self.provider_statuses[request_id] = ProviderRequestStatus::Pending
       request
     }
-  }
-}
-
-///|
-fn provider_status_should_replan(status : ProviderRequestStatus) -> Bool {
-  match status {
-    ProviderRequestStatus::Planned | ProviderRequestStatus::Pending => true
-    ProviderRequestStatus::Failed(error) =>
-      match error.retry_classification() {
-        ProviderRetryClassification::RetryableLater(_) => true
-        _ => false
-      }
-    ProviderRequestStatus::Succeeded => false
   }
 }
 
@@ -122,6 +123,7 @@ pub fn CognitionStore::cancel_provider_request(
           result=ProviderResult::Failed(ProviderError::Cancelled),
         )
         self.provider_results[request_id] = result
+        self.reactive.record_provider_cancellation(request)
         Some(
           ProviderStatusDescriptor::new(
             request_id~,
@@ -234,6 +236,7 @@ fn CognitionStore::accept_provider_completion(
       self.provider_statuses[request_id] = status
     }
   }
+  self.reactive.record_provider_completion(request, completion)
   ProviderStatusDescriptor::new(request_id~, target=request.target(), status~)
 }
 
@@ -255,6 +258,7 @@ fn CognitionStore::reject_provider_completion(
   )
   self.provider_results[request_id] = result
   self.provider_statuses[request_id] = status
+  self.reactive.record_provider_completion(request, result)
   ProviderStatusDescriptor::new(request_id~, target=request.target(), status~)
 }
 
