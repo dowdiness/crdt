@@ -25,10 +25,11 @@ test "wmh A1: sanity sum equals known value across two editors" {
     }
     sa.length() + sb.length()
   })
-  let handle = match coordinator.register_workspace_memo(sum_d, [
-    (h_a.editor_id, h_a.cells.parser_source.cell_id()),
-    (h_b.editor_id, h_b.cells.parser_source.cell_id()),
-  ]) {
+  let handle = match
+    coordinator.register_workspace_memo(sum_d, [
+      (h_a.editor_id, h_a.cells.parser_source.cell_id()),
+      (h_b.editor_id, h_b.cells.parser_source.cell_id()),
+    ]) {
     Ok(h) => h
     Err(r) => fail("register_workspace_memo: \{r}")
   }
@@ -77,10 +78,11 @@ test "wmh A2: reactivity — mutation in editor A invalidates and recomputes" {
     }
     sa.length() + sb.length()
   })
-  let handle = match coordinator.register_workspace_memo(sum_d, [
-    (h_a.editor_id, h_a.cells.parser_source.cell_id()),
-    (h_b.editor_id, h_b.cells.parser_source.cell_id()),
-  ]) {
+  let handle = match
+    coordinator.register_workspace_memo(sum_d, [
+      (h_a.editor_id, h_a.cells.parser_source.cell_id()),
+      (h_b.editor_id, h_b.cells.parser_source.cell_id()),
+    ]) {
     Ok(h) => h
     Err(r) => fail("register_workspace_memo: \{r}")
   }
@@ -131,10 +133,11 @@ test "wmh A3: clean teardown — destroy succeeds after dispose" {
     }
     sa.length() + sb.length()
   })
-  let handle = match coordinator.register_workspace_memo(sum_d, [
-    (h_a.editor_id, h_a.cells.parser_source.cell_id()),
-    (h_b.editor_id, h_b.cells.parser_source.cell_id()),
-  ]) {
+  let handle = match
+    coordinator.register_workspace_memo(sum_d, [
+      (h_a.editor_id, h_a.cells.parser_source.cell_id()),
+      (h_b.editor_id, h_b.cells.parser_source.cell_id()),
+    ]) {
     Ok(h) => h
     Err(r) => fail("register_workspace_memo: \{r}")
   }
@@ -171,17 +174,18 @@ test "wmh B1: bad-cell rejection + atomicity" {
   let h_a = lambda_handles.get(handle_a).unwrap()
   let h_b = lambda_handles.get(handle_b).unwrap()
   let bad : @incr.Derived[Int] = @incr.Derived(coordinator.runtime(), fn() { 0 })
-  match coordinator.register_workspace_memo(bad, [
-    (h_a.editor_id, h_b.cells.parser_source.cell_id()),
-  ]) {
+  match
+    coordinator.register_workspace_memo(bad, [
+      (h_a.editor_id, h_b.cells.parser_source.cell_id()),
+    ]) {
     Ok(_) => fail("B1 expected CellNotInProtectedSurface, got Ok")
-    Err(report) =>
-      assert_eq(report.kind, @workspace.CellNotInProtectedSurface)
+    Err(report) => assert_eq(report.kind, @workspace.CellNotInProtectedSurface)
   }
   // Atomicity: nothing was registered, so destroy must succeed immediately.
   match coordinator.destroy_editor(h_a.editor_id) {
     Ok(_) => ()
-    Err(r) => fail("B1 atomicity: destroy h_a should be Ok (no leaked dep), got \{r}")
+    Err(r) =>
+      fail("B1 atomicity: destroy h_a should be Ok (no leaked dep), got \{r}")
   }
   match coordinator.destroy_editor(h_b.editor_id) {
     Ok(_) => ()
@@ -212,9 +216,10 @@ test "wmh B2: dead-editor rejection" {
     Err(r) => fail("B2 setup: destroy h_a should be Ok, got \{r}")
   }
   let m : @incr.Derived[Int] = @incr.Derived(coordinator.runtime(), fn() { 0 })
-  match coordinator.register_workspace_memo(m, [
-    (h_a.editor_id, h_a.cells.parser_source.cell_id()),
-  ]) {
+  match
+    coordinator.register_workspace_memo(m, [
+      (h_a.editor_id, h_a.cells.parser_source.cell_id()),
+    ]) {
     Ok(_) => fail("B2 expected EditorDestroyed, got Ok")
     Err(report) => assert_eq(report.kind, @workspace.EditorDestroyed)
   }
@@ -282,10 +287,11 @@ test "wmh C: destroy refusal under live handle" {
     }
     sa.length() + sb.length()
   })
-  let handle = match coordinator.register_workspace_memo(sum_d, [
-    (h_a.editor_id, h_a.cells.parser_source.cell_id()),
-    (h_b.editor_id, h_b.cells.parser_source.cell_id()),
-  ]) {
+  let handle = match
+    coordinator.register_workspace_memo(sum_d, [
+      (h_a.editor_id, h_a.cells.parser_source.cell_id()),
+      (h_b.editor_id, h_b.cells.parser_source.cell_id()),
+    ]) {
     Ok(h) => h
     Err(r) => fail("register_workspace_memo: \{r}")
   }
@@ -346,10 +352,11 @@ test "wmh D: idempotent dispose — second dispose is a safe no-op" {
     }
     sa.length() + sb.length()
   })
-  let handle = match coordinator.register_workspace_memo(sum_d, [
-    (h_a.editor_id, h_a.cells.parser_source.cell_id()),
-    (h_b.editor_id, h_b.cells.parser_source.cell_id()),
-  ]) {
+  let handle = match
+    coordinator.register_workspace_memo(sum_d, [
+      (h_a.editor_id, h_a.cells.parser_source.cell_id()),
+      (h_b.editor_id, h_b.cells.parser_source.cell_id()),
+    ]) {
     Ok(h) => h
     Err(r) => fail("register_workspace_memo: \{r}")
   }
