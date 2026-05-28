@@ -234,3 +234,30 @@ test "wmh B2: dead-editor rejection" {
     last_created_handle.val = None
   }
 }
+
+///|
+test "panic wmh B3: registering the same memo twice aborts" {
+  reset_coordinator_for_phase1_tests()
+  let handle_a = create_editor("wmh_b3_a")
+  let h_a = lambda_handles.get(handle_a).unwrap()
+  let m : @incr.Derived[Int] = @incr.Derived(coordinator.runtime(), fn() {
+    match coordinator.read_protected(h_a.editor_id, h_a.cells.parser_source) {
+      Ok(s) => s.length()
+      Err(r) => abort("wmh B3 read: \{r}")
+    }
+  })
+  let _first = coordinator.register_workspace_memo(m, [
+    (h_a.editor_id, h_a.cells.parser_source.cell_id()),
+  ])
+  // Second registration of the same memo must abort (guard 0b).
+  let _second = coordinator.register_workspace_memo(m, [
+    (h_a.editor_id, h_a.cells.parser_source.cell_id()),
+  ])
+}
+
+///|
+test "panic wmh B4: registering with empty deps aborts" {
+  reset_coordinator_for_phase1_tests()
+  let m : @incr.Derived[Int] = @incr.Derived(coordinator.runtime(), fn() { 0 })
+  let _ = coordinator.register_workspace_memo(m, [])
+}
