@@ -326,9 +326,11 @@ test "B2: multi-session convergence — text matches after B→A sync" {
 // ── Part C — agent_id string opacity (Q3 stand-in) ──
 //
 // Scope (Codex review on PR #326): there is NO DocumentId field today —
-// `new_json_editor(agent_id: String)` only takes the agent_id string
-// (`lang/json/companion/json_companion.mbt:8-14`). These tests exercise
-// that string parameter with three candidate DocumentId shapes embedded
+// `new_json_editor(agent_id: String)` is now defined with an optional
+// `parent_runtime?` parameter as well (`lang/json/companion/json_companion.mbt:8-18`),
+// so the required identifier remains a string.
+// These tests exercise that string parameter with three candidate DocumentId
+// shapes embedded
 // in the agent_id (UUID, sha256:, file://) and show the CRDT/transport/
 // presence layers treat the value opaquely.
 //

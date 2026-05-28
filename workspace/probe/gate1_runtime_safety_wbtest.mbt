@@ -5,15 +5,15 @@
 // `@incr.Runtime` so cross-editor reactive dependencies (workspace dep-graph
 // MemoMap reading both editors' projection memos, etc.) can join one graph.
 //
-// Today the public editor surface does NOT expose a shared-runtime ctor —
-// `new_lambda_editor` / `new_markdown_editor` (lang/lambda/companion/lambda_editor.mbt:90,
-// lang/markdown/companion/markdown_companion.mbt:7) hardcode a fresh runtime
-// inside their `make_parser` closure. The shared-runtime path is reachable
-// only via `@loom.new_parser(src, grammar, runtime=shared_rt)`
-// (loom/loom/src/factories.mbt:230-236) or by calling
-// `@editor.SyncEditor::new_generic` with a custom closure that forwards a
-// shared runtime. That mismatch IS a probe finding — the §P0b slice
-// would need to add a runtime-taking editor ctor.
+// Current public editor constructors can share a runtime:
+// - `new_lambda_editor(..., parent_runtime=shared)` (`lang/lambda/companion/lambda_editor.mbt:150-200`)
+// - `new_markdown_editor(..., parent_runtime=shared)` (`lang/markdown/companion/markdown_companion.mbt:7-17`)
+// - `new_json_editor(..., parent_runtime=shared)` (`lang/json/companion/json_companion.mbt:8-18`)
+// - `SyncEditor::new_generic(..., parent_runtime=...)` (`editor/sync_editor.mbt:41-53`)
+//
+// The shared-runtime probe still keeps both positive and control paths:
+// the positive path uses explicit runtime threading; the control path drops it
+// to validate each behavior against the shared-vs-fresh runtime split.
 //
 // Codex pre-impl review 2026-05-23 (5 load-bearing findings, all reflected
 // in the test design below):

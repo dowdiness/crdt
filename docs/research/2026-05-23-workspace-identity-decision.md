@@ -63,7 +63,7 @@ Evidence from Part C assertions:
 | C_hash | `sha256:abc123` | Accepted |
 | C_path | `file:///workspace/doc.json` | Accepted |
 
-**Scope (Codex review on PR #326):** Part C does NOT exercise a separate DocumentId field — `new_json_editor(agent_id : String)` accepts only an `agent_id`. The tests show the CRDT, transport, and presence layers treat their string identifier opaquely. That establishes one lower bound — when a real DocumentId is added in §P0b (either as a separate axis or embedded in agent_id), these layers will impose no shape constraint. It does NOT establish anything about serialization, persistence, or workspace-API round-trips, which the workspace design hasn't ranged on yet.
+**Scope (Codex review on PR #326):** Part C does NOT exercise a separate DocumentId field — `new_json_editor(agent_id : String, parent_runtime?)` still uses `agent_id` as the editor identity string and only adds optional runtime threading. The tests show the CRDT, transport, and presence layers treat that string identifier opaquely. That establishes one lower bound — when a real DocumentId is added in §P0b (either as a separate axis or embedded in `agent_id`), these layers will impose no shape constraint. It does NOT establish anything about serialization, persistence, or workspace-API round-trips, which the workspace design hasn't ranged on yet.
 
 **Recommendation:** Use a simple scheme for now (e.g. `"<doc_path>:<replica_uuid>"`) and avoid over-engineering until the workspace concept is stable. Revisit when the persistence shape is chosen in Phase 2.
 

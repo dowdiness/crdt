@@ -41,20 +41,20 @@ Two **JSON** parsers on the shared runtime — same-grammar pair per
 Codex finding (b); JSON is already imported in the probe package,
 which avoids adding Lambda grammar imports for no informational gain.
 
-**API surface finding (independent of any test verdict):** today the
-public editor constructors (`new_lambda_editor`,
-`new_markdown_editor`, `new_json_editor`) do **not** expose
-`runtime?`. Each builds a `make_parser` closure that calls
-`@loom.new_parser(source, grammar)` without forwarding a shared
-runtime, so a fresh `@incr.Runtime::new()` is created per editor
-(`lang/lambda/companion/lambda_editor.mbt:107-129`,
-`lang/markdown/companion/markdown_companion.mbt:11-17`). A
-shared-runtime workspace requires either (a) a new
-`new_*_editor(..., runtime=shared)` constructor variant, or (b)
-direct use of `@editor.SyncEditor::new_generic` with a custom
-`make_parser` that forwards the runtime to `@loom.new_parser`
-(`editor/sync_editor.mbt:41-77`). The probe demonstrates that path
-(b) works mechanically.
+**API surface finding (independent of any test verdict):** production
+constructor calls now already include optional shared-runtime threading:
+`new_lambda_editor`, `new_markdown_editor`, and `new_json_editor` each
+accept `parent_runtime?` and thread it into the parser via
+`@loom.new_parser(..., runtime?=rt)`. See
+`lang/lambda/companion/lambda_editor.mbt:150-154`,
+`lang/markdown/companion/markdown_companion.mbt:10-17`, and
+`lang/json/companion/json_companion.mbt:8-18`.
+
+`SyncEditor::new_generic` also accepts `parent_runtime?`, so shared-runtime
+FFI constructors can pass a single coordinator runtime through:
+`ffi/lambda/lifecycle.mbt:35-42`,
+`ffi/markdown/markdown_ffi.mbt:34-38`, and
+`ffi/json/json_ffi.mbt:35-39`.
 
 ---
 

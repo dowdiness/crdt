@@ -93,9 +93,10 @@ hoisted into a shared helper that does not exist today.
    for the companion and capabilities closures.
 2. Calls `@editor.SyncEditor::new_generic(agent_id, make_parser, build_memos, capture_timeout_ms~, capabilities~)`
    with two inline closures. The `make_parser` closure (line 114)
-   constructs `@loom.new_parser(s, @parser.lambda_grammar)` — no
-   `runtime=` argument, so each editor gets a fresh `Runtime` owned
-   by its Parser. The `build_memos` closure (lines 115-128) calls
+   constructs `@loom.new_parser(s, @parser.lambda_grammar, runtime?=rt)` so
+   each editor receives the `parent_runtime` passed into `new_lambda_editor`
+   (when provided) and shares that `Runtime` with downstream projections.
+   The `build_memos` closure (lines 115-128) calls
    `@lambda_flat.build_lambda_projection_memos(parser)` (which
    returns a 4-tuple — see §2.1), assigns into the three `Ref`s,
    then calls `@lambda_eval.build_eval_memo(parser)` and
@@ -111,9 +112,9 @@ hoisted into a shared helper that does not exist today.
    constructor returns).
 5. Returns the `(editor, companion)` tuple.
 
-The function has a fixed return type and no parameter for an external
-runtime, coordinator, or scope. Any change that needs to thread one of
-those values would change this signature.
+The function has a fixed return type and currently accepts an optional
+`parent_runtime?` parameter; it threads that parent runtime from
+`SyncEditor::new_generic` callers through to the parser constructor path.
 
 ### 1.3 What `SyncEditor::new_generic` actually does
 
@@ -131,10 +132,10 @@ Defined at `editor/sync_editor.mbt:41-77`. Three steps relevant here:
    (line 60), `registry_memo` (line 61), `source_map_memo`
    (line 62). No `lifetime_scope`, no `observers` collection.
 
-There is no `runtime?` parameter on `SyncEditor::new_generic` today;
-all runtime sharing would have to flow through either (a) a new
-parameter forwarded to `make_parser`, or (b) a different ctor entry
-point.
+`SyncEditor::new_generic` accepts optional `parent_runtime?` and passes it
+to `make_parser("", parent_runtime)` directly. If omitted, the parser owns
+its own fresh runtime; if provided, it shares parser + projection memos on
+the same runtime.
 
 ### 1.4 Non-FFI callers and sister languages
 
@@ -154,9 +155,10 @@ the protected-cell set is heterogeneous across languages — Markdown
 and JSON need only the 7 generic cells; Lambda adds 2 companion +
 1 typecheck.
 
-`workspace/probe/gate1_runtime_safety_wbtest.mbt:9-16` documents the
-"no runtime-taking editor ctor today" observation; the test uses
-`@loom.new_parser(..., runtime=shared)` directly.
+`workspace/probe/gate1_runtime_safety_wbtest.mbt:9-16` documents runtime
+threading behavior using `new_lambda_editor(..., parent_runtime=shared)`
+in the positive path; the same file also includes a control case with no
+`parent_runtime`.
 
 ---
 
