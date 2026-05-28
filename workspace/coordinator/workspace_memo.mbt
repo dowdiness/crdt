@@ -11,10 +11,10 @@
 /// `unregister_dep` so register/unregister symmetry is structurally guaranteed
 /// — the consumer never names the edges twice.
 pub struct WorkspaceMemoHandle[T] {
-  coordinator : Coordinator
-  memo_id : @incr.CellId
-  watch : @incr.Watch[T]
-  deps : Array[(EditorId, @incr.CellId)]
+  priv coordinator : Coordinator
+  priv memo_id : @incr.CellId
+  priv watch : @incr.Watch[T]
+  priv deps : Array[(EditorId, @incr.CellId)]
 }
 
 ///|

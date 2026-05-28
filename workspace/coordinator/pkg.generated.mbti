@@ -65,10 +65,7 @@ pub struct ProtectedRead {
 }
 
 pub struct WorkspaceMemoHandle[T] {
-  coordinator : Coordinator
-  memo_id : @types.CellId
-  watch : @cells.Watch[T]
-  deps : Array[(EditorId, @types.CellId)]
+  // private fields
 }
 pub fn[T] WorkspaceMemoHandle::dispose(Self[T]) -> Unit
 pub fn[T] WorkspaceMemoHandle::id(Self[T]) -> @types.CellId

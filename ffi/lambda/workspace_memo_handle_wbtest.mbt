@@ -174,14 +174,20 @@ test "wmh B1: bad-cell rejection + atomicity" {
   let h_a = lambda_handles.get(handle_a).unwrap()
   let h_b = lambda_handles.get(handle_b).unwrap()
   let bad : @incr.Derived[Int] = @incr.Derived(coordinator.runtime(), fn() { 0 })
+  // A VALID dep on editor A precedes the bad dep (B's cell named under A, not
+  // in A's protected surface). A validate-while-register impl would register
+  // the valid edge before hitting the bad one — the destroy assertion below
+  // catches that leak, proving all-or-nothing rather than just "rejected".
   match
     coordinator.register_workspace_memo(bad, [
+      (h_a.editor_id, h_a.cells.parser_source.cell_id()),
       (h_a.editor_id, h_b.cells.parser_source.cell_id()),
     ]) {
     Ok(_) => fail("B1 expected CellNotInProtectedSurface, got Ok")
     Err(report) => assert_eq(report.kind, @workspace.CellNotInProtectedSurface)
   }
-  // Atomicity: nothing was registered, so destroy must succeed immediately.
+  // Atomicity: the valid edge must NOT have been registered, so destroying
+  // editor A (named in the valid dep) must succeed immediately.
   match coordinator.destroy_editor(h_a.editor_id) {
     Ok(_) => ()
     Err(r) =>
