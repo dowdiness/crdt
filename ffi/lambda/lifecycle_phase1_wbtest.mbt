@@ -34,6 +34,20 @@ fn reset_coordinator_for_phase1_tests() -> Unit {
 }
 
 ///|
+fn drain_lambda_handle_after_direct_coordinator_destroy(
+  handle : Int,
+  h : LambdaHandle,
+) -> Unit {
+  h.companion.dispose_analysis_attachment()
+  lambda_handles.remove(handle)
+  view_states.remove(handle)
+  pretty_view_states.remove(handle)
+  if last_created_handle.val == Some(handle) {
+    last_created_handle.val = None
+  }
+}
+
+///|
 test "spec §12 #1: each protected cell reads through read_protected" {
   reset_coordinator_for_phase1_tests()
   let handle = create_editor("test_agent_one")
@@ -119,6 +133,100 @@ test "spec §12 #2: destroy refused while depended-upon; succeeds after unregist
   if last_created_handle.val == Some(handle) {
     last_created_handle.val = None
   }
+}
+
+///|
+/// Phase 1b workstream 3 suite: the remaining composite Lambda accessors in
+/// this slice now perform coordinator-mediated protected-read guards before
+/// delegating to the existing editor implementation.
+test "workstream 3: get_view_tree_json collapses to null after coordinator destroy" {
+  reset_coordinator_for_phase1_tests()
+  let handle = create_editor("view_tree_coord_destroy_agent")
+  set_text(handle, "λx. x")
+  let alive_json = get_view_tree_json(handle)
+  if alive_json == "null" {
+    fail("expected live view tree JSON before coordinator destroy")
+  }
+  let h = lambda_handles.get(handle).unwrap()
+  match coordinator.destroy_editor(h.editor_id) {
+    Ok(_) => ()
+    Err(report) => fail("coordinator destroy: \{report}")
+  }
+  assert_eq(get_view_tree_json(handle), "null")
+  drain_lambda_handle_after_direct_coordinator_destroy(handle, h)
+}
+
+///|
+test "workstream 3: compute_view_patches_json collapses to [] after coordinator destroy" {
+  reset_coordinator_for_phase1_tests()
+  let handle = create_editor("view_patches_coord_destroy_agent")
+  set_text(handle, "λx. x")
+  let alive_json = compute_view_patches_json(handle)
+  if alive_json == "[]" {
+    fail("expected live view patch JSON before coordinator destroy")
+  }
+  let h = lambda_handles.get(handle).unwrap()
+  match coordinator.destroy_editor(h.editor_id) {
+    Ok(_) => ()
+    Err(report) => fail("coordinator destroy: \{report}")
+  }
+  assert_eq(compute_view_patches_json(handle), "[]")
+  drain_lambda_handle_after_direct_coordinator_destroy(handle, h)
+}
+
+///|
+test "workstream 3: get_semantic_projection_json collapses to empty after coordinator destroy" {
+  reset_coordinator_for_phase1_tests()
+  let handle = create_editor("semantic_projection_coord_destroy_agent")
+  set_text(handle, "let x = 1\nx")
+  let empty = @lambda_semantic.SemanticProjection::empty().to_json().stringify()
+  let alive_json = get_semantic_projection_json(handle)
+  if alive_json == empty {
+    fail("expected live semantic projection JSON before coordinator destroy")
+  }
+  let h = lambda_handles.get(handle).unwrap()
+  match coordinator.destroy_editor(h.editor_id) {
+    Ok(_) => ()
+    Err(report) => fail("coordinator destroy: \{report}")
+  }
+  assert_eq(get_semantic_projection_json(handle), empty)
+  drain_lambda_handle_after_direct_coordinator_destroy(handle, h)
+}
+
+///|
+test "workstream 3: get_pretty_view_json collapses to null after coordinator destroy" {
+  reset_coordinator_for_phase1_tests()
+  let handle = create_editor("pretty_view_coord_destroy_agent")
+  set_text(handle, "let x = 1\nx")
+  let alive_json = get_pretty_view_json(handle)
+  if alive_json == "null" {
+    fail("expected live pretty view JSON before coordinator destroy")
+  }
+  let h = lambda_handles.get(handle).unwrap()
+  match coordinator.destroy_editor(h.editor_id) {
+    Ok(_) => ()
+    Err(report) => fail("coordinator destroy: \{report}")
+  }
+  assert_eq(get_pretty_view_json(handle), "null")
+  drain_lambda_handle_after_direct_coordinator_destroy(handle, h)
+}
+
+///|
+test "workstream 3: compute_pretty_patches_json collapses to [] after coordinator destroy" {
+  reset_coordinator_for_phase1_tests()
+  let handle = create_editor("pretty_patches_coord_destroy_agent")
+  set_text(handle, "let x = 1\nx")
+  let alive_json = compute_pretty_patches_json(handle)
+  if alive_json == "[]" {
+    fail("expected live pretty patch JSON before coordinator destroy")
+  }
+  let h = lambda_handles.get(handle).unwrap()
+  match coordinator.destroy_editor(h.editor_id) {
+    Ok(_) => ()
+    Err(report) => fail("coordinator destroy: \{report}")
+  }
+  assert_eq(compute_pretty_patches_json(handle), "[]")
+  drain_lambda_handle_after_direct_coordinator_destroy(handle, h)
 }
 
 ///|

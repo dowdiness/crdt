@@ -18,25 +18,50 @@ fn semantic_node_allows_rename(
 }
 
 ///|
+fn empty_semantic_projection_json() -> String {
+  @lambda_semantic.SemanticProjection::empty().to_json().stringify()
+}
+
+///|
 /// Get the read-only semantic projection as JSON.
 /// Returns `{annotations, decorations, diagnostics}` and never mutates editor
-/// state; semantic edits still lower through text/CRDT edit paths.
+/// state; semantic edits still lower through text/CRDT edit paths. Returns the
+/// empty projection if any protected read fails.
 pub fn get_semantic_projection_json(handle : Int) -> String {
   match lambda_handles.get(handle) {
-    Some(h) =>
-      match h.editor.get_proj_node() {
-        Some(root) =>
-          @lambda_semantic.build_semantic_projection_with_flat_proj(
-            root,
-            h.editor.get_source_map(),
-            h.companion.get_flat_proj(),
-          )
-          .to_json()
-          .stringify()
-        None =>
-          @lambda_semantic.SemanticProjection::empty().to_json().stringify()
+    Some(h) => {
+      let root = match
+        coordinator.read_protected(h.editor_id, h.cells.cached_proj_node) {
+        Ok(Some(root)) => root
+        Ok(None) => return empty_semantic_projection_json()
+        Err(report) => {
+          println("get_semantic_projection_json proj read: \{report}")
+          return empty_semantic_projection_json()
+        }
       }
-    None => @lambda_semantic.SemanticProjection::empty().to_json().stringify()
+      let source_map = match
+        coordinator.read_protected(h.editor_id, h.cells.source_map_memo) {
+        Ok(sm) => sm
+        Err(report) => {
+          println("get_semantic_projection_json source_map read: \{report}")
+          return empty_semantic_projection_json()
+        }
+      }
+      let flat_proj = match
+        coordinator.read_protected(h.editor_id, h.cells.proj_memo) {
+        Ok(v) => v.proj
+        Err(report) => {
+          println("get_semantic_projection_json flat-proj read: \{report}")
+          return empty_semantic_projection_json()
+        }
+      }
+      @lambda_semantic.build_semantic_projection_with_flat_proj(
+        root, source_map, flat_proj,
+      )
+      .to_json()
+      .stringify()
+    }
+    None => empty_semantic_projection_json()
   }
 }
 
