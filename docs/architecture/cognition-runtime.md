@@ -70,6 +70,30 @@ dependency tracking. Policies produce values and scores only; `CognitionStore`
 remains the source of truth for revisions, dirty state, dependencies, and
 artifact lifetime.
 
+## Provider Boundary
+
+Provider execution is modeled as a boundary around the deterministic graph, not
+as graph recomputation. `CognitionStore` may plan provider requests, keep
+request/status/result records, and reject stale completions, but it must not own
+HTTP clients, credentials, retry loops, timers, or background tasks.
+
+A provider driver should follow this loop:
+
+1. Plan work with `plan_provider_request`.
+2. Poll the next action with a driver-supplied wall-clock timestamp.
+3. Acknowledge starts and cancellations before launching or stopping external
+   work.
+4. Complete the request explicitly with the stored descriptor and result.
+
+The driver owns wall-clock time and effect scheduling. Retry waits are derived
+from typed provider errors, but the driver supplies the current time when
+polling so retryable work can become ready outside tests. Completion remains a
+store operation that validates request id, option provenance, source revisions,
+and dependency fingerprints before mutating graph artifacts.
+
+The current provider/ranker callbacks remain deterministic policy seams for
+mock values and ranking. They are not transport hooks for real providers.
+
 ## Non-goals for this milestone
 
 - No real LLM calls.

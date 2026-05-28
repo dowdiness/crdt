@@ -15,10 +15,12 @@ plain callback seams.
 
 ## Status
 
-Design shipped in PR #363 (`07d4039`). This file remains the active
-implementation plan for the provider-boundary contract. Keep real provider
-clients, credentials, and network transport out of scope until the boundary
-implementation and deterministic driver tests land.
+Design shipped in PR #363 (`07d4039`). The first provider-boundary
+implementation shipped in PR #379 (`e4a25fa`), adding request planning,
+explicit completion, typed provider status/error handling, internal
+`@incr`-assisted planning/status cells, and deterministic scripted driver tests.
+Keep real provider clients, credentials, and network transport out of scope
+until a separate provider-client plan names the backend and driver boundary.
 
 ## Scope
 
