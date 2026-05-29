@@ -43,7 +43,7 @@ fn write_uvarint(buf : Buffer, value : UInt64) -> Unit {
 fn read_uvarint(reader : Reader) -> UInt64 raise EphemeralError {
   let mut result : UInt64 = 0UL
   let mut shift = 0
-  for i = 0; i < 10; i = i + 1 {
+  for _ in 0..<10 {
     let b = reader.read_byte()
     result = result | ((b.to_int() & 0x7F).to_uint64() << shift)
     if (b.to_int() & 0x80) == 0 {
@@ -201,14 +201,14 @@ fn read_ephemeral_value(reader : Reader) -> EphemeralValue raise EphemeralError 
   } else if tag == tag_list {
     let count = safe_uvarint_to_int(read_uvarint(reader))
     let items : Array[EphemeralValue] = []
-    for i = 0; i < count; i = i + 1 {
+    for _ in 0..<count {
       items.push(read_ephemeral_value(reader))
     }
     EphemeralValue::List(items)
   } else if tag == tag_map {
     let count = safe_uvarint_to_int(read_uvarint(reader))
     let map : Map[String, EphemeralValue] = {}
-    for i = 0; i < count; i = i + 1 {
+    for _ in 0..<count {
       let key = read_string(reader)
       let item = read_ephemeral_value(reader)
       map[key] = item
@@ -222,7 +222,7 @@ fn read_ephemeral_value(reader : Reader) -> EphemeralValue raise EphemeralError 
 ///|
 fn write_f64_le(buf : Buffer, value : Double) -> Unit {
   let bits = value.reinterpret_as_uint64()
-  for i = 0; i < 8; i = i + 1 {
+  for i in 0..<8 {
     buf.write_byte(((bits >> (i * 8)) & 0xFFUL).to_byte())
   }
 }
@@ -231,7 +231,7 @@ fn write_f64_le(buf : Buffer, value : Double) -> Unit {
 fn read_f64_le(reader : Reader) -> Double raise EphemeralError {
   let bytes = reader.read_bytes(8)
   let mut bits : UInt64 = 0UL
-  for i = 0; i < 8; i = i + 1 {
+  for i in 0..<8 {
     bits = bits | (bytes[i].to_uint64() << (i * 8))
   }
   bits.reinterpret_as_double()
@@ -283,8 +283,8 @@ fn stable_peer_hash(key : String) -> UInt64 {
   buf.write_string_utf16le(key.view())
   let bytes = buf.to_bytes()
   let mut hash = 14695981039346656037UL
-  for i = 0; i < bytes.length(); i = i + 1 {
-    hash = hash ^ bytes[i].to_uint64()
+  for b in bytes {
+    hash = hash ^ b.to_uint64()
     hash = hash * 1099511628211UL
   }
   hash
@@ -326,7 +326,7 @@ fn decode_entries(
   let reader = Reader::new(data)
   let count = safe_uvarint_to_int(read_uvarint(reader))
   let out : Array[(String, EphemeralRecord)] = []
-  for i = 0; i < count; i = i + 1 {
+  for _ in 0..<count {
     let peer = read_uvarint(reader)
     let clock = read_ivarint(reader)
     let value = read_ephemeral_value(reader)

@@ -93,18 +93,16 @@ fn setup_hub_and_cursor(agent_id : String) -> (EphemeralHub, PeerCursorView) {
         if key == wire_peer_id {
           continue
         }
-        match cursor_store.get(key) {
-          Some(value) => cursor_view.apply_raw_update(key, value)
-          None => ()
+        if cursor_store.get(key) is Some(value) {
+          cursor_view.apply_raw_update(key, value)
         }
       }
       for key in event.updated() {
         if key == wire_peer_id {
           continue
         }
-        match cursor_store.get(key) {
-          Some(value) => cursor_view.apply_raw_update(key, value)
-          None => ()
+        if cursor_store.get(key) is Some(value) {
+          cursor_view.apply_raw_update(key, value)
         }
       }
       for key in event.removed() {
@@ -140,13 +138,11 @@ pub fn[T] SyncEditor::set_local_presence(
   map["cursor"] = EphemeralValue::I64(cursor_pos.to_int64())
   map["name"] = EphemeralValue::String(name)
   map["color"] = EphemeralValue::String(color)
-  match selection {
-    Some((start, end)) =>
-      map["selection"] = EphemeralValue::List([
-        EphemeralValue::I64(start.to_int64()),
-        EphemeralValue::I64(end.to_int64()),
-      ])
-    None => ()
+  if selection is Some((start, end)) {
+    map["selection"] = EphemeralValue::List([
+      EphemeralValue::I64(start.to_int64()),
+      EphemeralValue::I64(end.to_int64()),
+    ])
   }
   self.hub
   .get_store(Cursor)
@@ -201,9 +197,8 @@ pub fn[T] SyncEditor::get_hub(self : SyncEditor[T]) -> EphemeralHub {
 
 ///|
 pub fn[T] SyncEditor::ws_send(self : SyncEditor[T], data : Bytes) -> Unit {
-  match self.ws {
-    Some(ws) => ws.send_bytes(data)
-    None => ()
+  if self.ws is Some(ws) {
+    ws.send_bytes(data)
   }
 }
 
@@ -280,9 +275,8 @@ fn[T] SyncEditor::set_status(
     return
   }
   self.status = new_status
-  match self.on_status_change {
-    Some(cb) => cb(new_status)
-    None => ()
+  if self.on_status_change is Some(cb) {
+    cb(new_status)
   }
 }
 
@@ -444,9 +438,8 @@ pub fn[T : Eq] SyncEditor::apply_sync(
   self.sync_parser_after_text_change(old_source, new_source, None)
   // Clear a prior Error status once any sync applies — another peer
   // (via RelayedCrdtOps) having filled the causal gap counts as recovery.
-  match self.status {
-    Error(_) => self.set_status(Idle)
-    _ => ()
+  if self.status is Error(_) {
+    self.set_status(Idle)
   }
 }
 
@@ -479,9 +472,8 @@ pub fn[T] SyncEditor::export_since(
 pub fn[T : @pretty.Pretty] SyncEditor::get_pretty_view(
   self : SyncEditor[T],
 ) -> @protocol.ViewNode {
-  let tree = match self.get_tree() {
-    Some(t) => t
-    None => return @protocol.layout_to_view_tree(@pretty.text(""), width=80)
+  guard self.get_tree() is Some(tree) else {
+    return @protocol.layout_to_view_tree(@pretty.text(""), width=80)
   }
   let layout = @pretty.Pretty::to_layout(tree)
   let final_layout = match self.capabilities.pretty_post_process {

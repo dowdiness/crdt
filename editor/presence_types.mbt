@@ -92,14 +92,9 @@ fn drag_position_from_string(s : String) -> DragPosition? {
 pub fn DragState::to_ephemeral(self : DragState) -> EphemeralValue {
   let map : Map[String, EphemeralValue] = {}
   map["source_id"] = EphemeralValue::String(self.source_id)
-  match self.target {
-    Some((target_id, position)) => {
-      map["target_id"] = EphemeralValue::String(target_id)
-      map["position"] = EphemeralValue::String(
-        drag_position_to_string(position),
-      )
-    }
-    None => ()
+  if self.target is Some((target_id, position)) {
+    map["target_id"] = EphemeralValue::String(target_id)
+    map["position"] = EphemeralValue::String(drag_position_to_string(position))
   }
   EphemeralValue::Map(map)
 }

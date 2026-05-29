@@ -58,9 +58,8 @@ pub impl SyncTransport for InMemoryTransport with fn send(self, data) {
 
 ///|
 pub impl SyncTransport for InMemoryTransport with fn on_receive(self, handler) {
-  match self.room.peers.get(self.peer_id) {
-    Some(handlers) => handlers.push(handler)
-    None => ()
+  if self.room.peers.get(self.peer_id) is Some(handlers) {
+    handlers.push(handler)
   }
 }
 

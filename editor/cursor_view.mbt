@@ -74,15 +74,13 @@ pub fn PeerCursorView::adjust_for_edit(
       old_len,
       new_len,
     )
-    match cursor.selection {
-      Some((sel_start, sel_end)) =>
-        cursor.selection = Some(
-          (
-            adjust_position(sel_start, edit_start, old_len, new_len),
-            adjust_position(sel_end, edit_start, old_len, new_len),
-          ),
-        )
-      None => ()
+    if cursor.selection is Some((sel_start, sel_end)) {
+      cursor.selection = Some(
+        (
+          adjust_position(sel_start, edit_start, old_len, new_len),
+          adjust_position(sel_end, edit_start, old_len, new_len),
+        ),
+      )
     }
   }
 }
@@ -131,12 +129,9 @@ pub fn PeerCursorView::apply_raw_update(
           }
         _ => None
       }
-      match self.wire_keys.get(peer_id) {
-        Some(old_peer_id) =>
-          if old_peer_id != logical_peer_id {
-            self.cursors.remove(old_peer_id)
-          }
-        None => ()
+      if self.wire_keys.get(peer_id) is Some(old_peer_id) &&
+        old_peer_id != logical_peer_id {
+        self.cursors.remove(old_peer_id)
       }
       self.wire_keys[peer_id] = logical_peer_id
       self.set_cursor(logical_peer_id, cursor, name, color, selection~)

@@ -122,14 +122,11 @@ pub fn EphemeralHub::apply_all(self : EphemeralHub, data : Bytes) -> Unit {
   }
   let reader = Reader::new(data)
   let count = safe_uvarint_to_int(read_uvarint(reader)) catch { _ => return }
-  for _i = 0; _i < count; _i = _i + 1 {
+  for _ in 0..<count {
     let ns_byte = reader.read_byte() catch { _ => break }
     let ns_data = read_len_bytes(reader) catch { _ => break }
     // Unknown namespace: skip entry data (reader already advanced past it)
-    let ns = match namespace_from_byte(ns_byte) {
-      Some(ns) => ns
-      None => continue
-    }
+    guard namespace_from_byte(ns_byte) is Some(ns) else { continue }
     self.apply(ns, ns_data)
   }
 }
