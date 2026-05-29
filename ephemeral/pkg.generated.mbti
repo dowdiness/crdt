@@ -2,7 +2,7 @@
 package "dowdiness/canopy/ephemeral"
 
 import {
-  "moonbitlang/core/buffer",
+  "dowdiness/byte_codec",
   "moonbitlang/core/debug",
 }
 
@@ -15,15 +15,9 @@ pub fn namespace_from_byte(Byte) -> EphemeralNamespace?
 
 pub fn namespace_to_byte(EphemeralNamespace) -> Byte
 
-pub fn read_string(Reader) -> String raise EphemeralError
-
-pub fn write_string(@buffer.Buffer, String) -> Unit
-
 // Errors
 pub(all) suberror EphemeralError {
-  UnexpectedEndOfInput
-  VarintTooLong
-  VarintValueTooLarge
+  Codec(@byte_codec.CodecError)
   InvalidBoolValue
   InvalidValueTag
   InvalidPeerKey(key~ : String)
@@ -179,12 +173,6 @@ pub(all) enum PresenceStatus {
   Idle
 } derive(Eq, @debug.Debug)
 pub impl Show for PresenceStatus
-
-pub struct Reader {
-  data : Bytes
-  mut pos : Int
-}
-pub fn Reader::new(Bytes) -> Self
 
 // Type aliases
 
