@@ -128,6 +128,17 @@ The base rule (microbenchmark before optimizing) applies. Additionally: stale pr
 
 Hooks enforce `moon check` after every edit and `moon fmt && moon info` before commits. After edits, also run `moon test` and rebuild JS if web is affected. For packages with `"proof-enabled": true`, also run `moon prove` from the proof package directory. After `moon info`, check `git diff *.mbti` for unintended trait bound changes — widening a bound is an API regression even if all current consumers satisfy it. See [docs/development/task-tracking.md](docs/development/task-tracking.md) for tracking workflow.
 
+### Existing API First Rule
+
+Before defining any new function, method, helper, or type in this repository:
+
+1. Search: `NEW_MOON_MOD=0 moon ide doc "<keyword>"`, `moon ide outline <pkg>`, `moon ide peek-def <symbol>`, `moon ide find-references <symbol>`.
+2. State at least 2 candidate existing APIs, or explain why fewer exist.
+3. For each candidate: where defined, what it covers, whether reused, and if not — why not.
+4. If a new helper is unavoidable, state its responsibility boundary explicitly.
+
+See `docs/api-map.md` for the task→existing-API index. Include a **Reuse check** section in your PR (PR template enforces this).
+
 ## Architecture Conventions
 
 - When adding shared content, use symlinks or references to a single source of truth. Never embed copies of shared files — flag the duplication problem first.
