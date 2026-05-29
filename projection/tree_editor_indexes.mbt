@@ -65,11 +65,9 @@ fn collect_preorder_slice(
   start_idx : Int,
   end_idx : Int,
 ) -> Array[NodeId] {
-  let result : Array[NodeId] = []
-  for i = start_idx; i <= end_idx; i = i + 1 {
-    result.push(preorder_ids[i])
-  }
-  result
+  [
+    for i in start_idx..<=end_idx => preorder_ids[i]
+  ]
 }
 
 ///|

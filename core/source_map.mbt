@@ -136,7 +136,8 @@ pub fn SourceMap::nodes_at_position(
   let pairs : Array[(NodeId, Range)] = [
     for id, range in self.node_to_range_at_position(position) => (id, range)
   ]
-  pairs.sort_by((a, b) => b.1.length().compare(a.1.length()))
+  // Negated length key sorts descending: outermost (largest range) first.
+  pairs.sort_by_key(p => -p.1.length())
   pairs.map(p => p.0)
 }
 
