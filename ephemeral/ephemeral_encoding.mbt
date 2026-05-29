@@ -1,114 +1,74 @@
-///|
-pub struct Reader {
-  data : Bytes
-  mut pos : Int
-}
+// Presence value codec and peer-id wire mapping.
+//
+// The generic byte-level primitives (varints, length-prefixed strings/bytes,
+// f64, the `Reader` cursor) live in `dowdiness/byte_codec`. Pure encoders are
+// used directly through the `using` block below; the decoders raise
+// `@byte_codec.CodecError`, which the seam wrappers convert into
+// `EphemeralError::Codec` so this package's public error type stays
+// `EphemeralError`.
 
 ///|
-pub fn Reader::new(data : Bytes) -> Reader {
-  { data, pos: 0 }
+using @byte_codec {
+  type Reader,
+  write_uvarint,
+  write_ivarint,
+  write_string,
+  write_len_bytes,
+  write_f64_le,
 }
 
+// --- byte-codec read seam: CodecError -> EphemeralError::Codec ---
+
 ///|
-fn Reader::read_byte(self : Reader) -> Byte raise EphemeralError {
-  if self.pos >= self.data.length() {
-    raise EphemeralError::UnexpectedEndOfInput
+fn read_byte(reader : Reader) -> Byte raise EphemeralError {
+  reader.read_byte() catch {
+    e => raise EphemeralError::Codec(e)
   }
-  let b = self.data[self.pos]
-  self.pos += 1
-  b
-}
-
-///|
-fn Reader::read_bytes(self : Reader, n : Int) -> Bytes raise EphemeralError {
-  if self.pos + n > self.data.length() {
-    raise EphemeralError::UnexpectedEndOfInput
-  }
-  let out = self.data.view(start=self.pos, end=self.pos + n).to_owned()
-  self.pos += n
-  out
-}
-
-///|
-fn write_uvarint(buf : Buffer, value : UInt64) -> Unit {
-  let mut v = value
-  while v >= 0x80UL {
-    buf.write_byte((v.to_byte().to_int() | 0x80).to_byte())
-    v = v >> 7
-  }
-  buf.write_byte(v.to_byte())
 }
 
 ///|
 fn read_uvarint(reader : Reader) -> UInt64 raise EphemeralError {
-  let mut result : UInt64 = 0UL
-  let mut shift = 0
-  for _ in 0..<10 {
-    let b = reader.read_byte()
-    result = result | ((b.to_int() & 0x7F).to_uint64() << shift)
-    if (b.to_int() & 0x80) == 0 {
-      return result
-    }
-    shift += 7
+  @byte_codec.read_uvarint(reader) catch {
+    e => raise EphemeralError::Codec(e)
   }
-  raise EphemeralError::VarintTooLong
 }
 
 ///|
 fn safe_uvarint_to_int(v : UInt64) -> Int raise EphemeralError {
-  if v > 2147483647UL {
-    raise EphemeralError::VarintValueTooLarge
+  @byte_codec.safe_uvarint_to_int(v) catch {
+    e => raise EphemeralError::Codec(e)
   }
-  v.to_int()
-}
-
-///|
-fn write_ivarint(buf : Buffer, value : Int64) -> Unit {
-  // zigzag encoding: (value << 1) ^ (value >> 63)
-  let zigzag = ((value << 1) ^ (value >> 63)).reinterpret_as_uint64()
-  write_uvarint(buf, zigzag)
 }
 
 ///|
 fn read_ivarint(reader : Reader) -> Int64 raise EphemeralError {
-  let zigzag = read_uvarint(reader)
-  // zigzag decoding: (zigzag >>> 1) ^ -(zigzag & 1)
-  let signed = (zigzag >> 1).reinterpret_as_int64() ^
-    -(zigzag & 1UL).reinterpret_as_int64()
-  signed
+  @byte_codec.read_ivarint(reader) catch {
+    e => raise EphemeralError::Codec(e)
+  }
 }
 
 ///|
-pub fn write_string(buf : Buffer, s : String) -> Unit {
-  let tmp = Buffer()
-  tmp.write_string_utf16le(s.view())
-  let bytes = tmp.to_bytes()
-  write_uvarint(buf, bytes.length().to_uint64())
-  buf.write_bytes(bytes)
-}
-
-///|
-pub fn read_string(reader : Reader) -> String raise EphemeralError {
-  let len = safe_uvarint_to_int(read_uvarint(reader))
-  let bytes = reader.read_bytes(len)
-  // Wire data is written via Buffer.write_string_utf16le (matching MoonBit's
-  // internal String encoding), and Bytes.to_unchecked_string round-trips that
-  // same UTF-16LE representation. Callers should treat decoded strings as
-  // untrusted display data, not executable content.
-  bytes.to_unchecked_string()
-}
-
-///|
-fn write_len_bytes(buf : Buffer, b : Bytes) -> Unit {
-  write_uvarint(buf, b.length().to_uint64())
-  buf.write_bytes(b)
+fn read_string(reader : Reader) -> String raise EphemeralError {
+  @byte_codec.read_string(reader) catch {
+    e => raise EphemeralError::Codec(e)
+  }
 }
 
 ///|
 fn read_len_bytes(reader : Reader) -> Bytes raise EphemeralError {
-  let len = safe_uvarint_to_int(read_uvarint(reader))
-  reader.read_bytes(len)
+  @byte_codec.read_len_bytes(reader) catch {
+    e => raise EphemeralError::Codec(e)
+  }
 }
+
+///|
+fn read_f64_le(reader : Reader) -> Double raise EphemeralError {
+  @byte_codec.read_f64_le(reader) catch {
+    e => raise EphemeralError::Codec(e)
+  }
+}
+
+// --- presence value tags ---
 
 ///|
 let tag_null : Byte = b'\x00'
@@ -178,11 +138,11 @@ fn write_ephemeral_value(buf : Buffer, value : EphemeralValue) -> Unit {
 
 ///|
 fn read_ephemeral_value(reader : Reader) -> EphemeralValue raise EphemeralError {
-  let tag = reader.read_byte()
+  let tag = read_byte(reader)
   if tag == tag_null {
     EphemeralValue::Null
   } else if tag == tag_bool {
-    let raw = reader.read_byte()
+    let raw = read_byte(reader)
     if raw == b'\x00' {
       EphemeralValue::Bool(false)
     } else if raw == b'\x01' {
@@ -219,23 +179,7 @@ fn read_ephemeral_value(reader : Reader) -> EphemeralValue raise EphemeralError 
   }
 }
 
-///|
-fn write_f64_le(buf : Buffer, value : Double) -> Unit {
-  let bits = value.reinterpret_as_uint64()
-  for i in 0..<8 {
-    buf.write_byte(((bits >> (i * 8)) & 0xFFUL).to_byte())
-  }
-}
-
-///|
-fn read_f64_le(reader : Reader) -> Double raise EphemeralError {
-  let bytes = reader.read_bytes(8)
-  let mut bits : UInt64 = 0UL
-  for i in 0..<8 {
-    bits = bits | (bytes[i].to_uint64() << (i * 8))
-  }
-  bits.reinterpret_as_double()
-}
+// --- peer-id wire mapping ---
 
 ///|
 fn parse_peer_id(key : String) -> UInt64? {

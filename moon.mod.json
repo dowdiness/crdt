@@ -9,6 +9,10 @@
       "path": "./event-graph-walker",
       "version": "0.3.0"
     },
+    "dowdiness/byte_codec": {
+      "path": "./lib/byte-codec",
+      "version": "0.1.0"
+    },
     "dowdiness/text_change": {
       "path": "./loom/text-change",
       "version": "0.1.0"

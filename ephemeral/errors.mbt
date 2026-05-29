@@ -2,9 +2,9 @@
 
 ///|
 pub(all) suberror EphemeralError {
-  UnexpectedEndOfInput
-  VarintTooLong
-  VarintValueTooLarge
+  /// Transport-level failure surfaced from the `byte_codec` decoders
+  /// (unexpected EOF, malformed varint, …).
+  Codec(@byte_codec.CodecError)
   InvalidBoolValue
   InvalidValueTag
   InvalidPeerKey(key~ : String)
@@ -13,9 +13,7 @@ pub(all) suberror EphemeralError {
 ///|
 pub fn EphemeralError::message(self : EphemeralError) -> String {
   match self {
-    UnexpectedEndOfInput => "unexpected end of input"
-    VarintTooLong => "varint too long"
-    VarintValueTooLarge => "varint value exceeds maximum safe Int size"
+    Codec(err) => err.message()
     InvalidBoolValue => "invalid bool value"
     InvalidValueTag => "invalid ephemeral value tag"
     InvalidPeerKey(key=_) => "ephemeral key must be a numeric peer ID"
