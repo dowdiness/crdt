@@ -8,13 +8,11 @@ pub fn EphemeralHub::set_cursor(
 ) -> Unit {
   let map : Map[String, EphemeralValue] = {}
   map["position"] = EphemeralValue::I64(position.to_int64())
-  match selection {
-    Some((start, end)) =>
-      map["selection"] = EphemeralValue::List([
-        EphemeralValue::I64(start.to_int64()),
-        EphemeralValue::I64(end.to_int64()),
-      ])
-    None => ()
+  if selection is Some((start, end)) {
+    map["selection"] = EphemeralValue::List([
+      EphemeralValue::I64(start.to_int64()),
+      EphemeralValue::I64(end.to_int64()),
+    ])
   }
   self.stores[Cursor].set(self.wire_peer_id, EphemeralValue::Map(map)) catch {
     _ => ()

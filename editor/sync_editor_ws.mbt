@@ -78,19 +78,13 @@ pub fn[T : Eq] SyncEditor::ws_on_message(
   self : SyncEditor[T],
   data : Bytes,
 ) -> Unit {
-  let msg = match decode_message_result(data) {
-    Ok(m) => m
-    Err(_) => return
-  }
+  guard decode_message_result(data) is Ok(msg) else { return }
   match msg {
     CrdtOps(payload) => {
       // CrdtOps is used for backwards-compatible full-state exchange (PeerJoined).
       // Recovery is not possible here because there is no sender ID.
       // Once all peers use RelayedCrdtOps, this path only handles PeerJoined sync.
-      let crdt_msg = match parse_sync_message_json(payload) {
-        Ok(crdt_msg) => crdt_msg
-        Err(_) => return
-      }
+      guard parse_sync_message_json(payload) is Ok(crdt_msg) else { return }
       self.apply_sync(crdt_msg) catch {
         _ => ()
       }
@@ -114,21 +108,16 @@ pub fn[T : Eq] SyncEditor::ws_on_message(
     PeerLeft(peer_id) => {
       self.hub.on_peer_leave(peer_id)
       // Abort recovery if the leaving peer is the one we're recovering from
-      match self.recovery {
-        Some(ctx) =>
-          if ctx.peer_id == peer_id {
-            let target = ctx.peer_id
-            self.recovery = None
-            self.set_status(Error(reason=TargetLeft(peer_id=target)))
-          }
-        None => ()
+      if self.recovery is Some(ctx) && ctx.peer_id == peer_id {
+        let target = ctx.peer_id
+        self.recovery = None
+        self.set_status(Error(reason=TargetLeft(peer_id=target)))
       }
     }
     SyncRequest(payload) => {
-      let (sender, request_id, version_json) = match
-        parse_sync_request_payload(payload) {
-        Ok(parts) => parts
-        Err(_) => return
+      guard parse_sync_request_payload(payload)
+        is Ok((sender, request_id, version_json)) else {
+        return
       }
       // Parse requester's version and export delta
       let peer_version = @text.Version::from_json_string(version_json) catch {
@@ -153,14 +142,12 @@ pub fn[T : Eq] SyncEditor::ws_on_message(
       self.ws_send(wire)
     }
     SyncResponse(payload) => {
-      let (_sender, request_id, sync_json) = match
-        parse_sync_response_payload(payload) {
-        Ok(parts) => parts
-        Err(_) => return
+      guard parse_sync_response_payload(payload)
+        is Ok((_sender, request_id, sync_json)) else {
+        return
       }
-      let ctx = match self.recovery {
-        Some(ctx) => ctx
-        None => return // Not recovering, ignore
+      guard self.recovery is Some(ctx) else { // Not recovering, ignore
+        return
       }
       // Stale response check
       if !ctx.matches_request_id(request_id) {
@@ -209,7 +196,7 @@ pub fn[T : Eq] SyncEditor::ws_on_message(
                 self.recovery_epoch,
               )
               // Buffer remaining deferred messages
-              for j = i + 1; j < deferred.length(); j = j + 1 {
+              for j in (i + 1)..<deferred.length() {
                 new_ctx.buffer_message(deferred[j])
               }
               self.recovery = Some(new_ctx)
@@ -233,18 +220,11 @@ pub fn[T : Eq] SyncEditor::ws_on_message(
       }
     }
     RelayedCrdtOps(sender~, payload~) => {
-      let crdt_msg = match parse_sync_message_json(payload) {
-        Ok(crdt_msg) => crdt_msg
-        Err(_) => return
-      }
+      guard parse_sync_message_json(payload) is Ok(crdt_msg) else { return }
       // If recovering from this sender, buffer instead of applying
-      match self.recovery {
-        Some(ctx) =>
-          if ctx.peer_id == sender {
-            ctx.buffer_message(crdt_msg)
-            return
-          }
-        None => ()
+      if self.recovery is Some(ctx) && ctx.peer_id == sender {
+        ctx.buffer_message(crdt_msg)
+        return
       }
       self.apply_sync(crdt_msg) catch {
         err =>
@@ -265,10 +245,7 @@ pub fn[T] SyncEditor::ws_on_close(self : SyncEditor[T]) -> Unit {
 
 ///|
 pub fn[T] SyncEditor::ws_broadcast_edit(self : SyncEditor[T]) -> Unit {
-  match self.ws {
-    None => return
-    Some(_) => ()
-  }
+  guard self.ws is Some(_) else { return }
   let crdt_msg = self.export_all() catch { _ => return }
   let json_str = crdt_msg.to_json_string()
   let buf = Buffer()
@@ -278,10 +255,7 @@ pub fn[T] SyncEditor::ws_broadcast_edit(self : SyncEditor[T]) -> Unit {
 
 ///|
 pub fn[T] SyncEditor::ws_broadcast_cursor(self : SyncEditor[T]) -> Unit {
-  match self.ws {
-    None => return
-    Some(_) => ()
-  }
+  guard self.ws is Some(_) else { return }
   let cursor_data = self.hub.encode(Cursor)
   if cursor_data.length() > 0 {
     self.ws_send(encode_message(EphemeralUpdate(Cursor, cursor_data)))
@@ -336,9 +310,8 @@ fn[T] SyncEditor::send_sync_request(
   self.ws_send(wire)
   // Arm the watchdog for this request; timeout is read fresh so
   // set_watchdog_timeout takes effect on subsequent sends.
-  match self.watchdog_scheduler {
-    Some(scheduler) => scheduler(request_id, self.watchdog_timeout_ms)
-    None => ()
+  if self.watchdog_scheduler is Some(scheduler) {
+    scheduler(request_id, self.watchdog_timeout_ms)
   }
 }
 
@@ -347,10 +320,7 @@ fn[T] SyncEditor::send_sync_request(
 /// Check exhaustion BEFORE advancing so retries=0,1,2 each send a request
 /// and retries=3 gives up (3 retries total).
 fn[T] SyncEditor::handle_recovery_retry(self : SyncEditor[T]) -> Unit {
-  let ctx = match self.recovery {
-    Some(ctx) => ctx
-    None => return
-  }
+  guard self.recovery is Some(ctx) else { return }
   if ctx.is_exhausted() {
     // Give up — clear recovery and surface the error
     let peer_id = ctx.peer_id

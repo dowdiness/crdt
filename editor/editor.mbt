@@ -48,7 +48,7 @@ pub fn Editor::move_cursor(self : Editor, position : Int) -> Unit {
 /// After insertion, cursor moves to after the inserted text
 pub fn Editor::insert(self : Editor, text : String) -> Unit raise {
   self.doc.insert(@text.Pos::at(self.cursor), text)
-  self.cursor = self.cursor + text.length()
+  self.cursor += text.length()
 }
 
 ///| Insert text at a specific position
@@ -88,15 +88,15 @@ pub fn Editor::delete(self : Editor) -> Bool {
 /// Returns true if successful, false if at start
 pub fn Editor::backspace(self : Editor) -> Bool {
   if self.cursor > 0 {
-    self.cursor = self.cursor - 1
+    self.cursor -= 1
     try self.doc.delete(@text.Pos::at(self.cursor)) catch {
       @text.TextError::InvalidPosition(..) => {
         // Restore cursor if delete failed
-        self.cursor = self.cursor + 1
+        self.cursor += 1
         false
       }
       _ => {
-        self.cursor = self.cursor + 1
+        self.cursor += 1
         false
       }
     } noraise {

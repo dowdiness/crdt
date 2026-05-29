@@ -27,7 +27,7 @@ fn utf16_offset_to_item_pos(text : String, offset : Int) -> Int {
     if next_utf16_pos > target {
       return item_pos
     }
-    item_pos = item_pos + 1
+    item_pos += 1
     if next_utf16_pos == target {
       return item_pos
     }

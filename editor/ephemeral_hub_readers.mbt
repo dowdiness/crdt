@@ -8,10 +8,10 @@ pub fn EphemeralHub::get_cursor(
   let wire_id = to_wire_peer_id(peer_id)
   match self.stores[Cursor].get(wire_id) {
     Some(EphemeralValue::Map(map)) => {
-      let position = match map.get("position") {
-        Some(EphemeralValue::I64(n)) => n.to_int()
-        _ => return None
+      guard map.get("position") is Some(EphemeralValue::I64(n)) else {
+        return None
       }
+      let position = n.to_int()
       let selection = match map.get("selection") {
         Some(EphemeralValue::List(arr)) =>
           if arr.length() == 2 {
@@ -52,9 +52,8 @@ pub fn EphemeralHub::get_all_editing(
 ) -> Map[String, EditModeState] {
   let result : Map[String, EditModeState] = {}
   for key, value in self.stores[EditMode].get_all_states() {
-    match EditModeState::from_ephemeral(value) {
-      Some(state) => result[key] = state
-      None => ()
+    if EditModeState::from_ephemeral(value) is Some(state) {
+      result[key] = state
     }
   }
   result
@@ -78,9 +77,8 @@ pub fn EphemeralHub::get_online_peers(
 ) -> Array[PeerPresence] {
   let result : Array[PeerPresence] = []
   for _key, value in self.stores[Presence].get_all_states() {
-    match PeerPresence::from_ephemeral(value) {
-      Some(presence) => result.push(presence)
-      None => ()
+    if PeerPresence::from_ephemeral(value) is Some(presence) {
+      result.push(presence)
     }
   }
   result

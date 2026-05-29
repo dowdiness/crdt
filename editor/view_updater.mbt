@@ -146,11 +146,11 @@ fn diff_view_nodes(
   let prev_len = prev.children.length()
   let curr_len = curr.children.length()
   let min_len = if prev_len < curr_len { prev_len } else { curr_len }
-  for i = 0; i < min_len; i = i + 1 {
+  for i in 0..<min_len {
     diff_view_nodes(prev.children[i], curr.children[i], patches)
   }
   if curr_len > prev_len {
-    for i = prev_len; i < curr_len; i = i + 1 {
+    for i in prev_len..<curr_len {
       patches.push(
         @protocol.ViewPatch::InsertChild(
           parent_id=curr.id,
