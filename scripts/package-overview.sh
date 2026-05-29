@@ -7,18 +7,25 @@ cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 # Capture outline once per package; reuse for both count and type extraction.
 declare -A pkg_types
 
+# Canopy-internal packages (sub-packages of the main module).
+canopy_pkgs=(. core editor protocol projection relay ffi
+  lang/lambda lang/lambda/proj lang/lambda/flat lang/lambda/eval lang/lambda/edits
+  lang/json lang/json/proj lang/json/edits cmd/main)
+
+# Workspace members from moon.work (lib/*, examples/*) — excludes root "." already above.
+mapfile -t workspace_pkgs < <(grep -oE '"\.\/[^"]*"' moon.work | tr -d '"' | sed 's|^\./||')
+
 echo "=== Package Map (live) ==="
-for dir in . core editor protocol projection relay ffi \
-  lang/lambda lang/lambda/proj lang/lambda/flat lang/lambda/eval lang/lambda/edits \
-  lang/json lang/json/proj lang/json/edits cmd/main; do
+for dir in "${canopy_pkgs[@]}" "${workspace_pkgs[@]}"; do
   outline=$(NEW_MOON_MOD=0 moon ide outline "$dir" 2>/dev/null || true)
   count=$(printf '%s\n' "$outline" | grep -c "pub" || true)
-  printf "  %-30s %s pub symbols\n" "$dir/" "${count:-0}"
+  printf "  %-38s %s pub symbols\n" "$dir/" "${count:-0}"
   case "$dir" in core|editor|protocol|projection|relay)
-    # Extract structural definitions only (not pub type aliases)
+    # Stop at `{` or `(` to capture the full type name including multi-param generics.
     pkg_types[$dir]=$(printf '%s\n' "$outline" \
       | grep -E '[|] pub (struct|enum|trait) ' \
-      | sed -E 's/.*[|] pub (struct|enum|trait) ([^ ]+).*/\2/' \
+      | sed -E 's/.*[|] pub (struct|enum|trait) ([^{(]+).*/\2/' \
+      | sed 's/[[:space:]]*$//' \
       || true)
     ;;
   esac

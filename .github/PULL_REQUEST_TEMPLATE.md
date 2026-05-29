@@ -16,7 +16,7 @@ Existing APIs considered:
 
 New helpers added (if any):
 
-- `new_helper_name` — why this does not duplicate an existing API:
+<!-- list any new helper names here and explain why each doesn't duplicate an existing API -->
 
 ## Test plan
 

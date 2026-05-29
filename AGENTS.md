@@ -132,7 +132,7 @@ Hooks enforce `moon check` after every edit and `moon fmt && moon info` before c
 
 Before defining any new function, method, helper, or type in this repository:
 
-1. Search: `NEW_MOON_MOD=0 moon ide doc "<keyword>"`, `moon ide outline <pkg>`, `moon ide peek-def <symbol>`, `moon ide find-references <symbol>`.
+1. Search: `NEW_MOON_MOD=0 moon ide doc "<keyword>"`, `NEW_MOON_MOD=0 moon ide outline <pkg>`, `NEW_MOON_MOD=0 moon ide peek-def <symbol>`, `NEW_MOON_MOD=0 moon ide find-references <symbol>`.
 2. State at least 2 candidate existing APIs, or explain why fewer exist.
 3. For each candidate: where defined, what it covers, whether reused, and if not — why not.
 4. If a new helper is unavoidable, state its responsibility boundary explicitly.
