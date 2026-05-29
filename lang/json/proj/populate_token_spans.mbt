@@ -7,7 +7,7 @@ using @core {type SourceMap}
 ///|
 /// Token span role for object member keys. Convention: "key:0", "key:1", etc.
 pub fn key_role(index : Int) -> String {
-  "key:" + index.to_string()
+  "key:\{index}"
 }
 
 ///|
@@ -15,7 +15,7 @@ pub fn key_role(index : Int) -> String {
 /// Convention: "member:0", "member:1", etc.
 /// Used by Delete to remove the complete member text.
 pub fn member_role(index : Int) -> String {
-  "member:" + index.to_string()
+  "member:\{index}"
 }
 
 ///|
@@ -66,27 +66,22 @@ fn collect_token_spans(
           )
           // Find the StringToken key and record its span on the Object node
           for elem in member_syn.all_children() {
-            match elem {
-              @seam.SyntaxElement::Token(t) =>
-                if t.kind() == @json.StringToken.to_raw() {
-                  source_map.set_token_span(
-                    proj_node.id(),
-                    key_role(proj_idx),
-                    @loomcore.Range::new(t.start(), t.end()),
-                  )
-                  break
-                }
-              _ => ()
+            if elem is @seam.SyntaxElement::Token(t) &&
+              t.kind() == @json.StringToken.to_raw() {
+              source_map.set_token_span(
+                proj_node.id(),
+                key_role(proj_idx),
+                @loomcore.Range::new(t.start(), t.end()),
+              )
+              break
             }
           }
-          // Recurse into the value (first node child of MemberNode)
-          match member_syn.nth_child(0) {
-            Some(value_syn) =>
-              // The ProjNode child may itself have children (nested object/array)
-              collect_token_spans(source_map, value_syn, child_proj)
-            None => ()
+          // Recurse into the value (first node child of MemberNode).
+          // The ProjNode child may itself have children (nested object/array).
+          if member_syn.nth_child(0) is Some(value_syn) {
+            collect_token_spans(source_map, value_syn, child_proj)
           }
-          proj_idx = proj_idx + 1
+          proj_idx += 1
         }
       }
     }
@@ -101,7 +96,7 @@ fn collect_token_spans(
             elem_syn,
             proj_node.children[proj_idx],
           )
-          proj_idx = proj_idx + 1
+          proj_idx += 1
         }
       }
     }
