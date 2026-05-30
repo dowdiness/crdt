@@ -130,3 +130,34 @@ test "resolve: second def init binds to first def" {
   guard decl.kind is ModuleDef(def_index~)
   inspect(def_index, content="0")
 }
+
+///|
+test "resolve: innermost lambda shadowing" {
+  let (proj, flat_proj, registry, source_map) = build_fixture("λx. λx. x")
+  let g = build(flat_proj, registry, source_map)
+  let var_node = find_var_node(proj, "x")
+  guard declaration(g, var_node) is Some(decl)
+  inspect(decl.kind is LamParam(_), content="true")
+}
+
+///|
+test "resolve: body binds to latest def" {
+  let (proj, flat_proj, registry, source_map) = build_fixture(
+    "let x = 1\nlet x = 2\nx",
+  )
+  let g = build(flat_proj, registry, source_map)
+  let body_var = find_var_in_body(proj, "x")
+  guard declaration(g, body_var) is Some(decl)
+  guard decl.kind is ModuleDef(def_index~)
+  inspect(def_index, content="1")
+}
+
+///|
+test "resolve: earlier def cannot see later def" {
+  let (proj, flat_proj, registry, source_map) = build_fixture(
+    "let a = b\nlet b = 1\na",
+  )
+  let g = build(flat_proj, registry, source_map)
+  let init_var = find_var_in_def_init(proj, 0, "b")
+  inspect(declaration(g, init_var) is None, content="true")
+}
