@@ -58,9 +58,17 @@ trust the *old* assumptions some of these correct:
   `scope_wbtest.mbt:38` reads the body as
   `proj.children[proj.children.length() - 1]`). A pure expression (no defs)
   produces NO Module wrapper — `from_proj_node` returns the bare expr.
-- **parse_to_proj_node:** `@lambda_proj.parse_to_proj_node(text) -> (ProjNode[@ast.Term], Ref[Int])`.
-  Source: `lang/lambda/proj/proj_node.mbt:315`. The lambda surface syntax uses
-  the **`λ`** character (U+03BB), as in `scope_wbtest.mbt:18` (`"λx. x"`).
+- **parse_to_proj_node:** `@lambda_proj.parse_to_proj_node(text) -> (ProjNode[@ast.Term], Array[String]) raise @loom/core.LexError`.
+  Source: `lang/lambda/proj/proj_node.mbt:315`. **It is FALLIBLE** (`raise`) and the
+  second tuple element is an `Array[String]` of parse errors, NOT a `Ref[Int]`
+  counter. Verified 2026-05-30 via `moon ide doc parse_to_proj_node`. Inside a
+  `test` block the `raise` auto-propagates (no annotation needed — see
+  `scope_wbtest.mbt:19`), but any standalone `fn` that calls it must declare
+  `raise` in its signature (bare `) raise {`, the repo idiom — see
+  `lang/lambda/semantic/semantic_projection_test.mbt:4,16`). Otherwise MoonBit
+  errors [4122] "Function with error can only be used inside a function with
+  error types in its signature." The lambda surface syntax uses the **`λ`**
+  character (U+03BB), as in `scope_wbtest.mbt:18` (`"λx. x"`).
 - **Existing binder API (the v1 migration target):**
   `pub fn resolve_binder(var_node_id, var_name, flat_proj, registry, source_map) -> BindingSite?`
   where `pub(all) enum BindingSite { LamBinder(lam_id~ : NodeId); ModuleBinder(binding_node_id~ : NodeId, def_index~ : Int) } derive(Debug, Eq)`.
@@ -261,8 +269,8 @@ fn build_fixture(
   @lambda_proj.FlatProj,
   Map[@core.NodeId, @core.ProjNode[@ast.Term]],
   @core.SourceMap,
-) {
-  let (proj, _counter) = @lambda_proj.parse_to_proj_node(text)
+) raise {
+  let (proj, _errs) = @lambda_proj.parse_to_proj_node(text)
   let flat_proj = @lambda_proj.FlatProj::from_proj_node(proj)
   let source_map = @core.SourceMap::from_ast(proj)
   let registry : Map[@core.NodeId, @core.ProjNode[@ast.Term]] = {}
@@ -674,6 +682,12 @@ fn Builder::resolve(
 
 ///|
 /// Pass 3: emit a Ref for each Var/Unbound node and resolve it.
+/// Invariant: pass2 walks the registry's root tree and records `node_scope`
+/// for every node, and the registry itself is that same tree — so every
+/// Var/Unbound node here has a recorded scope. `node_scope.get(..).unwrap()`
+/// therefore asserts that invariant: a missing scope means the registry held a
+/// node not reachable from root (a structural defect), and a loud abort is
+/// correct — silently defaulting to the root scope would mis-resolve it.
 fn Builder::pass3(
   self : Builder,
   flat_proj : @lambda_proj.FlatProj,
@@ -687,7 +701,7 @@ fn Builder::pass3(
       _ => None
     }
     guard name is Some(n) else { continue }
-    let scope = self.node_scope.get(node.id()).unwrap_or(ScopeId(0))
+    let scope = self.node_scope.get(node.id()).unwrap()
     let cutoff = containing_def_index(flat_proj, source_map, node.id())
     let resolution = self.resolve(n, scope, cutoff)
     self.add_ref(scope, node.id(), n, resolution)
@@ -1015,8 +1029,8 @@ fn norm_binder(b : BindingSite) -> (String, NodeId, Int) {
 /// One equivalence check: declaration() must agree with resolve_binder on the
 /// chosen Var node. Returns true if both sides normalize to the same value
 /// (including both-None).
-fn agree(text : String, locate : (@core.ProjNode[@ast.Term]) -> NodeId) -> Bool {
-  let (proj, _c) = parse_to_proj_node(text)
+fn agree(text : String, locate : (@core.ProjNode[@ast.Term]) -> NodeId) -> Bool raise {
+  let (proj, _errs) = parse_to_proj_node(text)
   let fp = FlatProj::from_proj_node(proj)
   let sm = SourceMap::from_ast(proj)
   let registry = scope_test_registry(proj)
@@ -1077,7 +1091,7 @@ fn find_var(root : @core.ProjNode[@ast.Term], name : String) -> NodeId {
 ///|
 test "equivalence: declaration() matches resolve_binder across all binding rules" {
   // (description, source, locator)
-  inspect(agree("λx. x", root => root.children[0]), content="true") // lam param
+  inspect(agree("λx. x", root => root.children[0].id()), content="true") // lam param (locate returns NodeId, so .id())
   inspect(agree("let x = 0\nx", root => find_var(root, "x")), content="true") // module body
   inspect(agree("let x = x\nx", root => find_var(root, "x")), content="true") // self-ref (first x is init → unbound)
   inspect(agree("let x = 1\nlet x = 2\nx", root => find_var(root, "x")), content="true") // shadowing / latest
