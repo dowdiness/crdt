@@ -41,6 +41,21 @@ fn find_var_node(
 }
 
 ///|
+test "build: module defs become ModuleDef decls in root scope" {
+  let (_proj, flat_proj, registry, source_map) = build_fixture(
+    "let a = 1\nlet b = 2\nb",
+  )
+  let g = build(flat_proj, registry, source_map)
+  inspect(g.decls.length(), content="2")
+  guard g.decls[0].kind is ModuleDef(def_index=d0)
+  inspect(d0, content="0")
+  guard g.decls[1].kind is ModuleDef(def_index=d1)
+  inspect(d1, content="1")
+  let ScopeId(s0) = g.decls[0].scope
+  inspect(s0, content="0")
+}
+
+///|
 test "build_parent_map: child maps to parent" {
   // Hand-built tree: root(id=0) Lam with one child Var(id=1).
   let child = @core.ProjNode::new(@ast.Term::Var("x"), 0, 1, 1, [])
