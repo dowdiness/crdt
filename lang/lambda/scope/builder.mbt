@@ -84,7 +84,10 @@ fn Builder::pass2(
       @ast.Term::Lam(param, _) => {
         let lam_scope = self.add_scope(Some(current))
         let _ = self.add_decl(
-          lam_scope, node.id(), param, LamParam(lam_id=node.id()),
+          lam_scope,
+          node.id(),
+          param,
+          LamParam(lam_id=node.id()),
         )
         for child in node.children {
           walk(child, lam_scope)
