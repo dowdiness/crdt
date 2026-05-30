@@ -27,7 +27,7 @@ Two concrete problems:
    go-to-definition / find-references / capture-safe rename from sharing one
    correct implementation.
 
-This design introduces a single **NodeId-keyed scope graph** that the binding
+This design introduces a single **NodeId-keyed binding index** that the binding
 sites migrate onto, drawing on:
 
 - *A Theory of Name Resolution* (Néron, Tolmach, Visser, Wachsmuth, 2015) — the
