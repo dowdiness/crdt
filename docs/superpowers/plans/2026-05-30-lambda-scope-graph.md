@@ -6,7 +6,7 @@
 
 **Architecture:** A single batch-built `ScopeGraph` (Scope/Decl/Ref keyed by `@core.NodeId`) constructed in three passes from `FlatProj` + registry + `SourceMap`. v1 is non-incremental but correct. The `Resolution` record reserves negative-observation fields (`decl: DeclId?`, `visited_scopes`) for a future incremental layer. Only `declaration()` is wired to a consumer (`rename`) in v1; `references()` / `enclosing_env()` are reserved API surface.
 
-**Tech Stack:** MoonBit; `dowdiness/canopy/core` (NodeId, ProjNode, SourceMap, collect_registry), `dowdiness/canopy/lang/lambda/proj` (FlatProj, parse_to_proj_node — default alias `@proj`), `dowdiness/lambda/ast` (Term, alias `@ast`). Tests: `inspect` on **scalar projections** + whitebox `*_wbtest.mbt`.
+**Tech Stack:** MoonBit; `dowdiness/canopy/core` (NodeId, ProjNode, SourceMap, collect_registry — alias `@core`), `dowdiness/canopy/lang/lambda/proj` (FlatProj, parse_to_proj_node — alias `@lambda_proj`, matching the sibling `edits` package), `dowdiness/lambda/ast` (Term, alias `@ast`). Tests: `inspect` on **scalar projections** + whitebox `*_wbtest.mbt`.
 
 **Design spec:** `docs/superpowers/specs/2026-05-30-lambda-scope-graph-design.md` — read it before starting; this plan implements it.
 
@@ -38,13 +38,13 @@ trust the *old* assumptions some of these correct:
   `@core.SourceMap::get_range(node_id) -> @core.Range?` with `.start` / `.end`
   fields (`core/source_map.mbt:104`). Construct in tests via
   `@core.SourceMap::from_ast(proj)` — `from_ast` is a `SourceMap` method, so it
-  is `@core.`, NOT `@proj.` (it appears *unqualified* in
+  is `@core.`, NOT `@lambda_proj.` (it appears *unqualified* in
   `lang/lambda/edits/scope_wbtest.mbt:21` only because that package pulls it in
   via `using`).
 - **FlatProj:** `pub struct FlatProj { defs : Array[(String, ProjNode[@ast.Term], Int, NodeId)]; final_expr : ProjNode[@ast.Term]? }`
-  — the def tuple is `(name, init, start, binding_id)`. In `@proj`. Source:
+  — the def tuple is `(name, init, start, binding_id)`. In `@lambda_proj`. Source:
   `lang/lambda/proj/flat_proj.mbt:5`. Construct via
-  `@proj.FlatProj::from_proj_node(proj)`. **Important id-shape note:**
+  `@lambda_proj.FlatProj::from_proj_node(proj)`. **Important id-shape note:**
   `from_proj_node` sets a def's binding id (`.3`) to the **init child's** id
   (`flat_proj.mbt:281`), whereas the live editor path (`to_flat_proj`) allocates
   a *separate* binding id (`flat_proj.mbt:29`). Both the scope graph and
@@ -58,7 +58,7 @@ trust the *old* assumptions some of these correct:
   `scope_wbtest.mbt:38` reads the body as
   `proj.children[proj.children.length() - 1]`). A pure expression (no defs)
   produces NO Module wrapper — `from_proj_node` returns the bare expr.
-- **parse_to_proj_node:** `@proj.parse_to_proj_node(text) -> (ProjNode[@ast.Term], Ref[Int])`.
+- **parse_to_proj_node:** `@lambda_proj.parse_to_proj_node(text) -> (ProjNode[@ast.Term], Ref[Int])`.
   Source: `lang/lambda/proj/proj_node.mbt:315`. The lambda surface syntax uses
   the **`λ`** character (U+03BB), as in `scope_wbtest.mbt:18` (`"λx. x"`).
 - **Existing binder API (the v1 migration target):**
@@ -89,10 +89,12 @@ trust the *old* assumptions some of these correct:
   `lam_id == proj.id()` and `def_index`, never the `BindingSite` value).
 - **Workspace:** `moon.work` members do NOT list `lang/*`; the root member `.`
   already covers `lang/lambda/scope`. **Do NOT edit `moon.work`.**
-- **moon.pkg format:** moon.pkg files are **JSON** (`{"import": [...],
-  "warning-list": "..."}`); see `lang/lambda/edits/moon.pkg`. Plain-string
-  imports use the default alias (last path segment, or enough segments to
-  disambiguate — e.g. `moonbitlang/core/immut/hashset` → `@immut/hashset`).
+- **moon.pkg format:** this repo's moon.pkg files use the
+  `import { "path" @alias, ... }` block + `warnings = "..."` form (NOT
+  `moon.pkg.json`); see `lang/lambda/edits/moon.pkg`. A bare path takes its
+  default alias (last segment, or enough segments to disambiguate — e.g.
+  `moonbitlang/core/immut/hashset` → `@immut/hashset`); an explicit `@alias`
+  overrides it. The `edits` package aliases proj as `@lambda_proj` — match that.
 - **New package module path:** `dowdiness/canopy/lang/lambda/scope`; consumers
   alias it `@scope`.
 
@@ -100,7 +102,7 @@ trust the *old* assumptions some of these correct:
 
 ## File structure
 
-- `lang/lambda/scope/moon.pkg` — JSON package config (imports core, proj, ast, immut/hashset).
+- `lang/lambda/scope/moon.pkg` — `import { }` package config (imports core, proj, ast, immut/hashset).
 - `lang/lambda/scope/graph.mbt` — data model: `ScopeGraph`, `Scope`, `Decl`, `Ref`, `Resolution`, `DeclKind`, `ScopeId`/`DeclId`/`RefId`. Language-agnostic except `DeclKind`.
 - `lang/lambda/scope/builder.mbt` — `build(...)`: Pass 1 (parent map), Pass 2 (scopes + decls), Pass 3 (resolve refs).
 - `lang/lambda/scope/query.mbt` — `declaration()`, `references()`, `enclosing_env()`.
@@ -119,20 +121,22 @@ trust the *old* assumptions some of these correct:
 
 - [ ] **Step 1: Create the package config**
 
-Create `lang/lambda/scope/moon.pkg` (JSON; default aliases give `@core`,
-`@proj`, `@ast`, `@immut/hashset`):
+Create `lang/lambda/scope/moon.pkg` (this repo uses the `import { ... }` /
+`warnings = "..."` moon.pkg format, NOT `moon.pkg.json` — copy the shape from
+`lang/lambda/edits/moon.pkg`):
 
-```json
-{
-  "import": [
-    "dowdiness/canopy/core",
-    "dowdiness/canopy/lang/lambda/proj",
-    "dowdiness/lambda/ast",
-    "moonbitlang/core/immut/hashset"
-  ],
-  "warning-list": "-2-6-29"
-}
 ```
+import {
+  "dowdiness/canopy/core",
+  "dowdiness/canopy/lang/lambda/proj" @lambda_proj,
+  "dowdiness/lambda/ast",
+  "moonbitlang/core/immut/hashset" @immut/hashset,
+}
+warnings = "-2-6-29"
+```
+
+Bare paths take the default alias (`@core`, `@ast`); the explicit `@lambda_proj`
+and `@immut/hashset` aliases match the sibling `edits` package.
 
 - [ ] **Step 2: (No moon.work change.)**
 
@@ -254,12 +258,12 @@ fn build_fixture(
   text : String,
 ) -> (
   @core.ProjNode[@ast.Term],
-  @proj.FlatProj,
+  @lambda_proj.FlatProj,
   Map[@core.NodeId, @core.ProjNode[@ast.Term]],
   @core.SourceMap,
 ) {
-  let (proj, _counter) = @proj.parse_to_proj_node(text)
-  let flat_proj = @proj.FlatProj::from_proj_node(proj)
+  let (proj, _counter) = @lambda_proj.parse_to_proj_node(text)
+  let flat_proj = @lambda_proj.FlatProj::from_proj_node(proj)
   let source_map = @core.SourceMap::from_ast(proj)
   let registry : Map[@core.NodeId, @core.ProjNode[@ast.Term]] = {}
   @core.collect_registry(proj, registry)
@@ -450,7 +454,7 @@ fn root_node(
 /// LamParam scope per Lam node. Records node→scope membership.
 fn Builder::pass2(
   self : Builder,
-  flat_proj : @proj.FlatProj,
+  flat_proj : @lambda_proj.FlatProj,
   registry : Map[@core.NodeId, @core.ProjNode[@ast.Term]],
 ) -> Unit {
   let root_scope = self.add_scope(None)
@@ -483,7 +487,7 @@ fn Builder::pass2(
 ///|
 /// Build the scope graph (Pass 2 only for now; Pass 3 added next task).
 pub fn build(
-  flat_proj : @proj.FlatProj,
+  flat_proj : @lambda_proj.FlatProj,
   registry : Map[@core.NodeId, @core.ProjNode[@ast.Term]],
   source_map : @core.SourceMap,
 ) -> ScopeGraph {
@@ -613,7 +617,7 @@ fn Builder::add_ref(
 /// def count (body sentinel) when the node is in the module body. Mirrors
 /// resolve_binder's def-range containment (scope.mbt:30-39).
 fn containing_def_index(
-  flat_proj : @proj.FlatProj,
+  flat_proj : @lambda_proj.FlatProj,
   source_map : @core.SourceMap,
   node_id : @core.NodeId,
 ) -> Int {
@@ -672,7 +676,7 @@ fn Builder::resolve(
 /// Pass 3: emit a Ref for each Var/Unbound node and resolve it.
 fn Builder::pass3(
   self : Builder,
-  flat_proj : @proj.FlatProj,
+  flat_proj : @lambda_proj.FlatProj,
   registry : Map[@core.NodeId, @core.ProjNode[@ast.Term]],
   source_map : @core.SourceMap,
 ) -> Unit {
@@ -695,7 +699,7 @@ Replace the body of `build`:
 
 ```moonbit
 pub fn build(
-  flat_proj : @proj.FlatProj,
+  flat_proj : @lambda_proj.FlatProj,
   registry : Map[@core.NodeId, @core.ProjNode[@ast.Term]],
   source_map : @core.SourceMap,
 ) -> ScopeGraph {
@@ -970,9 +974,8 @@ provides the `scope_test_registry` helper (`scope_wbtest.mbt:2`). Reuse those.
 
 - [ ] **Step 1: Add the scope import to edits**
 
-In `lang/lambda/edits/moon.pkg` (JSON), add
-`"dowdiness/canopy/lang/lambda/scope"` to the `"import"` array. (Default alias
-`@scope`.)
+In `lang/lambda/edits/moon.pkg`, add `"dowdiness/canopy/lang/lambda/scope"` as
+a new line inside the existing `import { ... }` block (default alias `@scope`).
 
 Run: `moon check -p dowdiness/canopy/lang/lambda/edits`
 Expected: no errors (import resolves; nothing uses it yet — `-2-6-29`
@@ -1270,7 +1273,7 @@ exists (`grep -n 'pub fn resolve_binder' lang/lambda/edits/scope.mbt`).
 
 In the PR description, state: `declaration()` reproduces the existing
 `BindingSite` contract; reused `@core.NodeId`, `@core.ProjNode`,
-`@core.SourceMap`, `@proj.FlatProj` (no duplicate types introduced).
+`@core.SourceMap`, `@lambda_proj.FlatProj` (no duplicate types introduced).
 
 - [ ] **Step 4: Open the PR**
 
@@ -1287,7 +1290,7 @@ Layer 2 caimeox oracle per Task 9 status.
 
 ## Reuse check
 declaration() reproduces the existing BindingSite contract; reused @core.NodeId,
-@core.ProjNode, @core.SourceMap, @proj.FlatProj — no duplicate types.
+@core.ProjNode, @core.SourceMap, @lambda_proj.FlatProj — no duplicate types.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 BODY
@@ -1306,4 +1309,4 @@ BODY
 - **Spec §Testing Layer 1/2/3:** Tasks 5 / 9 / 8 (Layer 3 now table-driven over all rules). ✓
 - **Spec §Non-goals (only rename, only declaration):** Task 8 migrates one call; references/enclosing_env reserved (Task 6), enclosing_env documented as superset of collect_lam_env (not replacement). ✓
 - **Spec §"acyclic by construction":** relied on in Task 2 `build_parent_map` doc; no runtime cycle guard in v1 because the tree-derived parent map cannot cycle.
-- **Codex review (2026-05-30) findings folded:** from_ast→`@core` (C1); `derive(Debug,Eq)`+scalar-inspect idiom (C2); table-driven equivalence (C3); enclosing_env superset comment (C4); id-shape note (C5); plus moon.pkg JSON format + `@proj` default alias.
+- **Codex review (2026-05-30) findings folded:** from_ast→`@core` (C1); `derive(Debug,Eq)`+scalar-inspect idiom (C2); table-driven equivalence (C3); enclosing_env superset comment (C4); id-shape note (C5); plus moon.pkg `import { }` format + `@lambda_proj` alias (matching `edits`).
