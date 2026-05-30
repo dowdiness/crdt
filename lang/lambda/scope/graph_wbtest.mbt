@@ -161,3 +161,25 @@ test "resolve: earlier def cannot see later def" {
   let init_var = find_var_in_def_init(proj, 0, "b")
   inspect(declaration(g, init_var) is None, content="true")
 }
+
+///|
+test "references: identity-based, shadowing-aware" {
+  let (_proj, flat_proj, registry, source_map) = build_fixture(
+    "let x = 1\nlet x = 2\nx",
+  )
+  let g = build(flat_proj, registry, source_map)
+  let def1 = g.decls[1].node_id
+  let def0 = g.decls[0].node_id
+  inspect(references(g, def1).length() >= 1, content="true")
+  inspect(references(g, def0).length(), content="0")
+}
+
+///|
+test "enclosing_env: lambda params in scope" {
+  let (proj, flat_proj, registry, source_map) = build_fixture("λx. λy. x")
+  let g = build(flat_proj, registry, source_map)
+  let var_node = find_var_node(proj, "x")
+  let env = enclosing_env(g, var_node)
+  inspect(env.contains("x"), content="true")
+  inspect(env.contains("y"), content="true")
+}
