@@ -59,6 +59,9 @@ For users calling Canopy from MoonBit or JavaScript.
   projectional editing reference.
 - **[Adding a Language](development/ADDING_A_LANGUAGE.md)** — integrate a new
   language into the framework (uses Markdown as the reference implementation).
+- **[Audio DSL Reactive Foundation](development/audio-dsl-reactive-foundation.md)**
+  — requirements and benchmark baselines for a Canopy-hosted audio DSL that
+  lowers into MoonDsp through `incr`.
 
 Per-module READMEs:
 
