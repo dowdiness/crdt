@@ -760,6 +760,21 @@ test "compute_text_edit: ExtractToLet rejects lambda-captured var" {
 }
 
 ///|
+test "compute_text_edit: ExtractToLet rejects module-def enclosing env capture" {
+  let text = "let x = y\nlet y = 1\n0"
+  let (_, sm, registry, fp) = parse_with_token_spans(text)
+  let init_y = fp.defs[0].1
+  let result = compute_text_edit(
+    ExtractToLet(node_id=init_y.id(), var_name="z"),
+    make_edit_ctx(text, sm, registry, fp),
+  )
+  @debug.debug_inspect(
+    result,
+    content="Err(\"Cannot extract: expression captures lambda-bound variables\")",
+  )
+}
+
+///|
 test "compute_text_edit: ExtractToLet bare expression" {
   let text = "42"
   let (proj, _) = parse_to_proj_node(text)
@@ -991,6 +1006,24 @@ test "compute_text_edit: Rename module binding" {
 }
 
 ///|
+test "compute_text_edit: Rename module binding to same name remains valid" {
+  let text = "let x = 42\nx"
+  let (_, sm, registry, fp) = parse_with_token_spans(text)
+  let binding_id = fp.defs[0].3
+  let result = compute_text_edit(
+    Rename(node_id=binding_id, new_name="x"),
+    make_edit_ctx(text, sm, registry, fp),
+  )
+  match result {
+    Ok(Some((edits, _))) => {
+      let new_text = apply_edits(text, edits)
+      inspect(new_text, content=text)
+    }
+    _ => fail("expected Some edits, got: " + @debug.to_string(result))
+  }
+}
+
+///|
 test "compute_text_edit: Rename module binding via Var" {
   let text = "let x = 42\nx"
   let (proj, sm, registry, fp) = parse_with_token_spans(text)
@@ -1137,6 +1170,21 @@ test "compute_text_edit: InlineDefinition rejects capture" {
 }
 
 ///|
+test "compute_text_edit: InlineDefinition rejects module-def enclosing env capture" {
+  let text = "let y = 1\nlet x = y\nx"
+  let (proj, sm, registry, fp) = parse_with_token_spans(text)
+  let body = proj.children[proj.children.length() - 1]
+  let result = compute_text_edit(
+    InlineDefinition(node_id=body.id()),
+    make_edit_ctx(text, sm, registry, fp),
+  )
+  @debug.debug_inspect(
+    result,
+    content="Err(\"Cannot inline: would capture variables bound by enclosing lambda\")",
+  )
+}
+
+///|
 test "compute_text_edit: InlineAllUsages rejects capture" {
   let text = "let y = 1\nlet x = y\n\u{03BB}y. x"
   let (proj, sm, registry, fp) = parse_with_token_spans(text)
@@ -1149,6 +1197,20 @@ test "compute_text_edit: InlineAllUsages rejects capture" {
     make_edit_ctx(text, sm, registry, fp),
   )
   inspect(result is Err(_), content="true")
+}
+
+///|
+test "compute_text_edit: InlineAllUsages rejects module-def enclosing env capture" {
+  let text = "let y = 1\nlet x = y\nx"
+  let (_, sm, registry, fp) = parse_with_token_spans(text)
+  let result = compute_text_edit(
+    InlineAllUsages(binding_node_id=fp.defs[1].3),
+    make_edit_ctx(text, sm, registry, fp),
+  )
+  @debug.debug_inspect(
+    result,
+    content="Err(\"Cannot inline: would capture variables bound by enclosing lambda\")",
+  )
 }
 
 ///|

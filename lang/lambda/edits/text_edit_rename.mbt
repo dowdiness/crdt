@@ -187,10 +187,9 @@ fn rename_module_binding(
     Ok(ids) => ids
     Err(e) => return Err(e)
   }
-  // Guard: check if new_name would be captured by an enclosing lambda at any reference site
+  // Guard: check if new_name would be captured by an enclosing scope at any reference site
   for ref_id in ref_ids {
-    let ref_lam_env = collect_lam_env(ref_id, registry)
-    if ref_lam_env.contains(new_name) {
+    if new_name != old_name && name_captured_at_node(g, ref_id, new_name) {
       return Err(
         "Cannot rename: '" +
         new_name +

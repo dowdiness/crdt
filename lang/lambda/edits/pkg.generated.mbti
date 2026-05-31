@@ -10,8 +10,6 @@ import {
 }
 
 // Values
-pub fn collect_lam_env(@core.NodeId, Map[@core.NodeId, @core.ProjNode[@ast.Term]]) -> @hashset.HashSet[String]
-
 pub fn compute_text_edit(TreeEditOp, EditContext[@ast.Term]) -> Result[(Array[@core.SpanEdit], @core.FocusHint)?, String]
 
 pub fn find_binding_for_init(@core.NodeId, @proj.FlatProj) -> (@core.NodeId, Int)?
