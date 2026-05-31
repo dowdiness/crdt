@@ -163,7 +163,7 @@ fn run_diff_sequence(sources : Array[String]) -> Unit raise {
     prev_syntax,
     "init:\{sources[0]}",
   )
-  for i = 1; i < sources.length(); i = i + 1 {
+  for i in 1..<sources.length() {
     let new_syntax = parse_syntax(sources[i])
     let changed = Ref(([] : Array[Int]))
     let incr_fp = @lambda_proj.to_flat_proj_incremental(
@@ -306,7 +306,7 @@ fn idiff_make_source(seed : Int) -> String {
   let mut out = ""
   let count = seed.abs() % 10 + 3
   let pool_len = pool.length()
-  for _i = 0; _i < count; _i = _i + 1 {
+  for _ in 0..<count {
     s = idiff_next_seed(s)
     out = out + pool[s.abs() % pool_len]
   }
@@ -335,7 +335,7 @@ fn idiff_apply_edit(source : String, seed : Int) -> (String, Int) {
   s = idiff_next_seed(s)
   let frag_count = s.abs() % 3 + 1
   let mut frag = ""
-  for _i = 0; _i < frag_count; _i = _i + 1 {
+  for _ in 0..<frag_count {
     s = idiff_next_seed(s)
     frag = frag + pool[s.abs() % pool_len]
   }
@@ -362,14 +362,14 @@ fn idiff_apply_edit(source : String, seed : Int) -> (String, Int) {
 ///|
 test "incr-diff: deterministic fuzz — incr resolution == full after each edit" {
   let mut checked_cases = 0
-  for case_i = 0; case_i < 25; case_i = case_i + 1 {
+  for case_i in 0..<25 {
     let mut seed = 53 + case_i * 113
     let mut source = idiff_make_source(seed)
     let (cst0, _d0) = @parser.parse_cst(source)
     let mut prev_syntax = @seam.SyntaxNode::from_cst(cst0)
     let counter = Ref(0)
     let mut prev_fp = @lambda_proj.to_flat_proj(prev_syntax, counter)
-    for edit_i = 0; edit_i < 8; edit_i = edit_i + 1 {
+    for edit_i in 0..<8 {
       let (new_source, next_seed) = idiff_apply_edit(source, seed)
       let (cst, diags) = @parser.parse_cst(new_source)
       let new_syntax = @seam.SyntaxNode::from_cst(cst)
