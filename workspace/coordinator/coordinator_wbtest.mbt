@@ -52,7 +52,7 @@ test "spec §12 #5: read_protected catches out-of-band Watch dispose" {
 /// handler, so the outer `Watch::read` receives a hard abort rather than
 /// `Err(CycleError)`. To isolate the mapping concern, hand-build a
 /// `ProtectedCell` whose `read` closure directly returns
-/// `Err(CycleError::new(...))`. The cell_id points at a real,
+/// `Err(ReadError::cycle(CycleError::new(...)))`. The cell_id points at a real,
 /// watch-rooted Derived so the mode-1 fail-fast passes.
 test "spec §12 #6: read_protected maps Err(CycleError) to CycleDetected" {
   let coord = Coordinator::new()
@@ -69,7 +69,7 @@ test "spec §12 #6: read_protected maps Err(CycleError) to CycleDetected" {
   let pcell : ProtectedCell[Int] = ProtectedCell::ProtectedCell(
     cell_id~,
     label="synthetic_cycle",
-    read=fn() { Err(synthetic_cycle) },
+    read=fn() { Err(@incr.ReadError::cycle(synthetic_cycle)) },
     is_disposed=fn() { false },
     dispose=fn() {  },
   )
@@ -78,6 +78,37 @@ test "spec §12 #6: read_protected maps Err(CycleError) to CycleDetected" {
     Ok(_) => fail("expected CycleDetected")
     Err(report) => {
       assert_eq(report.kind, CycleDetected)
+      assert_true(report.domain_tag is Some(_))
+    }
+  }
+}
+
+///|
+/// Spec §12 #6 (Disposed variant): a `ReadError::Disposed` surfacing from the
+/// read closure maps to `AbortKind::ProtectedCellDisposed`, distinct from the
+/// cycle case. Mirrors the cycle test — hand-build a `ProtectedCell` whose
+/// `read` closure returns `Err(ReadError::disposed(...))` with
+/// `is_disposed=fn() { false }` so the earlier defense-in-depth guard does not
+/// short-circuit the read and the mapping in `read_protected` is exercised.
+test "spec §12 #6: read_protected maps Err(Disposed) to ProtectedCellDisposed" {
+  let coord = Coordinator::new()
+  let rt = coord.runtime()
+  let anchor = @incr.Derived::Derived(rt, fn() { 0 }, label="anchor")
+  let watch = anchor.watch()
+  let _ = watch.read()
+  let cell_id = anchor.id()
+  let pcell : ProtectedCell[Int] = ProtectedCell::ProtectedCell(
+    cell_id~,
+    label="synthetic_disposed",
+    read=fn() { Err(@incr.ReadError::disposed(cell_id)) },
+    is_disposed=fn() { false },
+    dispose=fn() {  },
+  )
+  let id = coord.register_editor("agent", [pcell.erase()])
+  match coord.read_protected(id, pcell) {
+    Ok(_) => fail("expected ProtectedCellDisposed")
+    Err(report) => {
+      assert_eq(report.kind, ProtectedCellDisposed)
       assert_true(report.domain_tag is Some(_))
     }
   }

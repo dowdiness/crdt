@@ -72,7 +72,7 @@ fn ProtectedRead::ProtectedRead(
 pub struct ProtectedCell[T] {
   cell_id : @incr.CellId
   label : String
-  read : () -> Result[T, @incr.CycleError]
+  read : () -> Result[T, @incr.ReadError]
   is_disposed : () -> Bool
   dispose : () -> Unit
 }
@@ -81,7 +81,7 @@ pub struct ProtectedCell[T] {
 fn[T] ProtectedCell::ProtectedCell(
   cell_id~ : @incr.CellId,
   label~ : String,
-  read~ : () -> Result[T, @incr.CycleError],
+  read~ : () -> Result[T, @incr.ReadError],
   is_disposed~ : () -> Bool,
   dispose~ : () -> Unit,
 ) -> ProtectedCell[T] {
