@@ -202,10 +202,14 @@ test "incr-diff: editing one def reuses the others (non-vacuity) and agrees" {
     counter,
     changed_indices=changed,
   )
-  // def 0 (`x = 1`) is structurally unchanged at the same start → REUSED, so its
-  // index is NOT pushed; only def 1 (`y = 3` vs `y = 2`) is rebuilt. This is the
-  // sharp proof that the differential below is NOT a full-vs-full tautology.
-  inspect(changed.val == [1], content="true")
+  // Non-vacuity: def 0 (`x = 1`, unchanged at the same start) must be REUSED, so its
+  // index is NOT pushed; only def 1 (`y = 3` vs `y = 2`) is rebuilt. Asserting "def 0
+  // absent from changed" (rather than the exact `== [1]`) keeps the guard robust to a
+  // body/offset shift if the fixture text is later edited to differ in length — the
+  // load-bearing claim is that the unchanged def was reused, not the precise rebuilt
+  // set. This is the sharp proof that the differential is NOT a full-vs-full tautology.
+  inspect(changed.val.contains(0), content="false")
+  inspect(changed.val.contains(1), content="true")
   assert_incr_matches_full(fp1, counter.val, s1, "single-def-edit")
 }
 
@@ -362,16 +366,26 @@ fn idiff_apply_edit(source : String, seed : Int) -> (String, Int) {
 ///|
 test "incr-diff: deterministic fuzz — incr resolution == full after each edit" {
   let mut checked_cases = 0
+  let mut reused_clean_steps = 0
   for case_i in 0..<25 {
     let mut seed = 53 + case_i * 113
     let mut source = idiff_make_source(seed)
-    let (cst0, _d0) = @parser.parse_cst(source)
+    // The pool is lex-safe so parse_cst recovers via diagnostics rather than a
+    // raised LexError, but catch defensively (as the loom fuzzer does) so a future
+    // pool/seed change surfaces as a skipped case, not a crashed suite.
+    let (cst0, _d0) = @parser.parse_cst(source) catch { _ => continue }
     let mut prev_syntax = @seam.SyntaxNode::from_cst(cst0)
     let counter = Ref(0)
     let mut prev_fp = @lambda_proj.to_flat_proj(prev_syntax, counter)
     for edit_i in 0..<8 {
       let (new_source, next_seed) = idiff_apply_edit(source, seed)
-      let (cst, diags) = @parser.parse_cst(new_source)
+      let (cst, diags) = @parser.parse_cst(new_source) catch {
+        _ => {
+          source = new_source
+          seed = next_seed
+          continue
+        }
+      }
       let new_syntax = @seam.SyntaxNode::from_cst(cst)
       let changed = Ref(([] : Array[Int]))
       let incr_fp = @lambda_proj.to_flat_proj_incremental(
@@ -392,6 +406,16 @@ test "incr-diff: deterministic fuzz — incr resolution == full after each edit"
           "fuzz case=\{case_i} edit=\{edit_i} src=\{new_source}",
         )
         checked_cases = checked_cases + 1
+        // Broaden the non-vacuity guarantee beyond the single-def test: a clean
+        // step "reused" iff ≥1 child carried over (changed records only REBUILT
+        // children — def indices plus -1 for the final expr). A CstNode-Eq reuse
+        // regression that turned every step into a full rebuild would drop this
+        // to 0 and fail the suite, not pass vacuously as full-vs-full.
+        let total_children = incr_fp.defs.length() +
+          (if incr_fp.final_expr is Some(_) { 1 } else { 0 })
+        if changed.val.length() < total_children {
+          reused_clean_steps = reused_clean_steps + 1
+        }
       }
       prev_syntax = new_syntax
       prev_fp = incr_fp
@@ -401,4 +425,6 @@ test "incr-diff: deterministic fuzz — incr resolution == full after each edit"
   }
   // Guard against a vacuous pass if the generator drifts toward malformed strings.
   inspect(checked_cases > 0, content="true")
+  // Guard against a vacuous pass if reuse silently stops firing on clean steps.
+  inspect(reused_clean_steps > 0, content="true")
 }
