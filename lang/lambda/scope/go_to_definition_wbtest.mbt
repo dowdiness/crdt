@@ -63,6 +63,19 @@ test "go_to_definition: nested lambda shadowing — innermost param wins" {
 }
 
 ///|
+test "go_to_definition: caret on a wrapping paren resolves to the inner var's binder" {
+  // "let x = 1\n(x)" — `(` at 10, `x` at 11, `)` at 12. ParenExpr deliberately
+  // widens the wrapped Var's node span to cover the parens (proj_node.mbt), so a
+  // caret on `(` (pos 10) resolves to `x` and jumps to its binder "x" at 4..5.
+  // Intended position→node behavior, not identifier-token-strict (Codex P2 on
+  // PR #405 — verified intentional, pinned here).
+  let (g, sm) = build_fixture_with_spans("let x = 1\n(x)")
+  guard go_to_definition(g, sm, 10) is Some(r)
+  inspect(r.start, content="4")
+  inspect(r.end, content="5")
+}
+
+///|
 test "go_to_definition: free variable — no jump" {
   // "x" — unbound; go-to-definition yields None.
   let (g, sm) = build_fixture_with_spans("x")

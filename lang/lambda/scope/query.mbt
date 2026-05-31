@@ -53,10 +53,22 @@ pub fn binder_span(
 ///|
 /// Go-to-definition: given a cursor `position`, return the source span of the
 /// binder that the reference under the cursor resolves to, or None.
-/// Token-hit semantics: `position` must fall within a reference token's
-/// half-open range; a caret between tokens or at a token end may resolve to an
-/// ancestor node (no jump) — acceptable for v1. Returns None for a free
-/// variable, a non-reference node, or an unpopulated `SourceMap`.
+///
+/// Resolution is by projection-node range: `position` maps to the innermost
+/// node whose source range contains it (half-open), and a jump happens when
+/// that node is a resolved reference. The range used is the reference's *node*
+/// span, not its identifier *token* span — and `ParenExpr` deliberately widens
+/// a wrapped expression's span to cover the parentheses (see `proj_node.mbt`,
+/// "keep the outer ParenExpr span so positions on ( and ) are covered"). So a
+/// caret on the `(` / `)` of `(x)` resolves to `x` and jumps to its binder.
+/// That is intentional and consistent with the editor's position→node mapping;
+/// the resolved target is always the correct binder. A stricter
+/// identifier-token-only restriction would require recording Var token spans
+/// and is intentionally not done.
+///
+/// Returns None for a free variable, a position in no reference node (between
+/// tokens / on surrounding whitespace), or a `SourceMap` without populated
+/// token spans.
 pub fn go_to_definition(
   g : ScopeGraph,
   source_map : @core.SourceMap,
