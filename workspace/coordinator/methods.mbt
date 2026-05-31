@@ -151,8 +151,9 @@ pub fn Coordinator::destroy_editor(
 /// internals; boundary code should use this method and collapse `Err` into that
 /// API's existing fail-closed response.
 ///
-/// Cycles propagate to `AbortKind::CycleDetected` with `domain_tag` carrying
-/// `CycleError::format_path()`.
+/// A cycle propagates to `AbortKind::CycleDetected`; a read on a disposed cell
+/// propagates to `AbortKind::ProtectedCellDisposed`. Either way `domain_tag`
+/// carries `ReadError::format_path()`.
 pub fn[T] Coordinator::read_protected(
   self : Coordinator,
   editor_id : EditorId,
@@ -209,15 +210,19 @@ pub fn[T] Coordinator::read_protected(
   }
   match (cell.read)() {
     Ok(value) => Ok(value)
-    Err(cycle) =>
+    Err(e) =>
       Err(
         AbortReport(
-          kind=CycleDetected,
+          kind=if e.is_disposed() {
+            ProtectedCellDisposed
+          } else {
+            CycleDetected
+          },
           editor_id~,
           agent_id=reg.agent_id,
           cell_id=cell.cell_id,
           cell_label=cell.label,
-          domain_tag=cycle.format_path(),
+          domain_tag=e.format_path(),
         ),
       )
   }

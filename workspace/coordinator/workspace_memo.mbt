@@ -100,10 +100,11 @@ pub fn[T] Coordinator::register_workspace_memo(
 }
 
 ///|
-/// Delegates to the underlying watch. A cycle surfaces as `Err(CycleError)`.
+/// Delegates to the underlying watch. Returns `Err(ReadError)` — a cycle as
+/// `Cycle(CycleError)`, a read on a disposed cell as `Disposed(CellId)`.
 pub fn[T] WorkspaceMemoHandle::read(
   self : WorkspaceMemoHandle[T],
-) -> Result[T, @incr.CycleError] {
+) -> Result[T, @incr.ReadError] {
   self.watch.read()
 }
 

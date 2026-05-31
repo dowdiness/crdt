@@ -49,7 +49,7 @@ pub impl Show for EditorId
 pub struct ProtectedCell[T] {
   cell_id : @types.CellId
   label : String
-  read : () -> Result[T, @types.CycleError]
+  read : () -> Result[T, @types.ReadError]
   is_disposed : () -> Bool
   dispose : () -> Unit
 }
@@ -69,7 +69,7 @@ pub struct WorkspaceMemoHandle[T] {
 }
 pub fn[T] WorkspaceMemoHandle::dispose(Self[T]) -> Unit
 pub fn[T] WorkspaceMemoHandle::id(Self[T]) -> @types.CellId
-pub fn[T] WorkspaceMemoHandle::read(Self[T]) -> Result[T, @types.CycleError]
+pub fn[T] WorkspaceMemoHandle::read(Self[T]) -> Result[T, @types.ReadError]
 
 // Type aliases
 
