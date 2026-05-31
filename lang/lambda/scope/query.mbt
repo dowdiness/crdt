@@ -84,9 +84,8 @@ pub fn go_to_definition(
 ///|
 /// The set of names bound in scopes enclosing `node` — the FULL lexical
 /// environment (lambda params AND module defs). This is a SUPERSET of the
-/// existing `collect_lam_env` (which returns only lambda params); it is NOT a
-/// drop-in replacement. Set semantics (membership, not order).
-/// Reserved API surface; consumer migration deferred (see design spec).
+/// retired edits-package `collect_lam_env` (which returned only lambda params);
+/// it is NOT a drop-in replacement. Set semantics (membership, not order).
 pub fn enclosing_env(
   g : ScopeGraph,
   node : @core.NodeId,

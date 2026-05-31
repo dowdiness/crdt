@@ -11,33 +11,14 @@ fn compute_extract_to_let(
   guard source_map.get_range(node_id) is Some(range) else {
     return Err("Range not found")
   }
-  // Free-var validation: check for lambda-captured variables
-  let mut module_env : @immut/hashset.HashSet[String] = @immut/hashset.new()
-  // Find which def contains this node (or if it's in the body)
-  let mut in_def_index : Int = flat_proj.defs.length() // body sentinel
-  for i, def in flat_proj.defs {
-    if source_map.get_range(def.1.id()) is Some(r) &&
-      range.start >= r.start &&
-      range.end <= r.end {
-      in_def_index = i
-      break
-    }
-  }
-  // Add def names in scope at the extraction site
-  let scope_limit = if in_def_index < flat_proj.defs.length() {
-    in_def_index
+  let g = @scope.build(flat_proj, registry, source_map)
+  let fv = free_vars(node.kind, @immut/hashset.new())
+  let would_capture = if flat_proj.defs.is_empty() {
+    free_names_captured_at_use_sites(g, node, fv)
   } else {
-    flat_proj.defs.length()
+    free_names_would_rebind_at_module_end(g, flat_proj, node, fv)
   }
-  for i = 0; i < scope_limit; i = i + 1 {
-    module_env = module_env.add(flat_proj.defs[i].0)
-  }
-  // Check for lambda-captured vars
-  let lam_env = collect_lam_env(node_id, registry)
-  let fv = free_vars(node.kind, module_env)
-  let mut captured_var : String? = None
-  fv.each(fn(v) { if lam_env.contains(v) { captured_var = Some(v) } })
-  if captured_var is Some(_) {
+  if would_capture {
     return Err("Cannot extract: expression captures lambda-bound variables")
   }
   // Build edits
@@ -150,16 +131,16 @@ fn compute_inline_definition(
     DeclKind::ModuleDef(def_index~) => {
       let def = flat_proj.defs[def_index]
       let init_text = @ast.print_term(def.1.kind)
-      // Check for capture: would any free var in init be captured by a lambda at the usage site?
+      // Check for capture: would any free var in init be captured by an enclosing scope at the usage site?
       let init_fv = free_vars(def.1.kind, @immut/hashset.new())
-      let usage_lam_env = collect_lam_env(node_id, registry)
-      let mut would_capture = false
-      init_fv.each(fn(v) {
-        if usage_lam_env.contains(v) {
-          would_capture = true
-        }
-      })
-      if would_capture {
+      if free_names_would_rebind_at_node(
+          g,
+          flat_proj,
+          source_map,
+          def.1,
+          node_id,
+          init_fv,
+        ) {
         return Err(
           "Cannot inline: would capture variables bound by enclosing lambda",
         )
@@ -257,13 +238,17 @@ fn compute_inline_all_usages(
     Ok(ids) => ids
     Err(e) => return Err(e)
   }
-  // Check for capture: would any free var in init be captured by a lambda at any reference site?
+  // Check for capture: would any free var in init be captured by an enclosing scope at any reference site?
   let init_fv = free_vars(def.1.kind, @immut/hashset.new())
   for rid in ref_ids {
-    let ref_lam_env = collect_lam_env(rid, registry)
-    let mut would_capture = false
-    init_fv.each(fn(v) { if ref_lam_env.contains(v) { would_capture = true } })
-    if would_capture {
+    if free_names_would_rebind_at_node(
+        g,
+        flat_proj,
+        source_map,
+        def.1,
+        rid,
+        init_fv,
+      ) {
       return Err(
         "Cannot inline: would capture variables bound by enclosing lambda",
       )
