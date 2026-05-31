@@ -57,10 +57,14 @@ The `crdt` module depends on `dowdiness/lambda` (`loom/examples/lambda/`) and `d
 - `loom/pretty/` — `dowdiness/pretty`: Wadler-Lindig pretty-printer
 - `loom/examples/lambda/` — `dowdiness/lambda`: lambda calculus tokenizer, grammar, AST, benchmarks
 
-The above are the packages the `crdt` root consumes. `loom` is itself a nested
-monorepo (its own `loom/.gitmodules` declares `incr`/`egraph`/`egglog`/`event-graph-walker`,
-and `loom/examples/` adds `json`/`markdown`); `loom/`'s own `moon.mod.json` and
-`.gitmodules` are authoritative for its full package set.
+This covers the loom packages most central to the editor; it is **not** exhaustive
+— the root also consumes `dowdiness/json`, `dowdiness/markdown`, `dowdiness/egglog`,
+and `dowdiness/egraph` from loom. `loom` is itself a nested monorepo:
+`loom/.gitmodules` declares `incr`/`egraph`/`egglog`/`event-graph-walker` as
+submodules and `loom/examples/` adds `json`/`markdown`. loom has no top-level
+module file — each package owns its own `moon.mod.json`; `loom/.gitmodules` plus
+the root `moon.mod.json` are authoritative for loom's package set and what the
+root consumes.
 
 **See:** [loom/README.md](../../loom/README.md) for detailed documentation.
 
