@@ -154,24 +154,6 @@ fn normalize_decl(
 }
 
 ///|
-/// Affirm the Option-D binder-location contract (docs/TODO.md §20, resolved):
-/// every resolved declaration is LOCATABLE via `@scope.binder_span`, regardless
-/// of kind. This supersedes the former node_id-in-registry gap pin — Option D
-/// locates a binder by its source span (module → `"name:<def_index>"`, lambda →
-/// `"param"`), so a module binder's synthetic, non-registry `node_id` is now an
-/// internal detail rather than a gap. Failure here means the binder span was
-/// never populated (a real locator regression), not a synthetic-id observation.
-fn assert_binder_locatable(
-  decl : @scope.Decl?,
-  g : @scope.ScopeGraph,
-  source_map : SourceMap,
-) -> Unit raise {
-  if decl is Some(d) && @scope.binder_span(g, d, source_map) is None {
-    fail("production: binder not locatable via binder_span for '\{d.name}'")
-  }
-}
-
-///|
 /// Drive both pipelines on one source string and assert resolution agreement.
 /// `expect_clean` asserts zero parser diagnostics (the generated/well-formed
 /// property); error-recovery fixtures pass `expect_clean=false` since both
@@ -204,15 +186,21 @@ fn check_agreement(text : String, expect_clean? : Bool = true) -> Unit raise {
     guard n1 == n2 else {
       fail("resolution disagrees for Var \{key}: test=\{n1} production=\{n2}")
     }
-    // Option D: the production binder is locatable via binder_span, and that
-    // location is pipeline-INDEPENDENT — both pipelines derive the binder span
-    // from the same syntax token offsets, so they must agree even though their
-    // internal binder `node_id` VALUES diverge. This is the cross-pipeline
-    // affirmation that the accessor bridges the (still-present) id divergence.
-    assert_binder_locatable(d2, g2, sm2)
+    // Option D, two DISTINCT affirmations (don't conflate):
+    // (1) locatability (`is Some`) — the production module binder, whose
+    //     internal `node_id` is synthetic, is now reachable at all via
+    //     binder_span; this is what supersedes the old node_id-in-registry pin.
+    // (2) `bs1 == bs2` — the two INDEPENDENTLY-reconstructed trees map this
+    //     binder to the SAME source location. Both spans derive from the same
+    //     parse, so equality mainly guards against a def-order/count drift
+    //     between the pipelines (it does NOT, on its own, exercise the node_id
+    //     divergence — a bad binder key yields None, caught by (1)).
     if (d1, d2) is (Some(dd1), Some(dd2)) {
       let bs1 = @scope.binder_span(g1, dd1, sm1)
       let bs2 = @scope.binder_span(g2, dd2, sm2)
+      guard bs2 is Some(_) else {
+        fail("production: binder not locatable via binder_span for \{key}")
+      }
       guard bs1 is Some(_) else {
         fail("test pipeline: binder not locatable via binder_span for \{key}")
       }

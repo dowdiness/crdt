@@ -40,11 +40,12 @@ pub fn binder_span(
   source_map : @core.SourceMap,
 ) -> @loomcore.Range? {
   match decl.kind {
-    LamParam(lam_id~) => source_map.get_token_span(lam_id, "param")
+    LamParam(lam_id~) =>
+      source_map.get_token_span(lam_id, @lambda_proj.PARAM_ROLE)
     ModuleDef(def_index~) =>
       source_map.get_token_span(
         g.module_node_id,
-        "name:" + def_index.to_string(),
+        @lambda_proj.module_name_role(def_index),
       )
   }
 }
