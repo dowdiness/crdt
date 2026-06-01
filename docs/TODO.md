@@ -155,9 +155,8 @@ Plan template: [Plan Template](plans/TEMPLATE.md)
   Why: the `match x { Ok(v) => v; Err(e) => return Err(e) }` passthroughs left in PR #383 exist only because MoonBit has no `?`-propagation for plain `Result`. A raising error model would auto-propagate them away and let the Some/None guards sit on raising accessors. Larger design call — touches `EditResult` and error-type design; see the `moonbit-error-handling` skill.
   Exit: decision recorded (adopt or keep `Result`) with rationale; if adopted, passthroughs removed and `EditResult` retyped.
 
-- [ ] Uniform syntax→projection dispatch + parallel-walk helper (loom `@seam` / `lang/*/proj`). (finding E from PR #383)
-  Why: `syntax_to_proj_node` dispatches via a typed `View::cast(node) is Some(v)` ladder, but two arms (`BlockExpr`, `HoleLiteral`) fall back to raw `SyntaxKind::from_raw(...) == ...` because no typed View exists; separately, `populate_token_spans` hand-rolls fragile `proj_chain` index arithmetic to align flat CST App/Binary spans with the nested ProjNode tree.
-  Exit: typed Views cover all dispatched kinds (uniform `is Some` ladder); a loom-level "zip syntax children with projection children" utility absorbs the manual chain navigation. Tracked upstream in loom.
+- [x] Uniform syntax→projection dispatch + projection-walk helper decision (loom `@seam` / `lang/*/proj`). (finding E from PR #383)
+  Shipped: #439 extracted Lambda App/Binary token-span left-spine walking into a private iterative helper; loom PR #207 adds Lambda `BlockExprView` / `HoleLiteralView`, and this branch switches Lambda projection dispatch to the uniform typed `View::cast(node) is Some(v)` ladder. Decision: no new public loom-level projection-walk API for now — existing `@seam.SyntaxNode` direct-child helpers plus the private left-spine helper cover the current duplicated/fragile cases without adding an under-evidenced core abstraction.
 
 ---
 

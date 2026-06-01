@@ -55,6 +55,48 @@ fn bop_node(
 }
 
 ///|
+priv struct ProjectedLetDef {
+  name : @ast.VarName
+  init : ProjNode[@ast.Term]
+  start : Int
+}
+
+///|
+fn unit_node_at(pos : Int, counter : Ref[Int]) -> ProjNode[@ast.Term] {
+  ProjNode::new(Unit, pos, pos, @core.next_proj_node_id(counter), [])
+}
+
+///|
+fn project_let_def(
+  def : @parser.LetDefView,
+  counter : Ref[Int],
+) -> ProjectedLetDef {
+  let def_node = def.syntax_node()
+  let init = match def.init() {
+    Some(n) => syntax_to_proj_node(n, counter)
+    None =>
+      error_node_for_syntax("missing let binding value", def_node, counter)
+  }
+  { name: def.name(), init, start: def_node.start() }
+}
+
+///|
+fn module_node_from_defs(
+  defs : Array[ProjectedLetDef],
+  body : ProjNode[@ast.Term],
+  start : Int,
+  end : Int,
+  counter : Ref[Int],
+) -> ProjNode[@ast.Term] {
+  let children : Array[ProjNode[@ast.Term]] = defs.map(fn(d) { d.init })
+  children.push(body)
+  let term_defs : Array[(@ast.VarName, @ast.Term)] = defs.map(fn(d) {
+    (d.name, d.init.kind)
+  })
+  ProjNode::branch(Module(term_defs, body.kind), start, end, children, counter)
+}
+
+///|
 pub fn syntax_to_proj_node(
   node : @seam.SyntaxNode,
   counter : Ref[Int],
@@ -162,49 +204,16 @@ pub fn syntax_to_proj_node(
       }
       None => error_node_for_syntax("empty parentheses", node, counter)
     }
-  } else if @syntax.SyntaxKind::from_raw(node.kind()) == @syntax.BlockExpr {
+  } else if @parser.BlockExprView::cast(node) is Some(v) {
     // Block expression: { LetDef* Expression? } — same structure as SourceFile.
     // Collect defs + body, produce Module node (or unwrap single expression).
-    let defs : Array[(String, ProjNode[@ast.Term], Int)] = []
-    let mut final_proj : ProjNode[@ast.Term]? = None
-    for child in node.children() {
-      if @parser.LetDefView::cast(child) is Some(v) {
-        let init = match v.init() {
-          Some(n) => syntax_to_proj_node(n, counter)
-          None =>
-            error_node_for_syntax("missing let binding value", child, counter)
-        }
-        defs.push((v.name(), init, child.start()))
-      } else if final_proj is None &&
-        @syntax.SyntaxKind::from_raw(child.kind()) != @syntax.LBraceToken &&
-        @syntax.SyntaxKind::from_raw(child.kind()) != @syntax.RBraceToken {
-        final_proj = Some(syntax_to_proj_node(child, counter))
-      }
-    }
-    let result = match final_proj {
-      Some(p) => p
-      None =>
-        ProjNode::new(
-          Unit,
-          node.end(),
-          node.end(),
-          @core.next_proj_node_id(counter),
-          [],
-        )
+    let defs = v.defs().map(fn(def) { project_let_def(def, counter) })
+    let result = match v.body() {
+      Some(body) => syntax_to_proj_node(body, counter)
+      None => unit_node_at(node.end(), counter)
     }
     if defs.length() > 0 {
-      let children : Array[ProjNode[@ast.Term]] = defs.map(fn(d) { d.1 })
-      children.push(result)
-      let term_defs : Array[(@ast.VarName, @ast.Term)] = defs.map(fn(d) {
-        (d.0, d.1.kind)
-      })
-      ProjNode::branch(
-        Module(term_defs, result.kind),
-        node.start(),
-        node.end(),
-        children,
-        counter,
-      )
+      module_node_from_defs(defs, result, node.start(), node.end(), counter)
     } else {
       // Single expression block: unwrap like ParenExpr
       ProjNode::new(
@@ -215,7 +224,7 @@ pub fn syntax_to_proj_node(
         result.children,
       )
     }
-  } else if @syntax.SyntaxKind::from_raw(node.kind()) == @syntax.HoleLiteral {
+  } else if @parser.HoleLiteralView::cast(node) is Some(_) {
     ProjNode::leaf(Hole(0), node, counter)
   } else {
     error_node_for_syntax(
@@ -236,42 +245,25 @@ pub fn to_proj_node(
   root : @seam.SyntaxNode,
   counter : Ref[Int],
 ) -> ProjNode[@ast.Term] {
-  let defs : Array[(String, ProjNode[@ast.Term], Int)] = []
+  let defs : Array[ProjectedLetDef] = []
   let mut final_proj : ProjNode[@ast.Term]? = None
   for child in root.children() {
     if @parser.LetDefView::cast(child) is Some(v) {
-      let init = match v.init() {
-        Some(n) => syntax_to_proj_node(n, counter)
-        None =>
-          error_node_for_syntax("missing let binding value", child, counter)
-      }
-      defs.push((v.name(), init, child.start()))
+      defs.push(project_let_def(v, counter))
     } else if final_proj is None {
       final_proj = Some(syntax_to_proj_node(child, counter))
     }
   }
   let mut result = match final_proj {
     Some(p) => p
-    None =>
-      ProjNode::new(
-        Unit,
-        root.end(),
-        root.end(),
-        @core.next_proj_node_id(counter),
-        [],
-      )
+    None => unit_node_at(root.end(), counter)
   }
   if defs.length() > 0 {
-    let children : Array[ProjNode[@ast.Term]] = defs.map(fn(d) { d.1 })
-    children.push(result)
-    let term_defs : Array[(@ast.VarName, @ast.Term)] = defs.map(fn(d) {
-      (d.0, d.1.kind)
-    })
-    result = ProjNode::branch(
-      Module(term_defs, result.kind),
-      defs[0].2,
+    result = module_node_from_defs(
+      defs,
+      result,
+      defs[0].start,
       result.end,
-      children,
       counter,
     )
   }
